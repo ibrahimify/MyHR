@@ -28,3 +28,11 @@ MyHR/
 
 ## Status
 In Progress - Project Lab Phase
+
+## Progress Tracker
+
+You can track live development progress here:
+
+**[View Progress Tracker →](https://raw.githack.com/ibrahimify/MyHR/main/docs/myhr-progress.html)**
+
+The tracker shows the 5-day sprint breakdown, completed tasks, and overall progress updated in real time.

@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyHR — Development Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --bg2: #13161d;
+    --bg3: #1a1e28;
+    --bg4: #212633;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --text2: #8b90a0;
+    --text3: #555b6e;
+    --accent: #6c8fff;
+    --accent2: #4a6fff;
+    --green: #3ecf8e;
+    --green-bg: rgba(62,207,142,0.1);
+    --amber: #f5a623;
+    --amber-bg: rgba(245,166,35,0.1);
+    --blue: #6c8fff;
+    --blue-bg: rgba(108,143,255,0.1);
+    --red: #ff6b6b;
+    --red-bg: rgba(255,107,107,0.1);
+    --purple: #b57bee;
+    --purple-bg: rgba(181,123,238,0.1);
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(13,15,20,0.85);
+    backdrop-filter: blur(12px);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-mark {
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: #fff;
+    letter-spacing: -0.5px;
+  }
+
+  .logo-text {
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: -0.3px;
+  }
+
+  .logo-sub {
+    font-size: 12px;
+    color: var(--text3);
+    font-family: var(--mono);
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .header-tag {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text3);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+
+  .header-tag span { color: var(--green); }
+
+  /* ── layout ── */
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* ── hero stats ── */
+  .hero {
+    margin-bottom: 48px;
+  }
+
+  .hero-title {
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: -0.8px;
+    margin-bottom: 4px;
+  }
+
+  .hero-title em {
+    font-style: normal;
+    color: var(--accent);
+  }
+
+  .hero-sub {
+    font-size: 14px;
+    color: var(--text2);
+    margin-bottom: 32px;
+    font-family: var(--mono);
+  }
+
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .stat {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    transition: border-color 0.2s;
+  }
+
+  .stat:hover { border-color: var(--border2); }
+
+  .stat-val {
+    font-size: 26px;
+    font-weight: 500;
+    font-family: var(--mono);
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--text3);
+  }
+
+  /* ── overall progress ── */
+  .overall-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 28px;
+  }
+
+  .overall-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 16px;
+  }
+
+  .overall-label {
+    font-size: 13px;
+    color: var(--text2);
+    font-family: var(--mono);
+  }
+
+  .overall-pct {
+    font-size: 32px;
+    font-weight: 500;
+    font-family: var(--mono);
+    letter-spacing: -1.5px;
+    color: var(--text);
+  }
+
+  .overall-pct span { font-size: 16px; color: var(--text3); }
+
+  .big-bar {
+    width: 100%;
+    height: 10px;
+    background: var(--bg4);
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .big-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent), #a78bfa);
+    transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1);
+    position: relative;
+  }
+
+  .big-bar-fill::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px var(--accent);
+    transition: opacity 0.3s;
+  }
+
+  .overall-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+  }
+
+  .overall-footer-item {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text3);
+  }
+
+  .overall-footer-item b { color: var(--text2); font-weight: 400; }
+
+  /* ── section ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    margin-top: 48px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .section-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── legend ── */
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text3);
+    font-family: var(--mono);
+  }
+
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 3px;
+  }
+
+  /* ── day cards ── */
+  .day-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .day-card:hover { border-color: var(--border2); }
+
+  .day-card.complete { border-color: rgba(62,207,142,0.25); }
+
+  .day-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 20px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .day-num {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .day-meta { flex: 1; min-width: 0; }
+
+  .day-title {
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -0.2px;
+    margin-bottom: 2px;
+  }
+
+  .day-sub {
+    font-size: 12px;
+    color: var(--text3);
+    font-family: var(--mono);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .day-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .day-progress-bar {
+    width: 100px;
+    height: 4px;
+    background: var(--bg4);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .day-progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.4s ease, background 0.3s;
+  }
+
+  .day-pct {
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--text3);
+    min-width: 32px;
+    text-align: right;
+  }
+
+  .day-chevron {
+    width: 16px;
+    height: 16px;
+    color: var(--text3);
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+  }
+
+  .day-card.open .day-chevron { transform: rotate(180deg); }
+
+  /* ── tasks ── */
+  .tasks-wrap {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+  }
+
+  .day-card.open .tasks-wrap { max-height: 800px; }
+
+  .tasks-inner {
+    padding: 0 20px 16px;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+  }
+
+  .task {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 9px 0;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: opacity 0.15s;
+  }
+
+  .task:last-child { border-bottom: none; }
+  .task:hover { opacity: 0.85; }
+
+  .checkbox {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 1.5px solid var(--border2);
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    background: transparent;
+  }
+
+  .checkbox svg { display: none; }
+
+  .checkbox.done {
+    background: var(--green);
+    border-color: var(--green);
+  }
+
+  .checkbox.done svg { display: block; }
+
+  .task-body { flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .task-text {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.4;
+    transition: color 0.2s;
+  }
+
+  .task-text.done { color: var(--text3); text-decoration: line-through; }
+
+  .tag {
+    font-size: 10px;
+    font-family: var(--mono);
+    padding: 2px 7px;
+    border-radius: 999px;
+    white-space: nowrap;
+    font-weight: 400;
+  }
+
+  .tag-db    { background: var(--blue-bg);   color: var(--blue);   }
+  .tag-ui    { background: var(--amber-bg);  color: var(--amber);  }
+  .tag-logic { background: var(--green-bg);  color: var(--green);  }
+  .tag-bonus { background: var(--red-bg);    color: var(--red);    }
+
+  /* ── stack info ── */
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .stack-item {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stack-role { font-size: 10px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; }
+  .stack-val { font-size: 13px; font-weight: 500; }
+
+  /* ── footer ── */
+  footer {
+    text-align: center;
+    padding: 40px 24px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--text3);
+  }
+
+  footer a { color: var(--accent); text-decoration: none; }
+
+  /* ── animations ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate { animation: fadeUp 0.4s ease both; }
+  .animate:nth-child(1) { animation-delay: 0.05s; }
+  .animate:nth-child(2) { animation-delay: 0.10s; }
+  .animate:nth-child(3) { animation-delay: 0.15s; }
+  .animate:nth-child(4) { animation-delay: 0.20s; }
+  .animate:nth-child(5) { animation-delay: 0.25s; }
+
+  @media (max-width: 640px) {
+    header { padding: 0 16px; }
+    .container { padding: 32px 16px 60px; }
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+    .stack-grid { grid-template-columns: repeat(2, 1fr); }
+    .day-progress-bar { width: 60px; }
+    .hero-title { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">HR</div>
+    <div>
+      <div class="logo-text">MyHR</div>
+      <div class="logo-sub">Employee Management System</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="header-tag">Python · PySide6 · SQLite · <span>in progress</span></div>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="hero animate">
+    <div class="hero-title">Development <em>Tracker</em></div>
+    <div class="hero-sub">Muhammad Ibrahim Shoeb · Supervisor: Dr. Husam Al-Maghoosi</div>
+
+    <div class="stat-row" id="stat-row">
+      <div class="stat animate">
+        <div class="stat-val" id="stat-done">0</div>
+        <div class="stat-label">Tasks completed</div>
+      </div>
+      <div class="stat animate">
+        <div class="stat-val" id="stat-total">30</div>
+        <div class="stat-label">Total tasks</div>
+      </div>
+      <div class="stat animate">
+        <div class="stat-val" id="stat-days">0</div>
+        <div class="stat-label">Days finished</div>
+      </div>
+      <div class="stat animate">
+        <div class="stat-val" id="stat-remaining">5</div>
+        <div class="stat-label">Days remaining</div>
+      </div>
+    </div>
+
+    <div class="overall-card animate">
+      <div class="overall-top">
+        <div class="overall-label">overall_progress</div>
+        <div class="overall-pct" id="overall-pct">0<span>%</span></div>
+      </div>
+      <div class="big-bar">
+        <div class="big-bar-fill" id="big-fill" style="width:0%"></div>
+      </div>
+      <div class="overall-footer">
+        <div class="overall-footer-item"><b id="foot-done">0</b> / <b id="foot-total">30</b> tasks</div>
+        <div class="overall-footer-item" id="foot-status">not started</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <div class="section-label">sprint breakdown</div>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div>Database</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div>UI screen</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Logic</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Bonus</div>
+  </div>
+
+  <div id="days-container"></div>
+
+  <div class="section-header" style="margin-top:48px;">
+    <div class="section-label">tech stack</div>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="stack-grid">
+    <div class="stack-item"><div class="stack-role">language</div><div class="stack-val">Python 3.11+</div></div>
+    <div class="stack-item"><div class="stack-role">ui framework</div><div class="stack-val">PySide6 (Qt)</div></div>
+    <div class="stack-item"><div class="stack-role">database</div><div class="stack-val">SQLite</div></div>
+    <div class="stack-item"><div class="stack-role">orm</div><div class="stack-val">SQLAlchemy</div></div>
+    <div class="stack-item"><div class="stack-role">version control</div><div class="stack-val">GitHub</div></div>
+    <div class="stack-item"><div class="stack-role">ui mockups</div><div class="stack-val">Figma / Draw.io</div></div>
+  </div>
+
+</div>
+
+<footer>
+  MyHR · Project Lab · <a href="https://github.com/ibrahimify/MyHR" target="_blank">View on GitHub</a>
+</footer>
+
+<script>
+const DAYS = [
+  {
+    title: "Day 1 — Foundation",
+    sub: "project skeleton · DB schema · login screen",
+    color: "#1e2d4a", textColor: "#6c8fff",
+    tasks: [
+      { text: "Set up PySide6 project structure + virtual env", tag: "db" },
+      { text: "SQLAlchemy models: employee, org_unit, title, system_user", tag: "db" },
+      { text: "SQLite DB initialisation script (create tables)", tag: "db" },
+      { text: "Login screen UI — Admin / HR Officer role select", tag: "ui" },
+      { text: "Authentication logic — check role, load session", tag: "logic" },
+      { text: "Push everything to GitHub — first real commit", tag: "logic" },
+    ]
+  },
+  {
+    title: "Day 2 — Core HR screens",
+    sub: "dashboard · employee list · add employee form",
+    color: "#0f2a1e", textColor: "#3ecf8e",
+    tasks: [
+      { text: "Dashboard — stat cards + recent activity feed", tag: "ui" },
+      { text: "Employee list — table, search, filter by dept/level", tag: "ui" },
+      { text: "Add employee form — all fields, auto-generate ID", tag: "ui" },
+      { text: "Wire add employee form to DB (SQLAlchemy insert)", tag: "logic" },
+      { text: "Degree → level logic (BSc→L7, MSc→L6, PhD→L5)", tag: "logic" },
+      { text: "GitHub commit + push", tag: "logic" },
+    ]
+  },
+  {
+    title: "Day 3 — Promotions & commendations",
+    sub: "the core logic your (most important)",
+    color: "#2d2010", textColor: "#f5a623",
+    tasks: [
+      { text: "Promotion rules screen — configurable years + thresholds", tag: "ui" },
+      { text: "Promote employee form — title selection, new level", tag: "ui" },
+      { text: "Promotion logic — check eligibility, reset commendation clock", tag: "logic" },
+      { text: "Promotion history table — who, when, by whom", tag: "ui" },
+      { text: "Commendation screen — bulk select multiple employees", tag: "ui" },
+      { text: "Commendation DB logic + history log", tag: "logic" },
+    ]
+  },
+  {
+    title: "Day 4 — Sanctions, audit log, settings",
+    sub: "admin side · multilingual support",
+    color: "#2a1515", textColor: "#ff6b6b",
+    tasks: [
+      { text: "Sanctions screen — issue + active sanctions table", tag: "ui" },
+      { text: "Audit log screen — filterable action history", tag: "ui" },
+      { text: "Auto-log every action (promotion, commendation, sanction, login)", tag: "logic" },
+      { text: "Settings screen — salary ranges, promotion thresholds", tag: "ui" },
+      { text: "Multilingual — English + Hungarian JSON + language switcher", tag: "logic" },
+      { text: "GitHub commit + push", tag: "logic" },
+    ]
+  },
+  {
+    title: "Day 5 — Polish, org tree, import",
+    sub: "buffer day · catch up · publish",
+    color: "#1e1630", textColor: "#b57bee",
+    tasks: [
+      { text: "Employee profile dual-view (admin private vs HR work info)", tag: "ui" },
+      { text: "Org hierarchy tree view (self-referencing table as tree)", tag: "ui" },
+      { text: "CSV import screen — file picker + validation preview", tag: "ui" },
+      { text: "CSV import logic — parse, validate, insert valid rows", tag: "logic" },
+      { text: "Bug fixes + edge case handling across all screens", tag: "logic" },
+      { text: "Final GitHub push + clean up README", tag: "bonus" },
+    ]
+  }
+];
+
+const TAG_CLASS = { db: 'tag-db', ui: 'tag-ui', logic: 'tag-logic', bonus: 'tag-bonus' };
+const TAG_LABEL = { db: 'DB', ui: 'UI', logic: 'Logic', bonus: 'Bonus' };
+
+let saved = {};
+try { saved = JSON.parse(localStorage.getItem('myhr_tracker') || '{}'); } catch(e) {}
+
+const allCount = DAYS.reduce((s, d) => s + d.tasks.length, 0);
+
+function persist() {
+  try { localStorage.setItem('myhr_tracker', JSON.stringify(saved)); } catch(e) {}
+}
+
+function updateStats() {
+  const done = Object.values(saved).filter(Boolean).length;
+  const pct = Math.round((done / allCount) * 100);
+  const daysDone = DAYS.filter((d, di) => d.tasks.every((_, ti) => saved[di+'-'+ti])).length;
+
+  document.getElementById('overall-pct').innerHTML = pct + '<span>%</span>';
+  document.getElementById('big-fill').style.width = pct + '%';
+  document.getElementById('stat-done').textContent = done;
+  document.getElementById('stat-total').textContent = allCount;
+  document.getElementById('stat-days').textContent = daysDone;
+  document.getElementById('stat-remaining').textContent = DAYS.length - daysDone;
+  document.getElementById('foot-done').textContent = done;
+  document.getElementById('foot-total').textContent = allCount;
+
+  const status = pct === 0 ? 'not started' : pct === 100 ? 'complete' : `${pct}% done · ${allCount - done} tasks left`;
+  document.getElementById('foot-status').textContent = status;
+}
+
+function updateDayBar(di) {
+  const day = DAYS[di];
+  const done = day.tasks.filter((_, ti) => saved[di+'-'+ti]).length;
+  const pct = Math.round((done / day.tasks.length) * 100);
+  const fill = document.getElementById('dfill-'+di);
+  const lbl  = document.getElementById('dpct-'+di);
+  const card = document.getElementById('dcard-'+di);
+  if (!fill) return;
+  fill.style.width = pct + '%';
+  fill.style.background = pct === 100 ? 'var(--green)' : pct > 0 ? 'var(--amber)' : 'var(--bg4)';
+  lbl.textContent = pct + '%';
+  if (pct === 100) card.classList.add('complete'); else card.classList.remove('complete');
+}
+
+const container = document.getElementById('days-container');
+
+DAYS.forEach((day, di) => {
+  const card = document.createElement('div');
+  card.className = 'day-card animate';
+  card.id = 'dcard-'+di;
+
+  const done = day.tasks.filter((_, ti) => saved[di+'-'+ti]).length;
+  const pct  = Math.round((done / day.tasks.length) * 100);
+  const fillBg = pct === 100 ? 'var(--green)' : pct > 0 ? 'var(--amber)' : 'var(--bg4)';
+
+  const tasksHTML = day.tasks.map((t, ti) => {
+    const key = `${di}-${ti}`;
+    const isDone = !!saved[key];
+    return `<div class="task" onclick="toggle('${key}',${di})">
+      <div class="checkbox ${isDone ? 'done' : ''}" id="cb-${key}">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+          <path d="M2 5l2.5 2.5L8 3" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="task-body">
+        <span class="task-text ${isDone ? 'done' : ''}" id="txt-${key}">${t.text}</span>
+        <span class="tag ${TAG_CLASS[t.tag]}">${TAG_LABEL[t.tag]}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  card.innerHTML = `
+    <div class="day-header" onclick="toggleCard(${di})">
+      <div class="day-num" style="background:${day.color};color:${day.textColor};">${di+1}</div>
+      <div class="day-meta">
+        <div class="day-title">${day.title}</div>
+        <div class="day-sub">${day.sub}</div>
+      </div>
+      <div class="day-right">
+        <div class="day-progress-bar">
+          <div class="day-progress-fill" id="dfill-${di}" style="width:${pct}%;background:${fillBg};"></div>
+        </div>
+        <div class="day-pct" id="dpct-${di}">${pct}%</div>
+        <svg class="day-chevron" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+    <div class="tasks-wrap">
+      <div class="tasks-inner">${tasksHTML}</div>
+    </div>`;
+
+  container.appendChild(card);
+});
+
+window.toggleCard = function(di) {
+  const card = document.getElementById('dcard-'+di);
+  card.classList.toggle('open');
+};
+
+window.toggle = function(key, di) {
+  saved[key] = !saved[key];
+  const cb  = document.getElementById('cb-'+key);
+  const txt = document.getElementById('txt-'+key);
+  if (saved[key]) { cb.classList.add('done'); txt.classList.add('done'); }
+  else { cb.classList.remove('done'); txt.classList.remove('done'); }
+  persist();
+  updateDayBar(di);
+  updateStats();
+};
+
+updateStats();
+
+document.getElementById('dcard-0').classList.add('open');
+</script>
+</body>
+</html>
