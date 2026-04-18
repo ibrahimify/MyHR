@@ -25,6 +25,46 @@ MyHR/
 | UI Mockups and Modeling | Figma / Draw.io |
 | Version Control | GitHub |
 
+## Running the MockUI
+
+The MockUI is a React-based interactive prototype of the application interface built with Vite, TypeScript, and Tailwind CSS.
+
+### Prerequisites
+- Node.js 16+ and npm/pnpm installed
+
+### Setup & Run
+
+1. Navigate to the MockUI directory:
+```bash
+cd MockUI
+```
+
+2. Install dependencies:
+```bash
+npm install
+# or if using pnpm:
+pnpm install
+```
+
+3. Start the development server:
+```bash
+npm run dev
+```
+
+4. Open your browser and navigate to `http://localhost:5173` (or the port shown in terminal)
+
+### Build for Production
+```bash
+npm run build
+npm run preview
+```
+
+### Project Structure
+- `src/app/` - Main React components and page layouts
+- `src/app/pages/` - Application pages (Dashboard, Employee Management, etc.)
+- `src/app/components/` - Reusable UI components
+- `src/styles/` - CSS and Tailwind styling
+- `vite.config.ts` - Vite configuration
 
 ## Status
 In Progress - Project Lab Phase
