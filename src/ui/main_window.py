@@ -21,8 +21,10 @@ NAV_ITEMS = [
     ("nav_sanctions",     "sanctions",      "⚠"),
     ("nav_audit",         "audit_log",      "📋"),
     ("nav_import",        "import_data",    "↓"),
-    ("nav_settings",      "settings",       "⚙"),
+    ("nav_settings",      "settings",       "⚙"),  # admin only
 ]
+
+ADMIN_ONLY_PAGES = {"settings"}
 
 
 class Sidebar(QWidget):
@@ -73,6 +75,8 @@ class Sidebar(QWidget):
         nav_layout.setSpacing(2)
 
         for key, page_key, icon in NAV_ITEMS:
+            if page_key in ADMIN_ONLY_PAGES and self.user.role != "admin":
+                continue
             btn = QPushButton(f"  {icon}   {t(key)}")
             btn.setCursor(Qt.PointingHandCursor)
             btn.setFixedHeight(40)
@@ -131,7 +135,7 @@ class MainWindow(QMainWindow):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setWindowTitle("MyHR — Employee Management System")
+        self.setWindowTitle("MyHR - Employee Management System")
         self.setMinimumSize(1200, 720)
         self._pages_cache = {}
         self._build()
@@ -193,6 +197,11 @@ class MainWindow(QMainWindow):
         return page
 
     def _navigate(self, key):
+        # Block HR officer from admin-only pages
+        if key in ADMIN_ONLY_PAGES and self.user.role != "admin":
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "Access Denied", "This section is for administrators only.")
+            return
         # For data-heavy pages, recreate on each visit to get fresh data
         if key in ("dashboard", "employees") and key in self._pages_cache:
             old_page = self._pages_cache.pop(key)
