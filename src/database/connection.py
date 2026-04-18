@@ -216,23 +216,28 @@ def calculate_months_remaining(employee: Employee, session: Session) -> dict:
         (now.month - race_start.month)
     )
 
-    # Commendation reduction — only commendations issued AFTER race start
-    # Max 3 commendations per role enforced elsewhere
-    commendations = session.query(Commendation).join(
-        CommendationEmployee,
-        Commendation.id == CommendationEmployee.commendation_id
-    ).filter(
-        CommendationEmployee.employee_id == employee.id,
-        Commendation.issued_at >= race_start
+    # Commendation reduction — commendations since race start
+    # Using simpler subquery approach to avoid JOIN issues
+    comm_links = session.query(CommendationEmployee).filter_by(
+        employee_id=employee.id
     ).all()
+    comm_ids = [cl.commendation_id for cl in comm_links]
+
+    commendations = []
+    if comm_ids:
+        commendations = session.query(Commendation).filter(
+            Commendation.id.in_(comm_ids),
+            Commendation.issued_at >= race_start
+        ).all()
 
     commendation_reduction = sum(abs(c.months_impact) for c in commendations)
 
-    # Sanction addition — only active sanctions issued AFTER race start
-    sanctions = session.query(Sanction).filter_by(
-        employee_id=employee.id,
-        is_resolved=False
-    ).filter(Sanction.issued_at >= race_start).all()
+    # Sanction addition — active sanctions since race start
+    sanctions = session.query(Sanction).filter(
+        Sanction.employee_id == employee.id,
+        Sanction.is_resolved == False,
+        Sanction.issued_at >= race_start
+    ).all()
 
     sanction_addition = sum(s.delay_months for s in sanctions)
 
@@ -265,11 +270,14 @@ def count_commendations_in_current_role(employee: Employee, session: Session) ->
 
     race_start = last_promo.promoted_at if last_promo else employee.join_date
 
-    return session.query(Commendation).join(
-        CommendationEmployee,
-        Commendation.id == CommendationEmployee.commendation_id
-    ).filter(
-        CommendationEmployee.employee_id == employee.id,
+    comm_links = session.query(CommendationEmployee).filter_by(
+        employee_id=employee.id
+    ).all()
+    comm_ids = [cl.commendation_id for cl in comm_links]
+    if not comm_ids:
+        return 0
+    return session.query(Commendation).filter(
+        Commendation.id.in_(comm_ids),
         Commendation.issued_at >= race_start
     ).count()
 

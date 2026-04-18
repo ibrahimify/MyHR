@@ -193,6 +193,11 @@ class MainWindow(QMainWindow):
         return page
 
     def _navigate(self, key):
+        # For data-heavy pages, recreate on each visit to get fresh data
+        if key in ("dashboard", "employees") and key in self._pages_cache:
+            old_page = self._pages_cache.pop(key)
+            self.stack.removeWidget(old_page)
+            old_page.deleteLater()
         page = self._get_page(key)
         self.stack.setCurrentWidget(page)
         self.sidebar._set_active(key)
