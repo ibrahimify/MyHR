@@ -1,30 +1,29 @@
-"""
-Main Window — the core shell of MyHR.
-Contains the sidebar and the page stack.
-All pages are loaded here and switched via sidebar navigation.
-"""
-
+import qtawesome as qta
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QPushButton, QLabel, QStackedWidget, QFrame
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
 from src.core.i18n import t
 
 
 NAV_ITEMS = [
-    ("nav_dashboard",     "dashboard",      "⊞"),
-    ("nav_employees",     "employees",      "👤"),
-    ("nav_hierarchy",     "hierarchy",      "🏢"),
-    ("nav_promotions",    "promotions",     "↑"),
-    ("nav_commendations", "commendations",  "★"),
-    ("nav_sanctions",     "sanctions",      "⚠"),
-    ("nav_audit",         "audit_log",      "📋"),
-    ("nav_import",        "import_data",    "↓"),
-    ("nav_settings",      "settings",       "⚙"),  # admin only
+    ("nav_dashboard",     "dashboard",      "fa5s.th-large"),
+    ("nav_employees",     "employees",      "fa5s.users"),
+    ("nav_hierarchy",     "hierarchy",      "fa5s.building"),
+    ("nav_promotions",    "promotions",     "fa5s.chart-line"),
+    ("nav_commendations", "commendations",  "fa5s.award"),
+    ("nav_sanctions",     "sanctions",      "fa5s.exclamation-triangle"),
+    ("nav_audit",         "audit_log",      "fa5s.file-alt"),
+    ("nav_import",        "import_data",    "fa5s.upload"),
+    ("nav_settings",      "settings",       "fa5s.cog"),
 ]
 
 ADMIN_ONLY_PAGES = {"settings"}
+
+_INACTIVE_CLR = "#6b7280"
+_ACTIVE_CLR   = "#1d4ed8"
+_ICON_SZ      = QSize(16, 16)
 
 
 class Sidebar(QWidget):
@@ -33,82 +32,122 @@ class Sidebar(QWidget):
         self.user = user
         self.on_navigate = on_navigate
         self.on_logout = on_logout
-        self.nav_buttons = {}
+        self.nav_buttons = {}   # key → (QPushButton, icon_name)
         self.active_key = "dashboard"
         self._build()
 
     def _build(self):
-        self.setFixedWidth(224)
+        self.setFixedWidth(256)
         self.setObjectName("Sidebar")
-        self.setStyleSheet("QWidget#Sidebar { background-color: #1e2130; }")
+        self.setStyleSheet("QWidget#Sidebar { background: white; border-right: 1px solid #e5e7eb; }")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Logo
-        logo_widget = QWidget()
-        logo_widget.setFixedHeight(64)
-        logo_widget.setStyleSheet("background-color: #191c2a; border-bottom: 1px solid #2a2f45;")
-        logo_layout = QHBoxLayout(logo_widget)
-        logo_layout.setContentsMargins(16, 0, 16, 0)
-        logo_layout.setSpacing(10)
+        # ── Logo ──────────────────────────────────────────────────────────────
+        logo_w = QWidget()
+        logo_w.setFixedHeight(72)
+        logo_w.setStyleSheet("background: white; border-bottom: 1px solid #e5e7eb;")
+        ll = QHBoxLayout(logo_w)
+        ll.setContentsMargins(20, 0, 20, 0)
+        ll.setSpacing(12)
 
-        logo_mark = QLabel("HR")
-        logo_mark.setFixedSize(34, 34)
+        logo_mark = QLabel()
+        logo_mark.setFixedSize(40, 40)
         logo_mark.setAlignment(Qt.AlignCenter)
-        logo_mark.setStyleSheet("background: #4f6ef7; color: white; border-radius: 8px; font-weight: bold; font-size: 14px;")
+        logo_mark.setStyleSheet("background: #2563eb; border-radius: 10px;")
+        logo_mark.setPixmap(qta.icon("fa5s.building", color="white").pixmap(20, 20))
 
-        name_lbl = QLabel("MyHR")
-        name_lbl.setStyleSheet("color: #e8eaf0; font-size: 15px; font-weight: bold; background: transparent;")
+        nc = QVBoxLayout()
+        nc.setSpacing(1)
+        n = QLabel("MyHR")
+        n.setStyleSheet("color: #111827; font-size: 16px; font-weight: bold; background: transparent;")
+        s = QLabel("Employee Management")
+        s.setStyleSheet("color: #9ca3af; font-size: 11px; background: transparent;")
+        nc.addWidget(n)
+        nc.addWidget(s)
 
-        logo_layout.addWidget(logo_mark)
-        logo_layout.addWidget(name_lbl)
-        logo_layout.addStretch()
-        layout.addWidget(logo_widget)
+        ll.addWidget(logo_mark)
+        ll.addLayout(nc)
+        ll.addStretch()
+        layout.addWidget(logo_w)
 
-        # Nav
-        nav_container = QWidget()
-        nav_container.setStyleSheet("background: transparent;")
-        nav_layout = QVBoxLayout(nav_container)
-        nav_layout.setContentsMargins(10, 12, 10, 12)
-        nav_layout.setSpacing(2)
+        # ── Nav ───────────────────────────────────────────────────────────────
+        nav_w = QWidget()
+        nav_w.setStyleSheet("background: white;")
+        nav_l = QVBoxLayout(nav_w)
+        nav_l.setContentsMargins(12, 16, 12, 16)
+        nav_l.setSpacing(2)
 
-        for key, page_key, icon in NAV_ITEMS:
+        for key, page_key, icon_name in NAV_ITEMS:
             if page_key in ADMIN_ONLY_PAGES and self.user.role != "admin":
                 continue
-            btn = QPushButton(f"  {icon}   {t(key)}")
+            btn = QPushButton("  " + t(key))
+            btn.setIcon(qta.icon(icon_name, color=_INACTIVE_CLR))
+            btn.setIconSize(_ICON_SZ)
             btn.setCursor(Qt.PointingHandCursor)
             btn.setFixedHeight(40)
             btn.setStyleSheet(self._inactive_style())
             btn.clicked.connect(lambda _, k=page_key: self._on_click(k))
-            self.nav_buttons[page_key] = btn
-            nav_layout.addWidget(btn)
+            self.nav_buttons[page_key] = (btn, icon_name)
+            nav_l.addWidget(btn)
 
-        nav_layout.addStretch()
-        layout.addWidget(nav_container)
+        nav_l.addStretch()
+        layout.addWidget(nav_w, 1)
 
-        # Bottom
+        # ── User card + logout ────────────────────────────────────────────────
         bottom = QWidget()
-        bottom.setStyleSheet("background: #191c2a; border-top: 1px solid #2a2f45;")
-        bottom_layout = QVBoxLayout(bottom)
-        bottom_layout.setContentsMargins(14, 12, 14, 12)
-        bottom_layout.setSpacing(8)
+        bottom.setStyleSheet("background: white; border-top: 1px solid #e5e7eb;")
+        bl = QVBoxLayout(bottom)
+        bl.setContentsMargins(12, 12, 12, 12)
+        bl.setSpacing(8)
 
+        user_card = QFrame()
+        user_card.setStyleSheet("background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;")
+        ucl = QHBoxLayout(user_card)
+        ucl.setContentsMargins(10, 8, 10, 8)
+        ucl.setSpacing(10)
+
+        initials = "".join(p[0].upper() for p in self.user.full_name.split()[:2])
+        avatar = QLabel(initials)
+        avatar.setFixedSize(32, 32)
+        avatar.setAlignment(Qt.AlignCenter)
+        avatar.setStyleSheet(
+            "background: #dbeafe; color: #1d4ed8; border-radius: 16px;"
+            " font-size: 12px; font-weight: bold;"
+        )
+
+        ic = QVBoxLayout()
+        ic.setSpacing(0)
+        name_lbl = QLabel(self.user.full_name)
+        name_lbl.setStyleSheet("color: #111827; font-size: 13px; font-weight: 600; background: transparent;")
         role_display = t("role_admin") if self.user.role == "admin" else t("role_hr")
-        user_lbl = QLabel(f"{self.user.full_name}\n{role_display}")
-        user_lbl.setStyleSheet("color: #8b90a0; font-size: 12px; background: transparent;")
-        bottom_layout.addWidget(user_lbl)
+        role_lbl = QLabel(role_display)
+        role_lbl.setStyleSheet("color: #6b7280; font-size: 11px; background: transparent;")
+        ic.addWidget(name_lbl)
+        ic.addWidget(role_lbl)
 
-        logout_btn = QPushButton(t("logout"))
+        ucl.addWidget(avatar)
+        ucl.addLayout(ic)
+        ucl.addStretch()
+        bl.addWidget(user_card)
+
+        logout_btn = QPushButton("  " + t("logout"))
+        logout_btn.setIcon(qta.icon("fa5s.sign-out-alt", color="#6b7280"))
+        logout_btn.setIconSize(_ICON_SZ)
         logout_btn.setCursor(Qt.PointingHandCursor)
-        logout_btn.setFixedHeight(32)
+        logout_btn.setFixedHeight(34)
         logout_btn.setStyleSheet("""
-            QPushButton { background: transparent; color: #8b90a0; border: 1px solid #2a2f45; border-radius: 6px; font-size: 13px; padding-left: 10px; text-align: left; }
-            QPushButton:hover { background: #2a2f45; color: #e8eaf0; }
+            QPushButton {
+                background: white; color: #6b7280;
+                border: 1px solid #e5e7eb; border-radius: 8px;
+                font-size: 13px; text-align: left; padding-left: 12px;
+            }
+            QPushButton:hover { background: #f9fafb; color: #374151; border-color: #d1d5db; }
         """)
         logout_btn.clicked.connect(self.on_logout)
-        bottom_layout.addWidget(logout_btn)
+        bl.addWidget(logout_btn)
         layout.addWidget(bottom)
 
         self._set_active("dashboard")
@@ -119,16 +158,35 @@ class Sidebar(QWidget):
 
     def _set_active(self, key):
         if self.active_key in self.nav_buttons:
-            self.nav_buttons[self.active_key].setStyleSheet(self._inactive_style())
+            btn, icon_name = self.nav_buttons[self.active_key]
+            btn.setIcon(qta.icon(icon_name, color=_INACTIVE_CLR))
+            btn.setStyleSheet(self._inactive_style())
         self.active_key = key
         if key in self.nav_buttons:
-            self.nav_buttons[key].setStyleSheet(self._active_style())
+            btn, icon_name = self.nav_buttons[key]
+            btn.setIcon(qta.icon(icon_name, color=_ACTIVE_CLR))
+            btn.setStyleSheet(self._active_style())
 
     def _active_style(self):
-        return "QPushButton { background: #2d3250; color: #7b9cff; border: none; border-radius: 8px; text-align: left; padding-left: 12px; font-size: 13px; font-weight: bold; }"
+        return (
+            "QPushButton {"
+            " background: #eff6ff; color: #1d4ed8;"
+            " border: none; border-radius: 8px;"
+            " text-align: left; padding-left: 12px;"
+            " font-size: 13px; font-weight: 600;"
+            "}"
+        )
 
     def _inactive_style(self):
-        return "QPushButton { background: transparent; color: #8b90a0; border: none; border-radius: 8px; text-align: left; padding-left: 12px; font-size: 13px; } QPushButton:hover { background: #252840; color: #c8cadc; }"
+        return (
+            "QPushButton {"
+            " background: transparent; color: #6b7280;"
+            " border: none; border-radius: 8px;"
+            " text-align: left; padding-left: 12px;"
+            " font-size: 13px;"
+            "}"
+            " QPushButton:hover { background: #f3f4f6; color: #374151; }"
+        )
 
 
 class MainWindow(QMainWindow):
@@ -136,9 +194,10 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.user = user
         self.setWindowTitle("MyHR - Employee Management System")
-        self.setMinimumSize(1200, 720)
+        self.setMinimumSize(1024, 600)
         self._pages_cache = {}
         self._build()
+        self.showMaximized()
 
     def _build(self):
         central = QWidget()
@@ -147,11 +206,15 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        self.sidebar = Sidebar(user=self.user, on_navigate=self._navigate, on_logout=self._logout)
+        self.sidebar = Sidebar(
+            user=self.user,
+            on_navigate=self._navigate,
+            on_logout=self._logout,
+        )
         layout.addWidget(self.sidebar)
 
         self.stack = QStackedWidget()
-        self.stack.setStyleSheet("background-color: #f4f6fb;")
+        self.stack.setStyleSheet("background-color: #f9fafb;")
         layout.addWidget(self.stack)
 
         self._navigate("dashboard")
@@ -171,7 +234,7 @@ class MainWindow(QMainWindow):
                 page = HierarchyPage(self.user)
             elif key == "promotions":
                 from src.ui.pages.promotions import PromotionsPage
-                page = PromotionsPage(self.user)
+                page = PromotionsPage(self.user, navigate_to_employee=self._navigate_to_employee)
             elif key == "commendations":
                 from src.ui.pages.commendations import CommendationsPage
                 page = CommendationsPage(self.user)
@@ -197,19 +260,27 @@ class MainWindow(QMainWindow):
         return page
 
     def _navigate(self, key):
-        # Block HR officer from admin-only pages
         if key in ADMIN_ONLY_PAGES and self.user.role != "admin":
             from PySide6.QtWidgets import QMessageBox
             QMessageBox.warning(self, "Access Denied", "This section is for administrators only.")
             return
-        # For data-heavy pages, recreate on each visit to get fresh data
-        if key in ("dashboard", "employees") and key in self._pages_cache:
-            old_page = self._pages_cache.pop(key)
-            self.stack.removeWidget(old_page)
-            old_page.deleteLater()
+        if key in ("dashboard", "employees", "promotions") and key in self._pages_cache:
+            old = self._pages_cache.pop(key)
+            self.stack.removeWidget(old)
+            old.deleteLater()
         page = self._get_page(key)
         self.stack.setCurrentWidget(page)
         self.sidebar._set_active(key)
+
+    def _navigate_to_employee(self, emp_db_id: int):
+        if "employees" in self._pages_cache:
+            old = self._pages_cache.pop("employees")
+            self.stack.removeWidget(old)
+            old.deleteLater()
+        page = self._get_page("employees")
+        self.stack.setCurrentWidget(page)
+        self.sidebar._set_active("employees")
+        page._show_profile(emp_db_id)
 
     def _logout(self):
         from src.ui.login_window import LoginWindow
@@ -222,7 +293,11 @@ class _PlaceholderPage(QWidget):
     def __init__(self, key, error=None):
         super().__init__()
         layout = QVBoxLayout(self)
-        msg = f"🔧  {key.replace('_', ' ').title()}\n\nUnder construction" if not error else f"Error loading {key}:\n{error}"
+        msg = (
+            f"{key.replace('_', ' ').title()}\n\nUnder construction"
+            if not error else
+            f"Error loading {key}:\n{error}"
+        )
         lbl = QLabel(msg)
         lbl.setAlignment(Qt.AlignCenter)
         lbl.setStyleSheet("font-size: 16px; color: #9ca3af;")

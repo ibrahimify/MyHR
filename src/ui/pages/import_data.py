@@ -38,7 +38,7 @@ class ImportDataPage(QWidget):
         super().__init__()
         self.user = user
         self.preview_data = []
-        self.setStyleSheet("background: #f4f6fb;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
 
     def _build(self):
@@ -48,14 +48,14 @@ class ImportDataPage(QWidget):
 
         # Header
         header = QFrame()
-        header.setFixedHeight(64)
-        header.setStyleSheet("background: white; border-bottom: 1px solid #e5e7eb;")
+        header.setFixedHeight(72)
+        header.setStyleSheet("background: white; border-bottom: 2px solid #e5e7eb;")
         h = QHBoxLayout(header)
         h.setContentsMargins(28, 0, 28, 0)
         title = QLabel(t("import_title"))
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #1a1d2e;")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #111827;")
         sub = QLabel(t("import_subtitle"))
-        sub.setStyleSheet("font-size: 12px; color: #9ca3af; margin-left: 12px;")
+        sub.setStyleSheet("font-size: 13px; color: #9ca3af; margin-left: 12px;")
         h.addWidget(title)
         h.addWidget(sub)
         h.addStretch()
@@ -67,7 +67,7 @@ class ImportDataPage(QWidget):
         scroll.setStyleSheet("border: none;")
 
         content = QWidget()
-        content.setStyleSheet("background: #f4f6fb;")
+        content.setStyleSheet("background: #f9fafb;")
         cl = QVBoxLayout(content)
         cl.setContentsMargins(28, 24, 28, 28)
         cl.setSpacing(20)
@@ -106,7 +106,7 @@ class ImportDataPage(QWidget):
         # Upload card
         self.upload_card = QFrame()
         self.upload_card.setFixedHeight(200)
-        self.upload_card.setStyleSheet("background: white; border-radius: 12px; border: 2px dashed #c7d2fe;")
+        self.upload_card.setStyleSheet("background: white; border-radius: 12px; border: 2px dashed #bfdbfe;")
         uc = QVBoxLayout(self.upload_card)
         uc.setAlignment(Qt.AlignCenter)
         uc.setSpacing(12)
@@ -118,7 +118,7 @@ class ImportDataPage(QWidget):
 
         upload_title = QLabel("Upload Employee Data File")
         upload_title.setAlignment(Qt.AlignCenter)
-        upload_title.setStyleSheet("font-size: 15px; font-weight: bold; color: #1a1d2e; background: transparent;")
+        upload_title.setStyleSheet("font-size: 15px; font-weight: bold; color: #111827; background: transparent;")
         uc.addWidget(upload_title)
 
         upload_sub = QLabel("Supported: CSV (.csv)")
@@ -129,7 +129,7 @@ class ImportDataPage(QWidget):
         upload_btn = QPushButton("Choose File")
         upload_btn.setCursor(Qt.PointingHandCursor)
         upload_btn.setFixedSize(140, 36)
-        upload_btn.setStyleSheet("QPushButton { background: #4f6ef7; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: bold; } QPushButton:hover { background: #3a57e8; }")
+        upload_btn.setStyleSheet("QPushButton { background: #030213; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; } QPushButton:hover { background: #111827; }")
         upload_btn.clicked.connect(self._choose_file)
         uc.addWidget(upload_btn, alignment=Qt.AlignCenter)
         left.addWidget(self.upload_card)
@@ -152,8 +152,8 @@ class ImportDataPage(QWidget):
             "Position", "Join Date", "Salary", "Status"
         ])
         self.preview_table.setStyleSheet("""
-            QTableWidget { background: white; border: none; font-size: 13px; color: #1a1d2e; }
-            QTableWidget::item { padding: 6px 10px; border-bottom: 1px solid #f3f4f6; color: #1a1d2e; }
+            QTableWidget { background: white; border: 1px solid #e5e7eb; border-radius: 12px; font-size: 13px; color: #111827; }
+            QTableWidget::item { padding: 6px 10px; border-bottom: 1px solid #f3f4f6; color: #111827; }
             QHeaderView::section { background: #f9fafb; border: none; border-bottom: 1px solid #e5e7eb; padding: 8px 10px; font-size: 12px; font-weight: bold; color: #6b7280; }
         """)
         self.preview_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -187,7 +187,7 @@ class ImportDataPage(QWidget):
         tc.setContentsMargins(16, 14, 16, 14)
         tc.setSpacing(8)
         tc_title = QLabel("📥 Download Template")
-        tc_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #1a1d2e; background: transparent;")
+        tc_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #111827; background: transparent;")
         tc.addWidget(tc_title)
         tc_sub = QLabel("Use this template to ensure correct column formatting before importing.")
         tc_sub.setWordWrap(True)
@@ -203,12 +203,12 @@ class ImportDataPage(QWidget):
 
         # Required columns
         req_card = QFrame()
-        req_card.setStyleSheet("background: #eef2ff; border-radius: 12px; border: 1px solid #c7d2fe;")
+        req_card.setStyleSheet("background: #eff6ff; border-radius: 12px; border: 1px solid #bfdbfe;")
         rc = QVBoxLayout(req_card)
         rc.setContentsMargins(16, 14, 16, 14)
         rc.setSpacing(6)
         rc_title = QLabel("Required Columns")
-        rc_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #3730a3; background: transparent;")
+        rc_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #1e40af; background: transparent;")
         rc.addWidget(rc_title)
         for col in REQUIRED_COLUMNS:
             lbl = QLabel(f"• {col}")
@@ -248,7 +248,7 @@ class ImportDataPage(QWidget):
     def _set_step(self, step):
         for i, lbl in enumerate(self.step_labels):
             if i == step:
-                lbl.setStyleSheet("font-size: 13px; font-weight: bold; color: #4f6ef7; background: #eef2ff; border-radius: 6px; padding: 6px 20px;")
+                lbl.setStyleSheet("font-size: 13px; font-weight: bold; color: #2563eb; background: #eff6ff; border-radius: 6px; padding: 6px 20px;")
             else:
                 lbl.setStyleSheet("font-size: 13px; color: #9ca3af; padding: 6px 20px;")
 
@@ -333,7 +333,7 @@ class ImportDataPage(QWidget):
                 item.widget().deleteLater()
 
         for label, val, color in [
-            (f"Total Rows", len(rows), "#4f6ef7"),
+            (f"Total Rows", len(rows), "#2563eb"),
             (f"Valid", len(valid), "#10b981"),
             (f"Errors", len(errors), "#ef4444"),
         ]:

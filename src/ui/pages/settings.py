@@ -26,7 +26,7 @@ class SettingsPage(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: #f4f6fb;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
 
     def _build(self):
@@ -36,14 +36,14 @@ class SettingsPage(QWidget):
 
         # Header
         header = QFrame()
-        header.setFixedHeight(64)
-        header.setStyleSheet("background: white; border-bottom: 1px solid #e5e7eb;")
+        header.setFixedHeight(72)
+        header.setStyleSheet("background: white; border-bottom: 2px solid #e5e7eb;")
         h = QHBoxLayout(header)
         h.setContentsMargins(28, 0, 28, 0)
         title = QLabel(t("settings_title"))
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #1a1d2e;")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #111827;")
         sub = QLabel(t("settings_subtitle"))
-        sub.setStyleSheet("font-size: 12px; color: #9ca3af; margin-left: 12px;")
+        sub.setStyleSheet("font-size: 13px; color: #9ca3af; margin-left: 12px;")
         h.addWidget(title)
         h.addWidget(sub)
         h.addStretch()
@@ -52,10 +52,10 @@ class SettingsPage(QWidget):
         # Tabs
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet("""
-            QTabWidget::pane { border: none; background: #f4f6fb; }
+            QTabWidget::pane { border: none; background: #f9fafb; }
             QTabBar::tab { background: white; color: #6b7280; padding: 10px 20px; border: none; border-bottom: 2px solid transparent; font-size: 13px; }
-            QTabBar::tab:selected { color: #4f6ef7; border-bottom: 2px solid #4f6ef7; font-weight: bold; }
-            QTabBar::tab:hover { color: #1a1d2e; }
+            QTabBar::tab:selected { color: #030213; border-bottom: 2px solid #030213; font-weight: bold; }
+            QTabBar::tab:hover { color: #111827; }
         """)
 
         self.tabs.addTab(SalaryTab(self.user),     "Salary Ranges")
@@ -67,10 +67,10 @@ class SettingsPage(QWidget):
 
 
 # ── Shared helpers ────────────────────────────────────────────────────────────
-INPUT_STYLE  = "QLineEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 12px; font-size: 13px; color: #1a1d2e; background: #f9fafb; min-height: 36px; } QLineEdit:focus { border-color: #4f6ef7; background: white; }"
-SPIN_STYLE   = "QSpinBox, QDoubleSpinBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px; font-size: 13px; color: #1a1d2e; background: #f9fafb; min-height: 36px; }"
-COMBO_STYLE  = "QComboBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px; font-size: 13px; color: #1a1d2e; background: #f9fafb; min-height: 36px; } QComboBox::drop-down { border: none; }"
-SAVE_STYLE   = "QPushButton { background: #4f6ef7; color: white; border: none; border-radius: 8px; padding: 0 24px; font-size: 13px; font-weight: bold; min-height: 38px; } QPushButton:hover { background: #3a57e8; }"
+INPUT_STYLE  = "QLineEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 12px; font-size: 13px; color: #111827; background: #f9fafb; min-height: 36px; } QLineEdit:focus { border-color: #2563eb; background: white; }"
+SPIN_STYLE   = "QSpinBox, QDoubleSpinBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px; font-size: 13px; color: #111827; background: #f9fafb; min-height: 36px; } QSpinBox:focus, QDoubleSpinBox:focus { border-color: #2563eb; background: white; }"
+COMBO_STYLE  = "QComboBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px 0 12px; font-size: 13px; color: #111827; background: #f9fafb; min-height: 36px; }"
+SAVE_STYLE   = "QPushButton { background: #2563eb; color: white; border: none; border-radius: 8px; padding: 0 24px; font-size: 13px; font-weight: bold; min-height: 38px; } QPushButton:hover { background: #111827; }"
 
 LEVEL_COLORS = {
     "L7": ("#dbeafe", "#1e40af", "Entry Level (BSc)"),
@@ -88,7 +88,7 @@ def _card(title, subtitle=None):
     layout.setContentsMargins(24, 18, 24, 20)
     layout.setSpacing(14)
     t_lbl = QLabel(title)
-    t_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #1a1d2e; background: transparent;")
+    t_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #111827; background: transparent;")
     layout.addWidget(t_lbl)
     if subtitle:
         s_lbl = QLabel(subtitle)
@@ -117,26 +117,37 @@ class SalaryTab(QWidget):
         super().__init__()
         self.user = user
         self.fields = {}
-        self.setStyleSheet("background: #f4f6fb;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
         self._load()
 
     def _build(self):
         content = QWidget()
-        content.setStyleSheet("background: #f4f6fb;")
+        content.setStyleSheet("background: #f9fafb;")
         outer = QVBoxLayout(content)
         outer.setContentsMargins(28, 20, 28, 28)
         outer.setSpacing(16)
 
         # Currency card
-        curr_card, curr_layout = _card("Currency", "Applied to all salary values in the system")
+        curr_card, curr_layout = _card("Currency", "Currency code shown next to all salary ranges below")
         curr_row = QHBoxLayout()
-        curr_row.addWidget(_lbl("Currency Code"))
+        curr_row.setSpacing(12)
+        curr_row.setAlignment(Qt.AlignLeft)
+        curr_lbl = _lbl("Currency Code")
+        curr_row.addWidget(curr_lbl)
         self.currency_input = QLineEdit()
-        self.currency_input.setFixedWidth(120)
-        self.currency_input.setStyleSheet(INPUT_STYLE)
+        self.currency_input.setFixedWidth(100)
+        self.currency_input.setPlaceholderText("e.g. EUR")
+        self.currency_input.setStyleSheet(
+            "QLineEdit { border: 2px solid #2563eb; border-radius: 8px; padding: 0 12px;"
+            " font-size: 14px; font-weight: bold; color: #2563eb; background: #eff6ff;"
+            " min-height: 36px; text-align: center; }"
+            " QLineEdit:focus { border-color: #1d4ed8; background: white; }"
+        )
         curr_row.addWidget(self.currency_input)
-        curr_row.addStretch()
+        note = QLabel("← editable — applies to all levels")
+        note.setStyleSheet("font-size: 12px; color: #9ca3af; background: transparent;")
+        curr_row.addWidget(note)
         curr_layout.addLayout(curr_row)
         outer.addWidget(curr_card)
 
@@ -153,23 +164,52 @@ class SalaryTab(QWidget):
             cl.addWidget(badge)
 
             row = QHBoxLayout()
-            row.setSpacing(16)
+            row.setSpacing(0)
+            row.setAlignment(Qt.AlignLeft)
 
             min_col = QVBoxLayout()
+            min_col.setSpacing(4)
             min_col.addWidget(_lbl("Minimum Salary"))
             min_spin = QDoubleSpinBox()
-            min_spin.setRange(0, 99999)
+            min_spin.setRange(0, 9999999)
             min_spin.setDecimals(0)
-            min_spin.setStyleSheet(SPIN_STYLE)
+            min_spin.setFixedWidth(150)
+            min_spin.setStyleSheet(
+                f"QDoubleSpinBox {{ border: 1px solid {fg}40; border-right: none;"
+                " border-top-left-radius: 8px; border-bottom-left-radius: 8px;"
+                " padding: 0 10px; font-size: 13px; color: #111827; background: white; min-height: 38px; }}"
+                f" QDoubleSpinBox:focus {{ border-color: {fg}; }}"
+            )
             min_col.addWidget(min_spin)
             row.addLayout(min_col)
 
+            curr_badge = QLabel("...")
+            curr_badge.setObjectName(f"curr_{level}")
+            curr_badge.setFixedHeight(38)
+            curr_badge.setFixedWidth(64)
+            curr_badge.setAlignment(Qt.AlignCenter)
+            curr_badge.setStyleSheet(
+                f"background: {fg}18; color: {fg}; font-size: 13px; font-weight: bold;"
+                f" border: 1px solid {fg}40; border-left: none; border-right: none;"
+                " margin-top: 20px;"
+            )
+            row.addWidget(curr_badge)
+            self._currency_badges = getattr(self, "_currency_badges", {})
+            self._currency_badges[level] = curr_badge
+
             max_col = QVBoxLayout()
+            max_col.setSpacing(4)
             max_col.addWidget(_lbl("Maximum Salary"))
             max_spin = QDoubleSpinBox()
-            max_spin.setRange(0, 99999)
+            max_spin.setRange(0, 9999999)
             max_spin.setDecimals(0)
-            max_spin.setStyleSheet(SPIN_STYLE)
+            max_spin.setFixedWidth(150)
+            max_spin.setStyleSheet(
+                f"QDoubleSpinBox {{ border: 1px solid {fg}40; border-left: none;"
+                " border-top-right-radius: 8px; border-bottom-right-radius: 8px;"
+                " padding: 0 10px; font-size: 13px; color: #111827; background: white; min-height: 38px; }}"
+                f" QDoubleSpinBox:focus {{ border-color: {fg}; }}"
+            )
             max_col.addWidget(max_spin)
             row.addLayout(max_col)
             row.addStretch()
@@ -177,6 +217,8 @@ class SalaryTab(QWidget):
             cl.addLayout(row)
             outer.addWidget(card)
             self.fields[level] = (min_spin, max_spin)
+
+        self.currency_input.textChanged.connect(self._update_currency_badges)
 
         # Save
         save_btn = QPushButton("Save Salary Ranges")
@@ -189,6 +231,11 @@ class SalaryTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(_scroll_wrap(content))
+
+    def _update_currency_badges(self, text=None):
+        code = (text or self.currency_input.text()).strip() or "—"
+        for lbl in getattr(self, "_currency_badges", {}).values():
+            lbl.setText(code)
 
     def _load(self):
         session = get_session()
@@ -203,6 +250,7 @@ class SalaryTab(QWidget):
                         self.currency_input.setText(title.currency)
         finally:
             session.close()
+        self._update_currency_badges()
 
     def _save(self):
         session = get_session()
@@ -230,13 +278,13 @@ class IncrementTab(QWidget):
         super().__init__()
         self.user = user
         self.fields = {}
-        self.setStyleSheet("background: #f4f6fb;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
         self._load()
 
     def _build(self):
         content = QWidget()
-        content.setStyleSheet("background: #f4f6fb;")
+        content.setStyleSheet("background: #f9fafb;")
         outer = QVBoxLayout(content)
         outer.setContentsMargins(28, 20, 28, 28)
         outer.setSpacing(16)
@@ -336,12 +384,12 @@ class SecurityTab(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: #f4f6fb;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
 
     def _build(self):
         content = QWidget()
-        content.setStyleSheet("background: #f4f6fb;")
+        content.setStyleSheet("background: #f9fafb;")
         outer = QVBoxLayout(content)
         outer.setContentsMargins(28, 20, 28, 28)
         outer.setSpacing(16)
@@ -434,12 +482,12 @@ class DatabaseTab(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: #f4f6fb;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
 
     def _build(self):
         content = QWidget()
-        content.setStyleSheet("background: #f4f6fb;")
+        content.setStyleSheet("background: #f9fafb;")
         outer = QVBoxLayout(content)
         outer.setContentsMargins(28, 20, 28, 28)
         outer.setSpacing(16)

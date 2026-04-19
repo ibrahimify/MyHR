@@ -35,7 +35,7 @@ class AuditLogPage(QWidget):
         super().__init__()
         self.user = user
         self.all_logs = []
-        self.setStyleSheet("background: #f4f6fb;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
         self.refresh()
 
@@ -46,14 +46,14 @@ class AuditLogPage(QWidget):
 
         # Header
         header = QFrame()
-        header.setFixedHeight(64)
-        header.setStyleSheet("background: white; border-bottom: 1px solid #e5e7eb;")
+        header.setFixedHeight(72)
+        header.setStyleSheet("background: white; border-bottom: 2px solid #e5e7eb;")
         h = QHBoxLayout(header)
         h.setContentsMargins(28, 0, 28, 0)
         title = QLabel(t("audit_title"))
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #1a1d2e;")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #111827;")
         sub = QLabel(t("audit_subtitle"))
-        sub.setStyleSheet("font-size: 12px; color: #9ca3af; margin-left: 12px;")
+        sub.setStyleSheet("font-size: 13px; color: #9ca3af; margin-left: 12px;")
         h.addWidget(title)
         h.addWidget(sub)
         h.addStretch()
@@ -70,13 +70,13 @@ class AuditLogPage(QWidget):
         self.search = QLineEdit()
         self.search.setPlaceholderText("Search actions, descriptions...")
         self.search.setFixedHeight(34)
-        self.search.setStyleSheet("QLineEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 12px; font-size: 13px; color: #1a1d2e; background: #f9fafb; } QLineEdit:focus { border-color: #4f6ef7; }")
+        self.search.setStyleSheet("QLineEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 12px; font-size: 13px; color: #111827; background: #f9fafb; } QLineEdit:focus { border-color: #2563eb; }")
         self.search.textChanged.connect(self._filter)
         bl.addWidget(self.search, 3)
 
         self.category_filter = QComboBox()
         self.category_filter.setFixedHeight(34)
-        self.category_filter.setStyleSheet("QComboBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px; font-size: 13px; color: #1a1d2e; background: #f9fafb; } QComboBox::drop-down { border: none; }")
+        self.category_filter.setStyleSheet("QComboBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px 0 12px; font-size: 13px; color: #111827; background: #f9fafb; min-height: 34px; }")
         self.category_filter.addItem("All Categories", None)
         for cat in ACTION_COLORS:
             self.category_filter.addItem(cat.replace("_", " ").title(), cat)
@@ -106,9 +106,9 @@ class AuditLogPage(QWidget):
             "Description", "Category", "Target"
         ])
         self.table.setStyleSheet("""
-            QTableWidget { background: white; border: none; font-size: 13px; color: #1a1d2e; }
-            QTableWidget::item { padding: 8px 12px; border-bottom: 1px solid #f3f4f6; color: #1a1d2e; }
-            QTableWidget::item:selected { background: #eef2ff; color: #1a1d2e; }
+            QTableWidget { background: white; border: 1px solid #e5e7eb; border-radius: 12px; font-size: 13px; color: #111827; }
+            QTableWidget::item { padding: 8px 12px; border-bottom: 1px solid #f3f4f6; color: #111827; }
+            QTableWidget::item:selected { background: #eff6ff; color: #111827; }
             QHeaderView::section { background: #f9fafb; border: none; border-bottom: 1px solid #e5e7eb; padding: 10px 12px; font-size: 12px; font-weight: bold; color: #6b7280; }
         """)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -146,9 +146,8 @@ class AuditLogPage(QWidget):
             } for l in logs]
 
             # Populate user filter
-            users = sorted(set(x["user"] for x in self.all_logs))
+            users = sorted({x["user"] for x in self.all_logs})
             self.user_filter.blockSignals(True)
-            current_user = self.user_filter.currentData()
             self.user_filter.clear()
             self.user_filter.addItem("All Users", None)
             for u in users:
@@ -183,7 +182,7 @@ class AuditLogPage(QWidget):
             self.table.setItem(i, 0, ts)
 
             user_item = QTableWidgetItem(log["user"])
-            user_item.setForeground(QColor("#4f6ef7"))
+            user_item.setForeground(QColor("#2563eb"))
             self.table.setItem(i, 1, user_item)
 
             desc = log["description"]
@@ -193,7 +192,7 @@ class AuditLogPage(QWidget):
 
             action_full = QTableWidgetItem(log["action"].replace(".", " › "))
             action_full.setToolTip(log["action"])
-            action_full.setForeground(QColor("#1a1d2e"))
+            action_full.setForeground(QColor("#111827"))
             self.table.setItem(i, 2, action_full)
 
             cat = log["category"]

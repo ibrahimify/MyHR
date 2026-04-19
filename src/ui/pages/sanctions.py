@@ -34,7 +34,7 @@ class SanctionsPage(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: #f4f6fb;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
 
     def _build(self):
@@ -44,12 +44,12 @@ class SanctionsPage(QWidget):
 
         # Header
         header = QFrame()
-        header.setFixedHeight(64)
-        header.setStyleSheet("background: white; border-bottom: 1px solid #e5e7eb;")
+        header.setFixedHeight(72)
+        header.setStyleSheet("background: white; border-bottom: 2px solid #e5e7eb;")
         h = QHBoxLayout(header)
         h.setContentsMargins(28, 0, 28, 0)
         title = QLabel(t("sanctions_title"))
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #1a1d2e;")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #111827;")
         h.addWidget(title)
         h.addStretch()
         layout.addWidget(header)
@@ -57,10 +57,10 @@ class SanctionsPage(QWidget):
         # Tabs
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet("""
-            QTabWidget::pane { border: none; background: #f4f6fb; }
+            QTabWidget::pane { border: none; background: #f9fafb; }
             QTabBar::tab { background: white; color: #6b7280; padding: 10px 20px; border: none; border-bottom: 2px solid transparent; font-size: 13px; }
-            QTabBar::tab:selected { color: #4f6ef7; border-bottom: 2px solid #4f6ef7; font-weight: bold; }
-            QTabBar::tab:hover { color: #1a1d2e; }
+            QTabBar::tab:selected { color: #030213; border-bottom: 2px solid #030213; font-weight: bold; }
+            QTabBar::tab:hover { color: #111827; }
         """)
 
         self.active_tab  = ActiveSanctionsTab(self.user)
@@ -96,12 +96,12 @@ class ActiveSanctionsTab(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: #f4f6fb;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
 
     def _build(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setContentsMargins(32, 24, 32, 24)
         layout.setSpacing(16)
 
         # Stats row
@@ -117,9 +117,9 @@ class ActiveSanctionsTab(QWidget):
             "Reason", "Issue Date", "Promotion Delay", "Actions"
         ])
         self.table.setStyleSheet("""
-            QTableWidget { background: white; border: none; font-size: 13px; color: #1a1d2e; }
-            QTableWidget::item { padding: 8px 12px; border-bottom: 1px solid #f3f4f6; color: #1a1d2e; }
-            QTableWidget::item:selected { background: #fef2f2; color: #1a1d2e; }
+            QTableWidget { background: white; border: none; font-size: 13px; color: #111827; }
+            QTableWidget::item { padding: 8px 12px; border-bottom: 1px solid #f3f4f6; color: #111827; }
+            QTableWidget::item:selected { background: #fef2f2; color: #111827; }
             QHeaderView::section { background: #f9fafb; border: none; border-bottom: 1px solid #e5e7eb; padding: 10px 12px; font-size: 12px; font-weight: bold; color: #6b7280; }
         """)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -234,13 +234,13 @@ class SanctionHistoryTab(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: #f4f6fb;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
         self.refresh()
 
     def _build(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setContentsMargins(32, 24, 32, 24)
 
         self.table = QTableWidget()
         self.table.setColumnCount(7)
@@ -249,8 +249,8 @@ class SanctionHistoryTab(QWidget):
             "Issue Date", "Delay Applied", "Status"
         ])
         self.table.setStyleSheet("""
-            QTableWidget { background: white; border: none; font-size: 13px; color: #1a1d2e; }
-            QTableWidget::item { padding: 8px 12px; border-bottom: 1px solid #f3f4f6; color: #1a1d2e; }
+            QTableWidget { background: white; border: none; font-size: 13px; color: #111827; }
+            QTableWidget::item { padding: 8px 12px; border-bottom: 1px solid #f3f4f6; color: #111827; }
             QHeaderView::section { background: #f9fafb; border: none; border-bottom: 1px solid #e5e7eb; padding: 10px 12px; font-size: 12px; font-weight: bold; color: #6b7280; }
         """)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -276,7 +276,7 @@ class SanctionHistoryTab(QWidget):
 
         self.table.setRowCount(len(rows))
         for i, row in enumerate(rows):
-            self.table.setRowHeight(i, 48)
+            self.table.setRowHeight(i, 52)
             ref = QTableWidgetItem(row["ref"])
             ref.setForeground(QColor("#6b7280"))
             self.table.setItem(i, 0, ref)
@@ -298,7 +298,7 @@ class IssueSanctionTab(QWidget):
         super().__init__()
         self.user = user
         self.on_issued = on_issued
-        self.setStyleSheet("background: #f4f6fb;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
 
     def _build(self):
@@ -307,7 +307,7 @@ class IssueSanctionTab(QWidget):
         scroll.setStyleSheet("border: none;")
 
         content = QWidget()
-        content.setStyleSheet("background: #f4f6fb;")
+        content.setStyleSheet("background: #f9fafb;")
         main = QHBoxLayout(content)
         main.setContentsMargins(24, 20, 24, 20)
         main.setSpacing(20)
@@ -324,13 +324,13 @@ class IssueSanctionTab(QWidget):
         fc.setSpacing(12)
 
         fc_title = QLabel("Issue New Sanction")
-        fc_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #1a1d2e; background: transparent;")
+        fc_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #111827; background: transparent;")
         fc.addWidget(fc_title)
 
-        input_style = "QLineEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 12px; font-size: 13px; color: #1a1d2e; background: #f9fafb; } QLineEdit:focus { border-color: #4f6ef7; background: white; }"
-        combo_style = "QComboBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px; font-size: 13px; color: #1a1d2e; background: #f9fafb; } QComboBox::drop-down { border: none; }"
-        ta_style    = "QTextEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px; font-size: 13px; color: #1a1d2e; background: #f9fafb; } QTextEdit:focus { border-color: #4f6ef7; background: white; }"
-        spin_style  = "QSpinBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px; font-size: 13px; color: #1a1d2e; background: #f9fafb; min-height: 36px; }"
+        input_style = "QLineEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 12px; font-size: 13px; color: #111827; background: #f9fafb; } QLineEdit:focus { border-color: #2563eb; background: white; }"
+        combo_style = "QComboBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px 0 12px; font-size: 13px; color: #111827; background: #f9fafb; }"
+        ta_style    = "QTextEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px; font-size: 13px; color: #111827; background: #f9fafb; } QTextEdit:focus { border-color: #2563eb; background: white; }"
+        spin_style  = "QSpinBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px; font-size: 13px; color: #111827; background: #f9fafb; min-height: 36px; }"
 
         # Employee
         emp_lbl = QLabel("Select Employee *")

@@ -34,7 +34,7 @@ class HierarchyPage(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: #f4f6fb;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
         self.refresh()
 
@@ -45,20 +45,20 @@ class HierarchyPage(QWidget):
 
         # Header
         header = QFrame()
-        header.setFixedHeight(64)
-        header.setStyleSheet("background: white; border-bottom: 1px solid #e5e7eb;")
+        header.setFixedHeight(72)
+        header.setStyleSheet("background: white; border-bottom: 2px solid #e5e7eb;")
         h = QHBoxLayout(header)
         h.setContentsMargins(28, 0, 28, 0)
 
         title = QLabel(t("nav_hierarchy"))
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #1a1d2e;")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #111827;")
         h.addWidget(title)
         h.addStretch()
 
         add_btn = QPushButton("+ Add Unit")
         add_btn.setCursor(Qt.PointingHandCursor)
         add_btn.setFixedHeight(34)
-        add_btn.setStyleSheet("QPushButton { background: #4f6ef7; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: bold; padding: 0 16px; } QPushButton:hover { background: #3a57e8; }")
+        add_btn.setStyleSheet("QPushButton { background: #030213; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; padding: 0 16px; } QPushButton:hover { background: #111827; }")
         add_btn.clicked.connect(self._add_unit)
         h.addWidget(add_btn)
         layout.addWidget(header)
@@ -66,7 +66,7 @@ class HierarchyPage(QWidget):
         # Legend
         legend = QFrame()
         legend.setFixedHeight(44)
-        legend.setStyleSheet("background: white; border-bottom: 1px solid #f0f0f0;")
+        legend.setStyleSheet("background: white; border-bottom: 2px solid #e5e7eb;")
         ll = QHBoxLayout(legend)
         ll.setContentsMargins(28, 0, 28, 0)
         ll.setSpacing(20)
@@ -91,15 +91,15 @@ class HierarchyPage(QWidget):
                 background: white;
                 border: none;
                 font-size: 13px;
-                color: #1a1d2e;
+                color: #111827;
             }
             QTreeWidget::item {
                 padding: 6px 4px;
                 border-bottom: 1px solid #f9fafb;
             }
             QTreeWidget::item:selected {
-                background: #eef2ff;
-                color: #1a1d2e;
+                background: #eff6ff;
+                color: #111827;
             }
             QTreeWidget::branch {
                 background: white;
@@ -272,25 +272,25 @@ class OrgUnitDialog(QDialog):
         self.unit_id = unit_id
         self.setWindowTitle("Edit Unit" if unit_id else "Add Org Unit")
         self.setFixedWidth(460)
-        self.setStyleSheet("background: white; color: #1a1d2e;")
+        self.setStyleSheet("background: white; color: #111827;")
         self._build()
         if unit_id:
             self._load(unit_id)
 
     def _build(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setContentsMargins(32, 24, 32, 24)
         layout.setSpacing(14)
 
         title = QLabel("Edit Org Unit" if self.unit_id else "Add New Org Unit")
-        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #1a1d2e;")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #111827;")
         layout.addWidget(title)
 
         form = QFormLayout()
         form.setSpacing(10)
 
-        input_style = "QLineEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 12px; font-size: 13px; color: #1a1d2e; background: #f9fafb; min-height: 36px; } QLineEdit:focus { border-color: #4f6ef7; }"
-        combo_style = "QComboBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px; font-size: 13px; color: #1a1d2e; background: #f9fafb; min-height: 36px; } QComboBox::drop-down { border: none; }"
+        input_style = "QLineEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 12px; font-size: 13px; color: #111827; background: #f9fafb; min-height: 36px; } QLineEdit:focus { border-color: #2563eb; }"
+        combo_style = "QComboBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px 0 12px; font-size: 13px; color: #111827; background: #f9fafb; min-height: 36px; }"
 
         self.name_input = QLineEdit()
         self.name_input.setStyleSheet(input_style)
@@ -330,7 +330,7 @@ class OrgUnitDialog(QDialog):
         save = QPushButton(t("save"))
         save.setFixedHeight(36)
         save.setCursor(Qt.PointingHandCursor)
-        save.setStyleSheet("QPushButton { background: #4f6ef7; color: white; border: none; border-radius: 8px; padding: 0 20px; font-size: 13px; font-weight: bold; } QPushButton:hover { background: #3a57e8; }")
+        save.setStyleSheet("QPushButton { background: #2563eb; color: white; border: none; border-radius: 8px; padding: 0 20px; font-size: 13px; font-weight: bold; } QPushButton:hover { background: #111827; }")
         save.clicked.connect(self._save)
 
         btn_row.addWidget(cancel)

@@ -31,7 +31,7 @@ class EmployeesPage(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: #f4f6fb;")
+        self.setStyleSheet("background: #f9fafb;")
         self.stack = QStackedWidget()
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -67,7 +67,7 @@ class EmployeeListView(QWidget):
         self.on_add = on_add
         self.on_profile = on_profile
         self.all_employees = []
-        self.setStyleSheet("background: #f4f6fb;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
         self.refresh()
 
@@ -78,18 +78,19 @@ class EmployeeListView(QWidget):
 
         # Header
         header = QFrame()
-        header.setFixedHeight(64)
-        header.setStyleSheet("background: white; border-bottom: 1px solid #e5e7eb;")
+        header.setFixedHeight(72)
+        header.setStyleSheet("background: white; border-bottom: 2px solid #e5e7eb;")
         h = QHBoxLayout(header)
         h.setContentsMargins(28, 0, 28, 0)
         title = QLabel(t("employees_title"))
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #1a1d2e;")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #111827;")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #111827;")
         h.addWidget(title)
         h.addStretch()
         add_btn = QPushButton("+ " + t("add_employee"))
         add_btn.setCursor(Qt.PointingHandCursor)
         add_btn.setFixedHeight(34)
-        add_btn.setStyleSheet("QPushButton { background: #4f6ef7; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: bold; padding: 0 16px; } QPushButton:hover { background: #3a57e8; }")
+        add_btn.setStyleSheet("QPushButton { background: #030213; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; padding: 0 16px; } QPushButton:hover { background: #111827; }")
         add_btn.clicked.connect(self.on_add)
         h.addWidget(add_btn)
         layout.addWidget(header)
@@ -105,13 +106,13 @@ class EmployeeListView(QWidget):
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText(t("search_employees"))
         self.search_input.setFixedHeight(34)
-        self.search_input.setStyleSheet("QLineEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 12px; font-size: 13px; background: #f9fafb; color: #1a1d2e; } QLineEdit:focus { border-color: #4f6ef7; background: white; }")
+        self.search_input.setStyleSheet("QLineEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 12px; font-size: 13px; background: #f9fafb; color: #111827; } QLineEdit:focus { border-color: #2563eb; background: white; }")
         self.search_input.textChanged.connect(self._apply_filter)
         bl.addWidget(self.search_input, 3)
 
         self.dept_filter = QComboBox()
         self.dept_filter.setFixedHeight(34)
-        self.dept_filter.setStyleSheet("QComboBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px; font-size: 13px; background: #f9fafb; color: #1a1d2e; } QComboBox::drop-down { border: none; }")
+        self.dept_filter.setStyleSheet("QComboBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px 0 12px; font-size: 13px; background: #f9fafb; color: #111827; }")
         self.dept_filter.addItem("All Departments", None)
         self.dept_filter.currentIndexChanged.connect(self._apply_filter)
         bl.addWidget(self.dept_filter, 2)
@@ -142,7 +143,7 @@ class EmployeeListView(QWidget):
         self.table.setStyleSheet("""
             QTableWidget { background: white; border: none; gridline-color: #f3f4f6; font-size: 13px; }
             QTableWidget::item { padding: 8px 12px; border-bottom: 1px solid #f3f4f6; }
-            QTableWidget::item:selected { background: #eef2ff; color: #1a1d2e; }
+            QTableWidget::item:selected { background: #eff6ff; color: #111827; }
             QHeaderView::section { background: #f9fafb; border: none; border-bottom: 1px solid #e5e7eb; padding: 10px 12px; font-size: 12px; font-weight: bold; color: #6b7280; }
         """)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -170,8 +171,7 @@ class EmployeeListView(QWidget):
             } for e in emps]
 
             # Populate dept filter
-            depts = sorted(set(x["dept"] for x in self.all_employees if x["dept"] != "—"))
-            current = self.dept_filter.currentData()
+            depts = sorted({x["dept"] for x in self.all_employees if x["dept"] != "—"})
             self.dept_filter.blockSignals(True)
             self.dept_filter.clear()
             self.dept_filter.addItem("All Departments", None)
@@ -237,7 +237,7 @@ class EmployeeListView(QWidget):
             # View button
             view_btn = QPushButton("View")
             view_btn.setCursor(Qt.PointingHandCursor)
-            view_btn.setStyleSheet("QPushButton { background: #eef2ff; color: #4f6ef7; border: none; border-radius: 6px; font-size: 12px; font-weight: bold; margin: 8px; } QPushButton:hover { background: #e0e7ff; }")
+            view_btn.setStyleSheet("QPushButton { background: #eff6ff; color: #2563eb; border: none; border-radius: 6px; font-size: 12px; font-weight: bold; margin: 8px; } QPushButton:hover { background: #dbeafe; }")
             view_btn.clicked.connect(lambda _, eid=emp["id"]: self.on_profile(eid))
             self.table.setCellWidget(row, 7, view_btn)
 
@@ -248,7 +248,7 @@ class AddEmployeeView(QWidget):
         super().__init__()
         self.user = user
         self.on_back = on_back
-        self.setStyleSheet("background: #f4f6fb;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
         self.reset()
 
@@ -261,18 +261,18 @@ class AddEmployeeView(QWidget):
 
         # Header
         header = QFrame()
-        header.setFixedHeight(64)
-        header.setStyleSheet("background: white; border-bottom: 1px solid #e5e7eb;")
+        header.setFixedHeight(72)
+        header.setStyleSheet("background: white; border-bottom: 2px solid #e5e7eb;")
         h = QHBoxLayout(header)
         h.setContentsMargins(28, 0, 28, 0)
 
         back_btn = QPushButton("← Back")
         back_btn.setCursor(Qt.PointingHandCursor)
-        back_btn.setStyleSheet("QPushButton { background: transparent; color: #4f6ef7; border: none; font-size: 13px; } QPushButton:hover { text-decoration: underline; }")
+        back_btn.setStyleSheet("QPushButton { background: transparent; color: #2563eb; border: none; font-size: 13px; } QPushButton:hover { text-decoration: underline; }")
         back_btn.clicked.connect(self.on_back)
 
         title = QLabel(t("add_employee"))
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #1a1d2e; margin-left: 12px;")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #111827; margin-left: 12px;")
         h.addWidget(back_btn)
         h.addWidget(title)
         h.addStretch()
@@ -284,7 +284,7 @@ class AddEmployeeView(QWidget):
         scroll.setStyleSheet("border: none;")
 
         content = QWidget()
-        content.setStyleSheet("background: #f4f6fb;")
+        content.setStyleSheet("background: #f9fafb;")
         cl = QHBoxLayout(content)
         cl.setContentsMargins(28, 24, 28, 28)
         cl.setSpacing(20)
@@ -312,7 +312,7 @@ class AddEmployeeView(QWidget):
         dc_layout.setSpacing(12)
 
         dc_title = QLabel("Education & Level Assignment")
-        dc_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #1a1d2e; background: transparent;")
+        dc_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #111827; background: transparent;")
         dc_layout.addWidget(dc_title)
 
         row = QHBoxLayout()
@@ -337,7 +337,7 @@ class AddEmployeeView(QWidget):
         self.level_display = QLabel("L7")
         self.level_display.setFixedHeight(36)
         self.level_display.setAlignment(Qt.AlignCenter)
-        self.level_display.setStyleSheet("background: #eef2ff; color: #4f6ef7; border-radius: 8px; font-size: 16px; font-weight: bold; border: 1px solid #c7d2fe;")
+        self.level_display.setStyleSheet("background: #eff6ff; color: #2563eb; border-radius: 8px; font-size: 16px; font-weight: bold; border: 1px solid #bfdbfe;")
         ll.addWidget(lv_lbl)
         ll.addWidget(self.level_display)
         row.addLayout(ll)
@@ -371,7 +371,7 @@ class AddEmployeeView(QWidget):
         oc.setContentsMargins(20, 16, 20, 16)
         oc.setSpacing(10)
         oc_title = QLabel("Organization")
-        oc_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #1a1d2e; background: transparent;")
+        oc_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #111827; background: transparent;")
         oc.addWidget(oc_title)
 
         org_lbl = QLabel("Org Unit")
@@ -393,12 +393,12 @@ class AddEmployeeView(QWidget):
 
         # Salary guideline info
         info_card = QFrame()
-        info_card.setStyleSheet("background: #eef2ff; border-radius: 12px; border: 1px solid #c7d2fe;")
+        info_card.setStyleSheet("background: #eff6ff; border-radius: 12px; border: 1px solid #bfdbfe;")
         ic = QVBoxLayout(info_card)
         ic.setContentsMargins(16, 14, 16, 14)
         ic.setSpacing(6)
         ic_title = QLabel("Salary Guidelines")
-        ic_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #3730a3; background: transparent;")
+        ic_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #1e40af; background: transparent;")
         ic.addWidget(ic_title)
         for line in ["L7 (BSc): €2,000 – €2,800", "L6 (MSc): €2,800 – €3,500", "L5 (PhD): €3,500 – €4,500"]:
             lbl = QLabel(line)
@@ -410,7 +410,7 @@ class AddEmployeeView(QWidget):
         save_btn = QPushButton("💾  " + t("save") + " Employee")
         save_btn.setCursor(Qt.PointingHandCursor)
         save_btn.setFixedHeight(44)
-        save_btn.setStyleSheet("QPushButton { background: #4f6ef7; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: bold; } QPushButton:hover { background: #3a57e8; }")
+        save_btn.setStyleSheet("QPushButton { background: #2563eb; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: bold; } QPushButton:hover { background: #111827; }")
         save_btn.clicked.connect(self._save)
         right.addWidget(save_btn)
 
@@ -427,7 +427,7 @@ class AddEmployeeView(QWidget):
         layout.setSpacing(10)
 
         title_lbl = QLabel(title)
-        title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #1a1d2e; background: transparent;")
+        title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #111827; background: transparent;")
         layout.addWidget(title_lbl)
 
         grid = QHBoxLayout()
@@ -443,17 +443,17 @@ class AddEmployeeView(QWidget):
             if ftype == "textarea":
                 widget = QTextEdit()
                 widget.setFixedHeight(72)
-                widget.setStyleSheet("QTextEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px; font-size: 13px; background: #f9fafb; color: #1a1d2e; } QTextEdit:focus { border-color: #4f6ef7; background: white; }")
+                widget.setStyleSheet("QTextEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px; font-size: 13px; background: #f9fafb; color: #111827; } QTextEdit:focus { border-color: #2563eb; background: white; }")
             elif ftype == "date":
                 widget = QDateEdit()
                 widget.setCalendarPopup(True)
                 widget.setFixedHeight(36)
                 widget.setDate(QDate.currentDate())
-                widget.setStyleSheet("QDateEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px; font-size: 13px; background: #f9fafb; color: #1a1d2e; } QDateEdit:focus { border-color: #4f6ef7; }")
+                widget.setStyleSheet("QDateEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px; font-size: 13px; background: #f9fafb; color: #111827; } QDateEdit:focus { border-color: #2563eb; }")
             else:
                 widget = QLineEdit()
                 widget.setFixedHeight(36)
-                widget.setStyleSheet("QLineEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 12px; font-size: 13px; background: #f9fafb; color: #1a1d2e; } QLineEdit:focus { border-color: #4f6ef7; background: white; }")
+                widget.setStyleSheet("QLineEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 12px; font-size: 13px; background: #f9fafb; color: #111827; } QLineEdit:focus { border-color: #2563eb; background: white; }")
 
             col.addWidget(widget)
             col.addSpacing(2)
@@ -576,7 +576,7 @@ class AddEmployeeView(QWidget):
             session.close()
 
     def _combo_style(self):
-        return "QComboBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px; font-size: 13px; background: #f9fafb; color: #1a1d2e; } QComboBox::drop-down { border: none; } QComboBox:focus { border-color: #4f6ef7; }"
+        return "QComboBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px 0 12px; font-size: 13px; background: #f9fafb; color: #111827; } QComboBox:focus { border-color: #2563eb; }"
 
 
 # ── Employee Profile ──────────────────────────────────────────────────────────
@@ -586,7 +586,7 @@ class EmployeeProfileView(QWidget):
         self.user = user
         self.on_back = on_back
         self.employee_id = None
-        self.setStyleSheet("background: #f4f6fb;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
 
     def _build(self):
@@ -596,18 +596,18 @@ class EmployeeProfileView(QWidget):
 
         # Header
         self.header = QFrame()
-        self.header.setFixedHeight(64)
-        self.header.setStyleSheet("background: white; border-bottom: 1px solid #e5e7eb;")
+        self.header.setFixedHeight(72)
+        self.header.setStyleSheet("background: white; border-bottom: 2px solid #e5e7eb;")
         h = QHBoxLayout(self.header)
         h.setContentsMargins(28, 0, 28, 0)
 
         back_btn = QPushButton("← Back")
         back_btn.setCursor(Qt.PointingHandCursor)
-        back_btn.setStyleSheet("QPushButton { background: transparent; color: #4f6ef7; border: none; font-size: 13px; } QPushButton:hover { text-decoration: underline; }")
+        back_btn.setStyleSheet("QPushButton { background: transparent; color: #2563eb; border: none; font-size: 13px; } QPushButton:hover { text-decoration: underline; }")
         back_btn.clicked.connect(self.on_back)
 
         self.header_title = QLabel("Employee Profile")
-        self.header_title.setStyleSheet("font-size: 18px; font-weight: bold; color: #1a1d2e; margin-left: 12px;")
+        self.header_title.setStyleSheet("font-size: 20px; font-weight: bold; color: #111827; margin-left: 12px;")
         h.addWidget(back_btn)
         h.addWidget(self.header_title)
         h.addStretch()
@@ -630,7 +630,7 @@ class EmployeeProfileView(QWidget):
             race = calculate_months_remaining(emp, session)
 
             content = QWidget()
-            content.setStyleSheet("background: #f4f6fb;")
+            content.setStyleSheet("background: #f9fafb;")
             cl = QVBoxLayout(content)
             cl.setContentsMargins(28, 24, 28, 28)
             cl.setSpacing(16)
@@ -647,7 +647,7 @@ class EmployeeProfileView(QWidget):
             avatar = QLabel(initials)
             avatar.setFixedSize(72, 72)
             avatar.setAlignment(Qt.AlignCenter)
-            avatar.setStyleSheet("background: #4f6ef7; color: white; border-radius: 36px; font-size: 26px; font-weight: bold;")
+            avatar.setStyleSheet("background: #2563eb; color: white; border-radius: 36px; font-size: 26px; font-weight: bold;")
             pc.addWidget(avatar)
 
             # Basic info
@@ -656,7 +656,7 @@ class EmployeeProfileView(QWidget):
 
             name_row = QHBoxLayout()
             name_lbl = QLabel(emp.full_name)
-            name_lbl.setStyleSheet("font-size: 20px; font-weight: bold; color: #1a1d2e; background: transparent;")
+            name_lbl.setStyleSheet("font-size: 20px; font-weight: bold; color: #111827; background: transparent;")
             name_row.addWidget(name_lbl)
 
             STATUS_COLORS = {"active": ("#dcfce7","#166534"), "inactive": ("#f3f4f6","#374151"), "on_leave": ("#fef9c3","#854d0e")}
@@ -666,7 +666,7 @@ class EmployeeProfileView(QWidget):
             name_row.addWidget(status_badge)
 
             level_badge = QLabel(emp.title.name if emp.title else "—")
-            level_badge.setStyleSheet("background: #eef2ff; color: #4f6ef7; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: bold;")
+            level_badge.setStyleSheet("background: #eff6ff; color: #2563eb; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: bold;")
             name_row.addWidget(level_badge)
             name_row.addStretch()
             info.addLayout(name_row)
@@ -709,7 +709,7 @@ class EmployeeProfileView(QWidget):
             rc.setSpacing(10)
 
             rc_title = QLabel("Promotion Race Status")
-            rc_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #1a1d2e; background: transparent;")
+            rc_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #111827; background: transparent;")
             rc.addWidget(rc_title)
 
             if race["has_next_level"]:
@@ -720,13 +720,13 @@ class EmployeeProfileView(QWidget):
                 bar_bg.setStyleSheet("background: #e5e7eb; border-radius: 5px;")
                 bar_fill = QFrame(bar_bg)
                 bar_fill.setFixedHeight(10)
-                fill_color = "#10b981" if pct >= 100 else "#4f6ef7"
+                fill_color = "#10b981" if pct >= 100 else "#2563eb"
                 bar_fill.setStyleSheet(f"background: {fill_color}; border-radius: 5px;")
                 bar_fill.setFixedWidth(max(10, int(pct / 100 * 300)))
                 rc.addWidget(bar_bg)
 
                 eligible_lbl = QLabel("✅ Eligible for promotion!" if race["eligible"] else f"⏱ {race['months_remaining']} months remaining")
-                eligible_lbl.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {'#10b981' if race['eligible'] else '#4f6ef7'}; background: transparent;")
+                eligible_lbl.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {'#10b981' if race['eligible'] else '#2563eb'}; background: transparent;")
                 rc.addWidget(eligible_lbl)
 
                 for label, val in [
@@ -739,7 +739,7 @@ class EmployeeProfileView(QWidget):
                     k = QLabel(label)
                     k.setStyleSheet("font-size: 12px; color: #6b7280; background: transparent;")
                     v = QLabel(str(val))
-                    v.setStyleSheet("font-size: 12px; font-weight: bold; color: #1a1d2e; background: transparent;")
+                    v.setStyleSheet("font-size: 12px; font-weight: bold; color: #111827; background: transparent;")
                     row.addWidget(k)
                     row.addStretch()
                     row.addWidget(v)
@@ -778,7 +778,7 @@ class EmployeeProfileView(QWidget):
 
         title_row = QHBoxLayout()
         t_lbl = QLabel(title)
-        t_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #1a1d2e; background: transparent;")
+        t_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #111827; background: transparent;")
         title_row.addWidget(t_lbl)
         if badge:
             b = QLabel(badge)
@@ -793,7 +793,7 @@ class EmployeeProfileView(QWidget):
             k.setFixedWidth(140)
             k.setStyleSheet("font-size: 13px; color: #6b7280; background: transparent;")
             v = QLabel(str(val))
-            v.setStyleSheet("font-size: 13px; color: #1a1d2e; font-weight: bold; background: transparent;")
+            v.setStyleSheet("font-size: 13px; color: #111827; font-weight: bold; background: transparent;")
             v.setWordWrap(True)
             row.addWidget(k)
             row.addWidget(v)
