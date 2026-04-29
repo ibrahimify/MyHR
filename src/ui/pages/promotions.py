@@ -343,7 +343,9 @@ class EligibleTab(QWidget):
                 notes=f"Commendation: −{race['commendation_reduction']}mo, Sanction: +{race['sanction_addition']}mo",
             )
             session.add(history)
-            log_action(session, self.user.id, "promotion.approve", "employee", emp.id,
+            log_action(
+                session, action="promotion.approve", performed_by_id=self.user.id,
+                target_table="employee", target_id=emp.id,
                 description=f"Promoted {emp.full_name}: {old_title.name} → {next_title.name}",
                 before_value=f'{{"title": "{old_title.name}"}}',
                 after_value=f'{{"title": "{next_title.name}"}}',
@@ -638,7 +640,9 @@ class RuleEditDialog(QDialog):
             rule = session.query(PromotionRule).filter_by(id=self.rule_id).first()
             old = rule.base_months
             rule.base_months = self.months_spin.value()
-            log_action(session, self.user.id, "promotion_rule.update", "promotion_rule", self.rule_id,
+            log_action(
+                session, action="promotion_rule.update", performed_by_id=self.user.id,
+                target_table="promotion_rule", target_id=self.rule_id,
                 description=f"Rule updated: {old} → {rule.base_months} months",
                 before_value=f'{{"base_months": {old}}}',
                 after_value=f'{{"base_months": {rule.base_months}}}',

@@ -7,13 +7,14 @@ Fixes:
 - Edit button wired up properly
 """
 
+import qtawesome as qta
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QLineEdit, QComboBox, QTableWidget,
     QTableWidgetItem, QHeaderView, QStackedWidget,
     QTextEdit, QMessageBox, QDateEdit
 )
-from PySide6.QtCore import Qt, QDate
+from PySide6.QtCore import Qt, QDate, QSize
 from PySide6.QtGui import QColor
 
 from src.core.i18n import t
@@ -21,7 +22,10 @@ from src.database.connection import (
     get_session, generate_employee_id, log_action,
     degree_to_title_name, calculate_months_remaining
 )
-from src.database.models import Employee, Title, OrgUnit
+from src.database.models import (
+    Employee, Title, OrgUnit,
+    CommendationEmployee, PromotionHistory, SalaryIncrementHistory, Sanction
+)
 from datetime import datetime
 import json
 
@@ -155,7 +159,7 @@ class EmployeeListView(QWidget):
         """)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(7, QHeaderView.Fixed)
-        self.table.setColumnWidth(7, 150)
+        self.table.setColumnWidth(7, 110)
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -216,21 +220,43 @@ class EmployeeListView(QWidget):
 
             btn_widget = QWidget()
             btn_layout = QHBoxLayout(btn_widget)
-            btn_layout.setContentsMargins(4, 6, 4, 6)
+            btn_layout.setContentsMargins(6, 8, 6, 8)
             btn_layout.setSpacing(4)
 
-            view_btn = QPushButton("View")
+            _ico = QSize(14, 14)
+            _btn_ss = (
+                "QPushButton {{ background: {bg}; border: none; border-radius: 6px;"
+                " min-width: 28px; max-width: 28px; min-height: 28px; max-height: 28px; }}"
+                " QPushButton:hover {{ background: {hover}; }}"
+            )
+
+            view_btn = QPushButton()
+            view_btn.setIcon(qta.icon("fa5s.eye", color="#2563eb"))
+            view_btn.setIconSize(_ico)
+            view_btn.setToolTip("View profile")
             view_btn.setCursor(Qt.PointingHandCursor)
-            view_btn.setStyleSheet("QPushButton { background: #eff6ff; color: #2563eb; border: none; border-radius: 6px; font-size: 12px; font-weight: bold; padding: 4px 10px; } QPushButton:hover { background: #dbeafe; }")
+            view_btn.setStyleSheet(_btn_ss.format(bg="#eff6ff", hover="#dbeafe"))
             view_btn.clicked.connect(lambda _, eid=emp["id"]: self.on_profile(eid))
 
-            edit_btn = QPushButton("Edit")
+            edit_btn = QPushButton()
+            edit_btn.setIcon(qta.icon("fa5s.edit", color="#374151"))
+            edit_btn.setIconSize(_ico)
+            edit_btn.setToolTip("Edit employee")
             edit_btn.setCursor(Qt.PointingHandCursor)
-            edit_btn.setStyleSheet("QPushButton { background: #f3f4f6; color: #374151; border: none; border-radius: 6px; font-size: 12px; font-weight: bold; padding: 4px 10px; } QPushButton:hover { background: #e5e7eb; }")
+            edit_btn.setStyleSheet(_btn_ss.format(bg="#f3f4f6", hover="#e5e7eb"))
             edit_btn.clicked.connect(lambda _, eid=emp["id"]: self._do_edit(eid))
+
+            del_btn = QPushButton()
+            del_btn.setIcon(qta.icon("fa5s.trash-alt", color="#dc2626"))
+            del_btn.setIconSize(_ico)
+            del_btn.setToolTip("Delete employee")
+            del_btn.setCursor(Qt.PointingHandCursor)
+            del_btn.setStyleSheet(_btn_ss.format(bg="#fee2e2", hover="#fecaca"))
+            del_btn.clicked.connect(lambda _, eid=emp["id"]: self._do_delete(eid))
 
             btn_layout.addWidget(view_btn)
             btn_layout.addWidget(edit_btn)
+            btn_layout.addWidget(del_btn)
             self.table.setCellWidget(row, 7, btn_widget)
 
     def _do_edit(self, emp_id):
@@ -239,6 +265,65 @@ class EmployeeListView(QWidget):
             p = p.parent()
         if p:
             p._show_edit(emp_id)
+
+    def _do_delete(self, emp_id):
+        confirm = QMessageBox.question(
+            self, "Delete Employee",
+            "Are you sure you want to permanently delete this employee?\n\n"
+            "All promotion history, commendations, sanctions, and salary records "
+            "for this employee will also be removed.\n\n"
+            "This action cannot be undone.",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+        )
+        if confirm != QMessageBox.Yes:
+            return
+
+        session = get_session()
+        try:
+            emp = session.query(Employee).filter_by(id=emp_id).first()
+            if not emp:
+                return
+            emp_name = emp.full_name
+            emp_code = emp.employee_id
+
+            # Clear org unit head references
+            for unit in session.query(OrgUnit).filter_by(head_employee_id=emp_id).all():
+                unit.head_employee_id = None
+
+            # Clear reports_to references from other employees
+            for e in session.query(Employee).filter(
+                Employee.id != emp_id, Employee.reports_to_id == emp_id
+            ).all():
+                e.reports_to_id = None
+
+            # Remove commendation junction rows
+            session.query(CommendationEmployee).filter_by(employee_id=emp_id).delete(synchronize_session=False)
+
+            # Remove sanctions
+            session.query(Sanction).filter_by(employee_id=emp_id).delete(synchronize_session=False)
+
+            # Remove promotion history
+            session.query(PromotionHistory).filter_by(employee_id=emp_id).delete(synchronize_session=False)
+
+            # Remove salary increment history
+            session.query(SalaryIncrementHistory).filter_by(employee_id=emp_id).delete(synchronize_session=False)
+
+            # Log before deleting (uses the employee's ID while it still exists)
+            log_action(
+                session, action="employee.delete", performed_by_id=self.user.id,
+                target_table="employee", target_id=emp_id,
+                description=f"Employee permanently deleted: {emp_name} ({emp_code})"
+            )
+
+            session.delete(emp)
+            session.commit()
+            QMessageBox.information(self, t("success"), f"{emp_name} ({emp_code}) has been deleted.")
+            self.refresh()
+        except Exception as e:
+            session.rollback()
+            QMessageBox.critical(self, t("error"), str(e))
+        finally:
+            session.close()
 
 
 class AddEmployeeView(QWidget):
@@ -261,9 +346,11 @@ class AddEmployeeView(QWidget):
         header.setStyleSheet("background: white; border-bottom: 2px solid #e5e7eb;")
         h = QHBoxLayout(header)
         h.setContentsMargins(28, 0, 28, 0)
-        back_btn = QPushButton("← Back")
+        back_btn = QPushButton("  Back to Employees")
+        back_btn.setIcon(qta.icon("fa5s.arrow-left", color="#2563eb"))
+        back_btn.setIconSize(QSize(12, 12))
         back_btn.setCursor(Qt.PointingHandCursor)
-        back_btn.setStyleSheet("QPushButton { background: transparent; color: #2563eb; border: none; font-size: 13px; } QPushButton:hover { text-decoration: underline; }")
+        back_btn.setStyleSheet("QPushButton { background: transparent; color: #2563eb; border: none; font-size: 13px; font-weight: 600; } QPushButton:hover { text-decoration: underline; }")
         back_btn.clicked.connect(self.on_back)
         title = QLabel(t("add_employee"))
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: #111827; margin-left: 12px;")
@@ -531,9 +618,11 @@ class EditEmployeeView(QWidget):
         header.setStyleSheet("background: white; border-bottom: 2px solid #e5e7eb;")
         h = QHBoxLayout(header)
         h.setContentsMargins(28, 0, 28, 0)
-        back_btn = QPushButton("← Back")
+        back_btn = QPushButton("  Back to Employees")
+        back_btn.setIcon(qta.icon("fa5s.arrow-left", color="#2563eb"))
+        back_btn.setIconSize(QSize(12, 12))
         back_btn.setCursor(Qt.PointingHandCursor)
-        back_btn.setStyleSheet("QPushButton { background: transparent; color: #2563eb; border: none; font-size: 13px; } QPushButton:hover { text-decoration: underline; }")
+        back_btn.setStyleSheet("QPushButton { background: transparent; color: #2563eb; border: none; font-size: 13px; font-weight: 600; } QPushButton:hover { text-decoration: underline; }")
         back_btn.clicked.connect(self.on_back)
         self.header_title = QLabel("Edit Employee")
         self.header_title.setStyleSheet("font-size: 20px; font-weight: bold; color: #111827; margin-left: 12px;")
@@ -743,9 +832,11 @@ class EmployeeProfileView(QWidget):
         self.header.setStyleSheet("background: white; border-bottom: 2px solid #e5e7eb;")
         h = QHBoxLayout(self.header)
         h.setContentsMargins(28, 0, 28, 0)
-        back_btn = QPushButton("← Back")
+        back_btn = QPushButton("  Back to Employees")
+        back_btn.setIcon(qta.icon("fa5s.arrow-left", color="#2563eb"))
+        back_btn.setIconSize(QSize(12, 12))
         back_btn.setCursor(Qt.PointingHandCursor)
-        back_btn.setStyleSheet("QPushButton { background: transparent; color: #2563eb; border: none; font-size: 13px; } QPushButton:hover { text-decoration: underline; }")
+        back_btn.setStyleSheet("QPushButton { background: transparent; color: #2563eb; border: none; font-size: 13px; font-weight: 600; } QPushButton:hover { text-decoration: underline; }")
         back_btn.clicked.connect(self.on_back)
         self.header_title = QLabel("Employee Profile")
         self.header_title.setStyleSheet("font-size: 20px; font-weight: bold; color: #111827; margin-left: 12px;")

@@ -331,12 +331,12 @@ class IssueCommendationTab(QWidget):
         finally:
             session.close()
 
-        # Single combo
+        # Single combo — always store the ID so we can give a specific error for maxed employees
         self.single_combo.clear()
         self.single_combo.addItem("— Select employee —", None)
         for e in emp_data:
             suffix = f"  [{e['count']}/3]" + (" ⚠ Max reached" if not e["can"] else "")
-            self.single_combo.addItem(e["label"] + suffix, e["id"] if e["can"] else None)
+            self.single_combo.addItem(e["label"] + suffix, e["id"])
 
         # Bulk checkboxes
         while self.bulk_layout.count():
@@ -407,17 +407,28 @@ class IssueCommendationTab(QWidget):
 
         session = get_session()
         try:
-            # Final cap check
-            blocked = []
-            for eid in target_ids:
-                emp = session.query(Employee).filter_by(id=eid).first()
-                if not can_receive_commendation(emp, session):
-                    blocked.append(emp.full_name)
+            skipped_names = []
 
-            if blocked:
-                QMessageBox.warning(self, t("warning"),
-                    f"Max 3 commendations reached for: {', '.join(blocked)}\nRemove them from selection.")
-                return
+            if self.mode == "single":
+                emp = session.query(Employee).filter_by(id=target_ids[0]).first()
+                if not can_receive_commendation(emp, session):
+                    QMessageBox.warning(self, t("warning"), t("max_commendations_reached"))
+                    return
+            else:
+                # Team award: skip maxed employees, award the rest
+                eligible_ids = []
+                for eid in target_ids:
+                    emp = session.query(Employee).filter_by(id=eid).first()
+                    if can_receive_commendation(emp, session):
+                        eligible_ids.append(eid)
+                    else:
+                        skipped_names.append(emp.full_name)
+
+                if not eligible_ids:
+                    QMessageBox.warning(self, t("warning"),
+                        "All selected employees have already reached the maximum 3 commendations for their current role.")
+                    return
+                target_ids = eligible_ids
 
             ref = generate_commendation_ref(session)
             comm = Commendation(
@@ -432,20 +443,26 @@ class IssueCommendationTab(QWidget):
             session.add(comm)
             session.flush()
 
-            for eid in target_ids:
-                session.add(CommendationEmployee(commendation_id=comm.id, employee_id=eid))
-
             names = []
             for eid in target_ids:
+                session.add(CommendationEmployee(commendation_id=comm.id, employee_id=eid))
                 emp = session.query(Employee).filter_by(id=eid).first()
                 names.append(emp.full_name)
 
-            log_action(session, self.user.id, "commendation.issue", "commendation", comm.id,
-                description=f"Commendation issued [{ref}]: '{title_text}' (Cat {cat_id}, {cat['months']}mo) to {', '.join(names)}")
+            log_action(
+                session, action="commendation.issue", performed_by_id=self.user.id,
+                target_table="commendation", target_id=comm.id,
+                description=f"Commendation issued [{ref}]: '{title_text}' (Cat {cat_id}, {cat['months']}mo) to {', '.join(names)}"
+            )
 
             session.commit()
-            QMessageBox.information(self, t("success"),
-                f"Commendation [{ref}] issued successfully!\n{cat['label']}: {cat['months']} months to promotion race for {len(target_ids)} employee(s).")
+
+            msg = (f"Commendation [{ref}] issued successfully!\n"
+                   f"{cat['label']}: {cat['months']} months to promotion race for {len(target_ids)} employee(s).")
+            if skipped_names:
+                msg += f"\n\nSkipped (max 3 reached): {', '.join(skipped_names)}"
+            QMessageBox.information(self, t("success"), msg)
+
             self._clear()
             self.refresh_employees()
             self.on_issued()

@@ -392,8 +392,11 @@ class OrgUnitDialog(QDialog):
                 unit.unit_type = self.type_combo.currentData()
                 unit.parent_id = self.parent_combo.currentData()
                 unit.head_employee_id = self.head_combo.currentData()
-                log_action(session, self.user.id, "org_unit.update", "org_unit", self.unit_id,
-                    f"Org unit updated: {old_name} → {name}")
+                log_action(
+                    session, action="org_unit.update", performed_by_id=self.user.id,
+                    target_table="org_unit", target_id=self.unit_id,
+                    description=f"Org unit updated: {old_name} → {name}"
+                )
             else:
                 unit = OrgUnit(
                     name=name,
@@ -403,8 +406,11 @@ class OrgUnitDialog(QDialog):
                 )
                 session.add(unit)
                 session.flush()
-                log_action(session, self.user.id, "org_unit.create", "org_unit", unit.id,
-                    f"Org unit created: {name} ({unit.unit_type})")
+                log_action(
+                    session, action="org_unit.create", performed_by_id=self.user.id,
+                    target_table="org_unit", target_id=unit.id,
+                    description=f"Org unit created: {name} ({unit.unit_type})"
+                )
 
             session.commit()
             self.accept()

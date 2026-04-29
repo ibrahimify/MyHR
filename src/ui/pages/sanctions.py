@@ -218,8 +218,11 @@ class ActiveSanctionsTab(QWidget):
             s = session.query(Sanction).filter_by(id=sanction_id).first()
             s.is_resolved = True
             s.resolved_at = datetime.utcnow()
-            log_action(session, self.user.id, "sanction.resolve", "sanction", sanction_id,
-                description=f"Sanction {s.sanction_ref} marked as resolved for {s.employee.full_name}")
+            log_action(
+                session, action="sanction.resolve", performed_by_id=self.user.id,
+                target_table="sanction", target_id=sanction_id,
+                description=f"Sanction {s.sanction_ref} marked as resolved for {s.employee.full_name}"
+            )
             session.commit()
             self.refresh()
         except Exception as e:
@@ -501,8 +504,11 @@ class IssueSanctionTab(QWidget):
             session.add(sanction)
             session.flush()
 
-            log_action(session, self.user.id, "sanction.issue", "sanction", sanction.id,
-                description=f"Sanction issued [{ref}]: {sanction.sanction_type} to {emp.full_name} (+{delay} months)")
+            log_action(
+                session, action="sanction.issue", performed_by_id=self.user.id,
+                target_table="sanction", target_id=sanction.id,
+                description=f"Sanction issued [{ref}]: {sanction.sanction_type} to {emp.full_name} (+{delay} months)"
+            )
 
             session.commit()
             QMessageBox.information(self, t("success"),

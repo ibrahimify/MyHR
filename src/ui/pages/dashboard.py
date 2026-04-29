@@ -4,13 +4,13 @@ import qtawesome as qta
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QGridLayout,
-    QDialog, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox
+    QDialog, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QProgressBar
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QColor
 
 from src.core.i18n import t
-from src.database.connection import get_session, get_increment_due_employees, apply_salary_increment
+from src.database.connection import get_session, get_increment_due_employees, apply_salary_increment, calculate_months_remaining
 from src.database.models import Employee, Sanction, Commendation, PromotionHistory, AuditLog, Title
 from src.ui.styles import (
     btn_primary, btn_blue, btn_outline, btn_ghost,
@@ -195,6 +195,29 @@ class DashboardPage(QWidget):
                  l.performed_at.strftime("%b %d, %H:%M") if l.performed_at else "")
                 for l in recent
             ]
+
+            # Upcoming promotions — employees within 12 months of eligibility
+            upcoming = []
+            active_emps = session.query(Employee).filter_by(status="active").all()
+            for emp in active_emps:
+                race = calculate_months_remaining(emp, session)
+                if not race["has_next_level"]:
+                    continue
+                mr = race["months_remaining"]
+                if mr > 12:
+                    continue
+                next_title = session.query(Title).filter_by(id=race["next_title_id"]).first()
+                upcoming.append({
+                    "name": emp.full_name,
+                    "current": emp.title.name if emp.title else "?",
+                    "next": next_title.name if next_title else "?",
+                    "months_remaining": mr,
+                    "base_months": race["base_months"],
+                    "eligible": race["eligible"],
+                    "progress_pct": race["progress_pct"],
+                })
+            upcoming.sort(key=lambda x: (0 if x["eligible"] else 1, x["months_remaining"]))
+            self.upcoming_promotions = upcoming[:6]
         finally:
             session.close()
 
@@ -368,10 +391,14 @@ class DashboardPage(QWidget):
         pcl.addLayout(pch)
         pcl.addSpacing(12)
 
-        empty_p = QLabel("Navigate to Promotions to\nsee eligible employees.")
-        empty_p.setAlignment(Qt.AlignCenter)
-        empty_p.setStyleSheet("color: #9ca3af; font-size: 13px; padding: 32px; background: transparent;")
-        pcl.addWidget(empty_p)
+        if self.upcoming_promotions:
+            for entry in self.upcoming_promotions:
+                pcl.addWidget(self._promo_row(entry))
+        else:
+            empty_p = QLabel("No employees eligible or\napproaching promotion soon.")
+            empty_p.setAlignment(Qt.AlignCenter)
+            empty_p.setStyleSheet("color: #9ca3af; font-size: 13px; padding: 32px; background: transparent;")
+            pcl.addWidget(empty_p)
         pcl.addStretch()
         bottom.addWidget(promo_card, 2)
 
@@ -436,4 +463,51 @@ class DashboardPage(QWidget):
         tl = QLabel(ts)
         tl.setStyleSheet("font-size: 11px; color: #9ca3af; background: transparent;")
         rl.addWidget(tl)
+        return row
+
+    def _promo_row(self, entry):
+        row = QFrame()
+        row.setFixedHeight(62)
+        row.setStyleSheet("background: transparent; border: none; border-bottom: 1px solid #f3f4f6;")
+        rl = QHBoxLayout(row)
+        rl.setContentsMargins(0, 8, 0, 8)
+        rl.setSpacing(12)
+
+        info = QVBoxLayout()
+        info.setSpacing(2)
+        name_lbl = QLabel(entry["name"])
+        name_lbl.setStyleSheet("font-size: 13px; font-weight: 600; color: #111827; background: transparent;")
+        trans_lbl = QLabel(f"{entry['current']}  →  {entry['next']}")
+        trans_lbl.setStyleSheet("font-size: 11px; color: #6b7280; background: transparent;")
+        info.addWidget(name_lbl)
+        info.addWidget(trans_lbl)
+        rl.addLayout(info, 2)
+
+        pct = entry["progress_pct"]
+        bar_color = "#10b981" if entry["eligible"] else ("#f59e0b" if pct >= 60 else "#3b82f6")
+
+        prog_col = QVBoxLayout()
+        prog_col.setSpacing(3)
+        bar = QProgressBar()
+        bar.setRange(0, 100)
+        bar.setValue(pct)
+        bar.setFixedHeight(6)
+        bar.setTextVisible(False)
+        bar.setStyleSheet(
+            f"QProgressBar {{ background: #e5e7eb; border-radius: 3px; border: none; }}"
+            f" QProgressBar::chunk {{ background: {bar_color}; border-radius: 3px; }}"
+        )
+        prog_col.addWidget(bar)
+        lbl_txt = "Eligible now!" if entry["eligible"] else f"{entry['months_remaining']} mo left"
+        lbl_col = "#10b981" if entry["eligible"] else "#6b7280"
+        prog_lbl = QLabel(lbl_txt)
+        prog_lbl.setStyleSheet(f"font-size: 10px; color: {lbl_col}; background: transparent;")
+        prog_col.addWidget(prog_lbl)
+        rl.addLayout(prog_col, 2)
+
+        pct_lbl = QLabel(f"{pct}%")
+        pct_lbl.setFixedWidth(36)
+        pct_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        pct_lbl.setStyleSheet(f"font-size: 11px; font-weight: bold; color: {bar_color}; background: transparent;")
+        rl.addWidget(pct_lbl)
         return row

@@ -10,12 +10,12 @@ from src.core.i18n import t
 NAV_ITEMS = [
     ("nav_dashboard",     "dashboard",      "fa5s.th-large"),
     ("nav_employees",     "employees",      "fa5s.users"),
-    ("nav_hierarchy",     "hierarchy",      "fa5s.building"),
+    ("nav_hierarchy",     "hierarchy",      "fa5s.sitemap"),
     ("nav_promotions",    "promotions",     "fa5s.chart-line"),
     ("nav_commendations", "commendations",  "fa5s.award"),
     ("nav_sanctions",     "sanctions",      "fa5s.exclamation-triangle"),
-    ("nav_audit",         "audit_log",      "fa5s.file-alt"),
-    ("nav_import",        "import_data",    "fa5s.upload"),
+    ("nav_audit",         "audit_log",      "fa5s.clipboard-list"),
+    ("nav_import",        "import_data",    "fa5s.cloud-upload-alt"),
     ("nav_settings",      "settings",       "fa5s.cog"),
 ]
 

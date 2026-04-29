@@ -218,7 +218,7 @@ class SalaryTab(QWidget):
             outer.addWidget(card)
             self.fields[level] = (min_spin, max_spin)
 
-        self.currency_input.textChanged.connect(self._update_currency_badges)
+        self.currency_input.textChanged.connect(self._on_currency_changed)
 
         # Save
         save_btn = QPushButton("Save Salary Ranges")
@@ -231,6 +231,15 @@ class SalaryTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(_scroll_wrap(content))
+
+    def _on_currency_changed(self, text):
+        clean = text.upper()[:3]
+        if clean != text:
+            self.currency_input.blockSignals(True)
+            self.currency_input.setText(clean)
+            self.currency_input.setCursorPosition(len(clean))
+            self.currency_input.blockSignals(False)
+        self._update_currency_badges(clean)
 
     def _update_currency_badges(self, text=None):
         code = (text or self.currency_input.text()).strip() or "—"
@@ -262,7 +271,7 @@ class SalaryTab(QWidget):
                     title.base_salary_min = mn.value()
                     title.base_salary_max = mx.value()
                     title.currency = currency
-            log_action(session, self.user.id, "settings.salary_ranges", description="Salary ranges updated")
+            log_action(session, action="settings.salary_ranges", performed_by_id=self.user.id, description="Salary ranges updated")
             session.commit()
             QMessageBox.information(self, t("success"), "Salary ranges saved successfully.")
         except Exception as e:
@@ -369,7 +378,7 @@ class IncrementTab(QWidget):
                 if title:
                     title.annual_increment_type  = type_combo.currentData()
                     title.annual_increment_value = val_spin.value()
-            log_action(session, self.user.id, "settings.increment_rules", description="Annual increment rules updated")
+            log_action(session, action="settings.increment_rules", performed_by_id=self.user.id, description="Annual increment rules updated")
             session.commit()
             QMessageBox.information(self, t("success"), "Annual increment rules saved.")
         except Exception as e:
@@ -463,7 +472,7 @@ class SecurityTab(QWidget):
                 QMessageBox.critical(self, t("error"), "Current password is incorrect.")
                 return
             user.password_hash = sha256(new.encode()).hexdigest()
-            log_action(session, self.user.id, "settings.password_change",
+            log_action(session, action="settings.password_change", performed_by_id=self.user.id,
                 description=f"Password changed for user: {self.user.username}")
             session.commit()
             QMessageBox.information(self, t("success"), "Password changed successfully.")
@@ -581,7 +590,7 @@ class DatabaseTab(QWidget):
                         str(e.join_date.date()) if e.join_date else "",
                         e.work_email or "", e.phone or ""
                     ])
-            log_action(session, self.user.id, "settings.export_employees",
+            log_action(session, action="settings.export_employees", performed_by_id=self.user.id,
                 description=f"Employee data exported to CSV: {len(employees)} records")
             session.commit()
             QMessageBox.information(self, t("success"),

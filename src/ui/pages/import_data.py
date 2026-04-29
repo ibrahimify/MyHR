@@ -437,8 +437,11 @@ class ImportDataPage(QWidget):
                 except Exception as e:
                     errors.append(f"Row {row['row']}: {str(e)}")
 
-            log_action(session, self.user.id, "import.bulk_employees", "employee", None,
-                description=f"Bulk CSV import: {imported} employees imported successfully")
+            log_action(
+                session, action="import.bulk_employees", performed_by_id=self.user.id,
+                target_table="employee", target_id=None,
+                description=f"Bulk CSV import: {imported} employees imported successfully"
+            )
             session.commit()
             self._set_step(2)
 
