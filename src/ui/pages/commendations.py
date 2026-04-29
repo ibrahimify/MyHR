@@ -103,7 +103,7 @@ class IssueCommendationTab(QWidget):
         content.setStyleSheet("background: #f9fafb;")
         main = QHBoxLayout(content)
         main.setContentsMargins(24, 20, 24, 20)
-        main.setSpacing(20)
+        main.setSpacing(16)
         main.setAlignment(Qt.AlignTop)
 
         # ── Left: form ────────────────────────────────────────────────────────

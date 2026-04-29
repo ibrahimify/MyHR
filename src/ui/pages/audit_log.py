@@ -141,7 +141,7 @@ class AuditLogPage(QWidget):
                 "user": l.performed_by.full_name if l.performed_by else "System",
                 "action": l.action,
                 "description": l.description or "—",
-                "category": l.action.split(".")[0] if l.action else "other",
+                "category": l.action.split(".")[0].lower() if l.action and "." in l.action else "other",
                 "target": f"{l.target_table} #{l.target_id}" if l.target_table else "—",
             } for l in logs]
 
@@ -190,8 +190,15 @@ class AuditLogPage(QWidget):
             desc_item.setToolTip(desc)
             self.table.setItem(i, 3, desc_item)
 
-            action_full = QTableWidgetItem(log["action"].replace(".", " › "))
-            action_full.setToolTip(log["action"])
+            raw = log["action"]
+            # Format: employee.create -> Employee › Create
+            if "." in raw:
+                parts = raw.split(".")
+                display = " › ".join(p.replace("_"," ").title() for p in parts)
+            else:
+                display = raw.replace("_"," ").title()
+            action_full = QTableWidgetItem(display)
+            action_full.setToolTip(raw)
             action_full.setForeground(QColor("#111827"))
             self.table.setItem(i, 2, action_full)
 

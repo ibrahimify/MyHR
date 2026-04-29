@@ -1,0 +1,3 @@
+PySide6==6.11.0
+SQLAlchemy==2.0.49
+qtawesome==1.4.2

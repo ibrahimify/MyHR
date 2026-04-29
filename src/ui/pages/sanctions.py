@@ -270,6 +270,7 @@ class SanctionHistoryTab(QWidget):
                 "date": s.issued_at.strftime("%Y-%m-%d") if s.issued_at else "—",
                 "delay": f"+{s.delay_months} month{'s' if s.delay_months != 1 else ''}",
                 "resolved": s.is_resolved,
+                "resolved_at": s.resolved_at.strftime("%Y-%m-%d") if s.resolved_at else "—",
             } for s in sanctions]
         finally:
             session.close()
@@ -287,7 +288,8 @@ class SanctionHistoryTab(QWidget):
             delay = QTableWidgetItem(row["delay"])
             delay.setForeground(QColor("#ef4444"))
             self.table.setItem(i, 5, delay)
-            status = QTableWidgetItem("Resolved" if row["resolved"] else "Active")
+            status_text = f"Resolved ({row['resolved_at']})" if row["resolved"] else "Active"
+            status = QTableWidgetItem(status_text)
             status.setForeground(QColor("#10b981") if row["resolved"] else QColor("#ef4444"))
             self.table.setItem(i, 6, status)
 
