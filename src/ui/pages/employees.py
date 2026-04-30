@@ -12,9 +12,10 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QLineEdit, QComboBox, QTableWidget,
     QTableWidgetItem, QHeaderView, QStackedWidget, QTabWidget,
-    QTextEdit, QMessageBox, QDateEdit, QGridLayout
+    QTextEdit, QMessageBox, QDateEdit, QGridLayout, QListWidget,
+    QListWidgetItem, QSizePolicy
 )
-from PySide6.QtCore import Qt, QDate, QSize
+from PySide6.QtCore import Qt, QDate, QSize, Signal
 from PySide6.QtGui import QColor
 
 from src.core.i18n import t
@@ -66,6 +67,29 @@ QLineEdit:focus {
     background: white;
 }
 """
+DATE_STYLE = """
+QDateEdit {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 0 34px 0 12px;
+    font-size: 14px;
+    background: #f3f4f6;
+    color: #111827;
+    min-height: 40px;
+}
+QDateEdit:focus {
+    border-color: #2563eb;
+    background: white;
+}
+QDateEdit::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
+    width: 28px;
+    border: none;
+    background: transparent;
+}
+QDateEdit::down-arrow { image: none; width: 0; height: 0; }
+"""
 EMP_CARD_SS = """
 QFrame#EmployeeCard {
     background: white;
@@ -77,6 +101,180 @@ QFrame#EmployeeCard QLabel {
     background: transparent;
 }
 """
+PROFILE_CARD_SS = """
+QFrame#ProfileCard {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+QFrame#ProfileCard QLabel {
+    border: none;
+    background: transparent;
+}
+"""
+
+
+class CleanSelect(QWidget):
+    currentIndexChanged = Signal(int)
+    currentTextChanged = Signal(str)
+    valueChanged = Signal(object)
+
+    def __init__(self):
+        super().__init__()
+        self._items = []
+        self._current_index = -1
+        self.setFixedHeight(44)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        self.trigger = QFrame()
+        self.trigger.setCursor(Qt.PointingHandCursor)
+        self.trigger.setFixedHeight(44)
+        self.trigger.setStyleSheet("""
+            QFrame {
+                background: #f3f4f6;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+            }
+            QFrame:hover { background: #eef2f7; }
+        """)
+
+        trigger_layout = QHBoxLayout(self.trigger)
+        trigger_layout.setContentsMargins(12, 0, 12, 0)
+        trigger_layout.setSpacing(8)
+
+        self.label = QLabel("")
+        self.label.setStyleSheet("font-size: 14px; color: #111827; background: transparent; border: none;")
+        self.arrow = QLabel()
+        self.arrow.setFixedSize(16, 16)
+        self.arrow.setAlignment(Qt.AlignCenter)
+        self.arrow.setPixmap(qta.icon("fa5s.chevron-down", color="#6b7280").pixmap(12, 12))
+
+        trigger_layout.addWidget(self.label, 1)
+        trigger_layout.addWidget(self.arrow)
+        layout.addWidget(self.trigger)
+
+        self.popup = QFrame()
+        self.popup.hide()
+        self.popup.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint)
+        self.popup.setAttribute(Qt.WA_TranslucentBackground, True)
+        popup_layout = QVBoxLayout(self.popup)
+        popup_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.popup_box = QFrame()
+        self.popup_box.setStyleSheet("""
+            QFrame {
+                background: white;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+            }
+        """)
+        box_layout = QVBoxLayout(self.popup_box)
+        box_layout.setContentsMargins(4, 4, 4, 4)
+
+        self.list_widget = QListWidget()
+        self.list_widget.setFrameShape(QFrame.NoFrame)
+        self.list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.list_widget.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.list_widget.setStyleSheet("""
+            QListWidget {
+                background: transparent;
+                border: none;
+                outline: none;
+            }
+            QListWidget::item {
+                padding: 8px 12px;
+                border-radius: 6px;
+                color: #111827;
+                font-size: 14px;
+            }
+            QListWidget::item:hover { background: #f3f4f6; }
+            QListWidget::item:selected {
+                background: #2563eb;
+                color: white;
+            }
+        """)
+        box_layout.addWidget(self.list_widget)
+        popup_layout.addWidget(self.popup_box)
+
+        self.trigger.mousePressEvent = self._toggle_popup
+        self.list_widget.itemClicked.connect(self._select_item)
+
+    def addItem(self, label, value=None):
+        self._items.append((label, value))
+        item = QListWidgetItem(label)
+        item.setData(Qt.UserRole, value)
+        item.setSizeHint(QSize(0, 34))
+        self.list_widget.addItem(item)
+        self._resize_popup()
+        if self._current_index == -1:
+            self.setCurrentIndex(0)
+
+    def clear(self):
+        self._items.clear()
+        self._current_index = -1
+        self.label.setText("")
+        self.list_widget.clear()
+        self._resize_popup()
+
+    def currentData(self):
+        if 0 <= self._current_index < len(self._items):
+            return self._items[self._current_index][1]
+        return None
+
+    def currentText(self):
+        if 0 <= self._current_index < len(self._items):
+            return self._items[self._current_index][0]
+        return ""
+
+    def count(self):
+        return len(self._items)
+
+    def setCurrentIndex(self, index):
+        if not 0 <= index < len(self._items):
+            return
+        self._current_index = index
+        text, value = self._items[index]
+        self.label.setText(text)
+        self.list_widget.setCurrentRow(index)
+        if not self.signalsBlocked():
+            self.currentIndexChanged.emit(index)
+            self.currentTextChanged.emit(text)
+            self.valueChanged.emit(value)
+
+    def _resize_popup(self):
+        visible_items = min(max(self.list_widget.count(), 1), 8)
+        self.list_widget.setFixedHeight((34 * visible_items) + 2)
+
+    def _toggle_popup(self, event):
+        if self.popup.isVisible():
+            self.popup.hide()
+            return
+        pos = self.mapToGlobal(self.rect().bottomLeft())
+        self.popup.setFixedWidth(self.width())
+        self.popup.move(pos.x(), pos.y() + 4)
+        self.popup.show()
+
+    def _select_item(self, item):
+        self.setCurrentIndex(self.list_widget.row(item))
+        self.popup.hide()
+
+
+class ChevronDateEdit(QDateEdit):
+    def __init__(self):
+        super().__init__()
+        self._arrow = QLabel(self)
+        self._arrow.setFixedSize(16, 16)
+        self._arrow.setAlignment(Qt.AlignCenter)
+        self._arrow.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self._arrow.setPixmap(qta.icon("fa5s.chevron-down", color="#6b7280").pixmap(12, 12))
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._arrow.move(self.width() - 28, (self.height() - self._arrow.height()) // 2)
 
 
 class EmployeesPage(QWidget):
@@ -109,12 +307,14 @@ class EmployeesPage(QWidget):
         self.stack.setCurrentWidget(self.add_page)
 
     def _show_profile(self, employee_id):
+        self.profile_page.editing = False
         self.profile_page.load(employee_id)
         self.stack.setCurrentWidget(self.profile_page)
 
     def _show_edit(self, employee_id):
-        self.edit_page.load(employee_id)
-        self.stack.setCurrentWidget(self.edit_page)
+        self.profile_page.load(employee_id)
+        self.stack.setCurrentWidget(self.profile_page)
+        self.profile_page._begin_inline_edit()
 
 
 class EmployeeListView(QWidget):
@@ -161,22 +361,20 @@ class EmployeeListView(QWidget):
         self.search_input.textChanged.connect(self._apply_filter)
         bl.addWidget(self.search_input, 1)
 
-        self.dept_filter = QComboBox()
+        self.dept_filter = CleanSelect()
         self.dept_filter.setFixedHeight(44)
         self.dept_filter.setMinimumWidth(220)
-        self.dept_filter.setStyleSheet(COMBO_STYLE)
         self.dept_filter.addItem("All Departments", None)
-        self.dept_filter.currentIndexChanged.connect(self._apply_filter)
+        self.dept_filter.currentIndexChanged.connect(lambda *_: self._apply_filter())
         bl.addWidget(self.dept_filter)
 
-        self.status_filter = QComboBox()
+        self.status_filter = CleanSelect()
         self.status_filter.setFixedHeight(44)
         self.status_filter.setMinimumWidth(180)
-        self.status_filter.setStyleSheet(COMBO_STYLE)
         self.status_filter.addItem("All Status", None)
         for s in STATUS_OPTIONS:
             self.status_filter.addItem(s.replace("_", " ").title(), s)
-        self.status_filter.currentIndexChanged.connect(self._apply_filter)
+        self.status_filter.currentIndexChanged.connect(lambda *_: self._apply_filter())
         bl.addWidget(self.status_filter)
 
         add_btn = QPushButton("  " + t("add_employee"))
@@ -236,19 +434,19 @@ class EmployeeListView(QWidget):
         """)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.table.setColumnWidth(0, 150)
-        self.table.setColumnWidth(1, 190)
-        self.table.setColumnWidth(2, 270)
-        self.table.setColumnWidth(3, 160)
-        self.table.setColumnWidth(4, 240)
-        self.table.setColumnWidth(5, 95)
+        self.table.setColumnWidth(1, 210)
+        self.table.setColumnWidth(2, 320)
+        self.table.setColumnWidth(3, 170)
+        self.table.setColumnWidth(4, 270)
+        self.table.setColumnWidth(5, 100)
         self.table.setColumnWidth(6, 140)
         self.table.horizontalHeader().setSectionResizeMode(7, QHeaderView.Fixed)
-        self.table.setColumnWidth(7, 132)
+        self.table.setColumnWidth(7, 150)
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setShowGrid(False)
-        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         table_layout.addWidget(self.table)
         layout.addWidget(table_card, 1)
@@ -286,6 +484,7 @@ class EmployeeListView(QWidget):
             (not status or e["status"] == status)
         ]
         self.count_lbl.setText(f"Showing {len(filtered)} of {len(self.all_employees)} employees")
+        self.filtered_employees = filtered
         self._populate_table(filtered)
 
     def _populate_table(self, employees):
@@ -354,10 +553,14 @@ class EmployeeListView(QWidget):
         wrap = QWidget()
         wrap.setStyleSheet("background: transparent;")
         layout = QHBoxLayout(wrap)
-        layout.setContentsMargins(12, 0, 12, 0)
+        layout.setContentsMargins(4, 0, 4, 0)
         layout.setSpacing(0)
         label = QLabel(text)
         label.setAlignment(Qt.AlignCenter)
+        if len(text) <= 3:
+            label.setMinimumWidth(38)
+        elif len(text) <= 9:
+            label.setMinimumWidth(76)
         border_css = f"border: 1px solid {border};" if border else "border: none;"
         label.setStyleSheet(
             f"background: {bg}; color: {fg}; {border_css} border-radius: 8px;"
@@ -450,10 +653,11 @@ class AddEmployeeView(QWidget):
         layout.setSpacing(0)
 
         header = QFrame()
-        header.setFixedHeight(72)
+        header.setFixedHeight(168)
         header.setStyleSheet("background: #f9fafb; border: none;")
-        h = QHBoxLayout(header)
-        h.setContentsMargins(28, 0, 28, 0)
+        h = QVBoxLayout(header)
+        h.setContentsMargins(40, 28, 40, 12)
+        h.setSpacing(0)
         back_btn = QPushButton("  Back to Employees")
         back_btn.setIcon(qta.icon("fa5s.arrow-left", color="#2563eb"))
         back_btn.setIconSize(QSize(12, 12))
@@ -461,10 +665,14 @@ class AddEmployeeView(QWidget):
         back_btn.setStyleSheet("QPushButton { background: transparent; color: #2563eb; border: none; font-size: 13px; font-weight: 600; } QPushButton:hover { text-decoration: underline; }")
         back_btn.clicked.connect(self.on_back)
         title = QLabel("Add New Employee")
-        title.setStyleSheet("font-size: 28px; font-weight: 800; color: #111827; margin-left: 12px;")
-        h.addWidget(back_btn)
+        title.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827; background: transparent;")
+        subtitle = QLabel("Fill in the employee details to add them to the system")
+        subtitle.setStyleSheet("font-size: 16px; color: #4b5563; background: transparent;")
+        h.addWidget(back_btn, 0, Qt.AlignLeft)
+        h.addSpacing(28)
         h.addWidget(title)
-        h.addStretch()
+        h.addSpacing(6)
+        h.addWidget(subtitle)
         layout.addWidget(header)
 
         scroll = QScrollArea()
@@ -473,7 +681,7 @@ class AddEmployeeView(QWidget):
         content = QWidget()
         content.setStyleSheet("background: #f9fafb;")
         cl = QHBoxLayout(content)
-        cl.setContentsMargins(40, 24, 40, 40)
+        cl.setContentsMargins(40, 0, 40, 40)
         cl.setSpacing(24)
         cl.setAlignment(Qt.AlignTop)
 
@@ -499,9 +707,8 @@ class AddEmployeeView(QWidget):
         row.setSpacing(12)
         dl = QVBoxLayout()
         dl.addWidget(self._lbl(t("degree") + " *"))
-        self.degree_combo = QComboBox()
+        self.degree_combo = CleanSelect()
         self.degree_combo.setFixedHeight(44)
-        self.degree_combo.setStyleSheet(COMBO_STYLE)
         for d in DEGREE_OPTIONS:
             self.degree_combo.addItem(d)
         self.degree_combo.currentTextChanged.connect(lambda deg: self.level_display.setText(degree_to_title_name(deg)))
@@ -532,6 +739,39 @@ class AddEmployeeView(QWidget):
         right.setSpacing(16)
         right.setAlignment(Qt.AlignTop)
 
+        actions_card = QFrame()
+        actions_card.setObjectName("EmployeeCard")
+        actions_card.setStyleSheet(EMP_CARD_SS)
+        ac = QVBoxLayout(actions_card)
+        ac.setContentsMargins(24, 24, 24, 24)
+        ac.setSpacing(16)
+        ac.addWidget(self._lbl("Actions", bold=True, size=18, color="#111827"))
+        save_btn = QPushButton("  Save Employee")
+        save_btn.setCursor(Qt.PointingHandCursor)
+        save_btn.setFixedHeight(44)
+        save_btn.setIcon(qta.icon("fa5s.save", color="white"))
+        save_btn.setIconSize(QSize(16, 16))
+        save_btn.setStyleSheet("QPushButton { background: #030213; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; } QPushButton:hover { background: #111827; }")
+        save_btn.clicked.connect(self._save)
+        ac.addWidget(save_btn)
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.setCursor(Qt.PointingHandCursor)
+        cancel_btn.setFixedHeight(44)
+        cancel_btn.setStyleSheet("QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-weight: 600; } QPushButton:hover { background: #f3f4f6; }")
+        cancel_btn.clicked.connect(self.on_back)
+        ac.addWidget(cancel_btn)
+        right.addWidget(actions_card)
+
+        rules_card = QFrame()
+        rules_card.setStyleSheet("QFrame { background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; } QLabel { border: none; background: transparent; }")
+        rc = QVBoxLayout(rules_card)
+        rc.setContentsMargins(24, 22, 24, 22)
+        rc.setSpacing(10)
+        rc.addWidget(self._lbl("Level Assignment Rules", bold=True, size=16, color="#1e40af"))
+        for line in ["PhD degree -> starts at L5", "MSc degree -> starts at L6", "BSc degree -> starts at L7"]:
+            l = QLabel("•  " + line)
+            l.setStyleSheet("font-size: 14px; color: #1d4ed8; background: transparent;")
+            rc.addWidget(l)
         org_card = QFrame()
         org_card.setObjectName("EmployeeCard")
         org_card.setStyleSheet(EMP_CARD_SS)
@@ -540,23 +780,20 @@ class AddEmployeeView(QWidget):
         oc.setSpacing(10)
         oc.addWidget(self._lbl("Organization", bold=True, size=18, color="#111827"))
         oc.addWidget(self._lbl("Org Unit"))
-        self.org_combo = QComboBox()
+        self.org_combo = CleanSelect()
         self.org_combo.setFixedHeight(44)
-        self.org_combo.setStyleSheet(COMBO_STYLE)
         oc.addWidget(self.org_combo)
         oc.addWidget(self._lbl(t("reports_to")))
-        self.manager_combo = QComboBox()
+        self.manager_combo = CleanSelect()
         self.manager_combo.setFixedHeight(44)
-        self.manager_combo.setStyleSheet(COMBO_STYLE)
         oc.addWidget(self.manager_combo)
         oc.addWidget(self._lbl(t("status")))
-        self.status_combo = QComboBox()
+        self.status_combo = CleanSelect()
         self.status_combo.setFixedHeight(44)
-        self.status_combo.setStyleSheet(COMBO_STYLE)
         for s in STATUS_OPTIONS:
             self.status_combo.addItem(s.replace("_"," ").title(), s)
         oc.addWidget(self.status_combo)
-        right.addWidget(org_card)
+        right.addWidget(rules_card)
 
         info_card = QFrame()
         info_card.setStyleSheet("QFrame { background: #f0fdf4; border-radius: 12px; border: 1px solid #bbf7d0; } QLabel { border: none; background: transparent; }")
@@ -569,21 +806,8 @@ class AddEmployeeView(QWidget):
             l.setStyleSheet("font-size: 13px; color: #166534; background: transparent;")
             ic.addWidget(l)
         right.addWidget(info_card)
+        right.addWidget(org_card)
 
-        save_btn = QPushButton("Save Employee")
-        save_btn.setCursor(Qt.PointingHandCursor)
-        save_btn.setFixedHeight(44)
-        save_btn.setIcon(qta.icon("fa5s.save", color="white"))
-        save_btn.setIconSize(QSize(16, 16))
-        save_btn.setStyleSheet("QPushButton { background: #030213; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; } QPushButton:hover { background: #111827; }")
-        save_btn.clicked.connect(self._save)
-        right.addWidget(save_btn)
-        cancel_btn = QPushButton("Cancel")
-        cancel_btn.setCursor(Qt.PointingHandCursor)
-        cancel_btn.setFixedHeight(44)
-        cancel_btn.setStyleSheet("QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-weight: 600; } QPushButton:hover { background: #f3f4f6; }")
-        cancel_btn.clicked.connect(self.on_back)
-        right.addWidget(cancel_btn)
         cl.addLayout(right, 2)
         scroll.setWidget(content)
         layout.addWidget(scroll)
@@ -616,14 +840,22 @@ class AddEmployeeView(QWidget):
                 widget.setFixedHeight(80)
                 widget.setStyleSheet("QTextEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; font-size: 14px; background: #f3f4f6; color: #111827; } QTextEdit:focus { border-color: #2563eb; background: white; }")
             elif ftype == "date":
-                widget = QDateEdit()
+                widget = ChevronDateEdit()
                 widget.setCalendarPopup(True)
                 widget.setFixedHeight(44)
                 widget.setDate(QDate.currentDate())
-                widget.setStyleSheet("QDateEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 12px; font-size: 14px; background: #f3f4f6; color: #111827; } QDateEdit:focus { border-color: #2563eb; background: white; }")
+                widget.setDisplayFormat("M/d/yyyy")
+                widget.setStyleSheet(DATE_STYLE)
             else:
                 widget = QLineEdit()
                 widget.setFixedHeight(44)
+                placeholders = {
+                    "phone": "+36 20 123 4567",
+                    "work_phone": "+36 20 123 4567",
+                    "position": "e.g., Senior Developer",
+                    "base_salary": "e.g., 3500",
+                }
+                widget.setPlaceholderText(placeholders.get(key, ""))
                 widget.setStyleSheet(INPUT_STYLE)
             field.addWidget(widget)
             self.fields[key] = widget
@@ -1157,6 +1389,8 @@ class EmployeeProfileView(QWidget):
         self.on_back = on_back
         self.on_edit = on_edit
         self.employee_db_id = None
+        self.editing = False
+        self.edit_fields = {}
         self.setStyleSheet("QWidget { background: #f9fafb; font-family: 'Segoe UI'; }")
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1166,6 +1400,8 @@ class EmployeeProfileView(QWidget):
         layout.addWidget(self.scroll)
 
     def load(self, employee_db_id):
+        if self.employee_db_id != employee_db_id:
+            self.editing = False
         self.employee_db_id = employee_db_id
         session = get_session()
         try:
@@ -1209,7 +1445,8 @@ class EmployeeProfileView(QWidget):
 
     def _profile_header(self, emp):
         card = QFrame()
-        card.setStyleSheet("background: white; border-radius: 12px; border: 1px solid #e5e7eb;")
+        card.setObjectName("ProfileCard")
+        card.setStyleSheet(PROFILE_CARD_SS)
         layout = QHBoxLayout(card)
         layout.setContentsMargins(24, 20, 24, 20)
         layout.setSpacing(20)
@@ -1252,17 +1489,25 @@ class EmployeeProfileView(QWidget):
         meta.addStretch()
         info.addLayout(meta)
         layout.addLayout(info, 1)
-        edit = QPushButton("  Edit Profile")
+        edit = QPushButton("  Editing" if self.editing else "  Edit Profile")
         edit.setIcon(qta.icon("fa5s.edit", color="white"))
         edit.setIconSize(QSize(13, 13))
         edit.setCursor(Qt.PointingHandCursor)
         edit.setFixedHeight(36)
         edit.setStyleSheet("QPushButton { background: #030213; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; padding: 0 14px; } QPushButton:hover { background: #111827; }")
-        edit.clicked.connect(lambda: self.on_edit(self.employee_db_id) if self.employee_db_id else None)
+        edit.clicked.connect(self._begin_inline_edit)
         layout.addWidget(edit, alignment=Qt.AlignTop)
         return card
 
+    def _begin_inline_edit(self):
+        if not self.employee_db_id:
+            return
+        self.editing = True
+        self.load(self.employee_db_id)
+
     def _details_tab(self, emp):
+        if self.editing:
+            return self._edit_details_tab(emp)
         page = QWidget()
         page.setStyleSheet("background: #f9fafb;")
         layout = QHBoxLayout(page)
@@ -1288,6 +1533,185 @@ class EmployeeProfileView(QWidget):
             ], badge="Admin Only"))
         layout.addStretch()
         return page
+
+    def _edit_details_tab(self, emp):
+        self.edit_fields = {}
+        page = QWidget()
+        page.setStyleSheet("background: #f9fafb;")
+        layout = QHBoxLayout(page)
+        layout.setContentsMargins(0, 12, 0, 0)
+        layout.setSpacing(16)
+
+        left = QVBoxLayout()
+        left.setSpacing(16)
+        left.addWidget(self._edit_card("Employment Information", [
+            ("position", t("position"), emp.position, True),
+            ("work_email", t("work_email"), emp.work_email or "", False),
+            ("work_phone", t("work_phone"), emp.work_phone or "", False),
+            ("base_salary", t("base_salary"), str(emp.base_salary or 0), False),
+        ]))
+        if self.user.role == "admin":
+            left.addWidget(self._edit_card("Personal Information (Admin Only)", [
+                ("first_name", t("first_name"), emp.first_name, True),
+                ("last_name", t("last_name"), emp.last_name, True),
+                ("personal_email", t("personal_email"), emp.personal_email or "", False),
+                ("phone", t("phone"), emp.phone or "", False),
+                ("address", t("address"), emp.address or "", False),
+            ]))
+        layout.addLayout(left, 3)
+
+        right_card = QFrame()
+        right_card.setObjectName("ProfileCard")
+        right_card.setStyleSheet(PROFILE_CARD_SS)
+        right = QVBoxLayout(right_card)
+        right.setContentsMargins(24, 24, 24, 24)
+        right.setSpacing(12)
+        right.addWidget(self._info_title("Organization & Status"))
+
+        session = get_session()
+        try:
+            right.addWidget(self._edit_label("Org Unit"))
+            self.inline_org_combo = CleanSelect()
+            self.inline_org_combo.addItem("— None —", None)
+            for unit in session.query(OrgUnit).all():
+                self.inline_org_combo.addItem(f"{unit.unit_type.title()}: {unit.name}", unit.id)
+                if emp.org_unit_id == unit.id:
+                    self.inline_org_combo.setCurrentIndex(self.inline_org_combo.count() - 1)
+            right.addWidget(self.inline_org_combo)
+
+            right.addWidget(self._edit_label("Reports To"))
+            self.inline_manager_combo = CleanSelect()
+            self.inline_manager_combo.addItem("— None —", None)
+            for manager in session.query(Employee).filter(Employee.id != emp.id).all():
+                self.inline_manager_combo.addItem(f"{manager.employee_id} — {manager.full_name}", manager.id)
+                if emp.reports_to_id == manager.id:
+                    self.inline_manager_combo.setCurrentIndex(self.inline_manager_combo.count() - 1)
+            right.addWidget(self.inline_manager_combo)
+
+            right.addWidget(self._edit_label("Current Level / Role"))
+            self.inline_title_combo = CleanSelect()
+            for title in session.query(Title).order_by(Title.name.desc()).all():
+                self.inline_title_combo.addItem(f"{title.name} - {title.label}", title.id)
+                if emp.title_id == title.id:
+                    self.inline_title_combo.setCurrentIndex(self.inline_title_combo.count() - 1)
+            right.addWidget(self.inline_title_combo)
+        finally:
+            session.close()
+
+        right.addWidget(self._edit_label("Status"))
+        self.inline_status_combo = CleanSelect()
+        for status in STATUS_OPTIONS:
+            self.inline_status_combo.addItem(status.replace("_", " ").title(), status)
+            if emp.status == status:
+                self.inline_status_combo.setCurrentIndex(self.inline_status_combo.count() - 1)
+        right.addWidget(self.inline_status_combo)
+        right.addSpacing(10)
+
+        save = QPushButton("Save Changes")
+        save.setCursor(Qt.PointingHandCursor)
+        save.setFixedHeight(44)
+        save.setStyleSheet("QPushButton { background: #030213; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; } QPushButton:hover { background: #111827; }")
+        save.clicked.connect(self._save_inline_profile)
+        right.addWidget(save)
+
+        cancel = QPushButton("Cancel")
+        cancel.setCursor(Qt.PointingHandCursor)
+        cancel.setFixedHeight(44)
+        cancel.setStyleSheet("QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-weight: 600; } QPushButton:hover { background: #f3f4f6; }")
+        cancel.clicked.connect(self._cancel_inline_edit)
+        right.addWidget(cancel)
+        right.addStretch()
+
+        layout.addWidget(right_card, 2)
+        return page
+
+    def _edit_card(self, title, fields):
+        card = QFrame()
+        card.setObjectName("ProfileCard")
+        card.setStyleSheet(PROFILE_CARD_SS)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
+        layout.addWidget(self._info_title(title))
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(20)
+        grid.setVerticalSpacing(14)
+        for i, (key, label, value, required) in enumerate(fields):
+            field = QVBoxLayout()
+            field.setSpacing(6)
+            field.addWidget(self._edit_label(label + (" *" if required else "")))
+            editor = QLineEdit(str(value))
+            editor.setFixedHeight(44)
+            editor.setStyleSheet(INPUT_STYLE)
+            field.addWidget(editor)
+            self.edit_fields[key] = editor
+            grid.addLayout(field, i // 2, i % 2)
+        layout.addLayout(grid)
+        return card
+
+    def _edit_label(self, text):
+        label = QLabel(text)
+        label.setStyleSheet("font-size: 12px; font-weight: 700; color: #111827; background: transparent; border: none;")
+        return label
+
+    def _cancel_inline_edit(self):
+        self.editing = False
+        self.load(self.employee_db_id)
+
+    def _save_inline_profile(self):
+        session = get_session()
+        try:
+            emp = session.query(Employee).filter_by(id=self.employee_db_id).first()
+            if not emp:
+                return
+            before = json.dumps({"position": emp.position, "status": emp.status, "base_salary": emp.base_salary})
+
+            def value(key):
+                widget = self.edit_fields.get(key)
+                return widget.text().strip() if widget else ""
+
+            if not value("position"):
+                QMessageBox.warning(self, t("warning"), f"{t('position')} is required.")
+                return
+
+            emp.position = value("position")
+            emp.work_email = value("work_email") or None
+            emp.work_phone = value("work_phone") or None
+            salary_raw = value("base_salary")
+            try:
+                emp.base_salary = float(salary_raw) if salary_raw else 0.0
+            except ValueError:
+                QMessageBox.warning(self, t("warning"), "Base salary must be a number.")
+                return
+
+            emp.org_unit_id = self.inline_org_combo.currentData()
+            emp.reports_to_id = self.inline_manager_combo.currentData()
+            emp.title_id = self.inline_title_combo.currentData()
+            emp.status = self.inline_status_combo.currentData()
+
+            if self.user.role == "admin":
+                if not value("first_name") or not value("last_name"):
+                    QMessageBox.warning(self, t("warning"), "First name and last name are required.")
+                    return
+                emp.first_name = value("first_name")
+                emp.last_name = value("last_name")
+                emp.personal_email = value("personal_email") or None
+                emp.phone = value("phone") or None
+                emp.address = value("address") or None
+
+            after = json.dumps({"position": emp.position, "status": emp.status, "base_salary": emp.base_salary})
+            log_action(session=session, performed_by_id=self.user.id, action="employee.update",
+                target_table="employee", target_id=emp.id,
+                description=f"Employee updated: {emp.full_name} ({emp.employee_id})",
+                before_value=before, after_value=after)
+            session.commit()
+            self.editing = False
+            self.load(emp.id)
+        except Exception as exc:
+            session.rollback()
+            QMessageBox.critical(self, t("error"), str(exc))
+        finally:
+            session.close()
 
     def _promotion_tab(self, emp, race):
         page = QWidget()
@@ -1351,7 +1775,8 @@ class EmployeeProfileView(QWidget):
 
     def _info_card(self, title, rows, badge=None):
         card = QFrame()
-        card.setStyleSheet("background: white; border-radius: 12px; border: 1px solid #e5e7eb;")
+        card.setObjectName("ProfileCard")
+        card.setStyleSheet(PROFILE_CARD_SS)
         layout = QVBoxLayout(card)
         layout.setContentsMargins(20, 18, 20, 18)
         layout.setSpacing(12)
@@ -1368,7 +1793,7 @@ class EmployeeProfileView(QWidget):
             k.setStyleSheet("font-size: 12px; font-weight: 700; color: #111827; background: transparent;")
             v = QLabel(str(val))
             v.setWordWrap(True)
-            v.setStyleSheet("font-size: 12px; color: #6b7280; background: #f9fafb; border-radius: 7px; padding: 8px 10px;")
+            v.setStyleSheet("font-size: 12px; color: #6b7280; background: #f9fafb; border: none; border-radius: 7px; padding: 8px 10px;")
             field.addWidget(k)
             field.addWidget(v)
             layout.addLayout(field)
@@ -1376,7 +1801,8 @@ class EmployeeProfileView(QWidget):
 
     def _list_card(self, title):
         card = QFrame()
-        card.setStyleSheet("background: white; border-radius: 12px; border: 1px solid #e5e7eb;")
+        card.setObjectName("ProfileCard")
+        card.setStyleSheet(PROFILE_CARD_SS)
         layout = QVBoxLayout(card)
         layout.setContentsMargins(20, 18, 20, 18)
         layout.setSpacing(8)
@@ -1385,7 +1811,8 @@ class EmployeeProfileView(QWidget):
 
     def _event_row(self, icon_name, color, title, subtitle, date_text):
         row = QFrame()
-        row.setStyleSheet("background: transparent; border: none; border-bottom: 1px solid #f3f4f6;")
+        row.setObjectName("EventRow")
+        row.setStyleSheet("QFrame#EventRow { background: transparent; border: none; border-bottom: 1px solid #e5e7eb; } QFrame#EventRow QLabel { border: none; background: transparent; }")
         layout = QHBoxLayout(row)
         layout.setContentsMargins(0, 12, 0, 12)
         layout.setSpacing(12)
