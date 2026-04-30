@@ -54,8 +54,8 @@ class LoginWindow(QWidget):
 
         card = QFrame()
         card.setObjectName("LoginCard")
-        card.setFixedWidth(560)
-        card.setMinimumHeight(820)
+        card.setFixedWidth(450)
+        card.setMinimumHeight(0)
         card.setStyleSheet("""
             QFrame#LoginCard {
                 background: white;
@@ -69,15 +69,15 @@ class LoginWindow(QWidget):
         """)
 
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(40, 40, 40, 40)
+        card_layout.setContentsMargins(32, 32, 32, 32)
         card_layout.setSpacing(0)
 
         logo_row = QHBoxLayout()
         logo_row.setAlignment(Qt.AlignCenter)
         logo_box = QLabel()
-        logo_box.setFixedSize(80, 80)
+        logo_box.setFixedSize(64, 64)
         logo_box.setAlignment(Qt.AlignCenter)
-        logo_box.setPixmap(qta.icon("fa5s.clipboard-list", color="white").pixmap(42, 42))
+        logo_box.setPixmap(qta.icon("fa5s.clipboard-list", color="white").pixmap(40, 40))
         logo_box.setStyleSheet("background: #1f62f2; border-radius: 16px;")
         logo_row.addWidget(logo_box)
         card_layout.addLayout(logo_row)
@@ -92,7 +92,7 @@ class LoginWindow(QWidget):
         self.subtitle_lbl.setAlignment(Qt.AlignCenter)
         self.subtitle_lbl.setStyleSheet("font-size: 18px; color: #334155;")
         card_layout.addWidget(self.subtitle_lbl)
-        card_layout.addSpacing(72)
+        card_layout.addSpacing(32)
 
         language_title = QHBoxLayout()
         language_title.setSpacing(10)
@@ -131,7 +131,7 @@ class LoginWindow(QWidget):
         self._select_current_language()
         self.lang_combo.currentIndexChanged.connect(self._on_language_changed)
         card_layout.addWidget(self.lang_combo)
-        card_layout.addSpacing(58)
+        card_layout.addSpacing(24)
 
         self.username_lbl = self._field_label()
         card_layout.addWidget(self.username_lbl)
