@@ -254,4 +254,6 @@ If they differ:
 - Settings salary cards must stay white/subtle; no bright colored card backgrounds.
 - Global stylesheet hides ugly spinbox arrow buttons and styles combo popups/calendar widgets.
 - Organization hierarchy is now a Figma-style card tree using qtawesome icons and inline add/edit/delete actions.
-
+- Login screen was rebuilt to match the Figma card layout: large centered logo, title/subtitle, language selector below, integrated icon inputs, and clean role indicators.
+- Login translation refresh owns every visible login label, including Admin/HR Officer role indicators, so switching Arabic/English/Hungarian no longer leaves stale role text.
+- Login preserves the current session language when returning after logout; Arabic returns to the Arabic selector and RTL layout, English/Hungarian return to LTR.

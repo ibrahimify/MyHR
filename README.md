@@ -164,6 +164,9 @@ py -3.12 main.py
 ### Session 3 - Figma Matching + Branding/Hierarchy Polish
 - Fixed: Company name/subtitle from Settings now feeds login and sidebar via `src/core/app_settings.py`
 - Fixed: Global label-border bleed and ugly spinbox arrow buttons
+- Fixed: Login language switching now refreshes Admin/HR Officer labels instead of leaving stale Arabic/English text
+- Fixed: Login returns to the selected session language after logout, including Arabic RTL layout
+- Improved: Login screen rebuilt closer to the Figma mockup with large centered brand icon, language selector placement, icon inputs, and clean role indicators
 - Improved: Settings salary cards are now white/subtle instead of bright colored blocks
 - Improved: Organization hierarchy rebuilt as card rows with qtawesome icons and inline add/edit/delete actions
 - Added: L2 Board Member and L1 CEO / Executive levels with promotion rules

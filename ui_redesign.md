@@ -321,6 +321,9 @@ Database tab (within Security or separate):
 - Company branding comes from `src/core/app_settings.py` and must appear on login + sidebar.
 - Org hierarchy uses card rows with qtawesome icons and inline plus/edit/delete icon buttons.
 - Avoid textual arrows like `->` in user-facing UI; use words like "to" or qtawesome icons.
+- Login page must keep the Figma order: logo, app title, subtitle, language label/select, username, password, sign-in button, divider, authorized roles.
+- Every translatable login label must be stored as a widget reference and refreshed in `_refresh_text()`; do not create one-off translated labels for role pills.
+- Login language selector uses the current session language on rebuild after logout, including Arabic RTL layout.
 
 ## QTAWESOME ICON REFERENCE
 ```python

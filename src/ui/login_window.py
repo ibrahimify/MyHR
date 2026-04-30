@@ -1,27 +1,34 @@
 """
-Login Window — first screen the user sees.
-Features:
-- Language selector (EN / HU / AR) — sets session language before login
-- Username + password fields
-- Validates against DB, opens MainWindow on success
-- RTL layout applied automatically for Arabic
+Login Window - first screen the user sees.
+
+The language selector controls the current session language before login. The
+same session language is kept when the user logs out and returns here.
 """
 
 import qtawesome as qta
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QLineEdit, QPushButton, QFrame, QMessageBox, QComboBox
+    QApplication,
+    QComboBox,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtCore import Qt, QSize
-from src.database.connection import verify_login
-from src.core.i18n import t, set_language, is_rtl
+
 from src.core.app_settings import company_name, company_subtitle
+from src.core.i18n import get_language, is_rtl, set_language, t
+from src.database.connection import verify_login
 
 
 LANGUAGES = [
-    ("English",           "en", "🇬🇧"),
-    ("Magyar (Hungarian)","hu", "🇭🇺"),
-    ("العربية (Arabic)",  "ar", "🇸🇦"),
+    ("English", "en"),
+    ("Magyar", "hu"),
+    ("\u0627\u0644\u0639\u0631\u0628\u064a\u0629", "ar"),
 ]
 
 
@@ -30,239 +37,262 @@ class LoginWindow(QWidget):
         super().__init__()
         self.setWindowTitle("MyHR")
         self.setObjectName("LoginWindow")
+        self.role_labels = {}
         self._build()
         self.showMaximized()
 
     def _build(self):
         self.setStyleSheet("""
             QWidget#LoginWindow {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                    stop:0 #eff6ff, stop:1 #dbeafe);
+                background: #eaf4ff;
             }
         """)
+
         outer = QVBoxLayout(self)
         outer.setContentsMargins(24, 24, 24, 24)
         outer.addStretch(1)
 
-        # ── Card ─────────────────────────────────────────────────────────────
         card = QFrame()
         card.setObjectName("LoginCard")
-        card.setFixedWidth(420)
+        card.setFixedWidth(560)
+        card.setMinimumHeight(820)
         card.setStyleSheet("""
             QFrame#LoginCard {
                 background: white;
+                border: 1px solid #d8dee8;
                 border-radius: 16px;
-                border: 1px solid #e5e7eb;
             }
-            QFrame#LoginCard QLabel { background: transparent; }
+            QFrame#LoginCard QLabel {
+                background: transparent;
+                border: none;
+            }
         """)
+
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(36, 32, 36, 32)
+        card_layout.setContentsMargins(40, 40, 40, 40)
         card_layout.setSpacing(0)
 
-        # ── Language selector ─────────────────────────────────────────────────
-        lang_row = QHBoxLayout()
-        lang_row.setSpacing(8)
-
-        globe_lbl = QLabel()
-        globe_lbl.setPixmap(qta.icon("fa5s.globe", color="#6b7280").pixmap(16, 16))
-        lang_row.addWidget(globe_lbl)
-
-        self.lang_combo = QComboBox()
-        self.lang_combo.setFixedHeight(32)
-        self.lang_combo.setStyleSheet("""
-            QComboBox {
-                border: 1px solid #d1d5db;
-                border-radius: 6px;
-                padding: 0 10px;
-                font-size: 13px;
-                background: #f9fafb;
-                color: #374151;
-                min-height: 32px;
-            }
-            QComboBox:hover { border-color: #2563eb; }
-        """)
-        for label, code, flag in LANGUAGES:
-            self.lang_combo.addItem(f"{flag}  {label}", code)
-        self.lang_combo.currentIndexChanged.connect(self._on_language_changed)
-        lang_row.addWidget(self.lang_combo)
-        lang_row.addStretch()
-        card_layout.addLayout(lang_row)
-        card_layout.addSpacing(24)
-
-        # ── Logo ──────────────────────────────────────────────────────────────
         logo_row = QHBoxLayout()
         logo_row.setAlignment(Qt.AlignCenter)
-
         logo_box = QLabel()
-        logo_box.setFixedSize(64, 64)
+        logo_box.setFixedSize(80, 80)
         logo_box.setAlignment(Qt.AlignCenter)
-        logo_box.setStyleSheet("""
-            background: #2563eb;
-            border-radius: 16px;
-        """)
-        logo_box.setPixmap(qta.icon("fa5s.building", color="white").pixmap(28, 28))
+        logo_box.setPixmap(qta.icon("fa5s.clipboard-list", color="white").pixmap(42, 42))
+        logo_box.setStyleSheet("background: #1f62f2; border-radius: 16px;")
         logo_row.addWidget(logo_box)
         card_layout.addLayout(logo_row)
-        card_layout.addSpacing(14)
+        card_layout.addSpacing(24)
 
-        # ── Title ─────────────────────────────────────────────────────────────
-        self.title_lbl = QLabel(company_name(t("app_name")))
+        self.title_lbl = QLabel()
         self.title_lbl.setAlignment(Qt.AlignCenter)
-        self.title_lbl.setStyleSheet("font-size: 22px; font-weight: bold; color: #111827;")
+        self.title_lbl.setStyleSheet("font-size: 34px; font-weight: 800; color: #111827;")
         card_layout.addWidget(self.title_lbl)
 
-        self.subtitle_lbl = QLabel(company_subtitle(t("app_subtitle")))
+        self.subtitle_lbl = QLabel()
         self.subtitle_lbl.setAlignment(Qt.AlignCenter)
-        self.subtitle_lbl.setStyleSheet("font-size: 13px; color: #6b7280;")
+        self.subtitle_lbl.setStyleSheet("font-size: 18px; color: #334155;")
         card_layout.addWidget(self.subtitle_lbl)
-        card_layout.addSpacing(28)
+        card_layout.addSpacing(72)
 
-        # ── Username ──────────────────────────────────────────────────────────
-        self.username_lbl = QLabel(t("username"))
-        self.username_lbl.setStyleSheet("font-size: 13px; font-weight: 600; color: #374151;")
+        language_title = QHBoxLayout()
+        language_title.setSpacing(10)
+        language_icon = QLabel()
+        language_icon.setFixedSize(22, 22)
+        language_icon.setAlignment(Qt.AlignCenter)
+        language_icon.setPixmap(qta.icon("fa5s.globe", color="#111827").pixmap(18, 18))
+        self.language_lbl = QLabel()
+        self.language_lbl.setStyleSheet("font-size: 16px; font-weight: 700; color: #111827;")
+        language_title.addWidget(language_icon)
+        language_title.addWidget(self.language_lbl)
+        language_title.addStretch()
+        card_layout.addLayout(language_title)
+        card_layout.addSpacing(10)
+
+        self.lang_combo = QComboBox()
+        self.lang_combo.setFixedHeight(46)
+        self.lang_combo.setStyleSheet("""
+            QComboBox {
+                background: #f3f3f5;
+                border: none;
+                border-radius: 8px;
+                color: #111827;
+                font-size: 16px;
+                padding: 0 16px;
+            }
+            QComboBox:hover { background: #eeeeF1; }
+            QComboBox:focus { border: 1px solid #2563eb; }
+            QComboBox::drop-down {
+                border: none;
+                width: 36px;
+            }
+        """)
+        for label, code in LANGUAGES:
+            self.lang_combo.addItem(label, code)
+        self._select_current_language()
+        self.lang_combo.currentIndexChanged.connect(self._on_language_changed)
+        card_layout.addWidget(self.lang_combo)
+        card_layout.addSpacing(58)
+
+        self.username_lbl = self._field_label()
         card_layout.addWidget(self.username_lbl)
-        card_layout.addSpacing(6)
+        card_layout.addSpacing(8)
 
-        username_wrap = self._icon_input_row("fa5s.user", t("username_placeholder"))
-        self.username_input = username_wrap[0]
-        card_layout.addLayout(username_wrap[1])
-        card_layout.addSpacing(16)
+        self.username_input, username_row = self._icon_input("fa5s.user")
+        card_layout.addWidget(username_row)
+        card_layout.addSpacing(26)
 
-        # ── Password ──────────────────────────────────────────────────────────
-        self.password_lbl = QLabel(t("password"))
-        self.password_lbl.setStyleSheet("font-size: 13px; font-weight: 600; color: #374151;")
+        self.password_lbl = self._field_label()
         card_layout.addWidget(self.password_lbl)
-        card_layout.addSpacing(6)
+        card_layout.addSpacing(8)
 
-        password_wrap = self._icon_input_row("fa5s.lock", t("password_placeholder"), password=True)
-        self.password_input = password_wrap[0]
-        card_layout.addLayout(password_wrap[1])
+        self.password_input, password_row = self._icon_input("fa5s.lock", password=True)
         self.password_input.returnPressed.connect(self._attempt_login)
-        card_layout.addSpacing(22)
+        card_layout.addWidget(password_row)
+        card_layout.addSpacing(30)
 
-        # ── Login button ──────────────────────────────────────────────────────
-        self.login_btn = QPushButton(t("login_button"))
-        self.login_btn.setFixedHeight(46)
+        self.login_btn = QPushButton()
+        self.login_btn.setFixedHeight(50)
         self.login_btn.setCursor(Qt.PointingHandCursor)
+        self.login_btn.clicked.connect(self._attempt_login)
         self.login_btn.setStyleSheet("""
             QPushButton {
                 background: #030213;
-                color: white;
                 border: none;
-                border-radius: 10px;
-                font-size: 15px;
-                font-weight: 600;
+                border-radius: 8px;
+                color: white;
+                font-size: 16px;
+                font-weight: 700;
             }
-            QPushButton:hover   { background: #1e293b; }
-            QPushButton:pressed { background: #111827; }
+            QPushButton:hover { background: #111827; }
+            QPushButton:pressed { background: #020617; }
         """)
-        self.login_btn.clicked.connect(self._attempt_login)
         card_layout.addWidget(self.login_btn)
-        card_layout.addSpacing(20)
+        card_layout.addSpacing(70)
 
-        # ── Footer ────────────────────────────────────────────────────────────
-        sep = QFrame()
-        sep.setFrameShape(QFrame.HLine)
-        sep.setStyleSheet("border: none; border-top: 1px solid #e5e7eb; background: transparent;")
-        sep.setFixedHeight(1)
-        card_layout.addWidget(sep)
-        card_layout.addSpacing(14)
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFixedHeight(1)
+        separator.setStyleSheet("border: none; border-top: 1px solid #e5e7eb;")
+        card_layout.addWidget(separator)
+        card_layout.addSpacing(30)
 
-        self.footer_lbl = QLabel(t("authorized_only"))
+        self.footer_lbl = QLabel()
         self.footer_lbl.setAlignment(Qt.AlignCenter)
-        self.footer_lbl.setStyleSheet("font-size: 12px; color: #9ca3af;")
+        self.footer_lbl.setStyleSheet("font-size: 16px; color: #334155;")
         card_layout.addWidget(self.footer_lbl)
-        card_layout.addSpacing(8)
+        card_layout.addSpacing(12)
 
         roles_row = QHBoxLayout()
         roles_row.setAlignment(Qt.AlignCenter)
-        roles_row.setSpacing(16)
-
-        for role_key, color in [("role_admin", "#2563eb"), ("role_hr", "#10b981")]:
-            pill = QFrame()
-            pill.setStyleSheet(f"background: {color}18; border-radius: 10px; border: 1px solid {color}40;")
-            pl = QHBoxLayout(pill)
-            pl.setContentsMargins(10, 4, 10, 4)
-            pl.setSpacing(6)
-            dot = QLabel("●")
-            dot.setStyleSheet(f"color: {color}; font-size: 9px;")
-            lbl = QLabel(t(role_key))
-            lbl.setStyleSheet(f"font-size: 12px; color: {color}; font-weight: 600;")
-            pl.addWidget(dot)
-            pl.addWidget(lbl)
-            roles_row.addWidget(pill)
-
+        roles_row.setSpacing(18)
+        self._add_role_indicator(roles_row, "role_admin", "#2563eb")
+        self._add_role_indicator(roles_row, "role_hr", "#10b981")
         card_layout.addLayout(roles_row)
+
         outer.addWidget(card, 0, Qt.AlignHCenter)
         outer.addStretch(1)
+        self._refresh_text()
 
-    def _icon_input_row(self, icon_name, placeholder, password=False):
-        row = QHBoxLayout()
-        row.setSpacing(0)
+    def _field_label(self):
+        label = QLabel()
+        label.setStyleSheet("font-size: 16px; font-weight: 700; color: #111827;")
+        return label
 
-        icon_lbl = QLabel()
-        icon_lbl.setFixedSize(40, 42)
-        icon_lbl.setAlignment(Qt.AlignCenter)
-        icon_lbl.setPixmap(qta.icon(icon_name, color="#9ca3af").pixmap(15, 15))
-        icon_lbl.setStyleSheet("""
-            QLabel {
-                background: #f9fafb;
-                border: 1px solid #e5e7eb;
-                border-right: none;
-                border-top-left-radius: 8px;
-                border-bottom-left-radius: 8px;
+    def _icon_input(self, icon_name, password=False):
+        container = QFrame()
+        container.setObjectName("LoginInput")
+        container.setFixedHeight(46)
+        container.setStyleSheet("""
+            QFrame#LoginInput {
+                background: #f3f3f5;
+                border: none;
+                border-radius: 8px;
             }
         """)
+
+        row = QHBoxLayout(container)
+        row.setContentsMargins(16, 0, 12, 0)
+        row.setSpacing(12)
+
+        icon_label = QLabel()
+        icon_label.setFixedSize(22, 22)
+        icon_label.setAlignment(Qt.AlignCenter)
+        icon_label.setPixmap(qta.icon(icon_name, color="#94a3b8").pixmap(20, 20))
+        icon_label.setStyleSheet("background: transparent; border: none;")
+        row.addWidget(icon_label)
 
         field = QLineEdit()
-        field.setPlaceholderText(placeholder)
+        field.setFixedHeight(44)
         if password:
             field.setEchoMode(QLineEdit.Password)
-        field.setFixedHeight(42)
         field.setStyleSheet("""
             QLineEdit {
-                border: 1px solid #e5e7eb;
-                border-left: none;
-                border-top-right-radius: 8px;
-                border-bottom-right-radius: 8px;
-                padding: 0 14px;
-                font-size: 14px;
+                background: transparent;
+                border: none;
                 color: #111827;
-                background: #f9fafb;
-                min-height: 0px;
+                font-size: 16px;
+                padding: 0;
             }
-            QLineEdit:focus {
-                border-color: #2563eb;
-                background: white;
-            }
+            QLineEdit:focus { border: none; }
         """)
-
-        row.addWidget(icon_lbl)
         row.addWidget(field, 1)
-        return field, row
+        return field, container
+
+    def _add_role_indicator(self, row, role_key, color):
+        wrap = QWidget()
+        wrap.setStyleSheet("background: transparent;")
+        layout = QHBoxLayout(wrap)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+
+        dot = QLabel()
+        dot.setFixedSize(10, 10)
+        dot.setStyleSheet(f"background: {color}; border-radius: 5px;")
+        label = QLabel()
+        label.setStyleSheet("font-size: 14px; color: #334155;")
+        layout.addWidget(dot)
+        layout.addWidget(label)
+        row.addWidget(wrap)
+        self.role_labels[role_key] = label
+
+    def _select_current_language(self):
+        current = get_language()
+        self.lang_combo.blockSignals(True)
+        for index in range(self.lang_combo.count()):
+            if self.lang_combo.itemData(index) == current:
+                self.lang_combo.setCurrentIndex(index)
+                break
+        self.lang_combo.blockSignals(False)
+        self._apply_layout_direction()
+
+    def _apply_layout_direction(self):
+        QApplication.instance().setLayoutDirection(Qt.RightToLeft if is_rtl() else Qt.LeftToRight)
+
+    def _language_caption(self):
+        language = get_language()
+        if language == "ar":
+            return "\u0627\u0644\u0644\u063a\u0629 / Language / Nyelv"
+        if language == "hu":
+            return "Nyelv / Language / \u0627\u0644\u0644\u063a\u0629"
+        return "Language / Nyelv / \u0627\u0644\u0644\u063a\u0629"
 
     def _on_language_changed(self, index):
-        code = self.lang_combo.itemData(index)
-        set_language(code)
-
-        from PySide6.QtWidgets import QApplication
-        if is_rtl():
-            QApplication.instance().setLayoutDirection(Qt.RightToLeft)
-        else:
-            QApplication.instance().setLayoutDirection(Qt.LeftToRight)
-
+        set_language(self.lang_combo.itemData(index))
+        self._apply_layout_direction()
         self._refresh_text()
 
     def _refresh_text(self):
         self.title_lbl.setText(company_name(t("app_name")))
         self.subtitle_lbl.setText(company_subtitle(t("app_subtitle")))
+        self.language_lbl.setText(self._language_caption())
         self.username_lbl.setText(t("username"))
         self.username_input.setPlaceholderText(t("username_placeholder"))
         self.password_lbl.setText(t("password"))
         self.password_input.setPlaceholderText(t("password_placeholder"))
         self.login_btn.setText(t("login_button"))
         self.footer_lbl.setText(t("authorized_only"))
+        for role_key, label in self.role_labels.items():
+            label.setText(t(role_key))
 
     def _attempt_login(self):
         username = self.username_input.text().strip()
@@ -275,6 +305,7 @@ class LoginWindow(QWidget):
         user = verify_login(username, password)
         if user:
             from src.ui.main_window import MainWindow
+
             self.main_window = MainWindow(user)
             self.main_window.show()
             self.close()
