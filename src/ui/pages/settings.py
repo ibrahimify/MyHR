@@ -13,9 +13,10 @@ from PySide6.QtWidgets import (
     QFrame, QScrollArea, QLineEdit, QComboBox, QMessageBox,
     QTabWidget, QSpinBox, QDoubleSpinBox, QFileDialog
 )
-from PySide6.QtCore import Qt, QSettings
+from PySide6.QtCore import Qt
 
 from src.core.i18n import t
+from src.core.app_settings import app_settings
 from src.database.connection import get_session, log_action
 from src.database.models import Title, SystemUser, PromotionRule
 import csv
@@ -70,7 +71,7 @@ class SettingsPage(QWidget):
 
 # ── Shared helpers ────────────────────────────────────────────────────────────
 INPUT_STYLE  = "QLineEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 12px; font-size: 13px; color: #111827; background: #f9fafb; min-height: 36px; } QLineEdit:focus { border-color: #2563eb; background: white; }"
-SPIN_STYLE   = "QSpinBox, QDoubleSpinBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px; font-size: 13px; color: #111827; background: #f9fafb; min-height: 36px; } QSpinBox:focus, QDoubleSpinBox:focus { border-color: #2563eb; background: white; }"
+SPIN_STYLE   = "QSpinBox, QDoubleSpinBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 12px; font-size: 13px; color: #111827; background: #f9fafb; min-height: 36px; } QSpinBox:focus, QDoubleSpinBox:focus { border-color: #2563eb; background: white; } QSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::up-button, QDoubleSpinBox::down-button { width: 0px; border: none; }"
 COMBO_STYLE  = "QComboBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px 0 12px; font-size: 13px; color: #111827; background: #f9fafb; min-height: 36px; }"
 SAVE_STYLE   = "QPushButton { background: #2563eb; color: white; border: none; border-radius: 8px; padding: 0 24px; font-size: 13px; font-weight: bold; min-height: 38px; } QPushButton:hover { background: #111827; }"
 
@@ -80,12 +81,14 @@ LEVEL_COLORS = {
     "L5": ("#fef9c3", "#854d0e", "Senior Level (PhD)"),
     "L4": ("#f3e8ff", "#6b21a8", "Management Level"),
     "L3": ("#fce7f3", "#9d174d", "Director Level"),
+    "L2": ("#e0f2fe", "#0369a1", "Board Member"),
+    "L1": ("#fee2e2", "#991b1b", "CEO / Executive"),
 }
 
 
 def _card(title, subtitle=None):
     card = QFrame()
-    card.setStyleSheet("background: white; border-radius: 12px; border: 1px solid #e5e7eb;")
+    card.setStyleSheet("QFrame { background: white; border-radius: 12px; border: 1px solid #e5e7eb; } QLabel { border: none; background: transparent; }")
     layout = QVBoxLayout(card)
     layout.setContentsMargins(24, 18, 24, 20)
     layout.setSpacing(14)
@@ -117,7 +120,7 @@ class GeneralTab(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.settings = QSettings("MyHR", "MyHR")
+        self.settings = app_settings()
         self._build()
         self._load()
 
@@ -136,6 +139,8 @@ class GeneralTab(QWidget):
         self.company_name.setStyleSheet(INPUT_STYLE)
         self.company_address = QLineEdit()
         self.company_address.setStyleSheet(INPUT_STYLE)
+        self.company_subtitle = QLineEdit()
+        self.company_subtitle.setStyleSheet(INPUT_STYLE)
         self.fiscal_start = QLineEdit()
         self.fiscal_start.setPlaceholderText("01-01")
         self.fiscal_start.setStyleSheet(INPUT_STYLE)
@@ -144,7 +149,7 @@ class GeneralTab(QWidget):
         for label, widget in [("Company Name", self.company_name), ("Fiscal Year Start (MM-DD)", self.fiscal_start)]:
             left.addWidget(_lbl(label))
             left.addWidget(widget)
-        for label, widget in [("Company Address", self.company_address), ("Timezone", self.timezone)]:
+        for label, widget in [("Company Subtitle", self.company_subtitle), ("Company Address", self.company_address), ("Timezone", self.timezone)]:
             right.addWidget(_lbl(label))
             right.addWidget(widget)
         grid.addLayout(left)
@@ -165,12 +170,14 @@ class GeneralTab(QWidget):
 
     def _load(self):
         self.company_name.setText(self.settings.value("company/name", "MyHR Company"))
+        self.company_subtitle.setText(self.settings.value("company/subtitle", "Employee Management"))
         self.company_address.setText(self.settings.value("company/address", "Budapest, Hungary"))
         self.fiscal_start.setText(self.settings.value("company/fiscal_start", "01-01"))
         self.timezone.setText(self.settings.value("company/timezone", "Europe/Budapest"))
 
     def _save(self):
         self.settings.setValue("company/name", self.company_name.text().strip() or "MyHR Company")
+        self.settings.setValue("company/subtitle", self.company_subtitle.text().strip() or "Employee Management")
         self.settings.setValue("company/address", self.company_address.text().strip())
         self.settings.setValue("company/fiscal_start", self.fiscal_start.text().strip() or "01-01")
         self.settings.setValue("company/timezone", self.timezone.text().strip() or "Europe/Budapest")
@@ -180,7 +187,11 @@ class GeneralTab(QWidget):
             session.commit()
         finally:
             session.close()
-        QMessageBox.information(self, t("success"), "General settings saved.")
+        window = self.window()
+        sidebar = getattr(window, "sidebar", None)
+        if sidebar and hasattr(sidebar, "refresh_branding"):
+            sidebar.refresh_branding()
+        QMessageBox.information(self, t("success"), "General settings saved. Branding is updated in the sidebar and will appear on the login screen.")
 
 
 class SettingsPromotionTab(QWidget):
@@ -234,7 +245,7 @@ class SettingsPromotionTab(QWidget):
                 row.setStyleSheet("background: #eff6ff; border-radius: 10px; border: 1px solid #bfdbfe;")
                 rl = QHBoxLayout(row)
                 rl.setContentsMargins(14, 12, 14, 12)
-                title = QLabel(f"{rule.from_title.name} -> {rule.to_title.name} Promotion")
+                title = QLabel(f"{rule.from_title.name} to {rule.to_title.name} Promotion")
                 title.setStyleSheet("font-size: 13px; font-weight: 700; color: #1e40af; background: transparent;")
                 spin = QSpinBox()
                 spin.setRange(1, 120)
@@ -285,7 +296,7 @@ class SalaryTab(QWidget):
         outer.setSpacing(16)
 
         # Currency card
-        curr_card, curr_layout = _card("Currency", "Currency code shown next to all salary ranges below")
+        curr_card, curr_layout = _card("Salary Range Configuration", "Configure currency and level salary ranges")
         curr_row = QHBoxLayout()
         curr_row.setSpacing(12)
         curr_row.setAlignment(Qt.AlignLeft)
@@ -301,7 +312,7 @@ class SalaryTab(QWidget):
             " QLineEdit:focus { border-color: #1d4ed8; background: white; }"
         )
         curr_row.addWidget(self.currency_input)
-        note = QLabel("← editable — applies to all levels")
+        note = QLabel("Applies to all levels")
         note.setStyleSheet("font-size: 12px; color: #9ca3af; background: transparent;")
         curr_row.addWidget(note)
         curr_layout.addLayout(curr_row)
@@ -310,12 +321,12 @@ class SalaryTab(QWidget):
         # Level cards
         for level, (bg, fg, label) in LEVEL_COLORS.items():
             card = QFrame()
-            card.setStyleSheet(f"background: {bg}40; border-radius: 12px; border: 1px solid {fg}30;")
+            card.setStyleSheet(f"QFrame {{ background: white; border-radius: 12px; border: 1px solid #e5e7eb; border-left: 4px solid {fg}; }} QLabel {{ border: none; background: transparent; }}")
             cl = QVBoxLayout(card)
             cl.setContentsMargins(20, 14, 20, 16)
             cl.setSpacing(10)
 
-            badge = QLabel(f"{level}  —  {label}")
+            badge = QLabel(f"{level} - {label}")
             badge.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {fg}; background: transparent;")
             cl.addWidget(badge)
 
@@ -331,10 +342,11 @@ class SalaryTab(QWidget):
             min_spin.setDecimals(0)
             min_spin.setFixedWidth(150)
             min_spin.setStyleSheet(
-                f"QDoubleSpinBox {{ border: 1px solid {fg}40; border-right: none;"
+                "QDoubleSpinBox { border: 1px solid #e5e7eb; border-right: none;"
                 " border-top-left-radius: 8px; border-bottom-left-radius: 8px;"
-                " padding: 0 10px; font-size: 13px; color: #111827; background: white; min-height: 38px; }}"
-                f" QDoubleSpinBox:focus {{ border-color: {fg}; }}"
+                " padding: 0 12px; font-size: 13px; color: #111827; background: #f9fafb; min-height: 38px; }"
+                " QDoubleSpinBox:focus { border-color: #2563eb; background: white; }"
+                " QDoubleSpinBox::up-button, QDoubleSpinBox::down-button { width: 0px; border: none; }"
             )
             min_col.addWidget(min_spin)
             row.addLayout(min_col)
@@ -345,8 +357,8 @@ class SalaryTab(QWidget):
             curr_badge.setFixedWidth(64)
             curr_badge.setAlignment(Qt.AlignCenter)
             curr_badge.setStyleSheet(
-                f"background: {fg}18; color: {fg}; font-size: 13px; font-weight: bold;"
-                f" border: 1px solid {fg}40; border-left: none; border-right: none;"
+                f"background: {bg}; color: {fg}; font-size: 13px; font-weight: bold;"
+                " border: 1px solid #e5e7eb; border-left: none; border-right: none;"
                 " margin-top: 20px;"
             )
             row.addWidget(curr_badge)
@@ -361,10 +373,11 @@ class SalaryTab(QWidget):
             max_spin.setDecimals(0)
             max_spin.setFixedWidth(150)
             max_spin.setStyleSheet(
-                f"QDoubleSpinBox {{ border: 1px solid {fg}40; border-left: none;"
+                "QDoubleSpinBox { border: 1px solid #e5e7eb; border-left: none;"
                 " border-top-right-radius: 8px; border-bottom-right-radius: 8px;"
-                " padding: 0 10px; font-size: 13px; color: #111827; background: white; min-height: 38px; }}"
-                f" QDoubleSpinBox:focus {{ border-color: {fg}; }}"
+                " padding: 0 12px; font-size: 13px; color: #111827; background: #f9fafb; min-height: 38px; }"
+                " QDoubleSpinBox:focus { border-color: #2563eb; background: white; }"
+                " QDoubleSpinBox::up-button, QDoubleSpinBox::down-button { width: 0px; border: none; }"
             )
             max_col.addWidget(max_spin)
             row.addLayout(max_col)
@@ -467,12 +480,12 @@ class IncrementTab(QWidget):
 
         for level, (bg, fg, label) in LEVEL_COLORS.items():
             card = QFrame()
-            card.setStyleSheet(f"background: {bg}40; border-radius: 12px; border: 1px solid {fg}30;")
+            card.setStyleSheet(f"QFrame {{ background: white; border-radius: 12px; border: 1px solid #e5e7eb; border-left: 4px solid {fg}; }} QLabel {{ border: none; background: transparent; }}")
             cl = QVBoxLayout(card)
             cl.setContentsMargins(20, 14, 20, 16)
             cl.setSpacing(10)
 
-            badge = QLabel(f"{level}  —  {label}")
+            badge = QLabel(f"{level} - {label}")
             badge.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {fg}; background: transparent;")
             cl.addWidget(badge)
 

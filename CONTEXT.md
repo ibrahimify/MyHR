@@ -215,6 +215,8 @@ All pages must call this function:
 
 - Every employee MUST belong to an organization unit
 - Every employee MUST have a valid level based on degree
+- Promotion levels now continue beyond director: L7, L6, L5, L4, L3, L2 Board Member, L1 CEO / Executive.
+- Admin can manually change an employee's current level/role in Employee Edit when real-world promotion paths do not follow only the default race track.
 - Promotion must always be:
   - from lower level → higher level
 - Commendations and sanctions must always be linked to an existing employee
@@ -245,5 +247,11 @@ If they differ:
 - Keep UI thin (UI = display + interaction only)
 - Business logic must NOT live inside UI files
 
+## Latest UI/Wiring Notes
 
+- Company name/subtitle are stored in `QSettings` via `src/core/app_settings.py`.
+- Login and sidebar read company name/subtitle from those settings.
+- Settings salary cards must stay white/subtle; no bright colored card backgrounds.
+- Global stylesheet hides ugly spinbox arrow buttons and styles combo popups/calendar widgets.
+- Organization hierarchy is now a Figma-style card tree using qtawesome icons and inline add/edit/delete actions.
 

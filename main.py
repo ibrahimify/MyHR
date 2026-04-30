@@ -22,6 +22,7 @@ def main():
 
     app.setStyleSheet(f"""
         QLabel                {{ color: #111827; }}
+        QFrame QLabel         {{ border: none; }}
         QPushButton           {{ font-family: 'Segoe UI'; }}
         QLineEdit, QTextEdit, QDateEdit, QSpinBox, QDoubleSpinBox {{
             color: #111827; background: #f9fafb;
@@ -35,6 +36,16 @@ def main():
         QSpinBox:focus, QDoubleSpinBox:focus {{
             border-color: #2563eb; background: white;
         }}
+        QSpinBox::up-button, QSpinBox::down-button,
+        QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
+            width: 0px; border: none; background: transparent;
+        }}
+        QCalendarWidget QWidget {{ color: #111827; background: white; }}
+        QCalendarWidget QToolButton {{
+            color: #111827; background: #f9fafb; border: 1px solid #e5e7eb;
+            border-radius: 6px; padding: 4px 8px;
+        }}
+        QCalendarWidget QMenu {{ background: white; color: #111827; border: 1px solid #e5e7eb; }}
         QComboBox {{
             color: #111827; background: #f9fafb;
             border: 1px solid #e5e7eb; border-radius: 8px;
@@ -53,6 +64,13 @@ def main():
             image: url({arrow_path});
             width: 10px;
             height: 6px;
+        }}
+        QComboBox QAbstractItemView {{
+            background: white; color: #111827;
+            border: 1px solid #e5e7eb; border-radius: 8px;
+            selection-background-color: #eff6ff;
+            selection-color: #111827;
+            padding: 4px;
         }}
         QTableWidget          {{ color: #111827; gridline-color: #f3f4f6; border: none; }}
         QTableWidget::item    {{ color: #111827; }}

@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize
 from src.database.connection import verify_login
 from src.core.i18n import t, set_language, is_rtl
+from src.core.app_settings import company_name, company_subtitle
 
 
 LANGUAGES = [
@@ -106,12 +107,12 @@ class LoginWindow(QWidget):
         card_layout.addSpacing(14)
 
         # ── Title ─────────────────────────────────────────────────────────────
-        self.title_lbl = QLabel(t("app_name"))
+        self.title_lbl = QLabel(company_name(t("app_name")))
         self.title_lbl.setAlignment(Qt.AlignCenter)
         self.title_lbl.setStyleSheet("font-size: 22px; font-weight: bold; color: #111827;")
         card_layout.addWidget(self.title_lbl)
 
-        self.subtitle_lbl = QLabel(t("app_subtitle"))
+        self.subtitle_lbl = QLabel(company_subtitle(t("app_subtitle")))
         self.subtitle_lbl.setAlignment(Qt.AlignCenter)
         self.subtitle_lbl.setStyleSheet("font-size: 13px; color: #6b7280;")
         card_layout.addWidget(self.subtitle_lbl)
@@ -254,8 +255,8 @@ class LoginWindow(QWidget):
         self._refresh_text()
 
     def _refresh_text(self):
-        self.title_lbl.setText(t("app_name"))
-        self.subtitle_lbl.setText(t("app_subtitle"))
+        self.title_lbl.setText(company_name(t("app_name")))
+        self.subtitle_lbl.setText(company_subtitle(t("app_subtitle")))
         self.username_lbl.setText(t("username"))
         self.username_input.setPlaceholderText(t("username_placeholder"))
         self.password_lbl.setText(t("password"))

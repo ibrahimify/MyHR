@@ -105,6 +105,8 @@ MyHR/
 - **CSV Import** — Upload, validate, preview, import. Template download included
 - **Audit Log** — Immutable record of every action. Searchable, filterable, with full tooltip descriptions
 - **Settings** — Configurable salary ranges per level (with live currency badge), annual increment rules, password change, DB backup, employee export
+- **Company Branding** - Settings stores company name/subtitle and reflects them on login and the sidebar
+- **Executive Levels** - Promotion levels continue through L2 Board Member and L1 CEO / Executive
 
 ### UI
 - White sidebar with blue active state, Font Awesome 5 icons throughout (qtawesome)
@@ -158,6 +160,14 @@ py -3.12 main.py
 - Added: `src/ui/assets/chevron_down.svg` for consistent dropdown arrows
 - Added: qtawesome 1.4.2 dependency (Font Awesome 5 icons throughout)
 - Improved: Settings salary tab — currency field highlighted in blue, live-updating currency badge between Min/Max
+
+### Session 3 - Figma Matching + Branding/Hierarchy Polish
+- Fixed: Company name/subtitle from Settings now feeds login and sidebar via `src/core/app_settings.py`
+- Fixed: Global label-border bleed and ugly spinbox arrow buttons
+- Improved: Settings salary cards are now white/subtle instead of bright colored blocks
+- Improved: Organization hierarchy rebuilt as card rows with qtawesome icons and inline add/edit/delete actions
+- Added: L2 Board Member and L1 CEO / Executive levels with promotion rules
+- Added: Employee edit can manually change current level/role for real-world promotion paths
 
 ### Session 1 — Core Implementation (Semester 1)
 - All 10 pages scaffolded and fully functional

@@ -68,6 +68,8 @@ def _seed_defaults(session: Session):
         {"name": "L5", "label": "Senior Level",     "degree_requirement": "PhD", "base_salary_min": 3500, "base_salary_max": 4500, "annual_increment_value": 3.5,  "promotion_salary_increase_pct": 25.0},
         {"name": "L4", "label": "Management Level", "degree_requirement": "any", "base_salary_min": 4500, "base_salary_max": 6000, "annual_increment_value": 4.0,  "promotion_salary_increase_pct": 25.0},
         {"name": "L3", "label": "Director Level",   "degree_requirement": "any", "base_salary_min": 6000, "base_salary_max": 9000, "annual_increment_value": 4.0,  "promotion_salary_increase_pct": 30.0},
+        {"name": "L2", "label": "Board Member",     "degree_requirement": "any", "base_salary_min": 9000, "base_salary_max": 13000, "annual_increment_value": 4.0,  "promotion_salary_increase_pct": 30.0},
+        {"name": "L1", "label": "CEO / Executive",  "degree_requirement": "any", "base_salary_min": 13000, "base_salary_max": 20000, "annual_increment_value": 4.0,  "promotion_salary_increase_pct": 35.0},
     ]
     titles = {}
     for d in defaults:
@@ -86,6 +88,8 @@ def _seed_defaults(session: Session):
         {"from": "L6", "to": "L5", "base_months": 48},
         {"from": "L5", "to": "L4", "base_months": 60},
         {"from": "L4", "to": "L3", "base_months": 60},
+        {"from": "L3", "to": "L2", "base_months": 72},
+        {"from": "L2", "to": "L1", "base_months": 84},
     ]
     for r in rules:
         ft = titles.get(r["from"])

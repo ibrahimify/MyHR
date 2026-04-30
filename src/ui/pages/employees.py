@@ -712,6 +712,16 @@ class EditEmployeeView(QWidget):
                     self.manager_combo.setCurrentIndex(self.manager_combo.count() - 1)
             oc.addWidget(self.manager_combo)
 
+            oc.addWidget(self._small_lbl("Current Level / Role"))
+            self.title_combo = QComboBox()
+            self.title_combo.setFixedHeight(36)
+            self.title_combo.setStyleSheet(COMBO_STYLE)
+            for title in session.query(Title).order_by(Title.name.desc()).all():
+                self.title_combo.addItem(f"{title.name} - {title.label}", title.id)
+                if emp.title_id == title.id:
+                    self.title_combo.setCurrentIndex(self.title_combo.count() - 1)
+            oc.addWidget(self.title_combo)
+
             oc.addWidget(self._small_lbl("Status"))
             self.status_combo = QComboBox()
             self.status_combo.setFixedHeight(36)
@@ -788,6 +798,7 @@ class EditEmployeeView(QWidget):
 
             emp.org_unit_id   = self.org_combo.currentData()
             emp.reports_to_id = self.manager_combo.currentData()
+            emp.title_id      = self.title_combo.currentData()
             emp.status        = self.status_combo.currentData()
 
             if self.user.role == "admin":

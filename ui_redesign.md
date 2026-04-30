@@ -314,6 +314,14 @@ Database tab (within Security or separate):
 7. Employee delete must exist with confirmation dialog
 8. All dialog boxes must have dark text (handled by global stylesheet)
 
+## RECENT CORRECTIONS
+- Do not use unsupported alpha hex colors like `#dbeafe40` in Qt stylesheets; they render badly. Use white cards with subtle borders and small colored badges/left accents.
+- `QFrame QLabel { border: none; }` is required globally to avoid child labels inheriting card borders.
+- Spinbox arrows are hidden globally; salary/increment inputs should look like clean text fields.
+- Company branding comes from `src/core/app_settings.py` and must appear on login + sidebar.
+- Org hierarchy uses card rows with qtawesome icons and inline plus/edit/delete icon buttons.
+- Avoid textual arrows like `->` in user-facing UI; use words like "to" or qtawesome icons.
+
 ## QTAWESOME ICON REFERENCE
 ```python
 import qtawesome as qta
