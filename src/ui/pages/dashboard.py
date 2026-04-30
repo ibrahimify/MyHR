@@ -1,26 +1,39 @@
-"""Dashboard Page — live stats, salary increment alert, recent activity."""
+"""Dashboard page matching the MockUI React dashboard layout."""
 
 import qtawesome as qta
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QGridLayout,
-    QDialog, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QProgressBar
+    QDialog, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
+    QProgressBar
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QColor
 
 from src.core.i18n import t
-from src.database.connection import get_session, get_increment_due_employees, apply_salary_increment, calculate_months_remaining
-from src.database.models import Employee, Sanction, Commendation, PromotionHistory, AuditLog, Title
-from src.ui.styles import (
-    btn_primary, btn_blue, btn_outline, btn_ghost,
-    TABLE_SS, CARD_SS, SCROLL_SS
+from src.database.connection import (
+    get_session, get_increment_due_employees, apply_salary_increment,
+    calculate_months_remaining
 )
+from src.database.models import Employee, Sanction, Commendation, AuditLog, Title
+from src.ui.styles import btn_primary, btn_outline, btn_ghost, TABLE_SS, SCROLL_SS
+
 
 _ICO = QSize(16, 16)
 
+DASH_CARD_SS = """
+QFrame#DashboardCard {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+QFrame#DashboardCard QLabel {
+    border: none;
+    background: transparent;
+}
+"""
 
-# ── Salary Increment Dialog ───────────────────────────────────────────────────
+
 class SalaryIncrementReviewDialog(QDialog):
     def __init__(self, increment_data, user, parent=None):
         super().__init__(parent)
@@ -37,20 +50,16 @@ class SalaryIncrementReviewDialog(QDialog):
         layout.setContentsMargins(28, 24, 28, 24)
         layout.setSpacing(16)
 
-        # Header
         title = QLabel("Annual Salary Increment Review")
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #111827;")
+        title.setStyleSheet("font-size: 18px; font-weight: 700; color: #111827;")
         sub = QLabel(f"{len(self.increment_data)} employee(s) are due for their annual salary increment.")
         sub.setStyleSheet("font-size: 13px; color: #6b7280;")
         layout.addWidget(title)
         layout.addWidget(sub)
 
-        # Table
         self.table = QTableWidget()
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels([
-            "Employee", "Current Salary", "New Salary", "Increment", "Action"
-        ])
+        self.table.setHorizontalHeaderLabels(["Employee", "Current Salary", "New Salary", "Increment", "Action"])
         self.table.setStyleSheet(TABLE_SS)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Fixed)
@@ -62,8 +71,8 @@ class SalaryIncrementReviewDialog(QDialog):
         for i, row in enumerate(self.increment_data):
             self.table.setRowHeight(i, 52)
             self.table.setItem(i, 0, QTableWidgetItem(f"{row['name']}  ({row['emp_id']})"))
-            self.table.setItem(i, 1, QTableWidgetItem(f"€{row['salary_before']:,.2f}"))
-            self.table.setItem(i, 2, QTableWidgetItem(f"€{row['salary_after']:,.2f}"))
+            self.table.setItem(i, 1, QTableWidgetItem(f"${row['salary_before']:,.2f}"))
+            self.table.setItem(i, 2, QTableWidgetItem(f"${row['salary_after']:,.2f}"))
             inc_item = QTableWidgetItem(row["increment_str"])
             inc_item.setForeground(QColor("#10b981"))
             self.table.setItem(i, 3, inc_item)
@@ -71,14 +80,13 @@ class SalaryIncrementReviewDialog(QDialog):
 
         layout.addWidget(self.table)
 
-        # Buttons
         btn_row = QHBoxLayout()
         approve_all = QPushButton("  Approve All")
         approve_all.setIcon(qta.icon("fa5s.check-double", color="white"))
         approve_all.setIconSize(_ICO)
         approve_all.setFixedHeight(36)
         approve_all.setCursor(Qt.PointingHandCursor)
-        approve_all.setStyleSheet(btn_blue(36))
+        approve_all.setStyleSheet(btn_primary(36))
         approve_all.clicked.connect(self._approve_all)
 
         close_btn = QPushButton("Close")
@@ -94,20 +102,21 @@ class SalaryIncrementReviewDialog(QDialog):
 
     def _set_row_btn(self, idx, emp_id):
         if emp_id in self.approved_ids:
-            lbl = QLabel("✓  Approved")
+            lbl = QLabel("Approved")
             lbl.setAlignment(Qt.AlignCenter)
-            lbl.setStyleSheet("color: #10b981; font-size: 12px; font-weight: bold;")
+            lbl.setStyleSheet("color: #10b981; font-size: 12px; font-weight: 700;")
             self.table.setCellWidget(idx, 4, lbl)
-        else:
-            btn = QPushButton("Approve")
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.setStyleSheet(
-                "QPushButton { background: #dcfce7; color: #166534; border: none;"
-                " border-radius: 6px; font-size: 12px; font-weight: 600; margin: 8px; }"
-                " QPushButton:hover { background: #bbf7d0; }"
-            )
-            btn.clicked.connect(lambda _, eid=emp_id, ridx=idx: self._approve_one(eid, ridx))
-            self.table.setCellWidget(idx, 4, btn)
+            return
+
+        btn = QPushButton("Approve")
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setStyleSheet(
+            "QPushButton { background: #dcfce7; color: #166534; border: none;"
+            " border-radius: 6px; font-size: 12px; font-weight: 600; margin: 8px; }"
+            " QPushButton:hover { background: #bbf7d0; }"
+        )
+        btn.clicked.connect(lambda _, eid=emp_id, ridx=idx: self._approve_one(eid, ridx))
+        self.table.setCellWidget(idx, 4, btn)
 
     def _approve_one(self, emp_id, row_idx):
         session = get_session()
@@ -128,6 +137,7 @@ class SalaryIncrementReviewDialog(QDialog):
         if not pending:
             QMessageBox.information(self, "Done", "All increments already approved.")
             return
+
         errors = []
         for i, row in enumerate(self.increment_data):
             if row["id"] in self.approved_ids:
@@ -144,28 +154,28 @@ class SalaryIncrementReviewDialog(QDialog):
                 errors.append(f"{row['name']}: {str(e)}")
             finally:
                 session.close()
+
         if errors:
             QMessageBox.warning(self, "Some Failed", "\n".join(errors))
         else:
             QMessageBox.information(self, "Done", f"All {len(pending)} increment(s) approved.")
 
 
-# ── Dashboard Page ────────────────────────────────────────────────────────────
 class DashboardPage(QWidget):
     def __init__(self, user, navigate_fn):
         super().__init__()
         self.user = user
         self.navigate = navigate_fn
-        self.setStyleSheet("background: #f9fafb;")
+        self.setStyleSheet("QWidget { background: #f9fafb; } QLabel { border: none; }")
         self._load_data()
         self._build()
 
     def _load_data(self):
         session = get_session()
         try:
-            self.emp_count       = session.query(Employee).count()
-            self.sanction_count  = session.query(Sanction).filter_by(is_resolved=False).count()
-            self.commend_count   = session.query(Commendation).count()
+            self.emp_count = session.query(Employee).count()
+            self.sanction_count = session.query(Sanction).filter_by(is_resolved=False).count()
+            self.commend_count = session.query(Commendation).count()
             self.promotion_count = 0
 
             increment_due = get_increment_due_employees(session)
@@ -177,26 +187,33 @@ class DashboardPage(QWidget):
                 title = session.query(Title).filter_by(id=emp.title_id).first()
                 if not title:
                     continue
-                sb = emp.base_salary
+                salary_before = emp.base_salary
                 if title.annual_increment_type == "percentage":
-                    sa = round(sb * (1 + title.annual_increment_value / 100), 2)
+                    salary_after = round(salary_before * (1 + title.annual_increment_value / 100), 2)
                     inc_str = f"+{title.annual_increment_value}%"
                 else:
-                    sa = round(sb + title.annual_increment_value, 2)
-                    inc_str = f"+€{title.annual_increment_value:,.2f}"
+                    salary_after = round(salary_before + title.annual_increment_value, 2)
+                    inc_str = f"+${title.annual_increment_value:,.2f}"
                 self.increment_data.append({
-                    "id": emp.id, "name": emp.full_name, "emp_id": emp.employee_id,
-                    "salary_before": sb, "salary_after": sa, "increment_str": inc_str,
+                    "id": emp.id,
+                    "name": emp.full_name,
+                    "emp_id": emp.employee_id,
+                    "salary_before": salary_before,
+                    "salary_after": salary_after,
+                    "increment_str": inc_str,
                 })
 
-            recent = session.query(AuditLog).order_by(AuditLog.performed_at.desc()).limit(6).all()
+            recent = session.query(AuditLog).order_by(AuditLog.performed_at.desc()).limit(5).all()
             self.logs_data = [
-                (l.action, l.description or "",
-                 l.performed_at.strftime("%b %d, %H:%M") if l.performed_at else "")
-                for l in recent
+                {
+                    "action": (log.action or "Activity").replace(".", " ").replace("_", " ").title(),
+                    "target": log.description or "Organization record updated",
+                    "user": "Admin User",
+                    "time": log.performed_at.strftime("%b %d, %H:%M") if log.performed_at else "",
+                }
+                for log in recent
             ]
 
-            # Upcoming promotions — employees within 12 months of eligibility
             upcoming = []
             active_emps = session.query(Employee).filter_by(status="active").all()
             for emp in active_emps:
@@ -205,315 +222,311 @@ class DashboardPage(QWidget):
                     continue
                 if race["eligible"]:
                     self.promotion_count += 1
-                mr = race["months_remaining"]
-                if mr > 12:
+                months_remaining = race["months_remaining"]
+                if months_remaining > 12:
                     continue
                 next_title = session.query(Title).filter_by(id=race["next_title_id"]).first()
                 upcoming.append({
                     "name": emp.full_name,
                     "current": emp.title.name if emp.title else "?",
                     "next": next_title.name if next_title else "?",
-                    "months_remaining": mr,
-                    "base_months": race["base_months"],
+                    "months_remaining": months_remaining,
                     "eligible": race["eligible"],
                     "progress_pct": race["progress_pct"],
                 })
             upcoming.sort(key=lambda x: (0 if x["eligible"] else 1, x["months_remaining"]))
-            self.upcoming_promotions = upcoming[:6]
+            self.upcoming_promotions = upcoming[:3]
         finally:
             session.close()
 
     def _build(self):
-        # Outer scroll
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.setStyleSheet(SCROLL_SS)
 
         content = QWidget()
-        content.setStyleSheet("background: transparent;")
+        content.setStyleSheet("background: #f9fafb;")
         layout = QVBoxLayout(content)
-        layout.setContentsMargins(32, 32, 32, 32)
-        layout.setSpacing(24)
+        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setSpacing(0)
 
-        # ── Page title ────────────────────────────────────────────────────────
-        hdr = QHBoxLayout()
-        title_col = QVBoxLayout()
-        title_col.setSpacing(4)
-        t1 = QLabel(t("dashboard_title"))
-        t1.setStyleSheet("font-size: 24px; font-weight: bold; color: #111827;")
-        t2 = QLabel(t("dashboard_subtitle"))
-        t2.setStyleSheet("font-size: 14px; color: #6b7280;")
-        title_col.addWidget(t1)
-        title_col.addWidget(t2)
-        hdr.addLayout(title_col)
-        hdr.addStretch()
+        title = QLabel("Dashboard")
+        title.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827; background: transparent;")
+        subtitle = QLabel("Welcome back! Here's what's happening with your organization.")
+        subtitle.setStyleSheet("font-size: 16px; color: #4b5563; background: transparent;")
+        layout.addWidget(title)
+        layout.addSpacing(6)
+        layout.addWidget(subtitle)
+        layout.addSpacing(32)
 
-        add_btn = QPushButton("  " + t("add_employee"))
+        actions = QHBoxLayout()
+        actions.setSpacing(12)
+        add_btn = QPushButton("  Add Employee")
         add_btn.setIcon(qta.icon("fa5s.user-plus", color="white"))
         add_btn.setIconSize(_ICO)
-        add_btn.setFixedHeight(36)
+        add_btn.setFixedHeight(44)
         add_btn.setCursor(Qt.PointingHandCursor)
-        add_btn.setStyleSheet(btn_primary(36))
+        add_btn.setStyleSheet(btn_primary(44))
         add_btn.clicked.connect(lambda: self.navigate("employees"))
 
-        imp_btn = QPushButton("  " + t("nav_import"))
-        imp_btn.setIcon(qta.icon("fa5s.upload", color="#374151"))
+        imp_btn = QPushButton("  Import Data")
+        imp_btn.setIcon(qta.icon("fa5s.calendar", color="#111827"))
         imp_btn.setIconSize(_ICO)
-        imp_btn.setFixedHeight(36)
+        imp_btn.setFixedHeight(44)
         imp_btn.setCursor(Qt.PointingHandCursor)
-        imp_btn.setStyleSheet(btn_outline(36))
+        imp_btn.setStyleSheet(btn_outline(44))
         imp_btn.clicked.connect(lambda: self.navigate("import_data"))
 
-        hdr.addWidget(imp_btn)
-        hdr.addSpacing(8)
-        hdr.addWidget(add_btn)
-        layout.addLayout(hdr)
+        actions.addWidget(add_btn)
+        actions.addWidget(imp_btn)
+        actions.addStretch()
+        layout.addLayout(actions)
+        layout.addSpacing(40)
 
-        # ── Increment alert ───────────────────────────────────────────────────
         if self.increment_count > 0:
-            alert = QFrame()
-            alert.setStyleSheet(
-                "QFrame { background: #fefce8; border: 1px solid #fde047; border-radius: 10px; }"
-            )
-            al = QHBoxLayout(alert)
-            al.setContentsMargins(16, 14, 16, 14)
-            al.setSpacing(12)
+            layout.addWidget(self._increment_alert())
+            layout.addSpacing(24)
 
-            ico = QLabel()
-            ico.setPixmap(qta.icon("fa5s.coins", color="#ca8a04").pixmap(22, 22))
-            al.addWidget(ico)
+        stats = QGridLayout()
+        stats.setHorizontalSpacing(24)
+        stats.setVerticalSpacing(24)
+        for i, card in enumerate([
+            self._stat_card("Total Employees", str(self.emp_count), "Organization records", "#3b82f6", "fa5s.users"),
+            self._stat_card("Pending Promotions", str(self.promotion_count), "Eligible right now", "#10b981", "fa5s.chart-line"),
+            self._stat_card("Commendations (This Month)", str(self.commend_count), "Awards recorded", "#f59e0b", "fa5s.award"),
+            self._stat_card("Active Sanctions", str(self.sanction_count), "Open disciplinary actions", "#ef4444", "fa5s.exclamation-triangle"),
+        ]):
+            stats.addWidget(card, 0, i)
+        layout.addLayout(stats)
+        layout.addSpacing(36)
 
-            tc = QVBoxLayout()
-            tc.setSpacing(2)
-            at = QLabel(t("salary_increment_due"))
-            at.setStyleSheet("font-size: 14px; font-weight: bold; color: #854d0e; background: transparent;")
-            names = ", ".join(self.increment_names) + (" …" if self.increment_count > 3 else "")
-            am = QLabel(t("salary_increment_prompt", count=self.increment_count) + f"  ({names})")
-            am.setStyleSheet("font-size: 13px; color: #a16207; background: transparent;")
-            tc.addWidget(at)
-            tc.addWidget(am)
-            al.addLayout(tc)
-            al.addStretch()
-
-            rev_btn = QPushButton("  " + t("review_increments"))
-            rev_btn.setIcon(qta.icon("fa5s.check-circle", color="white"))
-            rev_btn.setIconSize(_ICO)
-            rev_btn.setFixedHeight(34)
-            rev_btn.setCursor(Qt.PointingHandCursor)
-            rev_btn.setStyleSheet(
-                "QPushButton { background: #ca8a04; color: white; border: none;"
-                " border-radius: 6px; font-size: 13px; font-weight: 600; padding: 0 14px; }"
-                " QPushButton:hover { background: #a16207; }"
-            )
-            rev_btn.clicked.connect(self._open_increment_dialog)
-            al.addWidget(rev_btn)
-            layout.addWidget(alert)
-
-        # ── Stat cards ────────────────────────────────────────────────────────
-        grid = QGridLayout()
-        grid.setSpacing(16)
-
-        stats = [
-            ("Total Employees",            self.emp_count,       "#3b82f6", "fa5s.users", "Organization records"),
-            ("Pending Promotions",         self.promotion_count, "#10b981", "fa5s.chart-line", "Eligible right now"),
-            ("Commendations (This Month)", self.commend_count,   "#f59e0b", "fa5s.award", "Awards recorded"),
-            ("Active Sanctions",           self.sanction_count,  "#ef4444", "fa5s.exclamation-triangle", "Open disciplinary actions"),
-        ]
-        for i, (label, value, color, icon_name, hint) in enumerate(stats):
-            card = self._stat_card(label, str(value), color, icon_name, hint)
-            grid.addWidget(card, 0, i)
-        layout.addLayout(grid)
-
-        # ── Bottom section ────────────────────────────────────────────────────
         bottom = QHBoxLayout()
-        bottom.setSpacing(16)
-
-        # Recent activity card
-        act_card = QFrame()
-        act_card.setStyleSheet(CARD_SS)
-        acl = QVBoxLayout(act_card)
-        acl.setContentsMargins(24, 20, 24, 20)
-        acl.setSpacing(0)
-
-        ach = QHBoxLayout()
-        act_title = QLabel(t("recent_activity"))
-        act_title.setStyleSheet("font-size: 16px; font-weight: 600; color: #111827; background: transparent;")
-        va_btn = QPushButton(t("view_all"))
-        va_btn.setCursor(Qt.PointingHandCursor)
-        va_btn.setStyleSheet(btn_ghost(28))
-        va_btn.clicked.connect(lambda: self.navigate("audit_log"))
-        ach.addWidget(act_title)
-        ach.addStretch()
-        ach.addWidget(va_btn)
-        acl.addLayout(ach)
-        acl.addSpacing(12)
-
-        ACTION_COLORS = {
-            "employee": "#2563eb", "promotion": "#10b981",
-            "commendation": "#f59e0b", "sanction": "#ef4444",
-            "salary": "#8b5cf6", "import": "#06b6d4",
-        }
-        if self.logs_data:
-            for action, desc, ts in self.logs_data:
-                color = "#9ca3af"
-                for k, v in ACTION_COLORS.items():
-                    if k in action.lower():
-                        color = v
-                        break
-                acl.addWidget(self._activity_row(action, desc, ts, color))
-        else:
-            empty = QLabel("No activity yet")
-            empty.setAlignment(Qt.AlignCenter)
-            empty.setStyleSheet("color: #9ca3af; font-size: 13px; padding: 20px; background: transparent;")
-            acl.addWidget(empty)
-        acl.addStretch()
-        bottom.addWidget(act_card, 3)
-
-        # Upcoming promotions card
-        promo_card = QFrame()
-        promo_card.setStyleSheet(CARD_SS)
-        pcl = QVBoxLayout(promo_card)
-        pcl.setContentsMargins(24, 20, 24, 20)
-        pcl.setSpacing(0)
-
-        pch = QHBoxLayout()
-        promo_title = QLabel(t("upcoming_promotions"))
-        promo_title.setStyleSheet("font-size: 16px; font-weight: 600; color: #111827; background: transparent;")
-        vp_btn = QPushButton(t("view_all"))
-        vp_btn.setCursor(Qt.PointingHandCursor)
-        vp_btn.setStyleSheet(btn_ghost(28))
-        vp_btn.clicked.connect(lambda: self.navigate("promotions"))
-        pch.addWidget(promo_title)
-        pch.addStretch()
-        pch.addWidget(vp_btn)
-        pcl.addLayout(pch)
-        pcl.addSpacing(12)
-
-        if self.upcoming_promotions:
-            for entry in self.upcoming_promotions:
-                pcl.addWidget(self._promo_row(entry))
-        else:
-            empty_p = QLabel("No employees eligible or\napproaching promotion soon.")
-            empty_p.setAlignment(Qt.AlignCenter)
-            empty_p.setStyleSheet("color: #9ca3af; font-size: 13px; padding: 32px; background: transparent;")
-            pcl.addWidget(empty_p)
-        pcl.addStretch()
-        bottom.addWidget(promo_card, 2)
-
+        bottom.setSpacing(24)
+        bottom.addWidget(self._recent_card(), 1)
+        bottom.addWidget(self._upcoming_card(), 1)
         layout.addLayout(bottom)
         layout.addStretch()
+
         scroll.setWidget(content)
         outer.addWidget(scroll)
+
+    def _increment_alert(self):
+        alert = QFrame()
+        alert.setObjectName("IncrementAlert")
+        alert.setStyleSheet(
+            "QFrame#IncrementAlert { background: #fefce8; border: 1px solid #fde047; border-radius: 8px; }"
+            "QFrame#IncrementAlert QLabel { border: none; background: transparent; }"
+        )
+        row = QHBoxLayout(alert)
+        row.setContentsMargins(16, 14, 16, 14)
+        row.setSpacing(12)
+        icon = QLabel()
+        icon.setPixmap(qta.icon("fa5s.coins", color="#ca8a04").pixmap(22, 22))
+        row.addWidget(icon)
+        txt = QLabel(t("salary_increment_prompt", count=self.increment_count))
+        txt.setStyleSheet("font-size: 13px; color: #854d0e;")
+        row.addWidget(txt, 1)
+        btn = QPushButton("Review")
+        btn.setFixedHeight(34)
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setStyleSheet("QPushButton { background: #ca8a04; color: white; border: none; border-radius: 6px; padding: 0 14px; font-weight: 600; }")
+        btn.clicked.connect(self._open_increment_dialog)
+        row.addWidget(btn)
+        return alert
 
     def _open_increment_dialog(self):
         SalaryIncrementReviewDialog(self.increment_data, self.user, parent=self).exec()
 
-    def _stat_card(self, label, value, color, icon_name, hint):
+    def _card(self):
         card = QFrame()
-        card.setFixedHeight(126)
-        card.setStyleSheet(CARD_SS)
-        cl = QHBoxLayout(card)
-        cl.setContentsMargins(20, 0, 20, 0)
-        cl.setSpacing(16)
-
-        txt = QVBoxLayout()
-        txt.setSpacing(6)
-        l = QLabel(label)
-        l.setWordWrap(True)
-        l.setStyleSheet("font-size: 13px; color: #6b7280; background: transparent;")
-        v = QLabel(value)
-        v.setStyleSheet("font-size: 28px; font-weight: 800; color: #111827; background: transparent;")
-        h = QLabel(hint)
-        h.setStyleSheet("font-size: 12px; color: #059669; background: transparent;")
-        txt.addWidget(l)
-        txt.addWidget(v)
-        txt.addWidget(h)
-        cl.addLayout(txt)
-        cl.addStretch()
-
-        ico_box = QLabel()
-        ico_box.setFixedSize(46, 46)
-        ico_box.setAlignment(Qt.AlignCenter)
-        ico_box.setStyleSheet(f"background: {color}; border-radius: 11px;")
-        ico_box.setPixmap(qta.icon(icon_name, color="white").pixmap(21, 21))
-        cl.addWidget(ico_box)
+        card.setObjectName("DashboardCard")
+        card.setStyleSheet(DASH_CARD_SS)
         return card
 
-    def _activity_row(self, action, desc, ts, color):
+    def _stat_card(self, label, value, change, color, icon_name):
+        card = self._card()
+        card.setMinimumHeight(172)
+        layout = QHBoxLayout(card)
+        layout.setContentsMargins(24, 28, 24, 28)
+        layout.setSpacing(12)
+
+        text = QVBoxLayout()
+        text.setSpacing(10)
+        label_lbl = QLabel(label)
+        label_lbl.setWordWrap(True)
+        label_lbl.setStyleSheet("font-size: 16px; color: #4b5563;")
+        value_lbl = QLabel(value)
+        value_lbl.setStyleSheet("font-size: 36px; font-weight: 800; color: #111827;")
+        change_lbl = QLabel(change)
+        change_lbl.setWordWrap(True)
+        change_lbl.setStyleSheet("font-size: 15px; color: #059669;")
+        text.addWidget(label_lbl)
+        text.addWidget(value_lbl)
+        text.addWidget(change_lbl)
+        layout.addLayout(text)
+        layout.addStretch()
+
+        icon_box = QLabel()
+        icon_box.setFixedSize(56, 56)
+        icon_box.setAlignment(Qt.AlignCenter)
+        icon_box.setStyleSheet(f"background: {color}; border: none; border-radius: 8px;")
+        icon_box.setPixmap(qta.icon(icon_name, color="white").pixmap(26, 26))
+        layout.addWidget(icon_box, 0, Qt.AlignTop)
+        return card
+
+    def _recent_card(self):
+        card = self._card()
+        card.setMinimumHeight(460)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(32, 28, 32, 28)
+        layout.setSpacing(0)
+
+        header = QHBoxLayout()
+        title = QLabel("Recent Activities")
+        title.setStyleSheet("font-size: 20px; font-weight: 700; color: #111827;")
+        view = QPushButton("View All")
+        view.setCursor(Qt.PointingHandCursor)
+        view.setStyleSheet(btn_ghost(32))
+        view.clicked.connect(lambda: self.navigate("audit_log"))
+        header.addWidget(title)
+        header.addStretch()
+        header.addWidget(view)
+        layout.addLayout(header)
+        layout.addSpacing(28)
+
+        if self.logs_data:
+            for index, item in enumerate(self.logs_data[:5]):
+                layout.addWidget(self._activity_row(item, index == len(self.logs_data[:5]) - 1))
+        else:
+            empty = QLabel("No recent activity yet.")
+            empty.setAlignment(Qt.AlignCenter)
+            empty.setStyleSheet("font-size: 15px; color: #6b7280; background: #f9fafb; border: none; border-radius: 8px; padding: 28px;")
+            layout.addWidget(empty)
+        layout.addStretch()
+        return card
+
+    def _activity_row(self, item, is_last):
         row = QFrame()
-        row.setFixedHeight(52)
-        row.setStyleSheet("background: transparent; border: none; border-bottom: 1px solid #f3f4f6;")
-        rl = QHBoxLayout(row)
-        rl.setContentsMargins(0, 0, 0, 0)
-        rl.setSpacing(10)
+        row.setObjectName("ActivityRow")
+        row.setMinimumHeight(94)
+        border = "none" if is_last else "1px solid #f3f4f6"
+        row.setStyleSheet(
+            f"QFrame#ActivityRow {{ background: transparent; border: none; border-bottom: {border}; border-radius: 0; }}"
+            "QFrame#ActivityRow QLabel { border: none; background: transparent; }"
+        )
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(0, 0, 0, 16)
+        layout.setSpacing(16)
 
         dot = QLabel()
-        dot.setFixedSize(8, 8)
-        dot.setStyleSheet(f"background: {color}; border-radius: 4px; min-width: 8px; max-width: 8px;")
-        rl.addWidget(dot)
+        dot.setFixedSize(10, 10)
+        dot.setStyleSheet("background: #2563eb; border: none; border-radius: 5px;")
+        layout.addWidget(dot, 0, Qt.AlignTop)
 
-        ac = QLabel(action.replace(".", " › ").replace("_", " ").title())
-        ac.setFixedWidth(170)
-        ac.setStyleSheet("font-size: 13px; font-weight: 600; color: #111827; background: transparent;")
-        rl.addWidget(ac)
+        text = QVBoxLayout()
+        text.setSpacing(4)
+        action = QLabel(item["action"])
+        action.setStyleSheet("font-size: 18px; font-weight: 700; color: #111827;")
+        target = QLabel(item["target"])
+        target.setWordWrap(True)
+        target.setStyleSheet("font-size: 16px; color: #4b5563;")
+        byline = QLabel(f"by {item['user']}")
+        byline.setStyleSheet("font-size: 14px; color: #6b7280;")
+        text.addWidget(action)
+        text.addWidget(target)
+        text.addWidget(byline)
+        layout.addLayout(text, 1)
 
-        dl = QLabel(desc[:48] + "…" if len(desc) > 48 else desc)
-        dl.setStyleSheet("font-size: 12px; color: #6b7280; background: transparent;")
-        rl.addWidget(dl)
-        rl.addStretch()
-
-        tl = QLabel(ts)
-        tl.setStyleSheet("font-size: 11px; color: #9ca3af; background: transparent;")
-        rl.addWidget(tl)
+        time = QLabel(item["time"])
+        time.setStyleSheet("font-size: 14px; color: #6b7280;")
+        layout.addWidget(time, 0, Qt.AlignTop)
         return row
 
-    def _promo_row(self, entry):
+    def _upcoming_card(self):
+        card = self._card()
+        card.setMinimumHeight(460)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(32, 28, 32, 28)
+        layout.setSpacing(0)
+
+        header = QHBoxLayout()
+        title = QLabel("Upcoming Eligible Promotions")
+        title.setWordWrap(True)
+        title.setStyleSheet("font-size: 20px; font-weight: 700; color: #111827;")
+        view = QPushButton("View All")
+        view.setCursor(Qt.PointingHandCursor)
+        view.setStyleSheet(btn_ghost(32))
+        view.clicked.connect(lambda: self.navigate("promotions"))
+        header.addWidget(title)
+        header.addStretch()
+        header.addWidget(view)
+        layout.addLayout(header)
+        layout.addSpacing(28)
+
+        if self.upcoming_promotions:
+            for index, item in enumerate(self.upcoming_promotions[:3]):
+                layout.addWidget(self._promo_row(item))
+                if index < len(self.upcoming_promotions[:3]) - 1:
+                    layout.addSpacing(20)
+        else:
+            empty = QLabel("No employees are approaching promotion eligibility right now.")
+            empty.setWordWrap(True)
+            empty.setAlignment(Qt.AlignCenter)
+            empty.setStyleSheet("font-size: 15px; color: #6b7280; background: #f9fafb; border: none; border-radius: 8px; padding: 28px;")
+            layout.addWidget(empty)
+        layout.addStretch()
+        return card
+
+    def _promo_row(self, item):
         row = QFrame()
-        row.setFixedHeight(62)
-        row.setStyleSheet("background: transparent; border: none; border-bottom: 1px solid #f3f4f6;")
-        rl = QHBoxLayout(row)
-        rl.setContentsMargins(0, 8, 0, 8)
-        rl.setSpacing(12)
-
-        info = QVBoxLayout()
-        info.setSpacing(2)
-        name_lbl = QLabel(entry["name"])
-        name_lbl.setStyleSheet("font-size: 13px; font-weight: 600; color: #111827; background: transparent;")
-        trans_lbl = QLabel(f"{entry['current']}  →  {entry['next']}")
-        trans_lbl.setStyleSheet("font-size: 11px; color: #6b7280; background: transparent;")
-        info.addWidget(name_lbl)
-        info.addWidget(trans_lbl)
-        rl.addLayout(info, 2)
-
-        pct = entry["progress_pct"]
-        bar_color = "#10b981" if entry["eligible"] else ("#f59e0b" if pct >= 60 else "#3b82f6")
-
-        prog_col = QVBoxLayout()
-        prog_col.setSpacing(3)
-        bar = QProgressBar()
-        bar.setRange(0, 100)
-        bar.setValue(pct)
-        bar.setFixedHeight(6)
-        bar.setTextVisible(False)
-        bar.setStyleSheet(
-            f"QProgressBar {{ background: #e5e7eb; border-radius: 3px; border: none; }}"
-            f" QProgressBar::chunk {{ background: {bar_color}; border-radius: 3px; }}"
+        row.setObjectName("PromoRow")
+        row.setMinimumHeight(142)
+        row.setStyleSheet(
+            "QFrame#PromoRow { background: #f9fafb; border: none; border-radius: 8px; }"
+            "QFrame#PromoRow QLabel { border: none; background: transparent; }"
         )
-        prog_col.addWidget(bar)
-        lbl_txt = "Eligible now!" if entry["eligible"] else f"{entry['months_remaining']} mo left"
-        lbl_col = "#10b981" if entry["eligible"] else "#6b7280"
-        prog_lbl = QLabel(lbl_txt)
-        prog_lbl.setStyleSheet(f"font-size: 10px; color: {lbl_col}; background: transparent;")
-        prog_col.addWidget(prog_lbl)
-        rl.addLayout(prog_col, 2)
+        layout = QVBoxLayout(row)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(12)
 
-        pct_lbl = QLabel(f"{pct}%")
-        pct_lbl.setFixedWidth(36)
-        pct_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        pct_lbl.setStyleSheet(f"font-size: 11px; font-weight: bold; color: {bar_color}; background: transparent;")
-        rl.addWidget(pct_lbl)
+        top = QHBoxLayout()
+        text = QVBoxLayout()
+        text.setSpacing(6)
+        name = QLabel(item["name"])
+        name.setStyleSheet("font-size: 18px; font-weight: 700; color: #111827;")
+        level = QLabel(f"{item['current']} -> {item['next']}")
+        level.setStyleSheet("font-size: 16px; color: #4b5563;")
+        text.addWidget(name)
+        text.addWidget(level)
+        top.addLayout(text)
+        top.addStretch()
+
+        badge_text = item.get("badge")
+        if not badge_text:
+            badge_text = "Eligible" if item["eligible"] else f"{item['months_remaining']} mo"
+        badge = QLabel(badge_text)
+        badge.setAlignment(Qt.AlignCenter)
+        badge.setStyleSheet("background: #dbeafe; color: #2563eb; border: none; border-radius: 14px; padding: 4px 10px; font-size: 14px;")
+        top.addWidget(badge, 0, Qt.AlignTop)
+        layout.addLayout(top)
+
+        progress = QProgressBar()
+        progress.setRange(0, 100)
+        progress.setValue(item["progress_pct"])
+        progress.setFixedHeight(10)
+        progress.setTextVisible(False)
+        progress.setStyleSheet(
+            "QProgressBar { background: #e5e7eb; border: none; border-radius: 5px; }"
+            "QProgressBar::chunk { background: #2563eb; border-radius: 5px; }"
+        )
+        layout.addWidget(progress)
+
+        complete = QLabel(f"{item['progress_pct']}% complete")
+        complete.setStyleSheet("font-size: 14px; color: #6b7280;")
+        layout.addWidget(complete)
         return row
