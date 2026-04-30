@@ -13,11 +13,11 @@ from PySide6.QtWidgets import (
     QFrame, QScrollArea, QLineEdit, QComboBox, QMessageBox,
     QTabWidget, QSpinBox, QDoubleSpinBox, QFileDialog
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSettings
 
 from src.core.i18n import t
 from src.database.connection import get_session, log_action
-from src.database.models import Title, SystemUser
+from src.database.models import Title, SystemUser, PromotionRule
 import csv
 import os
 
@@ -58,10 +58,12 @@ class SettingsPage(QWidget):
             QTabBar::tab:hover { color: #111827; }
         """)
 
-        self.tabs.addTab(SalaryTab(self.user),     "Salary Ranges")
-        self.tabs.addTab(IncrementTab(self.user),  "Annual Increment")
-        self.tabs.addTab(SecurityTab(self.user),   "Security")
-        self.tabs.addTab(DatabaseTab(self.user),   "Database")
+        self.tabs.addTab(GeneralTab(self.user),          "General")
+        self.tabs.addTab(SalaryTab(self.user),           "Salary Ranges")
+        self.tabs.addTab(SettingsPromotionTab(self.user), "Promotion Rules")
+        self.tabs.addTab(IncrementTab(self.user),        "Annual Increment")
+        self.tabs.addTab(SecurityTab(self.user),         "Security")
+        self.tabs.addTab(DatabaseTab(self.user),         "Database")
 
         layout.addWidget(self.tabs)
 
@@ -109,6 +111,160 @@ def _scroll_wrap(widget):
     scroll.setStyleSheet("border: none;")
     scroll.setWidget(widget)
     return scroll
+
+
+class GeneralTab(QWidget):
+    def __init__(self, user):
+        super().__init__()
+        self.user = user
+        self.settings = QSettings("MyHR", "MyHR")
+        self._build()
+        self._load()
+
+    def _build(self):
+        content = QWidget()
+        content.setStyleSheet("background: #f9fafb;")
+        outer = QVBoxLayout(content)
+        outer.setContentsMargins(28, 20, 28, 28)
+        outer.setSpacing(16)
+
+        card, layout = _card("Organization Information", "Basic company details shown in reports and exports")
+        grid = QHBoxLayout()
+        left = QVBoxLayout()
+        right = QVBoxLayout()
+        self.company_name = QLineEdit()
+        self.company_name.setStyleSheet(INPUT_STYLE)
+        self.company_address = QLineEdit()
+        self.company_address.setStyleSheet(INPUT_STYLE)
+        self.fiscal_start = QLineEdit()
+        self.fiscal_start.setPlaceholderText("01-01")
+        self.fiscal_start.setStyleSheet(INPUT_STYLE)
+        self.timezone = QLineEdit()
+        self.timezone.setStyleSheet(INPUT_STYLE)
+        for label, widget in [("Company Name", self.company_name), ("Fiscal Year Start (MM-DD)", self.fiscal_start)]:
+            left.addWidget(_lbl(label))
+            left.addWidget(widget)
+        for label, widget in [("Company Address", self.company_address), ("Timezone", self.timezone)]:
+            right.addWidget(_lbl(label))
+            right.addWidget(widget)
+        grid.addLayout(left)
+        grid.addSpacing(16)
+        grid.addLayout(right)
+        layout.addLayout(grid)
+        save = QPushButton("Save General Settings")
+        save.setCursor(Qt.PointingHandCursor)
+        save.setStyleSheet(SAVE_STYLE)
+        save.clicked.connect(self._save)
+        layout.addWidget(save, alignment=Qt.AlignRight)
+        outer.addWidget(card)
+        outer.addStretch()
+
+        page = QVBoxLayout(self)
+        page.setContentsMargins(0, 0, 0, 0)
+        page.addWidget(_scroll_wrap(content))
+
+    def _load(self):
+        self.company_name.setText(self.settings.value("company/name", "MyHR Company"))
+        self.company_address.setText(self.settings.value("company/address", "Budapest, Hungary"))
+        self.fiscal_start.setText(self.settings.value("company/fiscal_start", "01-01"))
+        self.timezone.setText(self.settings.value("company/timezone", "Europe/Budapest"))
+
+    def _save(self):
+        self.settings.setValue("company/name", self.company_name.text().strip() or "MyHR Company")
+        self.settings.setValue("company/address", self.company_address.text().strip())
+        self.settings.setValue("company/fiscal_start", self.fiscal_start.text().strip() or "01-01")
+        self.settings.setValue("company/timezone", self.timezone.text().strip() or "Europe/Budapest")
+        session = get_session()
+        try:
+            log_action(session, action="settings.general", performed_by_id=self.user.id, description="Organization settings updated")
+            session.commit()
+        finally:
+            session.close()
+        QMessageBox.information(self, t("success"), "General settings saved.")
+
+
+class SettingsPromotionTab(QWidget):
+    def __init__(self, user):
+        super().__init__()
+        self.user = user
+        self.fields = {}
+        self._build()
+        self._load()
+
+    def _build(self):
+        content = QWidget()
+        content.setStyleSheet("background: #f9fafb;")
+        outer = QVBoxLayout(content)
+        outer.setContentsMargins(28, 20, 28, 28)
+        outer.setSpacing(16)
+        card, layout = _card("Promotion Eligibility Rules", "Commendations and sanctions are optional race modifiers")
+        note = QFrame()
+        note.setStyleSheet("background: #f3e8ff; border-radius: 10px; border: 1px solid #e9d5ff;")
+        nl = QHBoxLayout(note)
+        nl.setContentsMargins(14, 10, 14, 10)
+        txt = QLabel("Auto-reset commendations after promotion: enabled by design. Each promotion starts a fresh race.")
+        txt.setWordWrap(True)
+        txt.setStyleSheet("font-size: 13px; color: #6b21a8; background: transparent;")
+        nl.addWidget(txt)
+        layout.addWidget(note)
+        self.rules_box = QVBoxLayout()
+        self.rules_box.setSpacing(12)
+        layout.addLayout(self.rules_box)
+        save = QPushButton("Save Promotion Settings")
+        save.setCursor(Qt.PointingHandCursor)
+        save.setStyleSheet(SAVE_STYLE)
+        save.clicked.connect(self._save)
+        layout.addWidget(save, alignment=Qt.AlignRight)
+        outer.addWidget(card)
+        outer.addStretch()
+        page = QVBoxLayout(self)
+        page.setContentsMargins(0, 0, 0, 0)
+        page.addWidget(_scroll_wrap(content))
+
+    def _load(self):
+        while self.rules_box.count():
+            item = self.rules_box.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        self.fields = {}
+        session = get_session()
+        try:
+            for rule in session.query(PromotionRule).all():
+                row = QFrame()
+                row.setStyleSheet("background: #eff6ff; border-radius: 10px; border: 1px solid #bfdbfe;")
+                rl = QHBoxLayout(row)
+                rl.setContentsMargins(14, 12, 14, 12)
+                title = QLabel(f"{rule.from_title.name} -> {rule.to_title.name} Promotion")
+                title.setStyleSheet("font-size: 13px; font-weight: 700; color: #1e40af; background: transparent;")
+                spin = QSpinBox()
+                spin.setRange(1, 120)
+                spin.setValue(rule.base_months)
+                spin.setStyleSheet(SPIN_STYLE)
+                spin.setFixedWidth(130)
+                self.fields[rule.id] = spin
+                rl.addWidget(title)
+                rl.addStretch()
+                rl.addWidget(_lbl("Base Track Duration (months)"))
+                rl.addWidget(spin)
+                self.rules_box.addWidget(row)
+        finally:
+            session.close()
+
+    def _save(self):
+        session = get_session()
+        try:
+            for rule_id, spin in self.fields.items():
+                rule = session.query(PromotionRule).filter_by(id=rule_id).first()
+                if rule:
+                    rule.base_months = spin.value()
+            log_action(session, action="settings.promotion_rules", performed_by_id=self.user.id, description="Promotion settings updated")
+            session.commit()
+            QMessageBox.information(self, t("success"), "Promotion settings saved.")
+        except Exception as e:
+            session.rollback()
+            QMessageBox.critical(self, t("error"), str(e))
+        finally:
+            session.close()
 
 
 # ── Salary Ranges Tab ─────────────────────────────────────────────────────────

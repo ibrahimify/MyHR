@@ -29,6 +29,28 @@ ACTION_COLORS = {
     "settings":    ("#f9fafb", "#374151"),
 }
 
+ACTION_LABELS = {
+    "employee.create": "Employee Added",
+    "employee.update": "Employee Updated",
+    "employee.delete": "Employee Deleted",
+    "promotion.approve": "Promotion Approved",
+    "promotion_rule.update": "Promotion Rule Updated",
+    "commendation.issue": "Commendation Issued",
+    "sanction.issue": "Sanction Applied",
+    "sanction.resolve": "Sanction Resolved",
+    "import.bulk_employees": "CSV Import",
+    "settings.salary_ranges": "Salary Ranges Updated",
+    "settings.increment_rules": "Increment Rules Updated",
+    "settings.general": "General Settings Updated",
+    "settings.promotion_rules": "Promotion Settings Updated",
+    "settings.password_change": "Password Changed",
+    "settings.export_employees": "Employee Data Exported",
+    "org_unit.create": "Organization Unit Added",
+    "org_unit.update": "Organization Unit Updated",
+    "org_unit.delete": "Organization Unit Deleted",
+    "salary_increment.apply": "Salary Increment Applied",
+}
+
 
 class AuditLogPage(QWidget):
     def __init__(self, user):
@@ -139,7 +161,7 @@ class AuditLogPage(QWidget):
             self.all_logs = [{
                 "timestamp": l.performed_at.strftime("%Y-%m-%d %H:%M:%S") if l.performed_at else "—",
                 "user": l.performed_by.full_name if l.performed_by else "System",
-                "action": l.action,
+                "action": ACTION_LABELS.get(l.action, l.action),
                 "description": l.description or "—",
                 "category": l.action.split(".")[0].lower() if l.action and "." in l.action else "other",
                 "target": f"{l.target_table} #{l.target_id}" if l.target_table else "—",

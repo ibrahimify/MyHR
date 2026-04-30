@@ -11,7 +11,7 @@ import qtawesome as qta
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QLineEdit, QComboBox, QTableWidget,
-    QTableWidgetItem, QHeaderView, QStackedWidget,
+    QTableWidgetItem, QHeaderView, QStackedWidget, QTabWidget,
     QTextEdit, QMessageBox, QDateEdit
 )
 from PySide6.QtCore import Qt, QDate, QSize
@@ -1004,3 +1004,272 @@ class EmployeeProfileView(QWidget):
             row.addWidget(k); row.addWidget(v); row.addStretch()
             layout.addLayout(row)
         return card
+
+
+# Figma-style profile view. This intentionally redefines the earlier class so
+# EmployeesPage gets the cleaner tabbed profile without disturbing form code above.
+class EmployeeProfileView(QWidget):
+    def __init__(self, user, on_back, on_edit):
+        super().__init__()
+        self.user = user
+        self.on_back = on_back
+        self.on_edit = on_edit
+        self.employee_db_id = None
+        self.setStyleSheet("background: #f9fafb;")
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setStyleSheet("border: none; background: #f9fafb;")
+        layout.addWidget(self.scroll)
+
+    def load(self, employee_db_id):
+        self.employee_db_id = employee_db_id
+        session = get_session()
+        try:
+            emp = session.query(Employee).filter_by(id=employee_db_id).first()
+            if not emp:
+                return
+            race = calculate_months_remaining(emp, session)
+            content = QWidget()
+            content.setStyleSheet("background: #f9fafb;")
+            page = QVBoxLayout(content)
+            page.setContentsMargins(28, 28, 28, 28)
+            page.setSpacing(18)
+
+            back = QPushButton("  Back to Employees")
+            back.setIcon(qta.icon("fa5s.arrow-left", color="#111827"))
+            back.setIconSize(QSize(12, 12))
+            back.setCursor(Qt.PointingHandCursor)
+            back.setFixedWidth(170)
+            back.setStyleSheet("QPushButton { background: transparent; color: #111827; border: none; font-size: 13px; font-weight: 600; text-align: left; } QPushButton:hover { color: #2563eb; }")
+            back.clicked.connect(self.on_back)
+            page.addWidget(back)
+            page.addWidget(self._profile_header(emp))
+
+            tabs = QTabWidget()
+            tabs.setStyleSheet("""
+                QTabWidget::pane { border: none; background: #f9fafb; margin-top: 14px; }
+                QTabBar::tab { background: #e5e7eb; color: #111827; padding: 8px 14px; border: none; font-size: 12px; font-weight: 600; }
+                QTabBar::tab:first { border-top-left-radius: 9px; border-bottom-left-radius: 9px; }
+                QTabBar::tab:last { border-top-right-radius: 9px; border-bottom-right-radius: 9px; }
+                QTabBar::tab:selected { background: white; color: #030213; }
+            """)
+            tabs.addTab(self._details_tab(emp), "Personal Details")
+            tabs.addTab(self._promotion_tab(emp, race), "Promotion History")
+            tabs.addTab(self._commendations_tab(emp), "Commendations")
+            tabs.addTab(self._sanctions_tab(emp), "Sanctions")
+            page.addWidget(tabs)
+            page.addStretch()
+            self.scroll.setWidget(content)
+        finally:
+            session.close()
+
+    def _profile_header(self, emp):
+        card = QFrame()
+        card.setStyleSheet("background: white; border-radius: 12px; border: 1px solid #e5e7eb;")
+        layout = QHBoxLayout(card)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(20)
+        initials = (emp.first_name[:1] + emp.last_name[:1]).upper()
+        avatar = QLabel(initials)
+        avatar.setFixedSize(80, 80)
+        avatar.setAlignment(Qt.AlignCenter)
+        avatar.setStyleSheet("background: #2563eb; color: white; border-radius: 40px; font-size: 26px; font-weight: bold;")
+        layout.addWidget(avatar)
+        info = QVBoxLayout()
+        info.setSpacing(6)
+        name_row = QHBoxLayout()
+        name = QLabel(emp.full_name)
+        name.setStyleSheet("font-size: 24px; font-weight: 800; color: #111827; background: transparent;")
+        name_row.addWidget(name)
+        name_row.addWidget(self._badge(emp.status.replace("_", " ").title(), "#dcfce7", "#166534"))
+        name_row.addWidget(self._badge(emp.title.name if emp.title else "-", "#dbeafe", "#1e40af"))
+        name_row.addStretch()
+        info.addLayout(name_row)
+        pos = QLabel(emp.position)
+        pos.setStyleSheet("font-size: 14px; color: #6b7280; background: transparent;")
+        info.addWidget(pos)
+        meta = QHBoxLayout()
+        for icon_name, value in [
+            ("fa5s.envelope", emp.work_email or "-"),
+            ("fa5s.phone", emp.work_phone or emp.phone or "-"),
+            ("fa5s.map-marker-alt", emp.address or "-"),
+            ("fa5s.calendar-alt", f"Joined {emp.join_date.date()}" if emp.join_date else "-"),
+        ]:
+            row = QHBoxLayout()
+            row.setSpacing(5)
+            ico = QLabel()
+            ico.setPixmap(qta.icon(icon_name, color="#6b7280").pixmap(13, 13))
+            lbl = QLabel(str(value))
+            lbl.setStyleSheet("font-size: 12px; color: #6b7280; background: transparent;")
+            row.addWidget(ico)
+            row.addWidget(lbl)
+            meta.addLayout(row)
+            meta.addSpacing(16)
+        meta.addStretch()
+        info.addLayout(meta)
+        layout.addLayout(info, 1)
+        edit = QPushButton("  Edit Profile")
+        edit.setIcon(qta.icon("fa5s.edit", color="white"))
+        edit.setIconSize(QSize(13, 13))
+        edit.setCursor(Qt.PointingHandCursor)
+        edit.setFixedHeight(36)
+        edit.setStyleSheet("QPushButton { background: #030213; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; padding: 0 14px; } QPushButton:hover { background: #111827; }")
+        edit.clicked.connect(lambda: self.on_edit(self.employee_db_id) if self.employee_db_id else None)
+        layout.addWidget(edit, alignment=Qt.AlignTop)
+        return card
+
+    def _details_tab(self, emp):
+        page = QWidget()
+        page.setStyleSheet("background: #f9fafb;")
+        layout = QHBoxLayout(page)
+        layout.setContentsMargins(0, 12, 0, 0)
+        layout.setSpacing(16)
+        layout.addWidget(self._info_card("Employment Information", [
+            (t("employee_id"), emp.employee_id),
+            (t("department"), emp.org_unit.name if emp.org_unit else "-"),
+            (t("position"), emp.position),
+            (t("level"), emp.title.name if emp.title else "-"),
+            (t("base_salary"), f"EUR {emp.base_salary:,.2f}"),
+            (t("reports_to"), emp.reports_to.full_name if emp.reports_to else "-"),
+            (t("join_date"), str(emp.join_date.date()) if emp.join_date else "-"),
+        ]))
+        if self.user.role == "admin":
+            layout.addWidget(self._info_card("Personal Information (Admin Only)", [
+                ("Full Name", emp.full_name),
+                (t("personal_email"), emp.personal_email or "-"),
+                (t("phone"), emp.phone or "-"),
+                (t("address"), emp.address or "-"),
+                (t("degree"), emp.degree),
+                (t("base_salary"), f"EUR {emp.base_salary:,.2f}"),
+            ], badge="Admin Only"))
+        layout.addStretch()
+        return page
+
+    def _promotion_tab(self, emp, race):
+        page = QWidget()
+        page.setStyleSheet("background: #f9fafb;")
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(0, 12, 0, 0)
+        card = self._list_card("Promotion History")
+        body = card.layout()
+        for promo in reversed(list(emp.promotions)):
+            body.addWidget(self._event_row("fa5s.chart-line", "#10b981", f"Promoted from {promo.from_title.name} to {promo.to_title.name}", promo.notes or promo.basis.replace("_", " ").title(), promo.promoted_at.strftime("%Y-%m-%d") if promo.promoted_at else "-"))
+        body.addWidget(self._event_row("fa5s.chart-line", "#10b981", "Initial Position", f"Initial hire ({emp.degree} degree)", emp.join_date.strftime("%Y-%m-%d") if emp.join_date else "-"))
+        if race["has_next_level"]:
+            body.addWidget(self._event_row("fa5s.clock", "#2563eb", "Current Promotion Race", f"{race['progress_pct']}% complete, {race['months_remaining']} month(s) remaining", "Live"))
+        layout.addWidget(card)
+        layout.addStretch()
+        return page
+
+    def _commendations_tab(self, emp):
+        page = QWidget()
+        page.setStyleSheet("background: #f9fafb;")
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(0, 12, 0, 0)
+        card = self._list_card("Commendations")
+        body = card.layout()
+        if emp.commendations:
+            for comm in sorted(emp.commendations, key=lambda c: c.issued_at or datetime.min, reverse=True):
+                body.addWidget(self._event_row("fa5s.award", "#f59e0b", f"{comm.title} ({comm.commendation_ref})", f"Category {comm.category} - {abs(comm.months_impact)} month(s) faster", comm.issued_at.strftime("%Y-%m-%d") if comm.issued_at else "-"))
+        else:
+            body.addWidget(self._empty_row("No commendations recorded for this employee."))
+        layout.addWidget(card)
+        layout.addStretch()
+        return page
+
+    def _sanctions_tab(self, emp):
+        page = QWidget()
+        page.setStyleSheet("background: #f9fafb;")
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(0, 12, 0, 0)
+        card = self._list_card("Sanctions")
+        body = card.layout()
+        if emp.sanctions:
+            for sanction in sorted(emp.sanctions, key=lambda s: s.issued_at or datetime.min, reverse=True):
+                status = "Resolved" if sanction.is_resolved else "Active"
+                resolved = f", resolved {sanction.resolved_at:%Y-%m-%d}" if sanction.resolved_at else ""
+                body.addWidget(self._event_row("fa5s.exclamation-triangle", "#ef4444", f"{sanction.sanction_type.replace('_', ' ').title()} ({sanction.sanction_ref})", f"{sanction.reason} - +{sanction.delay_months} month(s), {status}{resolved}", sanction.issued_at.strftime("%Y-%m-%d") if sanction.issued_at else "-"))
+        else:
+            body.addWidget(self._empty_row("No sanctions recorded for this employee."))
+        layout.addWidget(card)
+        layout.addStretch()
+        return page
+
+    def _info_title(self, text):
+        label = QLabel(text)
+        label.setStyleSheet("font-size: 15px; font-weight: 700; color: #111827; background: transparent;")
+        return label
+
+    def _badge(self, text, bg, fg):
+        label = QLabel(text)
+        label.setStyleSheet(f"background: {bg}; color: {fg}; border-radius: 6px; padding: 2px 9px; font-size: 11px; font-weight: 700;")
+        return label
+
+    def _info_card(self, title, rows, badge=None):
+        card = QFrame()
+        card.setStyleSheet("background: white; border-radius: 12px; border: 1px solid #e5e7eb;")
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(12)
+        header = QHBoxLayout()
+        header.addWidget(self._info_title(title))
+        if badge:
+            header.addWidget(self._badge(badge, "#fee2e2", "#991b1b"))
+        header.addStretch()
+        layout.addLayout(header)
+        for key, val in rows:
+            field = QVBoxLayout()
+            field.setSpacing(4)
+            k = QLabel(key)
+            k.setStyleSheet("font-size: 12px; font-weight: 700; color: #111827; background: transparent;")
+            v = QLabel(str(val))
+            v.setWordWrap(True)
+            v.setStyleSheet("font-size: 12px; color: #6b7280; background: #f9fafb; border-radius: 7px; padding: 8px 10px;")
+            field.addWidget(k)
+            field.addWidget(v)
+            layout.addLayout(field)
+        return card
+
+    def _list_card(self, title):
+        card = QFrame()
+        card.setStyleSheet("background: white; border-radius: 12px; border: 1px solid #e5e7eb;")
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(8)
+        layout.addWidget(self._info_title(title))
+        return card
+
+    def _event_row(self, icon_name, color, title, subtitle, date_text):
+        row = QFrame()
+        row.setStyleSheet("background: transparent; border: none; border-bottom: 1px solid #f3f4f6;")
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(0, 12, 0, 12)
+        layout.setSpacing(12)
+        icon = QLabel()
+        icon.setFixedSize(36, 36)
+        icon.setAlignment(Qt.AlignCenter)
+        icon.setStyleSheet(f"background: {color}18; border-radius: 8px;")
+        icon.setPixmap(qta.icon(icon_name, color=color).pixmap(15, 15))
+        text_col = QVBoxLayout()
+        text_col.setSpacing(2)
+        title_lbl = QLabel(title)
+        title_lbl.setStyleSheet("font-size: 13px; font-weight: 700; color: #111827; background: transparent;")
+        sub_lbl = QLabel(subtitle)
+        sub_lbl.setWordWrap(True)
+        sub_lbl.setStyleSheet("font-size: 12px; color: #6b7280; background: transparent;")
+        text_col.addWidget(title_lbl)
+        text_col.addWidget(sub_lbl)
+        date = QLabel(date_text)
+        date.setStyleSheet("font-size: 12px; color: #6b7280; background: transparent;")
+        layout.addWidget(icon)
+        layout.addLayout(text_col, 1)
+        layout.addWidget(date, alignment=Qt.AlignTop)
+        return row
+
+    def _empty_row(self, text):
+        label = QLabel(text)
+        label.setAlignment(Qt.AlignCenter)
+        label.setStyleSheet("font-size: 13px; color: #9ca3af; padding: 24px; background: transparent;")
+        return label

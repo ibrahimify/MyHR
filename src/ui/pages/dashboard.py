@@ -166,7 +166,7 @@ class DashboardPage(QWidget):
             self.emp_count       = session.query(Employee).count()
             self.sanction_count  = session.query(Sanction).filter_by(is_resolved=False).count()
             self.commend_count   = session.query(Commendation).count()
-            self.promotion_count = session.query(PromotionHistory).count()
+            self.promotion_count = 0
 
             increment_due = get_increment_due_employees(session)
             self.increment_count = len(increment_due)
@@ -203,6 +203,8 @@ class DashboardPage(QWidget):
                 race = calculate_months_remaining(emp, session)
                 if not race["has_next_level"]:
                     continue
+                if race["eligible"]:
+                    self.promotion_count += 1
                 mr = race["months_remaining"]
                 if mr > 12:
                     continue
@@ -316,13 +318,13 @@ class DashboardPage(QWidget):
         grid.setSpacing(16)
 
         stats = [
-            (t("total_employees"),     self.emp_count,      "#3b82f6", "fa5s.users"),
-            (t("promotions_total"),    self.promotion_count, "#10b981", "fa5s.chart-line"),
-            (t("commendations_total"), self.commend_count,  "#f59e0b", "fa5s.award"),
-            (t("active_sanctions"),    self.sanction_count,  "#ef4444", "fa5s.exclamation-triangle"),
+            ("Total Employees",            self.emp_count,       "#3b82f6", "fa5s.users", "Organization records"),
+            ("Pending Promotions",         self.promotion_count, "#10b981", "fa5s.chart-line", "Eligible right now"),
+            ("Commendations (This Month)", self.commend_count,   "#f59e0b", "fa5s.award", "Awards recorded"),
+            ("Active Sanctions",           self.sanction_count,  "#ef4444", "fa5s.exclamation-triangle", "Open disciplinary actions"),
         ]
-        for i, (label, value, color, icon_name) in enumerate(stats):
-            card = self._stat_card(label, str(value), color, icon_name)
+        for i, (label, value, color, icon_name, hint) in enumerate(stats):
+            card = self._stat_card(label, str(value), color, icon_name, hint)
             grid.addWidget(card, 0, i)
         layout.addLayout(grid)
 
@@ -410,31 +412,35 @@ class DashboardPage(QWidget):
     def _open_increment_dialog(self):
         SalaryIncrementReviewDialog(self.increment_data, self.user, parent=self).exec()
 
-    def _stat_card(self, label, value, color, icon_name):
+    def _stat_card(self, label, value, color, icon_name, hint):
         card = QFrame()
-        card.setFixedHeight(108)
+        card.setFixedHeight(126)
         card.setStyleSheet(CARD_SS)
         cl = QHBoxLayout(card)
         cl.setContentsMargins(20, 0, 20, 0)
         cl.setSpacing(16)
 
-        ico_box = QLabel()
-        ico_box.setFixedSize(48, 48)
-        ico_box.setAlignment(Qt.AlignCenter)
-        ico_box.setStyleSheet(f"background: {color}1a; border-radius: 12px;")
-        ico_box.setPixmap(qta.icon(icon_name, color=color).pixmap(22, 22))
-        cl.addWidget(ico_box)
-
         txt = QVBoxLayout()
-        txt.setSpacing(2)
-        v = QLabel(value)
-        v.setStyleSheet(f"font-size: 30px; font-weight: bold; color: {color}; background: transparent;")
+        txt.setSpacing(6)
         l = QLabel(label)
-        l.setStyleSheet("font-size: 12px; color: #6b7280; background: transparent;")
-        txt.addWidget(v)
+        l.setWordWrap(True)
+        l.setStyleSheet("font-size: 13px; color: #6b7280; background: transparent;")
+        v = QLabel(value)
+        v.setStyleSheet("font-size: 28px; font-weight: 800; color: #111827; background: transparent;")
+        h = QLabel(hint)
+        h.setStyleSheet("font-size: 12px; color: #059669; background: transparent;")
         txt.addWidget(l)
+        txt.addWidget(v)
+        txt.addWidget(h)
         cl.addLayout(txt)
         cl.addStretch()
+
+        ico_box = QLabel()
+        ico_box.setFixedSize(46, 46)
+        ico_box.setAlignment(Qt.AlignCenter)
+        ico_box.setStyleSheet(f"background: {color}; border-radius: 11px;")
+        ico_box.setPixmap(qta.icon(icon_name, color="white").pixmap(21, 21))
+        cl.addWidget(ico_box)
         return card
 
     def _activity_row(self, action, desc, ts, color):

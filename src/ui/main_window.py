@@ -57,7 +57,7 @@ class Sidebar(QWidget):
         logo_mark.setFixedSize(40, 40)
         logo_mark.setAlignment(Qt.AlignCenter)
         logo_mark.setStyleSheet("background: #2563eb; border-radius: 10px;")
-        logo_mark.setPixmap(qta.icon("fa5s.building", color="white").pixmap(20, 20))
+        logo_mark.setPixmap(qta.icon("fa5s.clipboard-list", color="white").pixmap(20, 20))
 
         nc = QVBoxLayout()
         nc.setSpacing(1)
@@ -109,18 +109,19 @@ class Sidebar(QWidget):
         ucl.setContentsMargins(10, 8, 10, 8)
         ucl.setSpacing(10)
 
-        initials = "".join(p[0].upper() for p in self.user.full_name.split()[:2])
+        display_name = "Admin User" if self.user.role == "admin" else self.user.full_name
+        initials = "".join(p[0].upper() for p in display_name.split()[:2])
         avatar = QLabel(initials)
         avatar.setFixedSize(32, 32)
         avatar.setAlignment(Qt.AlignCenter)
         avatar.setStyleSheet(
-            "background: #dbeafe; color: #1d4ed8; border-radius: 16px;"
+            "background: #2563eb; color: white; border-radius: 16px;"
             " font-size: 12px; font-weight: bold;"
         )
 
         ic = QVBoxLayout()
         ic.setSpacing(0)
-        name_lbl = QLabel(self.user.full_name)
+        name_lbl = QLabel(display_name)
         name_lbl.setStyleSheet("color: #111827; font-size: 13px; font-weight: 600; background: transparent;")
         role_display = t("role_admin") if self.user.role == "admin" else t("role_hr")
         role_lbl = QLabel(role_display)
@@ -140,11 +141,11 @@ class Sidebar(QWidget):
         logout_btn.setFixedHeight(34)
         logout_btn.setStyleSheet("""
             QPushButton {
-                background: white; color: #6b7280;
+                background: white; color: #111827;
                 border: 1px solid #e5e7eb; border-radius: 8px;
                 font-size: 13px; text-align: left; padding-left: 12px;
             }
-            QPushButton:hover { background: #f9fafb; color: #374151; border-color: #d1d5db; }
+            QPushButton:hover { background: #f9fafb; color: #111827; border-color: #d1d5db; }
         """)
         logout_btn.clicked.connect(self.on_logout)
         bl.addWidget(logout_btn)

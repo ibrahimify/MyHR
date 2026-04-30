@@ -23,12 +23,12 @@ import csv
 import os
 
 
-REQUIRED_COLUMNS = ["first_name", "last_name", "degree", "position", "join_date", "base_salary"]
+REQUIRED_COLUMNS = ["first_name", "last_name", "department", "degree", "position", "join_date", "base_salary"]
 OPTIONAL_COLUMNS = ["work_email", "phone", "address", "personal_email"]
 ALL_COLUMNS = REQUIRED_COLUMNS + OPTIONAL_COLUMNS
 
 TEMPLATE_HEADERS = [
-    "first_name", "last_name", "degree", "position",
+    "first_name", "last_name", "department", "degree", "position",
     "join_date", "base_salary", "work_email", "phone", "address"
 ]
 
@@ -146,9 +146,9 @@ class ImportDataPage(QWidget):
 
         # Preview table
         self.preview_table = QTableWidget()
-        self.preview_table.setColumnCount(8)
+        self.preview_table.setColumnCount(9)
         self.preview_table.setHorizontalHeaderLabels([
-            "Row", "First Name", "Last Name", "Degree",
+            "Row", "First Name", "Last Name", "Department", "Degree",
             "Position", "Join Date", "Salary", "Status"
         ])
         self.preview_table.setStyleSheet("""
@@ -305,6 +305,7 @@ class ImportDataPage(QWidget):
                         "row": i,
                         "first_name": cleaned.get("first_name", ""),
                         "last_name":  cleaned.get("last_name", ""),
+                        "department": cleaned.get("department", ""),
                         "degree":     cleaned.get("degree", ""),
                         "position":   cleaned.get("position", ""),
                         "join_date":  cleaned.get("join_date", ""),
@@ -362,10 +363,11 @@ class ImportDataPage(QWidget):
             self.preview_table.setItem(i, 0, QTableWidgetItem(str(row["row"])))
             self.preview_table.setItem(i, 1, QTableWidgetItem(row["first_name"]))
             self.preview_table.setItem(i, 2, QTableWidgetItem(row["last_name"]))
-            self.preview_table.setItem(i, 3, QTableWidgetItem(row["degree"]))
-            self.preview_table.setItem(i, 4, QTableWidgetItem(row["position"]))
-            self.preview_table.setItem(i, 5, QTableWidgetItem(row["join_date"]))
-            self.preview_table.setItem(i, 6, QTableWidgetItem(row["base_salary"]))
+            self.preview_table.setItem(i, 3, QTableWidgetItem(row["department"]))
+            self.preview_table.setItem(i, 4, QTableWidgetItem(row["degree"]))
+            self.preview_table.setItem(i, 5, QTableWidgetItem(row["position"]))
+            self.preview_table.setItem(i, 6, QTableWidgetItem(row["join_date"]))
+            self.preview_table.setItem(i, 7, QTableWidgetItem(row["base_salary"]))
 
             if row["status"] == "valid":
                 status_item = QTableWidgetItem("✓ Valid")
@@ -378,11 +380,11 @@ class ImportDataPage(QWidget):
                 status_item.setBackground(QColor("#fef2f2"))
                 status_item.setToolTip(msg)
 
-            self.preview_table.setItem(i, 7, status_item)
+            self.preview_table.setItem(i, 8, status_item)
 
             # Row background tint
             if row["status"] == "error":
-                for col in range(7):
+                for col in range(8):
                     item = self.preview_table.item(i, col)
                     if item:
                         item.setBackground(QColor("#fff5f5"))
@@ -430,6 +432,7 @@ class ImportDataPage(QWidget):
                         address=row.get("address") or None,
                         status="active",
                         title_id=title.id,
+                        org_unit_id=self._department_id(session, row["department"]),
                     )
                     session.add(emp)
                     session.flush()
@@ -469,6 +472,15 @@ class ImportDataPage(QWidget):
         finally:
             session.close()
 
+    def _department_id(self, session, name):
+        dept_name = (name or "Unassigned").strip() or "Unassigned"
+        dept = session.query(OrgUnit).filter_by(name=dept_name, unit_type="department").first()
+        if not dept:
+            dept = OrgUnit(name=dept_name, unit_type="department")
+            session.add(dept)
+            session.flush()
+        return dept.id
+
     def _download_template(self):
         path, _ = QFileDialog.getSaveFileName(
             self, "Save Template", "employee_import_template.csv", "CSV Files (*.csv)"
@@ -480,11 +492,11 @@ class ImportDataPage(QWidget):
                 writer = csv.writer(f)
                 writer.writerow(TEMPLATE_HEADERS)
                 writer.writerow([
-                    "John", "Smith", "BSc", "Software Engineer",
+                    "John", "Smith", "IT", "BSc", "Software Engineer",
                     "2024-01-15", "2500", "john@company.com", "+36 20 123 4567", "Budapest, Hungary"
                 ])
                 writer.writerow([
-                    "Sarah", "Johnson", "MSc", "HR Manager",
+                    "Sarah", "Johnson", "HR", "MSc", "HR Manager",
                     "2023-06-01", "3200", "sarah@company.com", "", ""
                 ])
             QMessageBox.information(self, t("success"), f"Template saved to:\n{path}")
