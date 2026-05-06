@@ -406,6 +406,10 @@ class EmployeeListView(QWidget):
             "Employee ID", "Name", "Email", "Department",
             "Position", "Level", "Status", "Actions"
         ])
+        for col in range(self.table.columnCount()):
+            header_item = self.table.horizontalHeaderItem(col)
+            if header_item:
+                header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.setStyleSheet("""
             QTableWidget {
                 background: white;
@@ -429,24 +433,26 @@ class EmployeeListView(QWidget):
                 font-size: 13px;
                 font-weight: 700;
                 color: #111827;
+                text-align: left;
                 min-height: 50px;
             }
         """)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-        self.table.setColumnWidth(0, 150)
-        self.table.setColumnWidth(1, 210)
-        self.table.setColumnWidth(2, 320)
-        self.table.setColumnWidth(3, 170)
-        self.table.setColumnWidth(4, 270)
-        self.table.setColumnWidth(5, 100)
-        self.table.setColumnWidth(6, 140)
+        header = self.table.horizontalHeader()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(QHeaderView.Interactive)
+        for col, width in {
+            0: 142, 1: 172, 2: 290, 3: 142,
+            4: 224, 5: 78, 6: 116, 7: 112,
+        }.items():
+            self.table.setColumnWidth(col, width)
+        for col in (1, 2, 4):
+            header.setSectionResizeMode(col, QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(7, QHeaderView.Fixed)
-        self.table.setColumnWidth(7, 150)
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setShowGrid(False)
-        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         table_layout.addWidget(self.table)
         layout.addWidget(table_card, 1)
@@ -497,6 +503,11 @@ class EmployeeListView(QWidget):
             for col, val in enumerate([emp["employee_id"], emp["full_name"], emp["email"], emp["dept"], emp["position"]]):
                 item = QTableWidgetItem(val)
                 item.setData(Qt.UserRole, emp["id"])
+                item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                if col == 0:
+                    font = item.font()
+                    font.setBold(True)
+                    item.setFont(font)
                 if col == 2:
                     item.setForeground(QColor("#4b5563"))
                 self.table.setItem(row, col, item)
@@ -793,6 +804,7 @@ class AddEmployeeView(QWidget):
         for s in STATUS_OPTIONS:
             self.status_combo.addItem(s.replace("_"," ").title(), s)
         oc.addWidget(self.status_combo)
+        left.addWidget(org_card)
         right.addWidget(rules_card)
 
         info_card = QFrame()
@@ -806,7 +818,6 @@ class AddEmployeeView(QWidget):
             l.setStyleSheet("font-size: 13px; color: #166534; background: transparent;")
             ic.addWidget(l)
         right.addWidget(info_card)
-        right.addWidget(org_card)
 
         cl.addLayout(right, 2)
         scroll.setWidget(content)
@@ -1816,10 +1827,16 @@ class EmployeeProfileView(QWidget):
         layout = QHBoxLayout(row)
         layout.setContentsMargins(0, 12, 0, 12)
         layout.setSpacing(12)
+        soft_bg = {
+            "#10b981": "#ecfdf5",
+            "#f59e0b": "#fffbeb",
+            "#ef4444": "#fef2f2",
+            "#2563eb": "#eff6ff",
+        }.get(color, "#f3f4f6")
         icon = QLabel()
         icon.setFixedSize(36, 36)
         icon.setAlignment(Qt.AlignCenter)
-        icon.setStyleSheet(f"background: {color}18; border-radius: 8px;")
+        icon.setStyleSheet(f"background: {soft_bg}; border-radius: 8px;")
         icon.setPixmap(qta.icon(icon_name, color=color).pixmap(15, 15))
         text_col = QVBoxLayout()
         text_col.setSpacing(2)
