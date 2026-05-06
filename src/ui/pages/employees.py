@@ -114,6 +114,16 @@ QFrame#ProfileCard QLabel {
 """
 
 
+def _would_create_manager_cycle(session, employee_id, manager_id):
+    current_id = manager_id
+    while current_id:
+        if current_id == employee_id:
+            return True
+        manager = session.query(Employee).filter_by(id=current_id).first()
+        current_id = manager.reports_to_id if manager else None
+    return False
+
+
 class CleanSelect(QWidget):
     currentIndexChanged = Signal(int)
     currentTextChanged = Signal(str)
@@ -453,8 +463,10 @@ class EmployeeListView(QWidget):
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setShowGrid(False)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        table_layout.addWidget(self.table)
+        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.table.setMinimumHeight(320)
+        self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        table_layout.addWidget(self.table, 1)
         layout.addWidget(table_card, 1)
 
     def refresh(self):
@@ -495,7 +507,6 @@ class EmployeeListView(QWidget):
 
     def _populate_table(self, employees):
         self.table.setRowCount(len(employees))
-        self.table.setMinimumHeight(52 + (62 * max(1, len(employees))))
         STATUS_COLORS = {"active": ("#dcfce7","#166534"), "inactive": ("#f3f4f6","#374151"), "on_leave": ("#fef9c3","#854d0e")}
 
         for row, emp in enumerate(employees):
@@ -1157,6 +1168,8 @@ class EditEmployeeView(QWidget):
         session = get_session()
         try:
             emp = session.query(Employee).filter_by(id=self.employee_db_id).first()
+            if not emp:
+                return
             before = json.dumps({"position": emp.position, "status": emp.status, "base_salary": emp.base_salary})
 
             if self._get("position"): emp.position = self._get("position")
@@ -1170,10 +1183,23 @@ class EditEmployeeView(QWidget):
                     QMessageBox.warning(self, t("warning"), "Base salary must be a number.")
                     return
 
+            manager_id = self.manager_combo.currentData()
+            title_id = self.title_combo.currentData()
+            status = self.status_combo.currentData()
+            if title_id is None:
+                QMessageBox.warning(self, t("warning"), "Please select a valid current level.")
+                return
+            if status is None:
+                QMessageBox.warning(self, t("warning"), "Please select a valid status.")
+                return
+            if _would_create_manager_cycle(session, emp.id, manager_id):
+                QMessageBox.warning(self, t("warning"), "This reporting line would create a manager cycle.")
+                return
+
             emp.org_unit_id   = self.org_combo.currentData()
-            emp.reports_to_id = self.manager_combo.currentData()
-            emp.title_id      = self.title_combo.currentData()
-            emp.status        = self.status_combo.currentData()
+            emp.reports_to_id = manager_id
+            emp.title_id      = title_id
+            emp.status        = status
 
             if self.user.role == "admin":
                 if self._get("first_name"): emp.first_name = self._get("first_name")
@@ -1695,10 +1721,23 @@ class EmployeeProfileView(QWidget):
                 QMessageBox.warning(self, t("warning"), "Base salary must be a number.")
                 return
 
+            manager_id = self.inline_manager_combo.currentData()
+            title_id = self.inline_title_combo.currentData()
+            status = self.inline_status_combo.currentData()
+            if title_id is None:
+                QMessageBox.warning(self, t("warning"), "Please select a valid current level.")
+                return
+            if status is None:
+                QMessageBox.warning(self, t("warning"), "Please select a valid status.")
+                return
+            if _would_create_manager_cycle(session, emp.id, manager_id):
+                QMessageBox.warning(self, t("warning"), "This reporting line would create a manager cycle.")
+                return
+
             emp.org_unit_id = self.inline_org_combo.currentData()
-            emp.reports_to_id = self.inline_manager_combo.currentData()
-            emp.title_id = self.inline_title_combo.currentData()
-            emp.status = self.inline_status_combo.currentData()
+            emp.reports_to_id = manager_id
+            emp.title_id = title_id
+            emp.status = status
 
             if self.user.role == "admin":
                 if not value("first_name") or not value("last_name"):

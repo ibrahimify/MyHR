@@ -60,6 +60,7 @@ QComboBox::drop-down {
 QComboBox QAbstractItemView {
     background: white;
     border: 1px solid #e5e7eb;
+    border-radius: 0px;
     color: #111827;
     selection-background-color: #eff6ff;
     selection-color: #111827;
@@ -545,17 +546,21 @@ class OrgUnitDialog(QDialog):
         if not name:
             _warning(self, t("warning"), "Name is required.")
             return
+        selected_parent_id = self.parent_combo.currentData()
         session = get_session()
         try:
             if self.unit_id:
+                if _would_create_parent_cycle(session, self.unit_id, selected_parent_id):
+                    _warning(self, t("warning"), "A unit cannot be placed under itself or one of its child units.")
+                    return
                 unit = session.query(OrgUnit).filter_by(id=self.unit_id).first()
                 unit.name = name
                 unit.unit_type = self.type_combo.currentData()
-                unit.parent_id = self.parent_combo.currentData()
+                unit.parent_id = selected_parent_id
                 unit.head_employee_id = self.head_combo.currentData()
                 action = "org_unit.update"
             else:
-                unit = OrgUnit(name=name, unit_type=self.type_combo.currentData(), parent_id=self.parent_combo.currentData(), head_employee_id=self.head_combo.currentData())
+                unit = OrgUnit(name=name, unit_type=self.type_combo.currentData(), parent_id=selected_parent_id, head_employee_id=self.head_combo.currentData())
                 session.add(unit)
                 session.flush()
                 action = "org_unit.create"
@@ -623,7 +628,37 @@ def _prepare_combo(combo):
     combo.setMinimumWidth(390)
     combo.view().setMinimumWidth(390)
     combo.view().setTextElideMode(Qt.ElideNone)
+    combo.view().setStyleSheet("""
+        QListView {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0px;
+            color: #111827;
+            outline: none;
+            padding: 4px;
+        }
+        QListView::item {
+            min-height: 30px;
+            padding: 4px 10px;
+            background: white;
+            color: #111827;
+        }
+        QListView::item:selected {
+            background: #eff6ff;
+            color: #111827;
+        }
+    """)
     combo.setMaxVisibleItems(8)
+
+
+def _would_create_parent_cycle(session, unit_id, parent_id):
+    current_id = parent_id
+    while current_id:
+        if current_id == unit_id:
+            return True
+        parent = session.query(OrgUnit).filter_by(id=current_id).first()
+        current_id = parent.parent_id if parent else None
+    return False
 
 
 def _styled_message_box(parent, icon, title, text, buttons=QMessageBox.Ok, default_button=QMessageBox.Ok):
