@@ -6,7 +6,7 @@ Business logic included here:
 - generate_employee_id
 - generate_commendation_ref
 - generate_sanction_ref
-- calculate_promotion_months_remaining (LIVE calculation — never stored)
+- calculate_promotion_months_remaining (LIVE calculation - never stored)
 - get_salary_increment_due_employees
 - log_action (audit trail)
 """
@@ -116,7 +116,7 @@ def get_session() -> Session:
 class UserSession:
     """
     Plain Python object holding logged-in user data.
-    Avoids SQLAlchemy DetachedInstanceError — no session dependency.
+    Avoids SQLAlchemy DetachedInstanceError - no session dependency.
     """
     def __init__(self, id, username, full_name, role):
         self.id        = id
@@ -174,7 +174,7 @@ def generate_sanction_ref(session: Session) -> str:
     return f"{prefix}-{count + 1:03d}"
 
 
-# ── Promotion race calculation (LIVE — never stored) ──────────────────────────
+# Promotion race calculation (LIVE - never stored)
 def calculate_months_remaining(employee: Employee, session: Session) -> dict:
     """
     Calculates the employee's current position in the promotion race.
@@ -220,7 +220,7 @@ def calculate_months_remaining(employee: Employee, session: Session) -> dict:
         (now.month - race_start.month)
     )
 
-    # Commendation reduction — commendations since race start
+    # Commendation reduction - commendations since race start
     # Using simpler subquery approach to avoid JOIN issues
     comm_links = session.query(CommendationEmployee).filter_by(
         employee_id=employee.id
@@ -236,7 +236,7 @@ def calculate_months_remaining(employee: Employee, session: Session) -> dict:
 
     commendation_reduction = sum(abs(c.months_impact) for c in commendations)
 
-    # Sanction addition — active sanctions since race start
+    # Sanction addition - active sanctions since race start
     sanctions = session.query(Sanction).filter(
         Sanction.employee_id == employee.id,
         Sanction.is_resolved == False,
@@ -367,7 +367,7 @@ def apply_salary_increment(employee_id: int, approved_by_id: int, session: Sessi
         action="salary_increment.apply",
         target_table="employee",
         target_id=employee_id,
-        description=f"Annual salary increment applied: {salary_before} → {salary_after}",
+        description=f"Annual salary increment applied: {salary_before} to {salary_after}",
         before_value=json.dumps({"base_salary": salary_before}),
         after_value=json.dumps({"base_salary": salary_after}),
     )

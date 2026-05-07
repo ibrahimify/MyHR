@@ -1,8 +1,8 @@
 """
-i18n — Internationalization system for MyHR.
+i18n - Internationalization system for MyHR.
 All UI text lives here. Language is set per session on login.
 Supported: English (en), Hungarian (hu), Arabic (ar).
-Arabic is RTL — flagged as known visual limitation for now.
+Arabic is RTL - flagged as known visual limitation for now.
 """
 
 _current_language = "en"
@@ -114,7 +114,7 @@ TRANSLATIONS = {
         "degree_phd": "PhD",
         "degree_other": "Other",
         "auto_level": "Auto-Assigned Level",
-        "level_rule": "PhD → L5 | MSc → L6 | BSc → L7",
+        "level_rule": "PhD: L5 | MSc: L6 | BSc: L7",
         "personal_info": "Personal Information",
         "personal_info_admin": "Personal Information (Admin Only)",
         "employment_info": "Employment Information",
@@ -137,8 +137,8 @@ TRANSLATIONS = {
         "promotion_rules": "Promotion Rules",
         "reset_policy": "After promotion, the employee starts a new race from month 0.",
         "track_modifiers": "Track Modifiers (Optional)",
-        "commendations_speed_up": "Commendations are optional accelerators — they reduce months remaining.",
-        "sanctions_slow_down": "Sanctions are optional delays — they add months to the timeline.",
+        "commendations_speed_up": "Commendations are optional accelerators - they reduce months remaining.",
+        "sanctions_slow_down": "Sanctions are optional delays - they add months to the timeline.",
         "base_salary_increase": "Base Salary Increase on Promotion",
         "approved_by": "Approved By",
         "promotion_basis": "Basis",
@@ -153,9 +153,9 @@ TRANSLATIONS = {
         "commendation_id": "Commendation ID",
         "award_title": "Award Title",
         "commendation_category": "Commendation Category",
-        "category_1": "Category 1 (−1 month)",
-        "category_2": "Category 2 (−3 months)",
-        "category_3": "Category 3 (−6 months)",
+        "category_1": "Category 1 (-1 month)",
+        "category_2": "Category 2 (-3 months)",
+        "category_3": "Category 3 (-6 months)",
         "single_employee": "Single Employee",
         "team_award": "Team Award",
         "select_employees": "Select Employees",
@@ -191,7 +191,7 @@ TRANSLATIONS = {
 
         # --- Audit Log ---
         "audit_title": "Audit Log",
-        "audit_subtitle": "Complete activity trail — immutable",
+        "audit_subtitle": "Complete activity trail - immutable",
         "performed_by": "Performed By",
         "action": "Action",
         "target": "Target",
@@ -346,7 +346,7 @@ TRANSLATIONS = {
         "degree_phd": "PhD",
         "degree_other": "Egyéb",
         "auto_level": "Automatikusan hozzárendelt szint",
-        "level_rule": "PhD → L5 | MSc → L6 | BSc → L7",
+        "level_rule": "PhD: L5 | MSc: L6 | BSc: L7",
         "personal_info": "Személyes adatok",
         "personal_info_admin": "Személyes adatok (csak admin)",
         "employment_info": "Foglalkoztatási adatok",
@@ -369,8 +369,8 @@ TRANSLATIONS = {
         "promotion_rules": "Előléptetési szabályok",
         "reset_policy": "Előléptetés után az alkalmazott új versenyt kezd a 0. hónaptól.",
         "track_modifiers": "Pályamódosítók (opcionális)",
-        "commendations_speed_up": "A dicséretek opcionális gyorsítók — csökkentik a hátralévő hónapokat.",
-        "sanctions_slow_down": "A szankciók opcionális késleltetők — hónapokat adnak az ütemtervhez.",
+        "commendations_speed_up": "A dicséretek opcionális gyorsítók - csökkentik a hátralévő hónapokat.",
+        "sanctions_slow_down": "A szankciók opcionális késleltetők - hónapokat adnak az ütemtervhez.",
         "base_salary_increase": "Alapbér-emelés előléptetéskor",
         "approved_by": "Jóváhagyta",
         "promotion_basis": "Alap",
@@ -385,9 +385,9 @@ TRANSLATIONS = {
         "commendation_id": "Dicséret azonosítója",
         "award_title": "Díj megnevezése",
         "commendation_category": "Dicséret kategória",
-        "category_1": "1. kategória (−1 hónap)",
-        "category_2": "2. kategória (−3 hónap)",
-        "category_3": "3. kategória (−6 hónap)",
+        "category_1": "1. kategória (-1 hónap)",
+        "category_2": "2. kategória (-3 hónap)",
+        "category_3": "3. kategória (-6 hónap)",
         "single_employee": "Egyéni alkalmazott",
         "team_award": "Csapatdíj",
         "select_employees": "Alkalmazottak kiválasztása",
@@ -423,7 +423,7 @@ TRANSLATIONS = {
 
         # --- Audit ---
         "audit_title": "Auditnapló",
-        "audit_subtitle": "Teljes tevékenységi napló — megváltoztathatatlan",
+        "audit_subtitle": "Teljes tevékenységi napló - megváltoztathatatlan",
         "performed_by": "Végrehajtotta",
         "action": "Művelet",
         "target": "Cél",
@@ -578,7 +578,7 @@ TRANSLATIONS = {
         "degree_phd": "دكتوراه",
         "degree_other": "أخرى",
         "auto_level": "المستوى المعين تلقائياً",
-        "level_rule": "دكتوراه → L5 | ماجستير → L6 | بكالوريوس → L7",
+        "level_rule": "دكتوراه: L5 | ماجستير: L6 | بكالوريوس: L7",
         "personal_info": "المعلومات الشخصية",
         "personal_info_admin": "المعلومات الشخصية (للمدير فقط)",
         "employment_info": "معلومات التوظيف",
@@ -601,8 +601,8 @@ TRANSLATIONS = {
         "promotion_rules": "قواعد الترقية",
         "reset_policy": "بعد الترقية يبدأ الموظف سباقاً جديداً من الشهر صفر.",
         "track_modifiers": "معدّلات المسار (اختيارية)",
-        "commendations_speed_up": "التقديرات مُسرّعات اختيارية — تقلل الأشهر المتبقية.",
-        "sanctions_slow_down": "الجزاءات تأخيرات اختيارية — تضيف أشهراً إلى الجدول الزمني.",
+        "commendations_speed_up": "التقديرات مُسرّعات اختيارية - تقلل الأشهر المتبقية.",
+        "sanctions_slow_down": "الجزاءات تأخيرات اختيارية - تضيف أشهراً إلى الجدول الزمني.",
         "base_salary_increase": "زيادة الراتب الأساسي عند الترقية",
         "approved_by": "وافق عليه",
         "promotion_basis": "الأساس",
@@ -617,9 +617,9 @@ TRANSLATIONS = {
         "commendation_id": "معرف التقدير",
         "award_title": "عنوان الجائزة",
         "commendation_category": "فئة التقدير",
-        "category_1": "الفئة 1 (−1 شهر)",
-        "category_2": "الفئة 2 (−3 أشهر)",
-        "category_3": "الفئة 3 (−6 أشهر)",
+        "category_1": "الفئة 1 (-1 شهر)",
+        "category_2": "الفئة 2 (-3 أشهر)",
+        "category_3": "الفئة 3 (-6 أشهر)",
         "single_employee": "موظف واحد",
         "team_award": "جائزة الفريق",
         "select_employees": "اختيار الموظفين",
@@ -655,7 +655,7 @@ TRANSLATIONS = {
 
         # --- Audit ---
         "audit_title": "سجل المراجعة",
-        "audit_subtitle": "سجل النشاط الكامل — غير قابل للتغيير",
+        "audit_subtitle": "سجل النشاط الكامل - غير قابل للتغيير",
         "performed_by": "نفّذه",
         "action": "الإجراء",
         "target": "الهدف",
@@ -720,7 +720,7 @@ def get_language() -> str:
 def t(key: str, **kwargs) -> str:
     """
     Translate a key to the current language.
-    Usage: t("save")  →  "Save" / "Mentés" / "حفظ"
+    Usage: t("save") returns "Save" / "Mentés" / "حفظ"
     With variables: t("salary_increment_prompt", count=5)
     Falls back to English if key missing in current language.
     """

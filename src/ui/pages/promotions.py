@@ -1,4 +1,4 @@
-"""Promotions Page — eligible tracker, history, configurable rules."""
+"""Promotions Page - eligible tracker, history, configurable rules."""
 
 import qtawesome as qta
 from PySide6.QtWidgets import (
@@ -60,7 +60,7 @@ QFrame#PromoCard QLabel {
 """
 
 PROMO_TAB_SS = """
-QTabWidget::pane { border: none; background: #f9fafb; margin-top: 28px; }
+QTabWidget::pane { border: none; background: #f9fafb; margin-top: 24px; }
 QTabBar { background: #e5e7eb; border-radius: 14px; }
 QTabBar::tab {
     background: transparent;
@@ -152,7 +152,19 @@ class EligibleTab(QWidget):
         self._build()
 
     def _build(self):
-        layout = QVBoxLayout(self)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setStyleSheet("border: none; background: #f9fafb;")
+        content = QWidget()
+        content.setStyleSheet("background: #f9fafb;")
+
+        layout = QVBoxLayout(content)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(24)
 
@@ -172,9 +184,9 @@ class EligibleTab(QWidget):
         bl.setContentsMargins(16, 12, 16, 12)
         bl.setSpacing(12)
         bico = QLabel()
-        bico.setPixmap(qta.icon("fa5s.flag-checkered", color="#2563eb").pixmap(18, 18))
-        btxt = QLabel(t("race_explanation"))
-        btxt.setStyleSheet("font-size: 13px; color: #1e40af; background: transparent;")
+        bico.setPixmap(qta.icon("fa5s.info-circle", color="#2563eb").pixmap(18, 18))
+        btxt = QLabel("Showing employees who are eligible now or within 6 months of eligibility.")
+        btxt.setStyleSheet("font-size: 14px; color: #1e40af; background: transparent;")
         btxt.setWordWrap(True)
         bl.addWidget(bico)
         bl.addWidget(btxt, 1)
@@ -225,9 +237,13 @@ class EligibleTab(QWidget):
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         tcl.addWidget(self.table, 1)
-        layout.addWidget(table_card, 1)
+        layout.addWidget(table_card)
+        layout.addStretch()
+
+        scroll.setWidget(content)
+        outer.addWidget(scroll)
 
     def refresh(self):
         while self.stats_row.count():
@@ -253,27 +269,30 @@ class EligibleTab(QWidget):
                 else:
                     status = "progress"; progress_count += 1
 
-                next_title_name = "—"
+                next_title_name = "-"
                 if race["next_title_id"]:
                     nt = session.query(Title).filter_by(id=race["next_title_id"]).first()
                     if nt:
                         next_title_name = nt.name
 
-                rows.append({
-                    "id": emp.id,
-                    "name": emp.full_name,
-                    "emp_id": emp.employee_id,
-                    "current": emp.title.name if emp.title else "—",
-                    "next": next_title_name,
-                    "elapsed": race["months_elapsed"],
-                    "comm": race["commendation_reduction"],
-                    "sanction": race["sanction_addition"],
-                    "mr": mr,
-                    "status": status,
-                    "base_months": race.get("base_months", 36),
-                })
+                if status in ("eligible", "soon"):
+                    rows.append({
+                        "id": emp.id,
+                        "name": emp.full_name,
+                        "emp_id": emp.employee_id,
+                        "current": emp.title.name if emp.title else "-",
+                        "next": next_title_name,
+                        "elapsed": race["months_elapsed"],
+                        "comm": race["commendation_reduction"],
+                        "sanction": race["sanction_addition"],
+                        "mr": mr,
+                        "status": status,
+                        "base_months": race.get("base_months", 36),
+                    })
         finally:
             session.close()
+
+        rows.sort(key=lambda row: (0 if row["status"] == "eligible" else 1, row["mr"], row["name"]))
 
         # Stat cards
         for label, val, color, icon_name, bg in [
@@ -284,21 +303,21 @@ class EligibleTab(QWidget):
             card = QFrame()
             card.setObjectName("PromoCard")
             card.setStyleSheet(PROMO_CARD_SS)
-            card.setFixedHeight(126)
+            card.setFixedHeight(96)
             cl = QHBoxLayout(card)
-            cl.setContentsMargins(32, 0, 32, 0)
-            cl.setSpacing(16)
+            cl.setContentsMargins(22, 0, 22, 0)
+            cl.setSpacing(14)
             ico_box = QLabel()
-            ico_box.setFixedSize(60, 60)
+            ico_box.setFixedSize(48, 48)
             ico_box.setAlignment(Qt.AlignCenter)
             ico_box.setStyleSheet(f"background: {bg}; border-radius: 8px;")
-            ico_box.setPixmap(qta.icon(icon_name, color=color).pixmap(28, 28))
+            ico_box.setPixmap(qta.icon(icon_name, color=color).pixmap(22, 22))
             txt = QVBoxLayout()
-            txt.setSpacing(4)
+            txt.setSpacing(2)
             ll = QLabel(label)
-            ll.setStyleSheet("font-size: 16px; color: #374151;")
+            ll.setStyleSheet("font-size: 14px; color: #374151;")
             vl = QLabel(str(val))
-            vl.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827;")
+            vl.setStyleSheet("font-size: 24px; font-weight: 800; color: #111827;")
             txt.addWidget(ll)
             txt.addWidget(vl)
             cl.addWidget(ico_box)
@@ -309,8 +328,9 @@ class EligibleTab(QWidget):
 
         # Populate table
         self.table.setRowCount(len(rows))
+        self.table.setMinimumHeight(112 + (64 * max(1, len(rows))))
         for ri, row in enumerate(rows):
-            self.table.setRowHeight(ri, 56)
+            self.table.setRowHeight(ri, 64)
 
             # Employee name + ID
             name_w = QWidget()
@@ -355,18 +375,29 @@ class EligibleTab(QWidget):
                 f" QProgressBar::chunk {{ background: {bar_color}; border-radius: 4px; }}"
             )
             prog_l.addWidget(bar)
+            status_row = QHBoxLayout()
+            status_row.setContentsMargins(0, 0, 0, 0)
+            status_row.setSpacing(6)
+            status_icon = QLabel()
+            status_icon.setFixedSize(14, 14)
             if mr == 0:
-                lbl_txt = "✓ Eligible now"
+                lbl_txt = "Eligible now"
                 lbl_color = "#10b981"
+                status_icon.setPixmap(qta.icon("fa5s.check-circle", color=lbl_color).pixmap(13, 13))
             elif mr <= 6:
                 lbl_txt = f"{mr} months left"
                 lbl_color = "#f59e0b"
+                status_icon.setPixmap(qta.icon("fa5s.clock", color=lbl_color).pixmap(13, 13))
             else:
                 lbl_txt = f"{mr} months left"
                 lbl_color = "#6b7280"
+                status_icon.setPixmap(qta.icon("fa5s.chart-line", color=lbl_color).pixmap(13, 13))
             p_lbl = QLabel(lbl_txt)
-            p_lbl.setStyleSheet(f"font-size: 11px; color: {lbl_color};")
-            prog_l.addWidget(p_lbl)
+            p_lbl.setStyleSheet(f"font-size: 12px; color: {lbl_color};")
+            status_row.addWidget(status_icon)
+            status_row.addWidget(p_lbl)
+            status_row.addStretch()
+            prog_l.addLayout(status_row)
             self.table.setCellWidget(ri, 6, prog_w)
 
             # Action button
@@ -421,9 +452,9 @@ class EligibleTab(QWidget):
             salary_after = round(salary_before * (1 + salary_pct / 100), 2)
             confirm = _question(
                 self, "Confirm Promotion",
-                f"Promote {emp.full_name}\nfrom {old_title.name} -> {next_title.name}?\n\n"
+                f"Promote {emp.full_name}\nfrom {old_title.name} to {next_title.name}?\n\n"
                 f"Salary increase: {salary_pct:.1f}%\n"
-                f"Base salary: EUR {salary_before:,.2f} -> EUR {salary_after:,.2f}",
+                f"Base salary: EUR {salary_before:,.2f} to EUR {salary_after:,.2f}",
             )
             if confirm != QMessageBox.Yes:
                 return
@@ -437,13 +468,13 @@ class EligibleTab(QWidget):
                 approved_by_id=self.user.id,
                 basis="accelerated" if race["commendation_reduction"] > 0 else "time_based",
                 months_taken=race["months_elapsed"],
-                notes=f"Commendation: −{race['commendation_reduction']}mo, Sanction: +{race['sanction_addition']}mo",
+                notes=f"Commendation: -{race['commendation_reduction']}mo, Sanction: +{race['sanction_addition']}mo",
             )
             session.add(history)
             log_action(
                 session, action="promotion.approve", performed_by_id=self.user.id,
                 target_table="employee", target_id=emp.id,
-                description=f"Promoted {emp.full_name}: {old_title.name} -> {next_title.name}; salary +{salary_pct:.1f}%",
+                description=f"Promoted {emp.full_name}: {old_title.name} to {next_title.name}; salary +{salary_pct:.1f}%",
                 before_value=f'{{"title": "{old_title.name}", "base_salary": {salary_before}}}',
                 after_value=f'{{"title": "{next_title.name}", "base_salary": {salary_after}}}',
             )
@@ -500,8 +531,10 @@ class HistoryTab(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         cl.addWidget(self.table)
-        layout.addWidget(card, 1)
+        layout.addWidget(card)
+        layout.addStretch()
 
     def refresh(self):
         session = get_session()
@@ -513,14 +546,15 @@ class HistoryTab(QWidget):
                 "name": h.employee.full_name, "emp_id": h.employee.employee_id,
                 "from": h.from_title.name, "to": h.to_title.name,
                 "basis": h.basis.replace("_", " ").title(),
-                "months": str(h.months_taken) + " mo" if h.months_taken else "—",
+                "months": str(h.months_taken) + " mo" if h.months_taken else "-",
                 "by": h.approved_by.full_name,
-                "date": h.promoted_at.strftime("%Y-%m-%d") if h.promoted_at else "—",
+                "date": h.promoted_at.strftime("%Y-%m-%d") if h.promoted_at else "-",
             } for h in history]
         finally:
             session.close()
 
         self.table.setRowCount(len(rows))
+        self.table.setMinimumHeight(112 + (56 * max(1, len(rows))))
         for i, row in enumerate(rows):
             self.table.setRowHeight(i, 52)
             # Employee cell
@@ -598,16 +632,11 @@ class RulesTab(QWidget):
         it.setStyleSheet("font-size: 14px; font-weight: bold; color: #1e40af;")
         ih.addWidget(ico); ih.addWidget(it); ih.addStretch()
         il.addLayout(ih)
-        rules_txt = (
-            "• Each level has a base track duration in months\n"
-            "• Employees advance 1 checkpoint/month automatically\n"
-            "• Commendations speed up the race (Cat1: −1mo, Cat2: −3mo, Cat3: −6mo)\n"
-            "• Sanctions delay the race (+1 to +12 months)\n"
-            "• After promotion the clock resets to zero — no carryover"
-        )
-        ib = QLabel(rules_txt)
-        ib.setStyleSheet("font-size: 13px; color: #1e40af; background: transparent;")
-        il.addWidget(ib)
+        il.addWidget(_guide_line("1", "Base duration", "Every level has a configurable track duration in months.", "#2563eb"))
+        il.addWidget(_guide_line("2", "Monthly progress", "Employees move forward 1 checkpoint each month automatically.", "#2563eb"))
+        il.addWidget(_guide_line("3", "Commendations", "Awards reduce months remaining. Cat1: 1 month, Cat2: 3 months, Cat3: 6 months.", "#10b981"))
+        il.addWidget(_guide_line("4", "Sanctions", "Active sanctions add delay months to the promotion timeline.", "#f59e0b"))
+        il.addWidget(_guide_line("5", "Reset after promotion", "When promoted, the next race starts from month 0 on the promotion date.", "#7e22ce"))
         layout.addWidget(info)
 
         # Table card
@@ -647,6 +676,7 @@ class RulesTab(QWidget):
         self.table.setColumnWidth(3, 120)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         cl.addWidget(self.table)
         layout.addWidget(card)
         layout.addWidget(self._modifier_card())
@@ -661,7 +691,8 @@ class RulesTab(QWidget):
             rules = session.query(PromotionRule).all()
             rows = [{
                 "id": r.id,
-                "transition": f"{r.from_title.name}  →  {r.to_title.name}",
+                "from": r.from_title.name,
+                "to": r.to_title.name,
                 "base_months": r.base_months,
                 "salary_increase": f"{r.to_title.promotion_salary_increase_pct}%",
             } for r in rules]
@@ -669,6 +700,7 @@ class RulesTab(QWidget):
             session.close()
 
         self.table.setRowCount(len(rows))
+        self.table.setMinimumHeight(112 + (56 * max(1, len(rows))))
         for i, row in enumerate(rows):
             self.table.setRowHeight(i, 52)
 
@@ -679,9 +711,13 @@ class RulesTab(QWidget):
             ico2 = QLabel()
             ico2.setPixmap(qta.icon("fa5s.chart-line", color="#2563eb").pixmap(14, 14))
             trl.addWidget(ico2)
-            tl2 = QLabel(row["transition"])
-            tl2.setStyleSheet("font-size: 13px; font-weight: 600; color: #111827;")
-            trl.addWidget(tl2)
+            from_lbl = _level_badge(row["from"], "#f3f4f6", "#374151")
+            arrow = QLabel()
+            arrow.setPixmap(qta.icon("fa5s.arrow-right", color="#10b981").pixmap(12, 12))
+            to_lbl = _level_badge(row["to"], "#dcfce7", "#166534")
+            trl.addWidget(from_lbl)
+            trl.addWidget(arrow)
+            trl.addWidget(to_lbl)
             trl.addStretch()
             self.table.setCellWidget(i, 0, tr_w)
 
@@ -710,15 +746,10 @@ class RulesTab(QWidget):
         text.setSpacing(8)
         title = QLabel("Track Modifiers (Optional)")
         title.setStyleSheet("font-size: 16px; font-weight: 800; color: #92400e;")
-        body = QLabel(
-            "Commendations are optional accelerators that reduce months remaining in the race.\n"
-            "Sanctions are optional delays that add months to the race timeline.\n"
-            "Configure commendation categories and sanction impacts in their respective pages."
-        )
-        body.setWordWrap(True)
-        body.setStyleSheet("font-size: 14px; color: #92400e;")
         text.addWidget(title)
-        text.addWidget(body)
+        text.addWidget(_mini_line("fa5s.award", "Commendations reduce the months remaining in the current race.", "#92400e"))
+        text.addWidget(_mini_line("fa5s.exclamation-triangle", "Sanctions add delay months to the promotion timeline.", "#92400e"))
+        text.addWidget(_mini_line("fa5s.cog", "Configure awards and sanction impacts on their own pages.", "#92400e"))
         layout.addLayout(text, 1)
         return card
 
@@ -818,7 +849,7 @@ class RuleEditDialog(QDialog):
         try:
             rule = session.query(PromotionRule).filter_by(id=self.rule_id).first()
             if rule:
-                self.transition_lbl.setText(f"{rule.from_title.name} -> {rule.to_title.name}")
+                self.transition_lbl.setText(f"{rule.from_title.name} to {rule.to_title.name}")
                 self.months_spin.setValue(rule.base_months)
                 self.salary_spin.setValue(rule.to_title.promotion_salary_increase_pct)
         finally:
@@ -835,7 +866,7 @@ class RuleEditDialog(QDialog):
             log_action(
                 session, action="promotion_rule.update", performed_by_id=self.user.id,
                 target_table="promotion_rule", target_id=self.rule_id,
-                description=f"Rule updated: {old_months} -> {rule.base_months} months; salary {old_salary:.1f}% -> {rule.to_title.promotion_salary_increase_pct:.1f}%",
+                description=f"Rule updated: {old_months} to {rule.base_months} months; salary {old_salary:.1f}% to {rule.to_title.promotion_salary_increase_pct:.1f}%",
                 before_value=f'{{"base_months": {old_months}, "salary_increase_pct": {old_salary}}}',
                 after_value=f'{{"base_months": {rule.base_months}, "salary_increase_pct": {rule.to_title.promotion_salary_increase_pct}}}',
             )
@@ -852,6 +883,47 @@ def _set_table_item(table, row, col, text):
     item = QTableWidgetItem(str(text))
     item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
     table.setItem(row, col, item)
+
+
+def _level_badge(text, bg, fg):
+    label = QLabel(text)
+    label.setStyleSheet(f"background: {bg}; color: {fg}; border-radius: 7px; padding: 4px 10px; font-size: 12px; font-weight: 700;")
+    return label
+
+
+def _guide_line(number, title, body, color):
+    row = QWidget()
+    row.setStyleSheet("background: transparent; border: none;")
+    layout = QHBoxLayout(row)
+    layout.setContentsMargins(0, 3, 0, 3)
+    layout.setSpacing(10)
+    badge = QLabel(number)
+    badge.setFixedSize(22, 22)
+    badge.setAlignment(Qt.AlignCenter)
+    badge.setStyleSheet(f"background: white; color: {color}; border: 1px solid #bfdbfe; border-radius: 11px; font-size: 12px; font-weight: 800;")
+    text = QLabel(f"<b>{title}</b>: {body}")
+    text.setWordWrap(True)
+    text.setStyleSheet("font-size: 13px; color: #1e40af;")
+    layout.addWidget(badge, alignment=Qt.AlignTop)
+    layout.addWidget(text, 1)
+    return row
+
+
+def _mini_line(icon_name, text, color):
+    row = QWidget()
+    row.setStyleSheet("background: transparent; border: none;")
+    layout = QHBoxLayout(row)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(8)
+    icon = QLabel()
+    icon.setFixedSize(16, 16)
+    icon.setPixmap(qta.icon(icon_name, color=color).pixmap(14, 14))
+    label = QLabel(text)
+    label.setWordWrap(True)
+    label.setStyleSheet(f"font-size: 14px; color: {color};")
+    layout.addWidget(icon, alignment=Qt.AlignTop)
+    layout.addWidget(label, 1)
+    return row
 
 
 def _styled_message_box(parent, icon, title, text, buttons=QMessageBox.Ok, default_button=QMessageBox.Ok):
