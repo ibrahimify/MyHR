@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QTableWidget, QTableWidgetItem,
     QHeaderView, QTabWidget, QLineEdit, QComboBox, QTextEdit,
-    QMessageBox, QCheckBox, QButtonGroup, QRadioButton
+    QMessageBox, QCheckBox
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QColor
@@ -32,6 +32,135 @@ CATEGORIES = {
     3: {"label": "Category 3", "months": -6, "desc": "Outstanding / exceptional work", "color": "#8b5cf6", "bg": "#f3e8ff"},
 }
 
+PAGE_BG = "#f9fafb"
+TEXT = "#030213"
+MUTED = "#4b5563"
+BORDER = "#e5e7eb"
+
+TAB_SS = """
+QTabWidget::pane { border: none; background: #f9fafb; margin-top: 24px; }
+QTabBar { background: #e5e7eb; border-radius: 14px; }
+QTabBar::tab {
+    background: transparent;
+    color: #111827;
+    padding: 9px 14px;
+    border: none;
+    font-size: 14px;
+    font-weight: 700;
+    min-height: 24px;
+}
+QTabBar::tab:first { border-top-left-radius: 14px; border-bottom-left-radius: 14px; }
+QTabBar::tab:last { border-top-right-radius: 14px; border-bottom-right-radius: 14px; }
+QTabBar::tab:selected { background: white; color: #030213; }
+"""
+
+CARD_SS = """
+QFrame#Card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+QFrame#Card QLabel {
+    background: transparent;
+    border: none;
+}
+"""
+
+INPUT_SS = """
+QLineEdit, QTextEdit {
+    border: none;
+    border-radius: 8px;
+    padding: 0 16px;
+    font-size: 14px;
+    color: #111827;
+    background: #f3f3f5;
+    selection-background-color: #2563eb;
+    outline: none;
+}
+QTextEdit {
+    padding: 10px 16px;
+}
+QLineEdit:focus, QTextEdit:focus {
+    background: white;
+    border: 1px solid #2563eb;
+}
+"""
+
+COMBO_SS = """
+QComboBox {
+    border: none;
+    border-radius: 8px;
+    padding: 0 36px 0 16px;
+    font-size: 14px;
+    color: #111827;
+    background: #f3f3f5;
+    min-height: 40px;
+    outline: none;
+}
+QComboBox:focus { border: 1px solid #2563eb; background: white; }
+QComboBox::drop-down { width: 32px; border: none; background: transparent; }
+QComboBox::down-arrow { image: url(src/ui/assets/chevron_down.svg); width: 12px; height: 12px; }
+QComboBox QAbstractItemView {
+    background: white;
+    color: #111827;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    selection-background-color: #eff6ff;
+    selection-color: #111827;
+    outline: none;
+    padding: 4px;
+}
+"""
+
+TABLE_SS = """
+QTableWidget {
+    background: white;
+    alternate-background-color: white;
+    border: none;
+    gridline-color: #f3f4f6;
+    font-size: 14px;
+    color: #111827;
+    outline: none;
+    selection-background-color: #eff6ff;
+}
+QTableWidget::item {
+    background: white;
+    padding: 0 12px;
+    border: none;
+    border-bottom: 1px solid #f3f4f6;
+    color: #111827;
+}
+QTableWidget::item:hover { background: #f9fafb; }
+QTableWidget::item:selected { background: #eff6ff; color: #111827; }
+QHeaderView::section {
+    background: white;
+    border: none;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 800;
+    color: #030213;
+    min-height: 50px;
+    text-align: left;
+}
+"""
+
+MESSAGE_BOX_SS = """
+QMessageBox { background: white; color: #111827; }
+QMessageBox QLabel { color: #111827; background: transparent; font-size: 13px; }
+QPushButton {
+    background: white;
+    color: #111827;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    min-width: 84px;
+    min-height: 30px;
+    font-weight: 600;
+}
+QPushButton:hover { background: #f3f4f6; }
+QPushButton:default { background: #030213; color: white; border: none; }
+"""
+
 
 class CommendationsPage(QWidget):
     def __init__(self, user):
@@ -42,29 +171,21 @@ class CommendationsPage(QWidget):
 
     def _build(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(0)
 
-        # Header
-        header = QFrame()
-        header.setFixedHeight(72)
-        header.setStyleSheet("background: white; border-bottom: 2px solid #e5e7eb;")
-        h = QHBoxLayout(header)
-        h.setContentsMargins(28, 0, 28, 0)
-        title = QLabel(t("commendations_title"))
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #111827;")
-        h.addWidget(title)
-        h.addStretch()
-        layout.addWidget(header)
+        title = QLabel("Commendation Management")
+        title.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827; background: transparent;")
+        subtitle = QLabel("Issue and track employee commendations and awards")
+        subtitle.setStyleSheet("font-size: 16px; color: #4b5563; background: transparent;")
+        layout.addWidget(title)
+        layout.addSpacing(6)
+        layout.addWidget(subtitle)
+        layout.addSpacing(40)
 
         # Tabs
         self.tabs = QTabWidget()
-        self.tabs.setStyleSheet("""
-            QTabWidget::pane { border: none; background: #f9fafb; }
-            QTabBar::tab { background: white; color: #6b7280; padding: 10px 20px; border: none; border-bottom: 2px solid transparent; font-size: 13px; }
-            QTabBar::tab:selected { color: #030213; border-bottom: 2px solid #030213; font-weight: bold; }
-            QTabBar::tab:hover { color: #111827; }
-        """)
+        self.tabs.setStyleSheet(TAB_SS)
 
         self.issue_tab   = IssueCommendationTab(self.user, self._on_issued)
         self.history_tab = CommendationHistoryTab(self.user)
@@ -72,7 +193,7 @@ class CommendationsPage(QWidget):
         self.tabs.addTab(self.issue_tab,   t("issue_commendation"))
         self.tabs.addTab(self.history_tab, t("commendation_history"))
         self.tabs.currentChanged.connect(lambda i: self.history_tab.refresh() if i == 1 else None)
-        layout.addWidget(self.tabs)
+        layout.addWidget(self.tabs, 1)
 
     def _on_issued(self):
         self.tabs.setCurrentIndex(1)
@@ -97,13 +218,14 @@ class IssueCommendationTab(QWidget):
     def _build(self):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("border: none;")
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setStyleSheet("border: none; background: transparent;")
 
         content = QWidget()
-        content.setStyleSheet("background: #f9fafb;")
+        content.setStyleSheet("background: transparent;")
         main = QHBoxLayout(content)
-        main.setContentsMargins(24, 20, 24, 20)
-        main.setSpacing(16)
+        main.setContentsMargins(0, 0, 0, 0)
+        main.setSpacing(30)
         main.setAlignment(Qt.AlignTop)
 
         # ── Left: form ────────────────────────────────────────────────────────
@@ -112,28 +234,29 @@ class IssueCommendationTab(QWidget):
 
         # Mode selector
         mode_card = QFrame()
-        mode_card.setStyleSheet("background: white; border-radius: 12px; border: 1px solid #e5e7eb;")
+        mode_card.setObjectName("Card")
+        mode_card.setStyleSheet(CARD_SS)
         mc = QVBoxLayout(mode_card)
-        mc.setContentsMargins(20, 16, 20, 16)
-        mc.setSpacing(10)
+        mc.setContentsMargins(30, 28, 30, 28)
+        mc.setSpacing(24)
         mc_title = QLabel("Commendation Type")
-        mc_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #111827; background: transparent;")
+        mc_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
         mc.addWidget(mc_title)
 
         mode_row = QHBoxLayout()
         mode_row.setSpacing(10)
 
-        self.single_btn = QPushButton("  Single Employee")
+        self.single_btn = QPushButton("Single Employee")
         self.single_btn.setIcon(qta.icon("fa5s.user", color="#2563eb"))
-        self.single_btn.setIconSize(QSize(14, 14))
-        self.single_btn.setFixedHeight(44)
+        self.single_btn.setIconSize(QSize(28, 28))
+        self.single_btn.setFixedHeight(150)
         self.single_btn.setCursor(Qt.PointingHandCursor)
         self.single_btn.clicked.connect(lambda: self._set_mode("single"))
 
-        self.bulk_btn = QPushButton("  Team Award")
+        self.bulk_btn = QPushButton("Team Award")
         self.bulk_btn.setIcon(qta.icon("fa5s.users", color="#6b7280"))
-        self.bulk_btn.setIconSize(QSize(14, 14))
-        self.bulk_btn.setFixedHeight(44)
+        self.bulk_btn.setIconSize(QSize(28, 28))
+        self.bulk_btn.setFixedHeight(150)
         self.bulk_btn.setCursor(Qt.PointingHandCursor)
         self.bulk_btn.clicked.connect(lambda: self._set_mode("bulk"))
 
@@ -144,71 +267,72 @@ class IssueCommendationTab(QWidget):
 
         # Details card
         details_card = QFrame()
-        details_card.setStyleSheet("background: white; border-radius: 12px; border: 1px solid #e5e7eb;")
+        details_card.setObjectName("Card")
+        details_card.setStyleSheet(CARD_SS)
         dc = QVBoxLayout(details_card)
-        dc.setContentsMargins(20, 16, 20, 16)
-        dc.setSpacing(12)
+        dc.setContentsMargins(30, 28, 30, 28)
+        dc.setSpacing(16)
 
         dc_title = QLabel("Commendation Details")
-        dc_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #111827; background: transparent;")
+        dc_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
         dc.addWidget(dc_title)
 
-        input_style = "QLineEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 12px; font-size: 13px; color: #111827; background: #f9fafb; } QLineEdit:focus { border-color: #2563eb; background: white; }"
-        combo_style = "QComboBox { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px 0 12px; font-size: 13px; color: #111827; background: #f9fafb; }"
-        ta_style    = "QTextEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px; font-size: 13px; color: #111827; background: #f9fafb; } QTextEdit:focus { border-color: #2563eb; background: white; }"
-
         title_lbl = QLabel("Award Title *")
-        title_lbl.setStyleSheet("font-size: 12px; font-weight: bold; color: #6b7280; background: transparent;")
+        title_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
         self.title_input = QLineEdit()
         self.title_input.setPlaceholderText("e.g. Project Excellence Award")
-        self.title_input.setFixedHeight(36)
-        self.title_input.setStyleSheet(input_style)
+        self.title_input.setFixedHeight(44)
+        self.title_input.setStyleSheet(INPUT_SS)
         dc.addWidget(title_lbl)
         dc.addWidget(self.title_input)
 
         cat_lbl = QLabel(t("commendation_category") + " *")
-        cat_lbl.setStyleSheet("font-size: 12px; font-weight: bold; color: #6b7280; background: transparent;")
+        cat_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
         self.cat_combo = QComboBox()
-        self.cat_combo.setFixedHeight(36)
-        self.cat_combo.setStyleSheet(combo_style)
-        self.cat_combo.addItem("— Select category —", None)
+        self.cat_combo.setFixedHeight(44)
+        self.cat_combo.setStyleSheet(COMBO_SS)
+        self.cat_combo.addItem("Select category tier", None)
         for cat_id, cat in CATEGORIES.items():
-            self.cat_combo.addItem(f"{cat['label']} (−{abs(cat['months'])} month{'s' if abs(cat['months']) > 1 else ''})", cat_id)
+            self.cat_combo.addItem(f"{cat['label']} (-{abs(cat['months'])} month{'s' if abs(cat['months']) > 1 else ''})", cat_id)
         dc.addWidget(cat_lbl)
         dc.addWidget(self.cat_combo)
+        cat_hint = QLabel("Higher categories accelerate the employee's promotion race more")
+        cat_hint.setStyleSheet("font-size: 12px; color: #64748b; background: transparent;")
+        dc.addWidget(cat_hint)
 
         desc_lbl = QLabel("Description *")
-        desc_lbl.setStyleSheet("font-size: 12px; font-weight: bold; color: #6b7280; background: transparent;")
+        desc_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
         self.desc_input = QTextEdit()
-        self.desc_input.setFixedHeight(90)
-        self.desc_input.setPlaceholderText("Describe the achievement or reason...")
-        self.desc_input.setStyleSheet(ta_style)
+        self.desc_input.setFixedHeight(80)
+        self.desc_input.setPlaceholderText("Describe the achievement or reason for this commendation...")
+        self.desc_input.setStyleSheet(INPUT_SS)
         dc.addWidget(desc_lbl)
         dc.addWidget(self.desc_input)
         left.addWidget(details_card)
 
         # Employee selection card
         emp_card = QFrame()
-        emp_card.setStyleSheet("background: white; border-radius: 12px; border: 1px solid #e5e7eb;")
+        emp_card.setObjectName("Card")
+        emp_card.setStyleSheet(CARD_SS)
         ec = QVBoxLayout(emp_card)
-        ec.setContentsMargins(20, 16, 20, 16)
-        ec.setSpacing(8)
+        ec.setContentsMargins(30, 28, 30, 28)
+        ec.setSpacing(14)
 
         self.emp_card_title = QLabel("Select Employee")
-        self.emp_card_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #111827; background: transparent;")
+        self.emp_card_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
         ec.addWidget(self.emp_card_title)
 
         # Single employee combo
         self.single_combo = QComboBox()
-        self.single_combo.setFixedHeight(36)
-        self.single_combo.setStyleSheet(combo_style)
+        self.single_combo.setFixedHeight(44)
+        self.single_combo.setStyleSheet(COMBO_SS)
         ec.addWidget(self.single_combo)
 
         # Bulk employee checkboxes container
         self.bulk_scroll = QScrollArea()
         self.bulk_scroll.setFixedHeight(200)
         self.bulk_scroll.setWidgetResizable(True)
-        self.bulk_scroll.setStyleSheet("border: 1px solid #e5e7eb; border-radius: 8px;")
+        self.bulk_scroll.setStyleSheet("border: none; background: transparent;")
         self.bulk_container = QWidget()
         self.bulk_container.setStyleSheet("background: white;")
         self.bulk_layout = QVBoxLayout(self.bulk_container)
@@ -230,51 +354,72 @@ class IssueCommendationTab(QWidget):
 
         # Category impact info
         impact_card = QFrame()
-        impact_card.setStyleSheet("background: #eff6ff; border-radius: 12px; border: 1px solid #bfdbfe;")
+        impact_card.setStyleSheet("QFrame { background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #eff6ff,stop:1 #f5f3ff); border-radius: 8px; border: 1px solid #bfdbfe; } QLabel { background: transparent; border: none; }")
         ic = QVBoxLayout(impact_card)
-        ic.setContentsMargins(16, 14, 16, 14)
-        ic.setSpacing(10)
+        ic.setContentsMargins(30, 28, 30, 28)
+        ic.setSpacing(14)
 
+        impact_head = QHBoxLayout()
+        impact_icon = QLabel()
+        impact_icon.setPixmap(qta.icon("fa5s.stopwatch", color="#2563eb").pixmap(18, 18))
         ic_title = QLabel(t("promotion_track_impact"))
-        ic_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #1e40af; background: transparent;")
-        ic.addWidget(ic_title)
+        ic_title.setStyleSheet("font-size: 17px; font-weight: 800; color: #1e40af; background: transparent;")
+        impact_head.addWidget(impact_icon)
+        impact_head.addWidget(ic_title)
+        impact_head.addStretch()
+        ic.addLayout(impact_head)
+        intro = QLabel("Commendations reduce months on the promotion race track")
+        intro.setWordWrap(True)
+        intro.setStyleSheet("font-size: 13px; color: #1d4ed8; background: transparent;")
+        ic.addWidget(intro)
 
         for cat_id, cat in CATEGORIES.items():
             row = QFrame()
-            row.setStyleSheet(f"background: white; border-radius: 6px; border: 1px solid {cat['color']}40;")
-            rl = QHBoxLayout(row)
-            rl.setContentsMargins(10, 8, 10, 8)
+            row.setStyleSheet(f"QFrame {{ background: white; border-radius: 7px; border: 1px solid {cat['color']}40; }} QLabel {{ background: transparent; border: none; }}")
+            rl = QVBoxLayout(row)
+            rl.setContentsMargins(16, 14, 16, 14)
+            top = QHBoxLayout()
             name = QLabel(cat["label"])
-            name.setStyleSheet(f"font-size: 12px; font-weight: bold; color: {cat['color']}; background: transparent;")
+            name.setStyleSheet(f"font-size: 16px; font-weight: 800; color: {cat['color']}; background: transparent;")
             badge = QLabel(f"−{abs(cat['months'])} mo")
+            badge.setText(f"-{abs(cat['months'])} month{'s' if abs(cat['months']) > 1 else ''}")
             badge.setStyleSheet(f"background: {cat['bg']}; color: {cat['color']}; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: bold;")
             desc = QLabel(cat["desc"])
-            desc.setStyleSheet(f"font-size: 11px; color: #6b7280; background: transparent;")
-            rl.addWidget(name)
-            rl.addStretch()
-            rl.addWidget(badge)
+            desc.setStyleSheet(f"font-size: 12px; color: {cat['color']}; background: transparent;")
+            top.addWidget(name)
+            top.addStretch()
+            top.addWidget(badge)
+            rl.addLayout(top)
+            rl.addWidget(desc)
             ic.addWidget(row)
-            ic.addWidget(desc)
 
         right.addWidget(impact_card)
 
         # Rules card
         rules_card = QFrame()
-        rules_card.setStyleSheet("background: #fefce8; border-radius: 12px; border: 1px solid #fde047;")
+        rules_card.setStyleSheet("QFrame { background: #fefce8; border-radius: 8px; border: 1px solid #fde047; } QLabel { background: transparent; border: none; }")
         rc = QVBoxLayout(rules_card)
-        rc.setContentsMargins(16, 14, 16, 14)
-        rc.setSpacing(6)
+        rc.setContentsMargins(30, 28, 30, 28)
+        rc.setSpacing(12)
+        rule_head = QHBoxLayout()
+        rule_icon = QLabel()
+        rule_icon.setPixmap(qta.icon("fa5s.award", color="#d97706").pixmap(18, 18))
         rc_title = QLabel("Important Rules")
-        rc_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #854d0e; background: transparent;")
-        rc.addWidget(rc_title)
+        rc_title.setStyleSheet("font-size: 17px; font-weight: 800; color: #854d0e; background: transparent;")
+        rule_head.addWidget(rule_icon)
+        rule_head.addWidget(rc_title)
+        rule_head.addStretch()
+        rc.addLayout(rule_head)
         for rule in [
-            "Max 3 commendations per employee per role",
+            "Maximum 3 commendations per employee per role or position",
             "Each commendation gets a unique auto-generated ID",
-            "Commendations reset after promotion",
-            "Recorded in audit log",
+            "Visible in employee profile and audit log",
+            "Can be used for performance reviews",
         ]:
             lbl = QLabel(f"• {rule}")
-            lbl.setStyleSheet("font-size: 12px; color: #a16207; background: transparent;")
+            lbl.setTextFormat(Qt.RichText)
+            lbl.setText("&bull; " + rule)
+            lbl.setStyleSheet("font-size: 14px; color: #92400e; background: transparent;")
             rc.addWidget(lbl)
         right.addWidget(rules_card)
 
@@ -283,15 +428,15 @@ class IssueCommendationTab(QWidget):
         issue_btn.setIcon(qta.icon("fa5s.award", color="white"))
         issue_btn.setIconSize(QSize(14, 14))
         issue_btn.setCursor(Qt.PointingHandCursor)
-        issue_btn.setFixedHeight(44)
-        issue_btn.setStyleSheet("QPushButton { background: #2563eb; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: bold; } QPushButton:hover { background: #111827; }")
+        issue_btn.setFixedHeight(50)
+        issue_btn.setStyleSheet("QPushButton { background: #030213; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 800; } QPushButton:hover { background: #111827; }")
         issue_btn.clicked.connect(self._issue)
         right.addWidget(issue_btn)
 
         clear_btn = QPushButton("Clear Form")
         clear_btn.setCursor(Qt.PointingHandCursor)
-        clear_btn.setFixedHeight(36)
-        clear_btn.setStyleSheet("QPushButton { background: #f3f4f6; color: #374151; border: none; border-radius: 8px; font-size: 13px; } QPushButton:hover { background: #e5e7eb; }")
+        clear_btn.setFixedHeight(44)
+        clear_btn.setStyleSheet("QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-weight: 700; } QPushButton:hover { background: #f3f4f6; }")
         clear_btn.clicked.connect(self._clear)
         right.addWidget(clear_btn)
 
@@ -307,8 +452,15 @@ class IssueCommendationTab(QWidget):
 
     def _set_mode(self, mode):
         self.mode = mode
-        active   = "QPushButton { background: #eff6ff; color: #2563eb; border: 2px solid #2563eb; border-radius: 8px; font-size: 13px; font-weight: bold; padding: 0 14px; }"
-        inactive = "QPushButton { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; padding: 0 14px; }"
+        active = (
+            "QPushButton { background: #eff6ff; color: #2563eb; border: 2px solid #2563eb;"
+            " border-radius: 8px; font-size: 17px; font-weight: 800; padding: 0 14px; }"
+        )
+        inactive = (
+            "QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb;"
+            " border-radius: 8px; font-size: 17px; font-weight: 800; padding: 0 14px; }"
+            "QPushButton:hover { background: #f9fafb; }"
+        )
         self.single_btn.setStyleSheet(active if mode == "single" else inactive)
         self.single_btn.setIcon(qta.icon("fa5s.user", color="#2563eb" if mode == "single" else "#6b7280"))
         self.bulk_btn.setStyleSheet(active if mode == "bulk" else inactive)
@@ -324,18 +476,18 @@ class IssueCommendationTab(QWidget):
             emps = session.query(Employee).filter_by(status="active").all()
             emp_data = [{
                 "id": e.id,
-                "label": f"{e.employee_id} — {e.full_name} ({e.title.name if e.title else '?'})",
+                "label": f"{e.employee_id} - {e.full_name} ({e.title.name if e.title else '?'})",
                 "can": can_receive_commendation(e, session),
                 "count": count_commendations_in_current_role(e, session),
             } for e in emps]
         finally:
             session.close()
 
-        # Single combo — always store the ID so we can give a specific error for maxed employees
+        # Single combo always stores the ID so maxed employees can get a specific error.
         self.single_combo.clear()
-        self.single_combo.addItem("— Select employee —", None)
+        self.single_combo.addItem("Choose an employee", None)
         for e in emp_data:
-            suffix = f"  [{e['count']}/3]" + (" ⚠ Max reached" if not e["can"] else "")
+            suffix = f"  [{e['count']}/3]" + ("  Max reached" if not e["can"] else "")
             self.single_combo.addItem(e["label"] + suffix, e["id"])
 
         # Bulk checkboxes
@@ -382,24 +534,24 @@ class IssueCommendationTab(QWidget):
         cat_id     = self.cat_combo.currentData()
 
         if not title_text:
-            QMessageBox.warning(self, t("warning"), "Award title is required.")
+            _warning(self, t("warning"), "Award title is required.")
             return
         if not cat_id:
-            QMessageBox.warning(self, t("warning"), "Please select a commendation category.")
+            _warning(self, t("warning"), "Please select a commendation category.")
             return
         if not desc_text:
-            QMessageBox.warning(self, t("warning"), "Description is required.")
+            _warning(self, t("warning"), "Description is required.")
             return
 
         if self.mode == "single":
             emp_id = self.single_combo.currentData()
             if not emp_id:
-                QMessageBox.warning(self, t("warning"), "Please select an employee.")
+                _warning(self, t("warning"), "Please select an employee.")
                 return
             target_ids = [emp_id]
         else:
             if not self.selected_employees:
-                QMessageBox.warning(self, t("warning"), "Please select at least one employee.")
+                _warning(self, t("warning"), "Please select at least one employee.")
                 return
             target_ids = list(self.selected_employees)
 
@@ -412,7 +564,7 @@ class IssueCommendationTab(QWidget):
             if self.mode == "single":
                 emp = session.query(Employee).filter_by(id=target_ids[0]).first()
                 if not can_receive_commendation(emp, session):
-                    QMessageBox.warning(self, t("warning"), t("max_commendations_reached"))
+                    _warning(self, t("warning"), t("max_commendations_reached"))
                     return
             else:
                 # Team award: skip maxed employees, award the rest
@@ -425,7 +577,7 @@ class IssueCommendationTab(QWidget):
                         skipped_names.append(emp.full_name)
 
                 if not eligible_ids:
-                    QMessageBox.warning(self, t("warning"),
+                    _warning(self, t("warning"),
                         "All selected employees have already reached the maximum 3 commendations for their current role.")
                     return
                 target_ids = eligible_ids
@@ -461,14 +613,14 @@ class IssueCommendationTab(QWidget):
                    f"{cat['label']}: {cat['months']} months to promotion race for {len(target_ids)} employee(s).")
             if skipped_names:
                 msg += f"\n\nSkipped (max 3 reached): {', '.join(skipped_names)}"
-            QMessageBox.information(self, t("success"), msg)
+            _information(self, t("success"), msg)
 
             self._clear()
             self.refresh_employees()
             self.on_issued()
         except Exception as e:
             session.rollback()
-            QMessageBox.critical(self, t("error"), str(e))
+            _critical(self, t("error"), str(e))
         finally:
             session.close()
 
@@ -484,7 +636,25 @@ class CommendationHistoryTab(QWidget):
 
     def _build(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(32, 24, 32, 24)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        card = QFrame()
+        card.setObjectName("Card")
+        card.setStyleSheet(CARD_SS)
+        cl = QVBoxLayout(card)
+        cl.setContentsMargins(0, 0, 0, 0)
+        cl.setSpacing(0)
+
+        header = QFrame()
+        header.setStyleSheet("background: transparent; border: none; border-bottom: 1px solid #e5e7eb;")
+        hl = QHBoxLayout(header)
+        hl.setContentsMargins(30, 28, 30, 28)
+        title = QLabel("Recent Commendations")
+        title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
+        hl.addWidget(title)
+        hl.addStretch()
+        cl.addWidget(header)
 
         self.table = QTableWidget()
         self.table.setColumnCount(7)
@@ -492,15 +662,13 @@ class CommendationHistoryTab(QWidget):
             t("commendation_id"), "Title", "Category", "Promotion Impact",
             "Recipients", "Issued By", "Date"
         ])
-        self.table.setStyleSheet("""
-            QTableWidget { background: white; border: none; font-size: 13px; color: #111827; }
-            QTableWidget::item { padding: 8px 12px; border-bottom: 1px solid #f3f4f6; color: #111827; }
-            QHeaderView::section { background: #f9fafb; border: none; border-bottom: 1px solid #e5e7eb; padding: 10px 12px; font-size: 12px; font-weight: bold; color: #6b7280; }
-        """)
+        self.table.setStyleSheet(TABLE_SS)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        layout.addWidget(self.table)
+        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        cl.addWidget(self.table)
+        layout.addWidget(card)
 
     def refresh(self):
         session = get_session()
@@ -517,31 +685,69 @@ class CommendationHistoryTab(QWidget):
                     "impact": f"−{abs(c.months_impact)} month{'s' if abs(c.months_impact) > 1 else ''}",
                     "recipients": recipients,
                     "issued_by": c.issued_by.full_name,
-                    "date": c.issued_at.strftime("%Y-%m-%d") if c.issued_at else "—",
+                    "date": c.issued_at.strftime("%Y-%m-%d") if c.issued_at else "-",
                     "cat_id": c.category,
                 })
         finally:
             session.close()
 
         self.table.setRowCount(len(rows))
+        self.table.setMinimumHeight(112 + (56 * max(1, len(rows))))
         for i, row in enumerate(rows):
             self.table.setRowHeight(i, 52)
 
             ref_item = QTableWidgetItem(row["ref"])
             ref_item.setForeground(QColor("#6b7280"))
+            ref_item.setToolTip(row["ref"])
             self.table.setItem(i, 0, ref_item)
-            self.table.setItem(i, 1, QTableWidgetItem(row["title"]))
+            title_item = QTableWidgetItem(row["title"])
+            title_item.setToolTip(row["title"])
+            self.table.setItem(i, 1, title_item)
 
             cat = CATEGORIES.get(row["cat_id"], {})
             cat_item = QTableWidgetItem(row["category"])
             cat_item.setBackground(QColor(cat.get("bg", "#f9fafb")))
             cat_item.setForeground(QColor(cat.get("color", "#374151")))
+            cat_item.setToolTip(row["category"])
             self.table.setItem(i, 2, cat_item)
 
             impact_item = QTableWidgetItem(row["impact"])
             impact_item.setForeground(QColor("#10b981"))
+            impact_item.setToolTip(row["impact"])
             self.table.setItem(i, 3, impact_item)
 
-            self.table.setItem(i, 4, QTableWidgetItem(row["recipients"]))
-            self.table.setItem(i, 5, QTableWidgetItem(row["issued_by"]))
-            self.table.setItem(i, 6, QTableWidgetItem(row["date"]))
+            for col, key in [(4, "recipients"), (5, "issued_by"), (6, "date")]:
+                item = QTableWidgetItem(row[key])
+                item.setToolTip(row[key])
+            self.table.setItem(i, col, item)
+
+
+def _styled_message_box(parent, icon, title, text, buttons=QMessageBox.Ok, default_button=QMessageBox.Ok):
+    box = QMessageBox(parent)
+    box.setIcon(icon)
+    box.setWindowTitle(title)
+    box.setText(text)
+    box.setStandardButtons(buttons)
+    box.setDefaultButton(default_button)
+    box.setStyleSheet(MESSAGE_BOX_SS)
+    return box.exec()
+
+
+def _warning(parent, title, text):
+    return _styled_message_box(parent, QMessageBox.Warning, title, text)
+
+
+def _critical(parent, title, text):
+    return _styled_message_box(parent, QMessageBox.Critical, title, text)
+
+
+def _information(parent, title, text):
+    return _styled_message_box(parent, QMessageBox.Information, title, text)
+
+
+def _note_line(text, color):
+    lbl = QLabel("&bull; " + text)
+    lbl.setTextFormat(Qt.RichText)
+    lbl.setWordWrap(True)
+    lbl.setStyleSheet(f"font-size: 14px; color: {color}; background: transparent;")
+    return lbl
