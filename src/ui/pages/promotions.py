@@ -22,13 +22,18 @@ _ICO = QSize(16, 16)
 PROMO_TABLE_SS = """
 QTableWidget {
     background: white;
+    alternate-background-color: white;
     border: none;
     gridline-color: #f3f4f6;
     font-size: 14px;
     color: #111827;
     outline: none;
 }
+QTableWidget QWidget {
+    background: white;
+}
 QTableWidget::item {
+    background: white;
     padding: 0 12px;
     border: none;
     border-bottom: 1px solid #f3f4f6;
@@ -60,7 +65,7 @@ QFrame#PromoCard QLabel {
 """
 
 PROMO_TAB_SS = """
-QTabWidget::pane { border: none; background: #f9fafb; margin-top: 24px; }
+QTabWidget::pane { border: none; background: white; margin-top: 24px; }
 QTabBar { background: #e5e7eb; border-radius: 14px; }
 QTabBar::tab {
     background: transparent;
@@ -102,7 +107,7 @@ class PromotionsPage(QWidget):
         super().__init__()
         self.user = user
         self.navigate_to_employee = navigate_to_employee
-        self.setStyleSheet("background: #f9fafb;")
+        self.setStyleSheet("background: white;")
         self._build()
 
     def _build(self):
@@ -148,7 +153,7 @@ class EligibleTab(QWidget):
         super().__init__()
         self.user = user
         self.navigate_to_employee = navigate_to_employee
-        self.setStyleSheet("background: #f9fafb;")
+        self.setStyleSheet("background: white;")
         self._build()
 
     def _build(self):
@@ -160,9 +165,9 @@ class EligibleTab(QWidget):
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll.setStyleSheet("border: none; background: #f9fafb;")
+        scroll.setStyleSheet("border: none; background: white;")
         content = QWidget()
-        content.setStyleSheet("background: #f9fafb;")
+        content.setStyleSheet("background: white;")
 
         layout = QVBoxLayout(content)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -334,6 +339,7 @@ class EligibleTab(QWidget):
 
             # Employee name + ID
             name_w = QWidget()
+            name_w.setStyleSheet("background: white; border: none;")
             nl = QVBoxLayout(name_w)
             nl.setContentsMargins(12, 4, 4, 4)
             nl.setSpacing(1)
@@ -356,6 +362,7 @@ class EligibleTab(QWidget):
             bm = max(row["base_months"], 1)
             pct = max(0, min(100, int(100 - (mr / bm * 100))))
             prog_w = QWidget()
+            prog_w.setStyleSheet("background: white; border: none;")
             prog_l = QVBoxLayout(prog_w)
             prog_l.setContentsMargins(12, 8, 12, 8)
             prog_l.setSpacing(3)
@@ -402,6 +409,7 @@ class EligibleTab(QWidget):
 
             # Action button
             act_w = QWidget()
+            act_w.setStyleSheet("background: white; border: none;")
             act_l = QHBoxLayout(act_w)
             act_l.setContentsMargins(6, 8, 6, 8)
             act_l.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -494,7 +502,7 @@ class HistoryTab(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: #f9fafb;")
+        self.setStyleSheet("background: white;")
         self._build()
         self.refresh()
 
@@ -559,6 +567,7 @@ class HistoryTab(QWidget):
             self.table.setRowHeight(i, 52)
             # Employee cell
             ew = QWidget()
+            ew.setStyleSheet("background: white; border: none;")
             el = QVBoxLayout(ew)
             el.setContentsMargins(12, 4, 4, 4)
             el.setSpacing(1)
@@ -570,11 +579,12 @@ class HistoryTab(QWidget):
             self.table.setCellWidget(i, 0, ew)
 
             promo_w = QWidget()
+            promo_w.setStyleSheet("background: white; border: none;")
             pl = QHBoxLayout(promo_w)
             pl.setContentsMargins(12, 0, 4, 0)
             pl.setSpacing(8)
             fl = QLabel(row["from"])
-            fl.setStyleSheet(f"background: #f3f4f6; color: #374151; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600;")
+            fl.setStyleSheet(f"background: #eef4ff; color: #1e40af; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600;")
             arrow = QLabel()
             arrow.setPixmap(qta.icon("fa5s.arrow-right", color="#10b981").pixmap(12, 12))
             tl = QLabel(row["to"])
@@ -593,7 +603,7 @@ class RulesTab(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: #f9fafb;")
+        self.setStyleSheet("background: white;")
         self._build()
         self.refresh()
 
@@ -605,9 +615,9 @@ class RulesTab(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setStyleSheet("border: none; background: #f9fafb;")
+        scroll.setStyleSheet("border: none; background: white;")
         content = QWidget()
-        content.setStyleSheet("background: #f9fafb;")
+        content.setStyleSheet("background: white;")
 
         layout = QVBoxLayout(content)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -617,7 +627,7 @@ class RulesTab(QWidget):
         info = QFrame()
         info.setObjectName("PromoInfo")
         info.setStyleSheet(
-            "QFrame#PromoInfo { background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #eff6ff,stop:1 #f5f3ff);"
+            "QFrame#PromoInfo { background: white;"
             " border-radius: 8px; border: 1px solid #bfdbfe; }"
             "QFrame#PromoInfo QLabel { background: transparent; border: none; }"
         )
@@ -632,11 +642,11 @@ class RulesTab(QWidget):
         it.setStyleSheet("font-size: 14px; font-weight: bold; color: #1e40af;")
         ih.addWidget(ico); ih.addWidget(it); ih.addStretch()
         il.addLayout(ih)
-        il.addWidget(_guide_line("1", "Base duration", "Every level has a configurable track duration in months.", "#2563eb"))
-        il.addWidget(_guide_line("2", "Monthly progress", "Employees move forward 1 checkpoint each month automatically.", "#2563eb"))
-        il.addWidget(_guide_line("3", "Commendations", "Awards reduce months remaining. Cat1: 1 month, Cat2: 3 months, Cat3: 6 months.", "#10b981"))
-        il.addWidget(_guide_line("4", "Sanctions", "Active sanctions add delay months to the promotion timeline.", "#f59e0b"))
-        il.addWidget(_guide_line("5", "Reset after promotion", "When promoted, the next race starts from month 0 on the promotion date.", "#7e22ce"))
+        il.addWidget(_guide_line("Base duration", "Every level has a configurable track duration in months."))
+        il.addWidget(_guide_line("Monthly progress", "Employees move forward 1 checkpoint each month automatically."))
+        il.addWidget(_guide_line("Commendations", "Awards reduce months remaining. Cat1: 1 month, Cat2: 3 months, Cat3: 6 months."))
+        il.addWidget(_guide_line("Sanctions", "Active sanctions add delay months to the promotion timeline."))
+        il.addWidget(_guide_line("Reset after promotion", "When promoted, the next race starts from month 0 on the promotion date."))
         layout.addWidget(info)
 
         # Table card
@@ -705,13 +715,14 @@ class RulesTab(QWidget):
             self.table.setRowHeight(i, 52)
 
             tr_w = QWidget()
+            tr_w.setStyleSheet("background: white; border: none;")
             trl = QHBoxLayout(tr_w)
             trl.setContentsMargins(12, 0, 4, 0)
             trl.setSpacing(8)
             ico2 = QLabel()
             ico2.setPixmap(qta.icon("fa5s.chart-line", color="#2563eb").pixmap(14, 14))
             trl.addWidget(ico2)
-            from_lbl = _level_badge(row["from"], "#f3f4f6", "#374151")
+            from_lbl = _level_badge(row["from"], "#eef4ff", "#1e40af")
             arrow = QLabel()
             arrow.setPixmap(qta.icon("fa5s.arrow-right", color="#10b981").pixmap(12, 12))
             to_lbl = _level_badge(row["to"], "#dcfce7", "#166534")
@@ -891,20 +902,20 @@ def _level_badge(text, bg, fg):
     return label
 
 
-def _guide_line(number, title, body, color):
+def _guide_line(title, body):
     row = QWidget()
     row.setStyleSheet("background: transparent; border: none;")
     layout = QHBoxLayout(row)
     layout.setContentsMargins(0, 3, 0, 3)
     layout.setSpacing(10)
-    badge = QLabel(number)
-    badge.setFixedSize(22, 22)
-    badge.setAlignment(Qt.AlignCenter)
-    badge.setStyleSheet(f"background: white; color: {color}; border: 1px solid #bfdbfe; border-radius: 11px; font-size: 12px; font-weight: 800;")
+    bullet = QLabel("•")
+    bullet.setFixedWidth(16)
+    bullet.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
+    bullet.setStyleSheet("font-size: 18px; color: #2563eb; font-weight: 800;")
     text = QLabel(f"<b>{title}</b>: {body}")
     text.setWordWrap(True)
     text.setStyleSheet("font-size: 13px; color: #1e40af;")
-    layout.addWidget(badge, alignment=Qt.AlignTop)
+    layout.addWidget(bullet, alignment=Qt.AlignTop)
     layout.addWidget(text, 1)
     return row
 
