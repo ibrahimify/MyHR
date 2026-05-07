@@ -22,7 +22,7 @@ from src.database.connection import (
     get_session, generate_commendation_ref, log_action,
     can_receive_commendation, count_commendations_in_current_role
 )
-from src.database.models import Employee, Commendation, CommendationEmployee
+from src.database.models import Employee, Commendation, CommendationEmployee, SystemUser
 from datetime import datetime
 
 
@@ -104,7 +104,7 @@ QComboBox QAbstractItemView {
     background: white;
     color: #111827;
     border: 1px solid #e5e7eb;
-    border-radius: 8px;
+    border-radius: 0;
     selection-background-color: #eff6ff;
     selection-color: #111827;
     outline: none;
@@ -142,6 +142,13 @@ QHeaderView::section {
     color: #030213;
     min-height: 50px;
     text-align: left;
+}
+QToolTip {
+    background-color: #111827;
+    color: white;
+    border: 1px solid #374151;
+    border-radius: 4px;
+    padding: 6px 8px;
 }
 """
 
@@ -204,7 +211,7 @@ class CommendationsPage(QWidget):
         super().showEvent(event)
 
 
-# ── Issue Commendation Tab ────────────────────────────────────────────────────
+# Issue Commendation Tab
 class IssueCommendationTab(QWidget):
     def __init__(self, user, on_issued):
         super().__init__()
@@ -228,7 +235,7 @@ class IssueCommendationTab(QWidget):
         main.setSpacing(30)
         main.setAlignment(Qt.AlignTop)
 
-        # ── Left: form ────────────────────────────────────────────────────────
+        # Left form
         left = QVBoxLayout()
         left.setSpacing(16)
 
@@ -291,6 +298,7 @@ class IssueCommendationTab(QWidget):
         self.cat_combo = QComboBox()
         self.cat_combo.setFixedHeight(44)
         self.cat_combo.setStyleSheet(COMBO_SS)
+        _polish_combo(self.cat_combo)
         self.cat_combo.addItem("Select category tier", None)
         for cat_id, cat in CATEGORIES.items():
             self.cat_combo.addItem(f"{cat['label']} (-{abs(cat['months'])} month{'s' if abs(cat['months']) > 1 else ''})", cat_id)
@@ -326,6 +334,7 @@ class IssueCommendationTab(QWidget):
         self.single_combo = QComboBox()
         self.single_combo.setFixedHeight(44)
         self.single_combo.setStyleSheet(COMBO_SS)
+        _polish_combo(self.single_combo)
         ec.addWidget(self.single_combo)
 
         # Bulk employee checkboxes container
@@ -347,7 +356,7 @@ class IssueCommendationTab(QWidget):
         left.addWidget(emp_card)
         main.addLayout(left, 3)
 
-        # ── Right: sidebar ────────────────────────────────────────────────────
+        # Right sidebar
         right = QVBoxLayout()
         right.setSpacing(16)
         right.setAlignment(Qt.AlignTop)
@@ -381,7 +390,7 @@ class IssueCommendationTab(QWidget):
             top = QHBoxLayout()
             name = QLabel(cat["label"])
             name.setStyleSheet(f"font-size: 16px; font-weight: 800; color: {cat['color']}; background: transparent;")
-            badge = QLabel(f"−{abs(cat['months'])} mo")
+            badge = QLabel(f"-{abs(cat['months'])} mo")
             badge.setText(f"-{abs(cat['months'])} month{'s' if abs(cat['months']) > 1 else ''}")
             badge.setStyleSheet(f"background: {cat['bg']}; color: {cat['color']}; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: bold;")
             desc = QLabel(cat["desc"])
@@ -394,6 +403,32 @@ class IssueCommendationTab(QWidget):
             ic.addWidget(row)
 
         right.addWidget(impact_card)
+
+        actions_card = QFrame()
+        actions_card.setObjectName("Card")
+        actions_card.setStyleSheet(CARD_SS)
+        ac = QVBoxLayout(actions_card)
+        ac.setContentsMargins(30, 28, 30, 28)
+        ac.setSpacing(16)
+        actions_title = QLabel("Actions")
+        actions_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
+        ac.addWidget(actions_title)
+        ac.addSpacing(24)
+        issue_btn = QPushButton("  Issue Commendation")
+        issue_btn.setIcon(qta.icon("fa5s.award", color="white"))
+        issue_btn.setIconSize(QSize(14, 14))
+        issue_btn.setCursor(Qt.PointingHandCursor)
+        issue_btn.setFixedHeight(50)
+        issue_btn.setStyleSheet("QPushButton { background: #030213; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 800; } QPushButton:hover { background: #111827; }")
+        issue_btn.clicked.connect(self._issue)
+        ac.addWidget(issue_btn)
+        clear_btn = QPushButton("Clear Form")
+        clear_btn.setCursor(Qt.PointingHandCursor)
+        clear_btn.setFixedHeight(44)
+        clear_btn.setStyleSheet("QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-weight: 700; } QPushButton:hover { background: #f3f4f6; }")
+        clear_btn.clicked.connect(self._clear)
+        ac.addWidget(clear_btn)
+        right.insertWidget(0, actions_card)
 
         # Rules card
         rules_card = QFrame()
@@ -416,29 +451,11 @@ class IssueCommendationTab(QWidget):
             "Visible in employee profile and audit log",
             "Can be used for performance reviews",
         ]:
-            lbl = QLabel(f"• {rule}")
+            lbl = QLabel("&bull; " + rule)
             lbl.setTextFormat(Qt.RichText)
-            lbl.setText("&bull; " + rule)
             lbl.setStyleSheet("font-size: 14px; color: #92400e; background: transparent;")
             rc.addWidget(lbl)
         right.addWidget(rules_card)
-
-        # Issue button
-        issue_btn = QPushButton("  Issue Commendation")
-        issue_btn.setIcon(qta.icon("fa5s.award", color="white"))
-        issue_btn.setIconSize(QSize(14, 14))
-        issue_btn.setCursor(Qt.PointingHandCursor)
-        issue_btn.setFixedHeight(50)
-        issue_btn.setStyleSheet("QPushButton { background: #030213; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 800; } QPushButton:hover { background: #111827; }")
-        issue_btn.clicked.connect(self._issue)
-        right.addWidget(issue_btn)
-
-        clear_btn = QPushButton("Clear Form")
-        clear_btn.setCursor(Qt.PointingHandCursor)
-        clear_btn.setFixedHeight(44)
-        clear_btn.setStyleSheet("QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-weight: 700; } QPushButton:hover { background: #f3f4f6; }")
-        clear_btn.clicked.connect(self._clear)
-        right.addWidget(clear_btn)
 
         main.addLayout(right, 2)
 
@@ -483,12 +500,15 @@ class IssueCommendationTab(QWidget):
         finally:
             session.close()
 
-        # Single combo always stores the ID so maxed employees can get a specific error.
         self.single_combo.clear()
         self.single_combo.addItem("Choose an employee", None)
         for e in emp_data:
             suffix = f"  [{e['count']}/3]" + ("  Max reached" if not e["can"] else "")
-            self.single_combo.addItem(e["label"] + suffix, e["id"])
+            self.single_combo.addItem(e["label"] + suffix, e["id"] if e["can"] else None)
+            item = self.single_combo.model().item(self.single_combo.count() - 1)
+            if item and not e["can"]:
+                item.setEnabled(False)
+                item.setForeground(QColor("#9ca3af"))
 
         # Bulk checkboxes
         while self.bulk_layout.count():
@@ -625,7 +645,7 @@ class IssueCommendationTab(QWidget):
             session.close()
 
 
-# ── History Tab ───────────────────────────────────────────────────────────────
+# History Tab
 class CommendationHistoryTab(QWidget):
     def __init__(self, user):
         super().__init__()
@@ -650,8 +670,11 @@ class CommendationHistoryTab(QWidget):
         header.setStyleSheet("background: transparent; border: none; border-bottom: 1px solid #e5e7eb;")
         hl = QHBoxLayout(header)
         hl.setContentsMargins(30, 28, 30, 28)
+        icon = QLabel()
+        icon.setPixmap(qta.icon("fa5s.award", color="#d97706").pixmap(18, 18))
         title = QLabel("Recent Commendations")
         title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
+        hl.addWidget(icon)
         hl.addWidget(title)
         hl.addStretch()
         cl.addWidget(header)
@@ -664,6 +687,10 @@ class CommendationHistoryTab(QWidget):
         ])
         self.table.setStyleSheet(TABLE_SS)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        for col in range(self.table.columnCount()):
+            header_item = self.table.horizontalHeaderItem(col)
+            if header_item:
+                header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -676,15 +703,25 @@ class CommendationHistoryTab(QWidget):
             comms = session.query(Commendation).order_by(Commendation.issued_at.desc()).all()
             rows = []
             for c in comms:
-                recipients = ", ".join(e.full_name for e in c.employees)
+                recipient_rows = (
+                    session.query(Employee)
+                    .join(CommendationEmployee, CommendationEmployee.employee_id == Employee.id)
+                    .filter(CommendationEmployee.commendation_id == c.id)
+                    .order_by(Employee.first_name, Employee.last_name)
+                    .all()
+                )
+                recipients = ", ".join(e.full_name for e in recipient_rows) or "-"
+                issuer = c.issued_by
+                if issuer is None and c.issued_by_id:
+                    issuer = session.query(SystemUser).filter_by(id=c.issued_by_id).first()
                 cat = CATEGORIES.get(c.category, {})
                 rows.append({
                     "ref": c.commendation_ref,
                     "title": c.title,
                     "category": cat.get("label", f"Cat {c.category}"),
-                    "impact": f"−{abs(c.months_impact)} month{'s' if abs(c.months_impact) > 1 else ''}",
+                    "impact": f"-{abs(c.months_impact)} month{'s' if abs(c.months_impact) > 1 else ''}",
                     "recipients": recipients,
-                    "issued_by": c.issued_by.full_name,
+                    "issued_by": issuer.full_name if issuer else "-",
                     "date": c.issued_at.strftime("%Y-%m-%d") if c.issued_at else "-",
                     "cat_id": c.category,
                 })
@@ -712,6 +749,7 @@ class CommendationHistoryTab(QWidget):
             self.table.setItem(i, 2, cat_item)
 
             impact_item = QTableWidgetItem(row["impact"])
+            impact_item.setIcon(qta.icon("fa5s.clock", color="#10b981"))
             impact_item.setForeground(QColor("#10b981"))
             impact_item.setToolTip(row["impact"])
             self.table.setItem(i, 3, impact_item)
@@ -719,7 +757,7 @@ class CommendationHistoryTab(QWidget):
             for col, key in [(4, "recipients"), (5, "issued_by"), (6, "date")]:
                 item = QTableWidgetItem(row[key])
                 item.setToolTip(row[key])
-            self.table.setItem(i, col, item)
+                self.table.setItem(i, col, item)
 
 
 def _styled_message_box(parent, icon, title, text, buttons=QMessageBox.Ok, default_button=QMessageBox.Ok):
@@ -751,3 +789,30 @@ def _note_line(text, color):
     lbl.setWordWrap(True)
     lbl.setStyleSheet(f"font-size: 14px; color: {color}; background: transparent;")
     return lbl
+
+
+def _polish_combo(combo):
+    combo.setMaxVisibleItems(12)
+    view = combo.view()
+    view.setStyleSheet("""
+        QListView {
+            background: white;
+            color: #111827;
+            border: 1px solid #d1d5db;
+            border-radius: 0;
+            outline: none;
+            padding: 4px;
+        }
+        QListView::item {
+            min-height: 30px;
+            padding: 6px 10px;
+            background: white;
+            color: #111827;
+        }
+        QListView::item:selected,
+        QListView::item:hover {
+            background: #eff6ff;
+            color: #111827;
+        }
+    """)
+    view.window().setStyleSheet("background: white; border: none;")

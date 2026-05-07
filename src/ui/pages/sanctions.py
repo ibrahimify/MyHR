@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QTableWidget, QTableWidgetItem,
     QHeaderView, QTabWidget, QComboBox, QTextEdit,
-    QMessageBox, QSpinBox
+    QMessageBox, QSizePolicy
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QColor
@@ -60,7 +60,7 @@ QFrame#Card QLabel {
 """
 
 FIELD_SS = """
-QTextEdit, QSpinBox {
+QTextEdit {
     border: none;
     border-radius: 8px;
     padding: 0 16px;
@@ -71,8 +71,7 @@ QTextEdit, QSpinBox {
     outline: none;
 }
 QTextEdit { padding: 10px 16px; }
-QTextEdit:focus, QSpinBox:focus { background: white; border: 1px solid #2563eb; }
-QSpinBox::up-button, QSpinBox::down-button { width: 0; border: none; }
+QTextEdit:focus { background: white; border: 1px solid #2563eb; }
 """
 
 COMBO_SS = """
@@ -93,7 +92,7 @@ QComboBox QAbstractItemView {
     background: white;
     color: #111827;
     border: 1px solid #e5e7eb;
-    border-radius: 8px;
+    border-radius: 0;
     selection-background-color: #eff6ff;
     selection-color: #111827;
     outline: none;
@@ -131,6 +130,13 @@ QHeaderView::section {
     color: #030213;
     min-height: 50px;
     text-align: left;
+}
+QToolTip {
+    background-color: #111827;
+    color: white;
+    border: 1px solid #374151;
+    border-radius: 4px;
+    padding: 6px 8px;
 }
 """
 
@@ -204,7 +210,7 @@ class SanctionsPage(QWidget):
         super().showEvent(event)
 
 
-# ── Active Sanctions Tab ──────────────────────────────────────────────────────
+# Active Sanctions Tab
 class ActiveSanctionsTab(QWidget):
     def __init__(self, user):
         super().__init__()
@@ -234,8 +240,11 @@ class ActiveSanctionsTab(QWidget):
         card_header.setStyleSheet("background: transparent; border: none; border-bottom: 1px solid #e5e7eb;")
         chl = QHBoxLayout(card_header)
         chl.setContentsMargins(30, 28, 30, 28)
+        ch_icon = QLabel()
+        ch_icon.setPixmap(qta.icon("fa5s.exclamation-triangle", color="#ef4444").pixmap(18, 18))
         ch_title = QLabel("Current Active Sanctions")
         ch_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
+        chl.addWidget(ch_icon)
         chl.addWidget(ch_title)
         chl.addStretch()
         tcl.addWidget(card_header)
@@ -249,7 +258,11 @@ class ActiveSanctionsTab(QWidget):
         self.table.setStyleSheet(TABLE_SS)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(6, QHeaderView.Fixed)
-        self.table.setColumnWidth(6, 130)
+        self.table.setColumnWidth(6, 180)
+        for col in range(self.table.columnCount()):
+            header_item = self.table.horizontalHeaderItem(col)
+            if header_item:
+                header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -343,18 +356,25 @@ class ActiveSanctionsTab(QWidget):
             self.table.setItem(i, 4, date_item)
 
             delay_item = QTableWidgetItem(f"+{row['delay']} month{'s' if row['delay'] != 1 else ''}")
+            delay_item.setIcon(qta.icon("fa5s.clock", color="#ef4444"))
             delay_item.setForeground(QColor("#ef4444"))
             delay_item.setToolTip(delay_item.text())
             self.table.setItem(i, 5, delay_item)
 
             resolve_btn = QPushButton("Mark Resolved")
-            resolve_btn.setText("  Mark Resolved")
             resolve_btn.setIcon(qta.icon("fa5s.check-circle", color="#166534"))
-            resolve_btn.setIconSize(QSize(13, 13))
+            resolve_btn.setIconSize(QSize(15, 15))
+            resolve_btn.setFixedSize(158, 38)
             resolve_btn.setCursor(Qt.PointingHandCursor)
-            resolve_btn.setStyleSheet("QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 12px; font-weight: 700; margin: 7px; } QPushButton:hover { background: #dcfce7; color: #166534; }")
+            resolve_btn.setStyleSheet("QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; font-weight: 800; padding: 0 14px; text-align: center; } QPushButton:hover { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }")
             resolve_btn.clicked.connect(lambda _, sid=row["id"]: self._resolve(sid))
-            self.table.setCellWidget(i, 6, resolve_btn)
+            action_cell = QWidget()
+            action_cell.setStyleSheet("background: transparent; border: none;")
+            action_layout = QHBoxLayout(action_cell)
+            action_layout.setContentsMargins(8, 6, 8, 6)
+            action_layout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            action_layout.addWidget(resolve_btn)
+            self.table.setCellWidget(i, 6, action_cell)
 
     def _resolve(self, sanction_id):
         confirm = _question(self, "Resolve Sanction",
@@ -416,7 +436,34 @@ def _note_line(text, color):
     return lbl
 
 
-# ── History Tab ───────────────────────────────────────────────────────────────
+def _polish_combo(combo):
+    combo.setMaxVisibleItems(12)
+    view = combo.view()
+    view.setStyleSheet("""
+        QListView {
+            background: white;
+            color: #111827;
+            border: 1px solid #d1d5db;
+            border-radius: 0;
+            outline: none;
+            padding: 4px;
+        }
+        QListView::item {
+            min-height: 30px;
+            padding: 6px 10px;
+            background: white;
+            color: #111827;
+        }
+        QListView::item:selected,
+        QListView::item:hover {
+            background: #eff6ff;
+            color: #111827;
+        }
+    """)
+    view.window().setStyleSheet("background: white; border: none;")
+
+
+# History Tab
 class SanctionHistoryTab(QWidget):
     def __init__(self, user):
         super().__init__()
@@ -441,8 +488,11 @@ class SanctionHistoryTab(QWidget):
         header.setStyleSheet("background: transparent; border: none; border-bottom: 1px solid #e5e7eb;")
         hl = QHBoxLayout(header)
         hl.setContentsMargins(30, 28, 30, 28)
+        icon = QLabel()
+        icon.setPixmap(qta.icon("fa5s.check-circle", color="#10b981").pixmap(18, 18))
         title = QLabel("Resolved Sanctions")
         title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
+        hl.addWidget(icon)
         hl.addWidget(title)
         hl.addStretch()
         cl.addWidget(header)
@@ -455,6 +505,10 @@ class SanctionHistoryTab(QWidget):
         ])
         self.table.setStyleSheet(TABLE_SS)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        for col in range(self.table.columnCount()):
+            header_item = self.table.horizontalHeaderItem(col)
+            if header_item:
+                header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -501,7 +555,7 @@ class SanctionHistoryTab(QWidget):
             self.table.setItem(i, 6, status)
 
 
-# ── Issue Sanction Tab ────────────────────────────────────────────────────────
+# Issue Sanction Tab
 class IssueSanctionTab(QWidget):
     def __init__(self, user, on_issued):
         super().__init__()
@@ -523,20 +577,30 @@ class IssueSanctionTab(QWidget):
         main.setSpacing(30)
         main.setAlignment(Qt.AlignTop)
 
-        # ── Left: form ────────────────────────────────────────────────────────
+        # Left form
         left = QVBoxLayout()
         left.setSpacing(16)
+        left.setAlignment(Qt.AlignTop)
 
         form_card = QFrame()
         form_card.setObjectName("Card")
         form_card.setStyleSheet(CARD_SS)
+        form_card.setMinimumHeight(560)
+        form_card.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
         fc = QVBoxLayout(form_card)
-        fc.setContentsMargins(30, 28, 30, 28)
-        fc.setSpacing(18)
+        fc.setContentsMargins(30, 30, 30, 30)
+        fc.setSpacing(14)
 
+        title_row = QHBoxLayout()
+        title_icon = QLabel()
+        title_icon.setPixmap(qta.icon("fa5s.exclamation-triangle", color="#ef4444").pixmap(18, 18))
         fc_title = QLabel("Issue New Sanction")
         fc_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
-        fc.addWidget(fc_title)
+        title_row.addWidget(title_icon)
+        title_row.addWidget(fc_title)
+        title_row.addStretch()
+        fc.addLayout(title_row)
+        fc.addSpacing(18)
 
         # Employee
         emp_lbl = QLabel("Select Employee *")
@@ -544,6 +608,7 @@ class IssueSanctionTab(QWidget):
         self.emp_combo = QComboBox()
         self.emp_combo.setFixedHeight(44)
         self.emp_combo.setStyleSheet(COMBO_SS)
+        _polish_combo(self.emp_combo)
         fc.addWidget(emp_lbl)
         fc.addWidget(self.emp_combo)
 
@@ -553,6 +618,7 @@ class IssueSanctionTab(QWidget):
         self.type_combo = QComboBox()
         self.type_combo.setFixedHeight(44)
         self.type_combo.setStyleSheet(COMBO_SS)
+        _polish_combo(self.type_combo)
         self.type_combo.addItem("Select sanction type", None)
         for val, label, _, _ in SANCTION_TYPES:
             self.type_combo.addItem(label, val)
@@ -569,29 +635,87 @@ class IssueSanctionTab(QWidget):
         fc.addWidget(reason_lbl)
         fc.addWidget(self.reason_input)
 
-        # Delay months
+        date_delay_row = QHBoxLayout()
+        date_delay_row.setSpacing(20)
+
+        date_col = QVBoxLayout()
+        date_col.setSpacing(6)
+        date_lbl = QLabel("Issue Date *")
+        date_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
+        self.issue_date_field = QFrame()
+        self.issue_date_field.setFixedHeight(44)
+        self.issue_date_field.setStyleSheet("QFrame { background: #f3f3f5; border: none; border-radius: 8px; } QLabel { background: transparent; border: none; }")
+        date_field_layout = QHBoxLayout(self.issue_date_field)
+        date_field_layout.setContentsMargins(16, 0, 16, 0)
+        date_field_layout.setSpacing(10)
+        date_icon = QLabel()
+        date_icon.setPixmap(qta.icon("fa5s.calendar-alt", color="#9ca3af").pixmap(14, 14))
+        date_text = QLabel(datetime.utcnow().strftime("%m/%d/%Y"))
+        date_text.setStyleSheet("font-size: 14px; color: #111827; background: transparent;")
+        date_field_layout.addWidget(date_icon)
+        date_field_layout.addWidget(date_text)
+        date_field_layout.addStretch()
+        date_col.addWidget(date_lbl)
+        date_col.addWidget(self.issue_date_field)
+
+        delay_col = QVBoxLayout()
+        delay_col.setSpacing(6)
         delay_lbl = QLabel("Promotion Delay (months) *")
         delay_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
-        self.delay_spin = QSpinBox()
-        self.delay_spin.setRange(1, 12)
-        self.delay_spin.setValue(1)
-        self.delay_spin.setFixedHeight(44)
-        self.delay_spin.setStyleSheet(FIELD_SS)
-        self.delay_spin.valueChanged.connect(self._update_delay_preview)
-        fc.addWidget(delay_lbl)
-        fc.addWidget(self.delay_spin)
+        self.delay_combo = QComboBox()
+        self.delay_combo.setFixedHeight(44)
+        self.delay_combo.setStyleSheet(COMBO_SS)
+        _polish_combo(self.delay_combo)
+        self.delay_combo.addItem("Select delay in months", None)
+        for month in range(1, 13):
+            self.delay_combo.addItem(f"{month} month{'s' if month != 1 else ''}", month)
+        self.delay_combo.currentIndexChanged.connect(lambda _: self._update_delay_preview())
+        delay_col.addWidget(delay_lbl)
+        delay_col.addWidget(self.delay_combo)
 
-        self.delay_preview = QLabel("+1 month will be added to the employee's promotion race")
+        date_delay_row.addLayout(date_col, 1)
+        date_delay_row.addLayout(delay_col, 1)
+        fc.addLayout(date_delay_row)
+
+        self.delay_preview = QLabel("Select a delay to see the promotion race impact")
         self.delay_preview.setStyleSheet("font-size: 12px; color: #64748b; background: transparent;")
         fc.addWidget(self.delay_preview)
+        fc.addStretch()
 
         left.addWidget(form_card)
         main.addLayout(left, 3)
 
-        # ── Right: sidebar ────────────────────────────────────────────────────
+        # Right sidebar
         right = QVBoxLayout()
         right.setSpacing(16)
         right.setAlignment(Qt.AlignTop)
+
+        actions_card = QFrame()
+        actions_card.setObjectName("Card")
+        actions_card.setStyleSheet(CARD_SS)
+        actions_card.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        ac = QVBoxLayout(actions_card)
+        ac.setContentsMargins(30, 28, 30, 28)
+        ac.setSpacing(16)
+        actions_title = QLabel("Actions")
+        actions_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
+        ac.addWidget(actions_title)
+        ac.addSpacing(24)
+        self.issue_btn = QPushButton("  Issue Sanction")
+        self.issue_btn.setIcon(qta.icon("fa5s.exclamation-triangle", color="white"))
+        self.issue_btn.setIconSize(QSize(14, 14))
+        self.issue_btn.setCursor(Qt.PointingHandCursor)
+        self.issue_btn.setFixedHeight(50)
+        self.issue_btn.setStyleSheet("QPushButton { background: #030213; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 800; } QPushButton:hover { background: #111827; }")
+        self.issue_btn.clicked.connect(self._issue)
+        ac.addWidget(self.issue_btn)
+        clear_btn = QPushButton("Clear Form")
+        clear_btn.setCursor(Qt.PointingHandCursor)
+        clear_btn.setFixedHeight(44)
+        clear_btn.setStyleSheet("QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-weight: 700; } QPushButton:hover { background: #f3f4f6; }")
+        clear_btn.clicked.connect(self._clear)
+        ac.addWidget(clear_btn)
+        right.addWidget(actions_card)
 
         # Race impact info
         impact_card = QFrame()
@@ -614,9 +738,8 @@ class IssueSanctionTab(QWidget):
             "Duration range: 1-12 months",
             "Each sanction receives a unique auto-generated ID",
         ]:
-            lbl = QLabel(f"• {line}")
+            lbl = QLabel("&bull; " + line)
             lbl.setTextFormat(Qt.RichText)
-            lbl.setText("&bull; " + line)
             lbl.setStyleSheet("font-size: 14px; color: #b91c1c; background: transparent;")
             ic.addWidget(lbl)
         right.addWidget(impact_card)
@@ -665,30 +788,12 @@ class IssueSanctionTab(QWidget):
             ("Suspension",      "Serious misconduct (6-9 months delay)"),
             ("Final Warning",   "Severe misconduct (9-12 months delay)"),
         ]:
-            lbl = QLabel(f"• {stype}: {desc}")
+            lbl = QLabel("")
             lbl.setText(f"<b>{stype}:</b><br>{desc}")
             lbl.setTextFormat(Qt.RichText)
             lbl.setStyleSheet("font-size: 14px; color: #1d4ed8; background: transparent;")
             gc.addWidget(lbl)
         right.addWidget(guide_card)
-
-        # Issue button
-        issue_btn = QPushButton("Issue Sanction")
-        issue_btn.setText("  Issue Sanction")
-        issue_btn.setIcon(qta.icon("fa5s.exclamation-triangle", color="white"))
-        issue_btn.setIconSize(QSize(14, 14))
-        issue_btn.setCursor(Qt.PointingHandCursor)
-        issue_btn.setFixedHeight(50)
-        issue_btn.setStyleSheet("QPushButton { background: #030213; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 800; } QPushButton:hover { background: #111827; }")
-        issue_btn.clicked.connect(self._issue)
-        right.addWidget(issue_btn)
-
-        clear_btn = QPushButton("Clear Form")
-        clear_btn.setCursor(Qt.PointingHandCursor)
-        clear_btn.setFixedHeight(44)
-        clear_btn.setStyleSheet("QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-weight: 700; } QPushButton:hover { background: #f3f4f6; }")
-        clear_btn.clicked.connect(self._clear)
-        right.addWidget(clear_btn)
 
         main.addLayout(right, 2)
 
@@ -708,7 +813,11 @@ class IssueSanctionTab(QWidget):
         finally:
             session.close()
 
-    def _update_delay_preview(self, val):
+    def _update_delay_preview(self):
+        val = self.delay_combo.currentData()
+        if val is None:
+            self.delay_preview.setText("Select a delay to see the promotion race impact")
+            return
         self.delay_preview.setText(
             f"+{val} month{'s' if val != 1 else ''} will be added to the employee's promotion race"
         )
@@ -717,19 +826,22 @@ class IssueSanctionTab(QWidget):
         self.emp_combo.setCurrentIndex(0)
         self.type_combo.setCurrentIndex(0)
         self.reason_input.clear()
-        self.delay_spin.setValue(1)
+        self.delay_combo.setCurrentIndex(0)
 
     def _issue(self):
         emp_id = self.emp_combo.currentData()
         sanction_type = self.type_combo.currentData()
         reason = self.reason_input.toPlainText().strip()
-        delay  = self.delay_spin.value()
+        delay = self.delay_combo.currentData()
 
         if not emp_id:
             _warning(self, t("warning"), "Please select an employee.")
             return
         if not sanction_type:
             _warning(self, t("warning"), "Please select a sanction type.")
+            return
+        if delay is None:
+            _warning(self, t("warning"), "Please select a promotion delay.")
             return
         if not reason:
             _warning(self, t("warning"), "Reason is required.")
