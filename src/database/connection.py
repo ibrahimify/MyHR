@@ -258,7 +258,7 @@ def calculate_months_remaining(employee: Employee, session: Session) -> dict:
         "sanction_addition": sanction_addition,
         "eligible": months_remaining == 0,
         "next_title_id": rule.to_title_id,
-        "progress_pct": min(100, int((months_elapsed + commendation_reduction - sanction_addition) / rule.base_months * 100)),
+        "progress_pct": max(0, min(100, int((months_elapsed + commendation_reduction - sanction_addition) / rule.base_months * 100))),
     }
 
 
