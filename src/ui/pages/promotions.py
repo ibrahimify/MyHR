@@ -4,7 +4,7 @@ import qtawesome as qta
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QTableWidget, QTableWidgetItem,
-    QHeaderView, QTabWidget, QDialog, QFormLayout,
+    QHeaderView, QTabWidget, QDialog, QFormLayout, QGridLayout,
     QProgressBar, QMessageBox, QSpinBox, QDoubleSpinBox
 )
 from PySide6.QtCore import Qt, QSize
@@ -28,9 +28,6 @@ QTableWidget {
     font-size: 14px;
     color: #111827;
     outline: none;
-}
-QTableWidget QWidget {
-    background: white;
 }
 QTableWidget::item {
     background: white;
@@ -65,7 +62,7 @@ QFrame#PromoCard QLabel {
 """
 
 PROMO_TAB_SS = """
-QTabWidget::pane { border: none; background: white; margin-top: 24px; }
+QTabWidget::pane { border: none; background: #f9fafb; margin-top: 24px; }
 QTabBar { background: #e5e7eb; border-radius: 14px; }
 QTabBar::tab {
     background: transparent;
@@ -107,7 +104,7 @@ class PromotionsPage(QWidget):
         super().__init__()
         self.user = user
         self.navigate_to_employee = navigate_to_employee
-        self.setStyleSheet("background: white;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
 
     def _build(self):
@@ -153,7 +150,7 @@ class EligibleTab(QWidget):
         super().__init__()
         self.user = user
         self.navigate_to_employee = navigate_to_employee
-        self.setStyleSheet("background: white;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
 
     def _build(self):
@@ -165,9 +162,9 @@ class EligibleTab(QWidget):
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll.setStyleSheet("border: none; background: white;")
+        scroll.setStyleSheet("border: none; background: #f9fafb;")
         content = QWidget()
-        content.setStyleSheet("background: white;")
+        content.setStyleSheet("background: #f9fafb;")
 
         layout = QVBoxLayout(content)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -318,11 +315,12 @@ class EligibleTab(QWidget):
             ico_box.setStyleSheet(f"background: {bg}; border-radius: 8px;")
             ico_box.setPixmap(qta.icon(icon_name, color=color).pixmap(22, 22))
             txt = QVBoxLayout()
-            txt.setSpacing(2)
+            txt.setSpacing(0)
+            txt.setAlignment(Qt.AlignVCenter)
             ll = QLabel(label)
-            ll.setStyleSheet("font-size: 14px; color: #374151;")
+            ll.setStyleSheet("font-size: 14px; color: #374151; background: transparent;")
             vl = QLabel(str(val))
-            vl.setStyleSheet("font-size: 24px; font-weight: 800; color: #111827;")
+            vl.setStyleSheet("font-size: 24px; font-weight: 800; color: #030213; background: transparent;")
             txt.addWidget(ll)
             txt.addWidget(vl)
             cl.addWidget(ico_box)
@@ -502,7 +500,7 @@ class HistoryTab(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: white;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
         self.refresh()
 
@@ -603,7 +601,7 @@ class RulesTab(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: white;")
+        self.setStyleSheet("background: #f9fafb;")
         self._build()
         self.refresh()
 
@@ -615,82 +613,66 @@ class RulesTab(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setStyleSheet("border: none; background: white;")
+        scroll.setStyleSheet("border: none; background: #f9fafb;")
         content = QWidget()
-        content.setStyleSheet("background: white;")
+        content.setStyleSheet("background: #f9fafb;")
 
         layout = QVBoxLayout(content)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(24)
 
-        # Race explanation card
+        # Rules configuration card
+        card = QFrame()
+        card.setObjectName("PromoCard")
+        card.setStyleSheet(PROMO_CARD_SS)
+        cl = QVBoxLayout(card)
+        cl.setContentsMargins(22, 22, 22, 22)
+        cl.setSpacing(22)
+
+        chl = QHBoxLayout()
+        chl.setContentsMargins(0, 0, 0, 0)
+        header_text = QVBoxLayout()
+        header_text.setSpacing(6)
+        header_text.addWidget(_bold_label("Promotion Track Configuration", size=20, weight=800))
+        sub = QLabel("Configure the promotion race timeline for each level")
+        sub.setStyleSheet("font-size: 14px; color: #4b5563; background: transparent;")
+        header_text.addWidget(sub)
+        chl.addLayout(header_text)
+        chl.addStretch()
+        cl.addLayout(chl)
+
         info = QFrame()
         info.setObjectName("PromoInfo")
         info.setStyleSheet(
-            "QFrame#PromoInfo { background: white;"
-            " border-radius: 8px; border: 1px solid #bfdbfe; }"
+            "QFrame#PromoInfo { background: qlineargradient(x1:0,y1:0,x2:1,y2:0,"
+            "stop:0 #eff6ff,stop:1 #f5f3ff); border-radius: 8px; border: 1px solid #bfdbfe; }"
             "QFrame#PromoInfo QLabel { background: transparent; border: none; }"
         )
         il = QVBoxLayout(info)
-        il.setContentsMargins(20, 16, 20, 16)
-        il.setSpacing(6)
+        il.setContentsMargins(20, 18, 20, 18)
+        il.setSpacing(4)
         ih = QHBoxLayout()
         ih.setSpacing(10)
         ico = QLabel()
         ico.setPixmap(qta.icon("fa5s.chart-line", color="#2563eb").pixmap(18, 18))
         it = QLabel("How the Promotion Race Works")
-        it.setStyleSheet("font-size: 14px; font-weight: bold; color: #1e40af;")
+        it.setStyleSheet("font-size: 14px; font-weight: 800; color: #1e40af;")
         ih.addWidget(ico); ih.addWidget(it); ih.addStretch()
         il.addLayout(ih)
-        il.addWidget(_guide_line("Base duration", "Every level has a configurable track duration in months."))
-        il.addWidget(_guide_line("Monthly progress", "Employees move forward 1 checkpoint each month automatically."))
-        il.addWidget(_guide_line("Commendations", "Awards reduce months remaining. Cat1: 1 month, Cat2: 3 months, Cat3: 6 months."))
-        il.addWidget(_guide_line("Sanctions", "Active sanctions add delay months to the promotion timeline."))
-        il.addWidget(_guide_line("Reset after promotion", "When promoted, the next race starts from month 0 on the promotion date."))
-        layout.addWidget(info)
+        il.addWidget(_guide_line("Each promotion level is a <b>race track</b> with a base duration in months"))
+        il.addWidget(_guide_line("Employees move forward <b>1 checkpoint per month</b> automatically"))
+        il.addWidget(_guide_line("<b>Commendations</b> speed up the race (reduce months remaining)"))
+        il.addWidget(_guide_line("<b>Sanctions</b> delay the race (add months to the timeline)"))
+        il.addWidget(_guide_line("When the employee reaches the finish line (0 months remaining), they become eligible for promotion"))
+        cl.addWidget(info)
 
-        # Table card
-        card = QFrame()
-        card.setObjectName("PromoCard")
-        card.setStyleSheet(PROMO_CARD_SS)
-        cl = QVBoxLayout(card)
-        cl.setContentsMargins(0, 0, 0, 0)
+        self.rules_list = QVBoxLayout()
+        self.rules_list.setSpacing(18)
+        cl.addLayout(self.rules_list)
 
-        ch = QFrame()
-        ch.setStyleSheet("background: transparent; border: none; border-bottom: 1px solid #e5e7eb;")
-        chl = QHBoxLayout(ch)
-        chl.setContentsMargins(32, 28, 32, 28)
-        header_text = QVBoxLayout()
-        header_text.setSpacing(6)
-        header_text.addWidget(_bold_label("Promotion Track Configuration", size=20, weight=800))
-        sub = QLabel("Configure the promotion race timeline and salary bump for each level")
-        sub.setStyleSheet("font-size: 14px; color: #4b5563; background: transparent;")
-        header_text.addWidget(sub)
-        chl.addLayout(header_text)
-        chl.addStretch()
-        cl.addWidget(ch)
-
-        self.table = QTableWidget()
-        self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels([
-            "Level Transition", "Base Duration (months)",
-            "Salary Increase on Promotion", "Actions"
-        ])
-        for col in range(self.table.columnCount()):
-            header_item = self.table.horizontalHeaderItem(col)
-            if header_item:
-                header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.table.setStyleSheet(PROMO_TABLE_SS)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Fixed)
-        self.table.setColumnWidth(3, 120)
-        self.table.verticalHeader().setVisible(False)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        cl.addWidget(self.table)
+        cl.addWidget(self._modifier_card())
+        cl.addWidget(self._reset_policy_card())
         layout.addWidget(card)
-        layout.addWidget(self._modifier_card())
-        layout.addWidget(self._reset_policy_card())
         layout.addStretch()
         scroll.setWidget(content)
         outer.addWidget(scroll)
@@ -704,45 +686,63 @@ class RulesTab(QWidget):
                 "from": r.from_title.name,
                 "to": r.to_title.name,
                 "base_months": r.base_months,
-                "salary_increase": f"{r.to_title.promotion_salary_increase_pct}%",
+                "salary_increase": _format_pct(r.to_title.promotion_salary_increase_pct),
             } for r in rules]
         finally:
             session.close()
 
-        self.table.setRowCount(len(rows))
-        self.table.setMinimumHeight(112 + (56 * max(1, len(rows))))
-        for i, row in enumerate(rows):
-            self.table.setRowHeight(i, 52)
+        while self.rules_list.count():
+            item = self.rules_list.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
 
-            tr_w = QWidget()
-            tr_w.setStyleSheet("background: white; border: none;")
-            trl = QHBoxLayout(tr_w)
-            trl.setContentsMargins(12, 0, 4, 0)
-            trl.setSpacing(8)
-            ico2 = QLabel()
-            ico2.setPixmap(qta.icon("fa5s.chart-line", color="#2563eb").pixmap(14, 14))
-            trl.addWidget(ico2)
-            from_lbl = _level_badge(row["from"], "#eef4ff", "#1e40af")
-            arrow = QLabel()
-            arrow.setPixmap(qta.icon("fa5s.arrow-right", color="#10b981").pixmap(12, 12))
-            to_lbl = _level_badge(row["to"], "#dcfce7", "#166534")
-            trl.addWidget(from_lbl)
-            trl.addWidget(arrow)
-            trl.addWidget(to_lbl)
-            trl.addStretch()
-            self.table.setCellWidget(i, 0, tr_w)
+        for row in rows:
+            self.rules_list.addWidget(self._rule_card(row))
 
-            _set_table_item(self.table, i, 1, f"{row['base_months']} months")
-            _set_table_item(self.table, i, 2, row["salary_increase"])
+    def _rule_card(self, row):
+        card = QFrame()
+        card.setStyleSheet(
+            "QFrame { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; }"
+            "QLabel { background: transparent; border: none; }"
+        )
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(28, 24, 28, 24)
+        layout.setSpacing(18)
 
-            edit_btn = QPushButton("Edit")
-            edit_btn.setStyleSheet(
-                "QPushButton { background: #eff6ff; color: #2563eb; border: none;"
-                " border-radius: 6px; font-size: 12px; font-weight: 600; margin: 10px; }"
-                " QPushButton:hover { background: #dbeafe; }"
-            )
-            edit_btn.clicked.connect(lambda _, rid=row["id"]: self._edit_rule(rid))
-            self.table.setCellWidget(i, 3, edit_btn)
+        title_row = QHBoxLayout()
+        title_row.setSpacing(8)
+        icon = QLabel()
+        icon.setPixmap(qta.icon("fa5s.chart-line", color="#2563eb").pixmap(17, 17))
+        title = QLabel(f"{row['from']} -> {row['to']}")
+        title.setStyleSheet("font-size: 16px; font-weight: 800; color: #030213;")
+        edit_btn = QPushButton("Edit")
+        edit_btn.setFixedSize(92, 34)
+        edit_btn.setCursor(Qt.PointingHandCursor)
+        edit_btn.setStyleSheet(
+            "QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb;"
+            " border-radius: 7px; font-size: 13px; font-weight: 700; }"
+            "QPushButton:hover { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }"
+        )
+        edit_btn.clicked.connect(lambda _, rid=row["id"]: self._edit_rule(rid))
+        title_row.addWidget(icon)
+        title_row.addWidget(title)
+        title_row.addStretch()
+        title_row.addWidget(edit_btn)
+        layout.addLayout(title_row)
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(18)
+        grid.setVerticalSpacing(8)
+        grid.setColumnStretch(0, 1)
+        grid.setColumnStretch(1, 1)
+        grid.addWidget(_field_label("Base Track Duration (months)"), 0, 0)
+        grid.addWidget(_field_label("Base Salary Increase"), 0, 1)
+        grid.addWidget(_readonly_field(str(row["base_months"])), 1, 0)
+        grid.addWidget(_readonly_field(row["salary_increase"]), 1, 1)
+        grid.addWidget(_hint_label("Starting point for the promotion race"), 2, 0)
+        grid.addWidget(_hint_label("Upon promotion to next level"), 2, 1)
+        layout.addLayout(grid)
+        return card
 
     def _modifier_card(self):
         card = QFrame()
@@ -902,22 +902,56 @@ def _level_badge(text, bg, fg):
     return label
 
 
-def _guide_line(title, body):
+def _guide_line(text):
     row = QWidget()
     row.setStyleSheet("background: transparent; border: none;")
     layout = QHBoxLayout(row)
-    layout.setContentsMargins(0, 3, 0, 3)
-    layout.setSpacing(10)
-    bullet = QLabel("•")
-    bullet.setFixedWidth(16)
+    layout.setContentsMargins(30, 2, 0, 2)
+    layout.setSpacing(6)
+    bullet = QLabel()
+    bullet.setTextFormat(Qt.RichText)
+    bullet.setText("&bull;")
+    bullet.setFixedWidth(10)
     bullet.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
-    bullet.setStyleSheet("font-size: 18px; color: #2563eb; font-weight: 800;")
-    text = QLabel(f"<b>{title}</b>: {body}")
-    text.setWordWrap(True)
-    text.setStyleSheet("font-size: 13px; color: #1e40af;")
+    bullet.setStyleSheet("font-size: 14px; color: #1e40af; font-weight: 800;")
+    label = QLabel(text)
+    label.setTextFormat(Qt.RichText)
+    label.setWordWrap(True)
+    label.setStyleSheet("font-size: 14px; color: #1e40af;")
     layout.addWidget(bullet, alignment=Qt.AlignTop)
-    layout.addWidget(text, 1)
+    layout.addWidget(label, 1)
     return row
+
+
+def _field_label(text):
+    lbl = QLabel(text)
+    lbl.setStyleSheet("font-size: 13px; font-weight: 800; color: #030213; background: transparent;")
+    return lbl
+
+
+def _readonly_field(text):
+    lbl = QLabel(text)
+    lbl.setMinimumHeight(42)
+    lbl.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+    lbl.setStyleSheet(
+        "background: #f3f4f6; color: #6b7280; border: none; border-radius: 7px;"
+        " padding: 0 14px; font-size: 14px;"
+    )
+    return lbl
+
+
+def _hint_label(text):
+    lbl = QLabel(text)
+    lbl.setStyleSheet("font-size: 12px; color: #64748b; background: transparent;")
+    return lbl
+
+
+def _format_pct(value):
+    try:
+        numeric = float(value)
+        return f"{int(numeric)}%" if numeric.is_integer() else f"{numeric:.1f}%"
+    except (TypeError, ValueError):
+        return f"{value}%"
 
 
 def _mini_line(icon_name, text, color):
