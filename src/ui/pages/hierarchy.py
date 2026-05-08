@@ -4,7 +4,8 @@ import qtawesome as qta
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
-    QScrollArea, QDialog, QFormLayout, QLineEdit, QComboBox, QMessageBox
+    QScrollArea, QDialog, QFormLayout, QLineEdit, QComboBox, QMessageBox,
+    QTableWidget, QTableWidgetItem, QHeaderView
 )
 
 from src.core.i18n import t
@@ -315,6 +316,9 @@ class HierarchyPage(QWidget):
 
         node = QFrame()
         node.setObjectName("HierarchyNode")
+        if unit["type"] == "team" and unit["people_count"] > 0:
+            node.setCursor(Qt.PointingHandCursor)
+            node.mouseReleaseEvent = lambda event, uid=unit["id"]: self._show_unit_employees(uid)
         bg, fg, border, icon = TYPE_COLORS.get(unit["type"], ("#f9fafb", "#374151", "#e5e7eb", "fa5s.circle"))
         node.setStyleSheet(f"""
             QFrame#HierarchyNode {{
@@ -376,6 +380,17 @@ class HierarchyPage(QWidget):
         text_col.addWidget(meta)
         row.addLayout(text_col, 1)
 
+        if unit["people_count"] > 0:
+            view_btn = QPushButton()
+            view_btn.setToolTip("View employees")
+            view_btn.setIcon(qta.icon("fa5s.user-friends", color="#111827"))
+            view_btn.setIconSize(QSize(13, 13))
+            view_btn.setFixedSize(28, 28)
+            view_btn.setCursor(Qt.PointingHandCursor)
+            view_btn.setStyleSheet("QPushButton { background: white; border: 1px solid #e5e7eb; border-radius: 6px; } QPushButton:hover { background: #eff6ff; border-color: #bfdbfe; }")
+            view_btn.clicked.connect(lambda _, uid=unit["id"]: self._show_unit_employees(uid))
+            row.addWidget(view_btn)
+
         for icon_name, color, handler in [
             ("fa5s.plus", "#2563eb", lambda _, uid=unit["id"]: self._add_unit(parent_id=uid)),
             ("fa5s.edit", "#2563eb", lambda _, uid=unit["id"]: self._edit_unit(uid)),
@@ -404,6 +419,10 @@ class HierarchyPage(QWidget):
             self.collapsed_units.add(unit_id)
         self.refresh()
 
+    def _show_unit_employees(self, unit_id):
+        dialog = UnitEmployeesDialog(unit_id, parent=self)
+        dialog.exec()
+
     def _add_unit(self, default_type=None, parent_id=None):
         dialog = OrgUnitDialog(self.user, default_type=default_type, parent_id=parent_id, parent=self)
         if dialog.exec() == QDialog.Accepted:
@@ -431,6 +450,128 @@ class HierarchyPage(QWidget):
             session.delete(unit)
             session.commit()
             self.refresh()
+        finally:
+            session.close()
+
+
+class UnitEmployeesDialog(QDialog):
+    def __init__(self, unit_id, parent=None):
+        super().__init__(parent)
+        self.unit_id = unit_id
+        self.setWindowTitle("Employees in Unit")
+        self.resize(860, 520)
+        self.setStyleSheet("""
+            QDialog { background: white; color: #111827; }
+            QLabel { color: #111827; background: transparent; border: none; }
+            QTableWidget {
+                background: white;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                gridline-color: #f3f4f6;
+                color: #111827;
+                selection-background-color: #eff6ff;
+                selection-color: #111827;
+                outline: none;
+            }
+            QTableWidget::item {
+                border: none;
+                border-bottom: 1px solid #f3f4f6;
+                padding: 0 10px;
+                color: #111827;
+            }
+            QHeaderView::section {
+                background: white;
+                color: #030213;
+                border: none;
+                border-bottom: 1px solid #e5e7eb;
+                padding: 0 10px;
+                font-size: 13px;
+                font-weight: 800;
+                min-height: 44px;
+            }
+        """)
+        self._build()
+        self._load()
+
+    def _build(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(28, 24, 28, 24)
+        layout.setSpacing(18)
+
+        header = QHBoxLayout()
+        icon = QLabel()
+        icon.setFixedSize(40, 40)
+        icon.setAlignment(Qt.AlignCenter)
+        icon.setStyleSheet("background: #dbeafe; border-radius: 8px;")
+        icon.setPixmap(qta.icon("fa5s.user-friends", color="#2563eb").pixmap(20, 20))
+        text = QVBoxLayout()
+        text.setSpacing(4)
+        self.title_lbl = QLabel("Employees")
+        self.title_lbl.setStyleSheet("font-size: 22px; font-weight: 800; color: #030213;")
+        self.subtitle_lbl = QLabel("")
+        self.subtitle_lbl.setStyleSheet("font-size: 14px; color: #4b5563;")
+        text.addWidget(self.title_lbl)
+        text.addWidget(self.subtitle_lbl)
+        header.addWidget(icon)
+        header.addLayout(text)
+        header.addStretch()
+        layout.addLayout(header)
+
+        self.table = QTableWidget()
+        self.table.setColumnCount(6)
+        self.table.setHorizontalHeaderLabels(["Employee ID", "Name", "Position", "Level", "Status", "Email"])
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        for col in range(self.table.columnCount()):
+            item = self.table.horizontalHeaderItem(col)
+            if item:
+                item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        layout.addWidget(self.table, 1)
+
+        footer = QHBoxLayout()
+        footer.addStretch()
+        close = QPushButton(t("close") if t("close") != "close" else "Close")
+        close.setCursor(Qt.PointingHandCursor)
+        close.setFixedSize(110, 38)
+        close.setStyleSheet(_outline_btn())
+        close.clicked.connect(self.accept)
+        footer.addWidget(close)
+        layout.addLayout(footer)
+
+    def _load(self):
+        session = get_session()
+        try:
+            unit = session.query(OrgUnit).filter_by(id=self.unit_id).first()
+            if not unit:
+                return
+            unit_ids = _descendant_unit_ids(session, unit.id)
+            employees = (
+                session.query(Employee)
+                .filter(Employee.org_unit_id.in_(unit_ids))
+                .order_by(Employee.last_name, Employee.first_name)
+                .all()
+            )
+            self.title_lbl.setText(unit.name)
+            scope = "team" if unit.unit_type == "team" else f"{unit.unit_type} and child units"
+            self.subtitle_lbl.setText(f"{len(employees)} employees in this {scope}")
+            self.table.setRowCount(len(employees))
+            for row, employee in enumerate(employees):
+                self.table.setRowHeight(row, 50)
+                values = [
+                    employee.employee_id,
+                    employee.full_name,
+                    employee.position,
+                    employee.title.name if employee.title else "",
+                    employee.status.replace("_", " ").title(),
+                    employee.work_email or employee.personal_email or "",
+                ]
+                for col, value in enumerate(values):
+                    item = QTableWidgetItem(value)
+                    item.setToolTip(value)
+                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                    self.table.setItem(row, col, item)
         finally:
             session.close()
 
@@ -659,6 +800,18 @@ def _would_create_parent_cycle(session, unit_id, parent_id):
         parent = session.query(OrgUnit).filter_by(id=current_id).first()
         current_id = parent.parent_id if parent else None
     return False
+
+
+def _descendant_unit_ids(session, root_id):
+    ids = [root_id]
+    stack = [root_id]
+    while stack:
+        current_id = stack.pop()
+        children = session.query(OrgUnit.id).filter_by(parent_id=current_id).all()
+        child_ids = [child_id for (child_id,) in children]
+        ids.extend(child_ids)
+        stack.extend(child_ids)
+    return ids
 
 
 def _styled_message_box(parent, icon, title, text, buttons=QMessageBox.Ok, default_button=QMessageBox.Ok):

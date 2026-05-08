@@ -451,11 +451,11 @@ class EmployeeListView(QWidget):
         header.setStretchLastSection(False)
         header.setSectionResizeMode(QHeaderView.Interactive)
         for col, width in {
-            0: 142, 1: 172, 2: 290, 3: 142,
+            0: 142, 1: 172, 2: 290, 3: 190,
             4: 224, 5: 78, 6: 116, 7: 112,
         }.items():
             self.table.setColumnWidth(col, width)
-        for col in (1, 2, 4):
+        for col in (1, 2, 3, 4):
             header.setSectionResizeMode(col, QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(7, QHeaderView.Fixed)
         self.table.verticalHeader().setVisible(False)
@@ -515,6 +515,7 @@ class EmployeeListView(QWidget):
                 item = QTableWidgetItem(val)
                 item.setData(Qt.UserRole, emp["id"])
                 item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                item.setToolTip(val)
                 if col == 0:
                     font = item.font()
                     font.setBold(True)
@@ -523,7 +524,6 @@ class EmployeeListView(QWidget):
                     item.setForeground(QColor("#4b5563"))
                 self.table.setItem(row, col, item)
 
-            self.table.setCellWidget(row, 3, self._badge(emp["dept"], "white", "#111827", border="#e5e7eb"))
             self.table.setCellWidget(row, 5, self._badge(emp["level"], "#dbeafe", "#1d4ed8"))
             bg, fg = STATUS_COLORS.get(emp["status"], ("#f3f4f6","#374151"))
             self.table.setCellWidget(row, 6, self._badge(emp["status"].replace("_", " ").title(), bg, fg))

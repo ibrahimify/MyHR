@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QSize
 from src.core.i18n import t
+from src.core.app_settings import company_name, company_subtitle
 from src.ui.styles import CLR_BG, CLR_BLUE_DARK
 
 
@@ -200,10 +201,15 @@ class Sidebar(QWidget):
         layout.addWidget(bottom)
 
         self._set_active("dashboard")
+        self.refresh_branding()
 
     def refresh_branding(self):
-        self.brand_name_lbl.setText("MyHR")
-        self.brand_subtitle_lbl.setText("Employee Management")
+        name = company_name("MyHR")
+        subtitle = company_subtitle("Employee Management")
+        self.brand_name_lbl.setText(name)
+        self.brand_subtitle_lbl.setText(subtitle)
+        self.brand_name_lbl.setToolTip(name)
+        self.brand_subtitle_lbl.setToolTip(subtitle)
 
     def _on_click(self, key):
         self._set_active(key)
@@ -248,7 +254,7 @@ class MainWindow(QMainWindow):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setWindowTitle("MyHR - Employee Management System")
+        self.setWindowTitle(f"{company_name('MyHR')} - Employee Management System")
         self.setMinimumSize(1024, 600)
         self.setStyleSheet(f"QMainWindow {{ background: {CLR_BG}; }}")
         self._pages_cache = {}

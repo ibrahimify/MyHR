@@ -10,6 +10,8 @@ from datetime import datetime, timedelta
 import csv
 import os
 import re
+import zipfile
+from xml.etree import ElementTree as ET
 
 import qtawesome as qta
 from PySide6.QtCore import Qt, QSize
@@ -215,10 +217,10 @@ class ImportDataPage(QWidget):
         layout.addSpacing(40)
 
         layout.addWidget(self._build_stepper())
-        layout.addSpacing(40)
+        layout.addSpacing(30)
 
         body = QHBoxLayout()
-        body.setSpacing(30)
+        body.setSpacing(24)
         body.setAlignment(Qt.AlignTop)
 
         left = QVBoxLayout()
@@ -226,14 +228,14 @@ class ImportDataPage(QWidget):
         left.setAlignment(Qt.AlignTop)
         left.addWidget(self._build_upload_card())
         left.addWidget(self._build_review_card())
-        body.addLayout(left, 3)
+        body.addLayout(left, 4)
 
         right = QVBoxLayout()
-        right.setSpacing(30)
+        right.setSpacing(20)
         right.setAlignment(Qt.AlignTop)
         right.addWidget(self._build_required_card())
         right.addWidget(self._build_cleaning_card())
-        body.addLayout(right, 1)
+        body.addLayout(right, 2)
 
         layout.addLayout(body)
         layout.addStretch()
@@ -277,18 +279,18 @@ class ImportDataPage(QWidget):
     def _build_upload_card(self):
         self.upload_card = QFrame()
         self.upload_card.setObjectName("Card")
-        self.upload_card.setMinimumHeight(520)
+        self.upload_card.setMinimumHeight(430)
         self.upload_card.setStyleSheet(CARD_SS)
         layout = QVBoxLayout(self.upload_card)
-        layout.setContentsMargins(60, 46, 60, 46)
-        layout.setSpacing(18)
+        layout.setContentsMargins(48, 28, 48, 28)
+        layout.setSpacing(12)
         layout.setAlignment(Qt.AlignCenter)
 
         icon_wrap = QLabel()
-        icon_wrap.setFixedSize(100, 100)
+        icon_wrap.setFixedSize(76, 76)
         icon_wrap.setAlignment(Qt.AlignCenter)
-        icon_wrap.setStyleSheet("background: #dbeafe; border-radius: 50px;")
-        icon_wrap.setPixmap(qta.icon("fa5s.upload", color="#2563eb").pixmap(42, 42))
+        icon_wrap.setStyleSheet("background: #dbeafe; border-radius: 38px;")
+        icon_wrap.setPixmap(qta.icon("fa5s.upload", color="#2563eb").pixmap(32, 32))
         layout.addWidget(icon_wrap, alignment=Qt.AlignCenter)
 
         upload_title = QLabel("Upload Employee Data File")
@@ -318,9 +320,9 @@ class ImportDataPage(QWidget):
         line = QFrame()
         line.setFixedHeight(1)
         line.setStyleSheet("background: #e5e7eb; border: none;")
-        layout.addSpacing(18)
+        layout.addSpacing(12)
         layout.addWidget(line)
-        layout.addSpacing(20)
+        layout.addSpacing(14)
 
         template_btn = QPushButton("  Download Template File")
         template_btn.setIcon(qta.icon("fa5s.download", color="#111827"))
@@ -399,8 +401,8 @@ class ImportDataPage(QWidget):
             "QLabel { background: transparent; border: none; }"
         )
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(30, 28, 30, 28)
-        layout.setSpacing(12)
+        layout.setContentsMargins(24, 22, 24, 22)
+        layout.setSpacing(9)
 
         head = QHBoxLayout()
         icon = QLabel()
@@ -431,8 +433,8 @@ class ImportDataPage(QWidget):
             "QLabel { background: transparent; border: none; }"
         )
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(30, 28, 30, 28)
-        layout.setSpacing(12)
+        layout.setContentsMargins(24, 22, 24, 22)
+        layout.setSpacing(9)
 
         head = QHBoxLayout()
         icon = QLabel()
@@ -445,12 +447,12 @@ class ImportDataPage(QWidget):
         layout.addLayout(head)
 
         for text in [
-            "Remove duplicate employee rows before import",
-            "Validate work email formats when provided",
+            "Remove duplicate rows before import",
+            "Validate work emails when provided",
             "Use standard department and team names",
-            "Ensure dates use YYYY-MM-DD format",
-            "Use 0, 1, 3, or 6 for optional commendation months",
-            "Use 1-12 for optional active sanction months",
+            "Dates must use YYYY-MM-DD format",
+            "Commendation months: 0, 1, 3, or 6",
+            "Sanction months: 1-12",
         ]:
             layout.addWidget(_note_line(text, "#92400e"))
         return card
@@ -552,9 +554,7 @@ class ImportDataPage(QWidget):
         try:
             from openpyxl import load_workbook
         except ImportError as exc:
-            raise RuntimeError(
-                "Excel import requires openpyxl. Install project requirements or save the sheet as CSV."
-            ) from exc
+            return self._read_xlsx_fallback(path)
 
         workbook = load_workbook(path, read_only=True, data_only=True)
         try:
@@ -575,6 +575,51 @@ class ImportDataPage(QWidget):
             return headers, records
         finally:
             workbook.close()
+
+    def _read_xlsx_fallback(self, path):
+        namespace = {"a": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+        with zipfile.ZipFile(path) as archive:
+            shared_strings = []
+            if "xl/sharedStrings.xml" in archive.namelist():
+                shared_root = ET.fromstring(archive.read("xl/sharedStrings.xml"))
+                for item in shared_root.findall("a:si", namespace):
+                    shared_strings.append("".join(
+                        text_node.text or "" for text_node in item.findall(".//a:t", namespace)
+                    ))
+
+            sheet_name = "xl/worksheets/sheet1.xml"
+            if sheet_name not in archive.namelist():
+                worksheets = sorted(name for name in archive.namelist() if name.startswith("xl/worksheets/sheet"))
+                if not worksheets:
+                    return [], []
+                sheet_name = worksheets[0]
+
+            sheet_root = ET.fromstring(archive.read(sheet_name))
+            rows = []
+            for row_node in sheet_root.findall(".//a:sheetData/a:row", namespace):
+                values = []
+                for cell in row_node.findall("a:c", namespace):
+                    ref = cell.attrib.get("r", "")
+                    col_index = _excel_col_index(ref)
+                    while len(values) < col_index:
+                        values.append("")
+                    values[col_index - 1] = _xlsx_cell_value(cell, shared_strings, namespace)
+                rows.append(values)
+
+        if not rows:
+            return [], []
+
+        headers = [_cell_to_text(value) for value in rows[0]]
+        records = []
+        for row in rows[1:]:
+            if not any(_cell_to_text(value) for value in row):
+                continue
+            records.append({
+                headers[index]: _cell_to_text(value)
+                for index, value in enumerate(row)
+                if index < len(headers) and headers[index]
+            })
+        return headers, records
 
     def _existing_work_emails(self):
         session = get_session()
@@ -977,6 +1022,31 @@ def _cell_to_text(value):
     return str(value).strip()
 
 
+def _excel_col_index(ref):
+    letters = "".join(ch for ch in ref if ch.isalpha()).upper()
+    index = 0
+    for char in letters:
+        index = index * 26 + (ord(char) - ord("A") + 1)
+    return max(index, 1)
+
+
+def _xlsx_cell_value(cell, shared_strings, namespace):
+    cell_type = cell.attrib.get("t")
+    if cell_type == "inlineStr":
+        return "".join(
+            text_node.text or "" for text_node in cell.findall(".//a:t", namespace)
+        )
+
+    value_node = cell.find("a:v", namespace)
+    value = value_node.text if value_node is not None else ""
+    if cell_type == "s" and value:
+        try:
+            return shared_strings[int(value)]
+        except (ValueError, IndexError):
+            return value
+    return value or ""
+
+
 def _value(value):
     return str(value or "").strip()
 
@@ -1083,8 +1153,8 @@ def _stat_card(label, value, color, bg, icon_name):
 def _note_line(text, color):
     label = QLabel("&bull; " + text)
     label.setTextFormat(Qt.RichText)
-    label.setWordWrap(True)
-    label.setStyleSheet(f"font-size: 14px; color: {color}; background: transparent;")
+    label.setWordWrap(False)
+    label.setStyleSheet(f"font-size: 13px; color: {color}; background: transparent;")
     return label
 
 
