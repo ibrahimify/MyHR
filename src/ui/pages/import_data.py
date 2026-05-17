@@ -25,7 +25,8 @@ from PySide6.QtWidgets import (
 from src.core.i18n import t
 from src.database.connection import (
     get_session, generate_employee_id, generate_commendation_ref,
-    generate_sanction_ref, log_action, degree_to_title_name
+    generate_sanction_ref, log_action, degree_to_title_name,
+    ensure_others_org_unit, validate_salary_for_title
 )
 from src.database.models import (
     Employee, Title, OrgUnit, Commendation,
@@ -47,7 +48,6 @@ OPTIONAL_COLUMNS = [
 
 TEMPLATE_HEADERS = REQUIRED_COLUMNS + OPTIONAL_COLUMNS
 
-DEGREES = {"BSc", "MSc", "PhD", "Other"}
 STATUSES = {"active", "inactive", "on_leave"}
 SANCTION_TYPES = {
     "verbal_warning": "verbal_warning",
@@ -111,8 +111,6 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 PAGE_BG = "#f9fafb"
 TEXT = "#030213"
 MUTED = "#4b5563"
-BORDER = "#e5e7eb"
-
 CARD_SS = """
 QFrame#Card {
     background: white;
@@ -207,9 +205,9 @@ class ImportDataPage(QWidget):
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(0)
 
-        title = QLabel("Import Employee Data")
+        title = QLabel(t("import_title"))
         title.setStyleSheet(f"font-size: 30px; font-weight: 800; color: {TEXT}; background: transparent;")
-        subtitle = QLabel("Bulk import employee records from CSV or Excel files")
+        subtitle = QLabel(t("import_subtitle"))
         subtitle.setStyleSheet(f"font-size: 16px; color: {MUTED}; background: transparent;")
         layout.addWidget(title)
         layout.addSpacing(6)
@@ -252,7 +250,7 @@ class ImportDataPage(QWidget):
         layout.setSpacing(16)
 
         self.step_widgets = []
-        for index, label in enumerate(["Upload File", "Validate Data", "Complete"]):
+        for index, label in enumerate([t("upload_file"), t("validate_data"), t("complete")]):
             item = QHBoxLayout()
             item.setSpacing(10)
 
@@ -293,17 +291,17 @@ class ImportDataPage(QWidget):
         icon_wrap.setPixmap(qta.icon("fa5s.upload", color="#2563eb").pixmap(32, 32))
         layout.addWidget(icon_wrap, alignment=Qt.AlignCenter)
 
-        upload_title = QLabel("Upload Employee Data File")
+        upload_title = QLabel(t("upload_employee_file"))
         upload_title.setAlignment(Qt.AlignCenter)
         upload_title.setStyleSheet(f"font-size: 22px; font-weight: 800; color: {TEXT}; background: transparent;")
         layout.addWidget(upload_title)
 
-        upload_sub = QLabel("Supported formats: CSV, XLSX")
+        upload_sub = QLabel(t("supported_formats_csv_xlsx"))
         upload_sub.setAlignment(Qt.AlignCenter)
         upload_sub.setStyleSheet(f"font-size: 16px; color: {MUTED}; background: transparent;")
         layout.addWidget(upload_sub)
 
-        choose_btn = QPushButton("  Choose File")
+        choose_btn = QPushButton("  " + t("choose_file"))
         choose_btn.setIcon(qta.icon("fa5s.upload", color="white"))
         choose_btn.setIconSize(QSize(15, 15))
         choose_btn.setCursor(Qt.PointingHandCursor)
@@ -324,7 +322,7 @@ class ImportDataPage(QWidget):
         layout.addWidget(line)
         layout.addSpacing(14)
 
-        template_btn = QPushButton("  Download Template File")
+        template_btn = QPushButton("  " + t("download_template"))
         template_btn.setIcon(qta.icon("fa5s.download", color="#111827"))
         template_btn.setIconSize(QSize(14, 14))
         template_btn.setCursor(Qt.PointingHandCursor)
@@ -333,7 +331,7 @@ class ImportDataPage(QWidget):
         template_btn.clicked.connect(self._download_template)
         layout.addWidget(template_btn, alignment=Qt.AlignCenter)
 
-        hint = QLabel("Use our template to ensure proper formatting")
+        hint = QLabel(t("template_hint"))
         hint.setAlignment(Qt.AlignCenter)
         hint.setStyleSheet("font-size: 14px; color: #64748b; background: transparent;")
         layout.addWidget(hint)
@@ -351,7 +349,7 @@ class ImportDataPage(QWidget):
         header = QHBoxLayout()
         icon = QLabel()
         icon.setPixmap(qta.icon("fa5s.clipboard-list", color="#2563eb").pixmap(18, 18))
-        title = QLabel("Validation Results")
+        title = QLabel(t("validation_results"))
         title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {TEXT}; background: transparent;")
         header.addWidget(icon)
         header.addWidget(title)
@@ -365,8 +363,8 @@ class ImportDataPage(QWidget):
         self.preview_table = QTableWidget()
         self.preview_table.setColumnCount(9)
         self.preview_table.setHorizontalHeaderLabels([
-            "Row", "Employee", "Department", "Position", "Degree",
-            "Join Date", "Salary", "History", "Status"
+            t("row"), t("employee"), t("department"), t("position"), t("degree"),
+            t("join_date"), t("salary"), t("history"), t("status")
         ])
         self.preview_table.setStyleSheet(TABLE_SS)
         self.preview_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -383,7 +381,7 @@ class ImportDataPage(QWidget):
 
         action_row = QHBoxLayout()
         action_row.addStretch()
-        self.import_btn = QPushButton("  Import Valid Rows")
+        self.import_btn = QPushButton("  " + t("import_valid"))
         self.import_btn.setIcon(qta.icon("fa5s.check-circle", color="white"))
         self.import_btn.setIconSize(QSize(15, 15))
         self.import_btn.setCursor(Qt.PointingHandCursor)
@@ -407,7 +405,7 @@ class ImportDataPage(QWidget):
         head = QHBoxLayout()
         icon = QLabel()
         icon.setPixmap(qta.icon("fa5s.info-circle", color="#2563eb").pixmap(18, 18))
-        title = QLabel("Required Columns")
+        title = QLabel(t("required_columns"))
         title.setStyleSheet("font-size: 17px; font-weight: 800; color: #1e40af; background: transparent;")
         head.addWidget(icon)
         head.addWidget(title)
@@ -439,7 +437,7 @@ class ImportDataPage(QWidget):
         head = QHBoxLayout()
         icon = QLabel()
         icon.setPixmap(qta.icon("fa5s.exclamation-triangle", color="#d97706").pixmap(18, 18))
-        title = QLabel("Data Cleaning Guide")
+        title = QLabel(t("data_cleaning_guide"))
         title.setStyleSheet("font-size: 17px; font-weight: 800; color: #854d0e; background: transparent;")
         head.addWidget(icon)
         head.addWidget(title)
@@ -481,9 +479,9 @@ class ImportDataPage(QWidget):
     def _choose_file(self):
         path, _ = QFileDialog.getOpenFileName(
             self,
-            "Open Employee Data File",
+            t("open_employee_data_file"),
             "",
-            "Employee Data Files (*.csv *.xlsx);;CSV Files (*.csv);;Excel Files (*.xlsx)"
+            t("employee_data_files_filter")
         )
         if not path:
             return
@@ -497,7 +495,7 @@ class ImportDataPage(QWidget):
         try:
             headers, raw_rows = self._read_file(path)
             if not headers:
-                _critical(self, "Invalid File", "The selected file has no header row.")
+                _critical(self, t("invalid_file"), t("no_header_row"))
                 self._set_step(0)
                 return
 
@@ -506,8 +504,8 @@ class ImportDataPage(QWidget):
             if missing:
                 _critical(
                     self,
-                    "Invalid File",
-                    "Missing required columns: " + ", ".join(_title_column(col) for col in missing)
+                    t("invalid_file"),
+                    t("missing_required_columns", columns=", ".join(_title_column(col) for col in missing))
                 )
                 self._set_step(0)
                 return
@@ -526,7 +524,7 @@ class ImportDataPage(QWidget):
                 rows.append(normalized)
 
             if not rows:
-                _warning(self, "No Data", "The file contains headers but no employee rows.")
+                _warning(self, t("no_data"), t("no_employee_rows"))
                 self._set_step(0)
                 return
 
@@ -542,7 +540,7 @@ class ImportDataPage(QWidget):
             return self._read_csv(path)
         if extension == ".xlsx":
             return self._read_xlsx(path)
-        raise ValueError("Supported file formats are CSV and XLSX.")
+        raise ValueError(t("supported_file_formats"))
 
     def _read_csv(self, path):
         with open(path, newline="", encoding="utf-8-sig") as handle:
@@ -723,7 +721,11 @@ class ImportDataPage(QWidget):
         self._populate_stats(rows, valid, errors)
         self._populate_preview(rows)
         self.import_btn.setEnabled(bool(valid))
-        self.import_btn.setText(f"  Import {len(valid)} Valid Row{'s' if len(valid) != 1 else ''}")
+        self.import_btn.setText("  " + t(
+            "import_n_valid_rows",
+            count=len(valid),
+            plural="s" if len(valid) != 1 else ""
+        ))
         self.review_card.adjustSize()
 
     def _populate_stats(self, rows, valid, errors):
@@ -772,14 +774,14 @@ class ImportDataPage(QWidget):
                 self.preview_table.setItem(index, col, item)
 
             if row["status"] == "valid":
-                status_text = "Valid"
+                status_text = t("valid")
                 status = QTableWidgetItem(status_text)
                 status.setIcon(qta.icon("fa5s.check-circle", color="#16a34a"))
                 status.setForeground(QColor("#16a34a"))
                 status.setToolTip(status_text)
             else:
                 issue_text = "; ".join(row["issues"])
-                status = QTableWidgetItem("Fix Required")
+                status = QTableWidgetItem(t("fix_required"))
                 status.setIcon(qta.icon("fa5s.exclamation-triangle", color="#dc2626"))
                 status.setForeground(QColor("#dc2626"))
                 status.setToolTip(issue_text)
@@ -796,8 +798,8 @@ class ImportDataPage(QWidget):
 
         confirm = _question(
             self,
-            "Confirm Import",
-            f"Import {len(valid_rows)} validated employee record(s)?"
+            t("confirm_import"),
+            t("confirm_import_body", count=len(valid_rows))
         )
         if confirm != QMessageBox.Yes:
             return
@@ -815,6 +817,11 @@ class ImportDataPage(QWidget):
                     if not title:
                         errors.append(f"Row {row['row']}: Title {title_name} was not found")
                         continue
+                    salary = float(row["base_salary"])
+                    ok, salary_message = validate_salary_for_title(title, salary)
+                    if not ok:
+                        errors.append(f"Row {row['row']}: {salary_message}")
+                        continue
 
                     work_email = row["work_email"].lower() if row["work_email"] else None
                     if work_email:
@@ -831,7 +838,7 @@ class ImportDataPage(QWidget):
                         degree=row["degree"],
                         position=row["position"],
                         join_date=join_date,
-                        base_salary=float(row["base_salary"]),
+                        base_salary=salary,
                         work_email=work_email,
                         work_phone=row["work_phone"] or None,
                         phone=row["phone"] or None,
@@ -864,7 +871,7 @@ class ImportDataPage(QWidget):
             self._set_step(2)
             message = f"Successfully imported {imported} employee record(s)."
             if errors:
-                message += "\n\nRows needing review:\n" + "\n".join(errors[:8])
+                message += "\n\n" + t("rows_needing_review") + "\n" + "\n".join(errors[:8])
             _information(self, t("import_success"), message)
             self._reset_page()
         except Exception as exc:
@@ -924,18 +931,19 @@ class ImportDataPage(QWidget):
                 session.add(sanction)
 
     def _org_unit_id(self, session, row):
+        if row["degree"] == "Other":
+            return ensure_others_org_unit(session).id
+
         department_name = row["department"] or "Unassigned"
-        division_name = row["division"]
+        division_name = row["division"] or "General Division"
         unit_name = row["unit"]
         team_name = row["team"]
 
-        parent = None
-        if division_name:
-            company = _get_or_create_org_unit(session, "Imported Company", "organization", None)
-            parent = _get_or_create_org_unit(session, division_name, "division", company.id)
+        company = _get_or_create_org_unit(session, "Imported Company", "organization", None)
+        parent = _get_or_create_org_unit(session, division_name, "division", company.id)
 
         department = _get_or_create_org_unit(
-            session, department_name, "department", parent.id if parent else None
+            session, department_name, "department", parent.id
         )
         current = department
         if unit_name:
@@ -959,7 +967,7 @@ class ImportDataPage(QWidget):
     def _download_template(self):
         path, _ = QFileDialog.getSaveFileName(
             self,
-            "Save Template",
+            t("save_template"),
             "employee_import_template.csv",
             "CSV Files (*.csv)"
         )
@@ -991,7 +999,7 @@ class ImportDataPage(QWidget):
                     "david.chen@company.com", "+36 20 550 6600",
                     "", "", "Szeged", "active", "qa.manager@company.com", "0", "2", "verbal_warning"
                 ])
-            _information(self, t("success"), f"Template saved to:\n{path}")
+            _information(self, t("success"), t("template_saved_to", path=path))
         except Exception as exc:
             _critical(self, t("error"), str(exc))
 
@@ -1100,6 +1108,10 @@ def _event_date_for(join_date):
 
 
 def _get_or_create_org_unit(session, name, unit_type, parent_id):
+    if unit_type == "organization":
+        existing_org = session.query(OrgUnit).filter_by(unit_type="organization").first()
+        if existing_org:
+            return existing_org
     query = session.query(OrgUnit).filter(
         OrgUnit.name == name,
         OrgUnit.unit_type == unit_type

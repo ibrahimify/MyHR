@@ -27,7 +27,6 @@ from src.database.models import Title, SystemUser, PromotionRule, Employee
 PAGE_BG = "#f9fafb"
 TEXT = "#030213"
 MUTED = "#4b5563"
-BORDER = "#e5e7eb"
 BLACK = "#030213"
 BLUE = "#2563eb"
 
@@ -39,8 +38,9 @@ LEVEL_META = {
     "L3": ("Director Level", "#db2777", "#fce7f3"),
     "L2": ("Executive Level", "#0284c7", "#e0f2fe"),
     "L1": ("CEO / Board", "#dc2626", "#fee2e2"),
+    "Other": ("Other / Misc Employees", "#475569", "#e2e8f0"),
 }
-LEVEL_ORDER = {level: index for index, level in enumerate(["L7", "L6", "L5", "L4", "L3", "L2", "L1"])}
+LEVEL_ORDER = {level: index for index, level in enumerate(["L7", "L6", "L5", "L4", "L3", "L2", "L1", "Other"])}
 
 CARD_SS = """
 QFrame#Card {
@@ -192,9 +192,9 @@ class SettingsPage(QWidget):
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(0)
 
-        title = QLabel("System Settings")
+        title = QLabel(t("settings_title"))
         title.setStyleSheet(f"font-size: 30px; font-weight: 800; color: {TEXT}; background: transparent;")
-        subtitle = QLabel("Configure salary levels, promotion rules, account security, and database tools")
+        subtitle = QLabel(t("settings_subtitle"))
         subtitle.setStyleSheet(f"font-size: 16px; color: {MUTED}; background: transparent;")
 
         layout.addWidget(title)
@@ -204,12 +204,12 @@ class SettingsPage(QWidget):
 
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet(TAB_SS)
-        self.tabs.addTab(GeneralTab(self.user), "General")
-        self.tabs.addTab(SalaryTab(self.user), "Salary Ranges")
-        self.tabs.addTab(SettingsPromotionTab(self.user), "Promotion Rules")
-        self.tabs.addTab(IncrementTab(self.user), "Annual Increment")
-        self.tabs.addTab(SecurityTab(self.user), "Security")
-        self.tabs.addTab(DatabaseTab(self.user), "Database")
+        self.tabs.addTab(GeneralTab(self.user), t("general"))
+        self.tabs.addTab(SalaryTab(self.user), t("salary_ranges"))
+        self.tabs.addTab(SettingsPromotionTab(self.user), t("promotion_rules_tab"))
+        self.tabs.addTab(IncrementTab(self.user), t("annual_increment"))
+        self.tabs.addTab(SecurityTab(self.user), t("security_tab"))
+        self.tabs.addTab(DatabaseTab(self.user), t("database_tab"))
         layout.addWidget(self.tabs, 1)
 
 
@@ -227,7 +227,7 @@ class GeneralTab(QWidget):
         row.setSpacing(30)
         row.setAlignment(Qt.AlignTop)
 
-        form, form_layout = _section_card("Organization Information", "Basic company details shown in the sidebar, login screen, reports, and exports", "fa5s.building", BLUE)
+        form, form_layout = _section_card(t("organization_information"), t("organization_information_subtitle"), "fa5s.building", BLUE)
         grid = QGridLayout()
         grid.setHorizontalSpacing(24)
         grid.setVerticalSpacing(16)
@@ -238,21 +238,21 @@ class GeneralTab(QWidget):
         self.fiscal_start = _line_edit("01-01")
         self.timezone = _line_edit("Europe/Budapest")
 
-        _add_form_field(grid, 0, 0, "Company Name", self.company_name)
-        _add_form_field(grid, 0, 1, "Company Subtitle", self.company_subtitle)
-        _add_form_field(grid, 1, 0, "Company Address", self.company_address)
-        _add_form_field(grid, 1, 1, "Fiscal Year Start (MM-DD)", self.fiscal_start)
-        _add_form_field(grid, 2, 0, "Timezone", self.timezone)
+        _add_form_field(grid, 0, 0, t("company_name"), self.company_name)
+        _add_form_field(grid, 0, 1, t("company_subtitle"), self.company_subtitle)
+        _add_form_field(grid, 1, 0, t("company_address"), self.company_address)
+        _add_form_field(grid, 1, 1, t("fiscal_year_start"), self.fiscal_start)
+        _add_form_field(grid, 2, 0, t("timezone"), self.timezone)
         form_layout.addLayout(grid)
         row.addWidget(form, 3)
 
-        actions, actions_layout = _section_card("Actions", None, "fa5s.save", BLACK)
-        save = _button("Save General Settings", "fa5s.save", primary=True)
+        actions, actions_layout = _section_card(t("actions"), None, "fa5s.save", BLACK)
+        save = _button(t("save_general_settings"), "fa5s.save", primary=True)
         save.clicked.connect(self._save)
         actions_layout.addWidget(save)
         actions_layout.addSpacing(12)
         actions_layout.addWidget(_note_card(
-            "Branding Update",
+            t("branding_update"),
             [
                 "Company name updates the sidebar immediately.",
                 "The same name is used on the login screen.",
@@ -296,7 +296,7 @@ class GeneralTab(QWidget):
         if sidebar and hasattr(sidebar, "refresh_branding"):
             sidebar.refresh_branding()
         if hasattr(window, "setWindowTitle"):
-            window.setWindowTitle(f"{company_name('MyHR')} - Employee Management System")
+            window.setWindowTitle(f"{company_name('MyHR')} - {t('employee_management_system')}")
         _information(self, t("success"), "General settings saved.")
 
 
@@ -497,7 +497,7 @@ class SettingsPromotionTab(QWidget):
         title_row.setSpacing(8)
         icon = QLabel()
         icon.setPixmap(qta.icon("fa5s.chart-line", color=BLUE).pixmap(17, 17))
-        title = QLabel(f"{row['from']} -> {row['to']}")
+        title = QLabel(f"{row['from']} to {row['to']}")
         title.setStyleSheet(f"font-size: 16px; font-weight: 800; color: {TEXT}; background: transparent;")
         title_row.addWidget(icon)
         title_row.addWidget(title)

@@ -13,8 +13,16 @@ from src.database.connection import get_session, log_action
 from src.database.models import OrgUnit, Employee
 
 
-UNIT_TYPES = ["organization", "division", "department", "unit", "team"]
+UNIT_TYPES = ["organization", "division", "department", "unit", "team", "position"]
 TYPE_ORDER_HINT = ["organization", "division", "department", "unit", "team", "position"]
+PARENT_BY_TYPE = {
+    "organization": None,
+    "division": "organization",
+    "department": "division",
+    "unit": "department",
+    "team": "unit",
+    "position": "team",
+}
 TYPE_COLORS = {
     "organization": ("#f3e8ff", "#6b21a8", "#e9d5ff", "fa5s.building"),
     "division": ("#fff7ed", "#9a3412", "#fed7aa", "fa5s.layer-group"),
@@ -116,9 +124,9 @@ class HierarchyPage(QWidget):
         self.layout.setContentsMargins(40, 40, 40, 40)
         self.layout.setSpacing(0)
 
-        title = QLabel("Organization Hierarchy")
+        title = QLabel(t("hierarchy_title"))
         title.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827; background: transparent;")
-        subtitle = QLabel("View and manage the organizational structure")
+        subtitle = QLabel(t("hierarchy_subtitle"))
         subtitle.setStyleSheet("font-size: 16px; color: #4b5563; background: transparent;")
         self.layout.addWidget(title)
         self.layout.addSpacing(6)
@@ -132,20 +140,20 @@ class HierarchyPage(QWidget):
         cl.setContentsMargins(20, 16, 20, 16)
         cl.setSpacing(16)
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Search departments, units, or positions...")
+        self.search.setPlaceholderText(t("search_hierarchy"))
         self.search.setFixedHeight(44)
         self.search.setStyleSheet(INPUT_SS)
         self.search.addAction(qta.icon("fa5s.search", color="#9ca3af"), QLineEdit.LeadingPosition)
         self.search.textChanged.connect(self.refresh)
         cl.addWidget(self.search, 1)
-        add_dept = QPushButton("  Add Department")
+        add_dept = QPushButton("  " + t("add_department"))
         add_dept.setIcon(qta.icon("fa5s.building", color="#111827"))
         add_dept.setIconSize(QSize(14, 14))
         add_dept.setCursor(Qt.PointingHandCursor)
         add_dept.setFixedHeight(44)
         add_dept.setStyleSheet(_outline_btn())
         add_dept.clicked.connect(lambda: self._add_unit("department"))
-        add_unit = QPushButton("  Add Unit")
+        add_unit = QPushButton("  " + t("add_unit"))
         add_unit.setIcon(qta.icon("fa5s.plus", color="white"))
         add_unit.setIconSize(QSize(14, 14))
         add_unit.setCursor(Qt.PointingHandCursor)
@@ -231,7 +239,7 @@ class HierarchyPage(QWidget):
             session.close()
 
         if not self.units_data:
-            empty = QLabel("No organization units found. Add an organization or department to begin.")
+            empty = QLabel(t("no_org_units"))
             empty.setAlignment(Qt.AlignCenter)
             empty.setStyleSheet("font-size: 13px; color: #9ca3af; padding: 32px; background: transparent;")
             self.tree_layout.addWidget(empty)
@@ -271,7 +279,7 @@ class HierarchyPage(QWidget):
                     stack.extend(children.get(child["id"], []))
 
             if not visible_ids:
-                empty = QLabel("No matching organization units found.")
+                empty = QLabel(t("no_matching_org_units"))
                 empty.setAlignment(Qt.AlignCenter)
                 empty.setStyleSheet("font-size: 13px; color: #9ca3af; padding: 32px; background: transparent;")
                 self.tree_layout.addWidget(empty)
@@ -356,7 +364,7 @@ class HierarchyPage(QWidget):
         meta_row = QHBoxLayout(meta)
         meta_row.setContentsMargins(0, 0, 0, 0)
         meta_row.setSpacing(8)
-        head_label = QLabel("Head:")
+        head_label = QLabel(t("head"))
         head_label.setStyleSheet("font-size: 14px; font-weight: 800; color: #374151; background: transparent; border: none;")
         head_text = unit["head"]
         if unit["head_position"]:
@@ -368,7 +376,7 @@ class HierarchyPage(QWidget):
         people_icon.setAlignment(Qt.AlignCenter)
         people_icon.setPixmap(qta.icon("fa5s.user-friends", color="#4b5563").pixmap(14, 14))
         people_icon.setStyleSheet("background: transparent; border: none;")
-        people = QLabel(f"{unit['people_count']} employees")
+        people = QLabel(t("employees_count", count=unit["people_count"]))
         people.setStyleSheet("font-size: 14px; color: #374151; background: transparent; border: none;")
         meta_row.addWidget(head_label)
         meta_row.addWidget(head_value)
@@ -382,7 +390,7 @@ class HierarchyPage(QWidget):
 
         if unit["people_count"] > 0:
             view_btn = QPushButton()
-            view_btn.setToolTip("View employees")
+            view_btn.setToolTip(t("view_employees"))
             view_btn.setIcon(qta.icon("fa5s.user-friends", color="#111827"))
             view_btn.setIconSize(QSize(13, 13))
             view_btn.setFixedSize(28, 28)
@@ -444,7 +452,7 @@ class HierarchyPage(QWidget):
             if children or emp_count:
                 _warning(self, t("warning"), "Reassign child units and employees before deleting this node.")
                 return
-            if _question(self, "Delete Unit", f"Delete '{unit.name}'?") != QMessageBox.Yes:
+            if _question(self, t("delete_unit"), f"Delete '{unit.name}'?") != QMessageBox.Yes:
                 return
             log_action(session, action="org_unit.delete", performed_by_id=self.user.id, target_table="org_unit", target_id=unit_id, description=f"Org unit deleted: {unit.name} ({unit.unit_type})")
             session.delete(unit)
@@ -458,7 +466,7 @@ class UnitEmployeesDialog(QDialog):
     def __init__(self, unit_id, parent=None):
         super().__init__(parent)
         self.unit_id = unit_id
-        self.setWindowTitle("Employees in Unit")
+        self.setWindowTitle(t("employees_in_unit"))
         self.resize(860, 520)
         self.setStyleSheet("""
             QDialog { background: white; color: #111827; }
@@ -519,7 +527,9 @@ class UnitEmployeesDialog(QDialog):
 
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["Employee ID", "Name", "Position", "Level", "Status", "Email"])
+        self.table.setHorizontalHeaderLabels([
+            t("employee_id"), t("name"), t("position"), t("level"), t("status"), t("email")
+        ])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -532,7 +542,7 @@ class UnitEmployeesDialog(QDialog):
 
         footer = QHBoxLayout()
         footer.addStretch()
-        close = QPushButton(t("close") if t("close") != "close" else "Close")
+        close = QPushButton(t("close"))
         close.setCursor(Qt.PointingHandCursor)
         close.setFixedSize(110, 38)
         close.setStyleSheet(_outline_btn())
@@ -555,7 +565,7 @@ class UnitEmployeesDialog(QDialog):
             )
             self.title_lbl.setText(unit.name)
             scope = "team" if unit.unit_type == "team" else f"{unit.unit_type} and child units"
-            self.subtitle_lbl.setText(f"{len(employees)} employees in this {scope}")
+            self.subtitle_lbl.setText(t("employees_in_scope", count=len(employees), scope=scope))
             self.table.setRowCount(len(employees))
             for row, employee in enumerate(employees):
                 self.table.setRowHeight(row, 50)
@@ -583,7 +593,7 @@ class OrgUnitDialog(QDialog):
         self.unit_id = unit_id
         self.default_type = default_type
         self.default_parent_id = parent_id
-        self.setWindowTitle("Edit Unit" if unit_id else "Add Org Unit")
+        self.setWindowTitle(t("edit_unit") if unit_id else t("add_org_unit"))
         self.setFixedWidth(580)
         self.setStyleSheet("""
             QDialog { background: white; color: #111827; }
@@ -597,7 +607,7 @@ class OrgUnitDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(28, 24, 28, 24)
         layout.setSpacing(14)
-        title = QLabel("Edit Organization Unit" if self.unit_id else "Add Organization Unit")
+        title = QLabel(t("edit_organization_unit") if self.unit_id else t("add_organization_unit"))
         title.setStyleSheet("font-size: 18px; font-weight: 800; color: #111827;")
         layout.addWidget(title)
         form = QFormLayout()
@@ -610,25 +620,23 @@ class OrgUnitDialog(QDialog):
         self.name_input.setPlaceholderText("e.g. Technology Division")
         self.name_input.setFixedHeight(42)
         self.name_input.setStyleSheet(INPUT_SS)
-        form.addRow(_form_label("Name *"), self.name_input)
+        form.addRow(_form_label(t("name") + " *"), self.name_input)
         self.type_combo = QComboBox()
         self.type_combo.setFixedHeight(42)
         self.type_combo.setStyleSheet(COMBO_SS)
-        for unit_type in UNIT_TYPES:
-            self.type_combo.addItem(unit_type.title(), unit_type)
+        self._load_types()
         _prepare_combo(self.type_combo)
-        form.addRow(_form_label("Type *"), self.type_combo)
+        form.addRow(_form_label(t("type") + " *"), self.type_combo)
         self.parent_combo = QComboBox()
         self.parent_combo.setFixedHeight(42)
         self.parent_combo.setStyleSheet(COMBO_SS)
-        self.parent_combo.addItem("None (root)", None)
         self._load_parents()
         _prepare_combo(self.parent_combo)
         form.addRow(_form_label("Parent Unit"), self.parent_combo)
         self.head_combo = QComboBox()
         self.head_combo.setFixedHeight(42)
         self.head_combo.setStyleSheet(COMBO_SS)
-        self.head_combo.addItem("None", None)
+        self.head_combo.addItem(t("none"), None)
         self._load_employees()
         _prepare_combo(self.head_combo)
         form.addRow(_form_label("Head / In-Charge"), self.head_combo)
@@ -637,10 +645,12 @@ class OrgUnitDialog(QDialog):
             idx = self.type_combo.findData(self.default_type)
             if idx >= 0:
                 self.type_combo.setCurrentIndex(idx)
+                self._load_parents()
         if self.default_parent_id:
             idx = self.parent_combo.findData(self.default_parent_id)
             if idx >= 0:
                 self.parent_combo.setCurrentIndex(idx)
+        self.type_combo.currentIndexChanged.connect(lambda _: self._load_parents())
         buttons = QHBoxLayout()
         buttons.addStretch()
         cancel = QPushButton(t("cancel"))
@@ -653,12 +663,43 @@ class OrgUnitDialog(QDialog):
         buttons.addWidget(save)
         layout.addLayout(buttons)
 
+    def _load_types(self):
+        self.type_combo.clear()
+        session = get_session()
+        try:
+            for unit_type in UNIT_TYPES:
+                self.type_combo.addItem(unit_type.title(), unit_type)
+                item = self.type_combo.model().item(self.type_combo.count() - 1)
+                allowed, _ = _type_can_be_selected(session, unit_type, self.unit_id)
+                if item and not allowed:
+                    item.setEnabled(False)
+                    item.setToolTip(_type_block_reason(unit_type))
+            for index in range(self.type_combo.count()):
+                item = self.type_combo.model().item(index)
+                if item and item.isEnabled():
+                    self.type_combo.setCurrentIndex(index)
+                    break
+        finally:
+            session.close()
+
     def _load_parents(self):
+        if not hasattr(self, "parent_combo"):
+            return
+        current_parent = self.parent_combo.currentData()
+        self.parent_combo.clear()
+        selected_type = self.type_combo.currentData()
+        required_parent_type = PARENT_BY_TYPE.get(selected_type)
+        if required_parent_type is None:
+            self.parent_combo.addItem(t("none_root"), None)
+            return
         session = get_session()
         try:
             for unit in session.query(OrgUnit).all():
-                if unit.id != self.unit_id:
+                if unit.id != self.unit_id and unit.unit_type == required_parent_type:
                     self.parent_combo.addItem(f"{unit.unit_type.title()}: {unit.name}", unit.id)
+            idx = self.parent_combo.findData(current_parent)
+            if idx >= 0:
+                self.parent_combo.setCurrentIndex(idx)
         finally:
             session.close()
 
@@ -677,6 +718,7 @@ class OrgUnitDialog(QDialog):
             if unit:
                 self.name_input.setText(unit.name)
                 self.type_combo.setCurrentIndex(max(0, self.type_combo.findData(unit.unit_type)))
+                self._load_parents()
                 self.parent_combo.setCurrentIndex(max(0, self.parent_combo.findData(unit.parent_id)))
                 self.head_combo.setCurrentIndex(max(0, self.head_combo.findData(unit.head_employee_id)))
         finally:
@@ -687,21 +729,26 @@ class OrgUnitDialog(QDialog):
         if not name:
             _warning(self, t("warning"), "Name is required.")
             return
+        selected_type = self.type_combo.currentData()
         selected_parent_id = self.parent_combo.currentData()
         session = get_session()
         try:
+            structure_error = _validate_unit_structure(session, selected_type, selected_parent_id, self.unit_id, name)
+            if structure_error:
+                _warning(self, t("warning"), structure_error)
+                return
             if self.unit_id:
                 if _would_create_parent_cycle(session, self.unit_id, selected_parent_id):
                     _warning(self, t("warning"), "A unit cannot be placed under itself or one of its child units.")
                     return
                 unit = session.query(OrgUnit).filter_by(id=self.unit_id).first()
                 unit.name = name
-                unit.unit_type = self.type_combo.currentData()
+                unit.unit_type = selected_type
                 unit.parent_id = selected_parent_id
                 unit.head_employee_id = self.head_combo.currentData()
                 action = "org_unit.update"
             else:
-                unit = OrgUnit(name=name, unit_type=self.type_combo.currentData(), parent_id=selected_parent_id, head_employee_id=self.head_combo.currentData())
+                unit = OrgUnit(name=name, unit_type=selected_type, parent_id=selected_parent_id, head_employee_id=self.head_combo.currentData())
                 session.add(unit)
                 session.flush()
                 action = "org_unit.create"
@@ -790,6 +837,50 @@ def _prepare_combo(combo):
         }
     """)
     combo.setMaxVisibleItems(8)
+
+
+def _type_can_be_selected(session, unit_type, current_unit_id=None):
+    if unit_type == "organization":
+        existing = session.query(OrgUnit).filter_by(unit_type="organization").first()
+        if existing and existing.id != current_unit_id:
+            return False, "Only one organization can exist in this workspace."
+        return True, ""
+    required_parent_type = PARENT_BY_TYPE.get(unit_type)
+    if not required_parent_type:
+        return True, ""
+    exists = session.query(OrgUnit).filter_by(unit_type=required_parent_type).first()
+    if not exists:
+        return False, _type_block_reason(unit_type)
+    return True, ""
+
+
+def _type_block_reason(unit_type):
+    required_parent_type = PARENT_BY_TYPE.get(unit_type)
+    if unit_type == "organization":
+        return "Only one organization can exist in this workspace."
+    if required_parent_type:
+        return f"Create a {required_parent_type} before adding a {unit_type}."
+    return ""
+
+
+def _validate_unit_structure(session, unit_type, parent_id, current_unit_id=None, name=""):
+    if not unit_type:
+        return "Please select a valid organization unit type."
+    if unit_type == "organization":
+        existing = session.query(OrgUnit).filter_by(unit_type="organization").first()
+        if existing and existing.id != current_unit_id:
+            return "Only one organization can exist in this workspace."
+        if parent_id is not None:
+            return "An organization must be the root node."
+        return ""
+
+    required_parent_type = PARENT_BY_TYPE.get(unit_type)
+    if not parent_id:
+        return _type_block_reason(unit_type)
+    parent = session.query(OrgUnit).filter_by(id=parent_id).first()
+    if not parent or parent.unit_type != required_parent_type:
+        return f"A {unit_type} must be placed under a {required_parent_type}."
+    return ""
 
 
 def _would_create_parent_cycle(session, unit_id, parent_id):

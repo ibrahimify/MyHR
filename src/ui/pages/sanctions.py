@@ -18,7 +18,7 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QColor
 
 from src.core.i18n import t
-from src.database.connection import get_session, generate_sanction_ref, log_action
+from src.database.connection import get_session, generate_sanction_ref, log_action, is_other_employee
 from src.database.models import Employee, Sanction
 from datetime import datetime
 
@@ -169,9 +169,9 @@ class SanctionsPage(QWidget):
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(0)
 
-        title = QLabel("Sanctions Management")
+        title = QLabel(t("sanctions_title"))
         title.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827; background: transparent;")
-        subtitle = QLabel("Manage employee disciplinary actions and warnings")
+        subtitle = QLabel(t("sanctions_subtitle"))
         subtitle.setStyleSheet("font-size: 16px; color: #4b5563; background: transparent;")
         layout.addWidget(title)
         layout.addSpacing(6)
@@ -186,9 +186,9 @@ class SanctionsPage(QWidget):
         self.history_tab = SanctionHistoryTab(self.user)
         self.issue_tab   = IssueSanctionTab(self.user, self._on_issued)
 
-        self.tabs.addTab(self.issue_tab,   "Issue Sanction")
-        self.tabs.addTab(self.history_tab, "Sanction History")
-        self.tabs.addTab(self.active_tab,  "Active Sanctions")
+        self.tabs.addTab(self.issue_tab,   t("issue_sanction"))
+        self.tabs.addTab(self.history_tab, t("sanction_history"))
+        self.tabs.addTab(self.active_tab,  t("active_sanctions_label"))
 
         self.tabs.currentChanged.connect(self._on_tab_change)
         layout.addWidget(self.tabs, 1)
@@ -809,6 +809,8 @@ class IssueSanctionTab(QWidget):
         try:
             emps = session.query(Employee).filter_by(status="active").all()
             for e in emps:
+                if is_other_employee(e):
+                    continue
                 self.emp_combo.addItem(f"{e.employee_id} - {e.full_name}", e.id)
         finally:
             session.close()

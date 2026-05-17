@@ -1,5 +1,6 @@
 """Promotions Page - eligible tracker, history, configurable rules."""
 
+from datetime import datetime
 import qtawesome as qta
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -11,8 +12,11 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QColor
 
 from src.core.i18n import t
-from src.database.connection import get_session, log_action, calculate_months_remaining
-from src.database.models import Employee, Title, PromotionRule, PromotionHistory
+from src.database.connection import (
+    get_session, log_action, calculate_months_remaining,
+    calculate_sub_race, display_title_name
+)
+from src.database.models import Employee, Title, PromotionRule, PromotionHistory, SalaryIncrementHistory
 from src.ui.styles import (
     btn_primary, btn_outline, INPUT_SS
 )
@@ -112,9 +116,9 @@ class PromotionsPage(QWidget):
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(0)
 
-        title = QLabel("Promotion Management")
+        title = QLabel(t("promotions_title"))
         title.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827; background: transparent;")
-        subtitle = QLabel("Manage promotion rules and track employee eligibility")
+        subtitle = QLabel(t("promotions_subtitle"))
         subtitle.setStyleSheet("font-size: 16px; color: #4b5563; background: transparent;")
         layout.addWidget(title)
         layout.addSpacing(6)
@@ -126,25 +130,22 @@ class PromotionsPage(QWidget):
 
         self.eligible_tab = EligibleTab(self.user, navigate_to_employee=self.navigate_to_employee)
         self.history_tab  = HistoryTab(self.user)
-        self.rules_tab    = RulesTab(self.user)
 
-        self.tabs.addTab(self.eligible_tab, "Eligible Employees")
-        self.tabs.addTab(self.history_tab,  "Promotion History")
-        self.tabs.addTab(self.rules_tab,    "Promotion Rules")
+        self.tabs.addTab(self.eligible_tab, t("eligible_employees"))
+        self.tabs.addTab(self.history_tab,  t("promotion_history"))
         self.tabs.currentChanged.connect(self._on_tab_change)
         layout.addWidget(self.tabs, 1)
 
     def _on_tab_change(self, index):
         if index == 0: self.eligible_tab.refresh()
         elif index == 1: self.history_tab.refresh()
-        elif index == 2: self.rules_tab.refresh()
 
     def showEvent(self, event):
         self.eligible_tab.refresh()
         super().showEvent(event)
 
 
-# ── Eligible Tab ──────────────────────────────────────────────────────────────
+# Eligible tab
 class EligibleTab(QWidget):
     def __init__(self, user, navigate_to_employee=None):
         super().__init__()
@@ -187,7 +188,7 @@ class EligibleTab(QWidget):
         bl.setSpacing(12)
         bico = QLabel()
         bico.setPixmap(qta.icon("fa5s.info-circle", color="#2563eb").pixmap(18, 18))
-        btxt = QLabel("Showing employees who are eligible now or within 6 months of eligibility.")
+        btxt = QLabel(t("promotion_tracker_filter_hint"))
         btxt.setStyleSheet("font-size: 14px; color: #1e40af; background: transparent;")
         btxt.setWordWrap(True)
         bl.addWidget(bico)
@@ -206,7 +207,7 @@ class EligibleTab(QWidget):
         card_hdr.setStyleSheet("background: transparent; border: none; border-bottom: 1px solid #e5e7eb;")
         chl = QHBoxLayout(card_hdr)
         chl.setContentsMargins(32, 28, 32, 28)
-        ch_title = QLabel("Employee Promotion Tracker")
+        ch_title = QLabel(t("promotion_tracker"))
         ch_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827;")
         chl.addWidget(ch_title)
         chl.addStretch()
@@ -215,9 +216,9 @@ class EligibleTab(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels([
-            "Employee", "Current Level", "Next Level",
-            "Months Elapsed", "Commendation", "Sanction",
-            "Months Left", "Actions"
+            t("employee"), t("current_level"), t("next_level"),
+            t("months_elapsed"), t("commendation"), t("sanction"),
+            t("months_left"), t("actions")
         ])
         for col in range(self.table.columnCount()):
             header_item = self.table.horizontalHeaderItem(col)
@@ -282,7 +283,7 @@ class EligibleTab(QWidget):
                         "id": emp.id,
                         "name": emp.full_name,
                         "emp_id": emp.employee_id,
-                        "current": emp.title.name if emp.title else "-",
+                        "current": display_title_name(emp.title),
                         "next": next_title_name,
                         "elapsed": race["months_elapsed"],
                         "comm": race["commendation_reduction"],
@@ -386,15 +387,15 @@ class EligibleTab(QWidget):
             status_icon = QLabel()
             status_icon.setFixedSize(14, 14)
             if mr == 0:
-                lbl_txt = "Eligible now"
+                lbl_txt = t("eligible_now")
                 lbl_color = "#10b981"
                 status_icon.setPixmap(qta.icon("fa5s.check-circle", color=lbl_color).pixmap(13, 13))
             elif mr <= 6:
-                lbl_txt = f"{mr} months left"
+                lbl_txt = t("months_remaining_count", count=mr)
                 lbl_color = "#f59e0b"
                 status_icon.setPixmap(qta.icon("fa5s.clock", color=lbl_color).pixmap(13, 13))
             else:
-                lbl_txt = f"{mr} months left"
+                lbl_txt = t("months_remaining_count", count=mr)
                 lbl_color = "#6b7280"
                 status_icon.setPixmap(qta.icon("fa5s.chart-line", color=lbl_color).pixmap(13, 13))
             p_lbl = QLabel(lbl_txt)
@@ -412,14 +413,14 @@ class EligibleTab(QWidget):
             act_l.setContentsMargins(6, 8, 6, 8)
             act_l.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             if row["status"] == "eligible":
-                btn = QPushButton("  Approve")
+                btn = QPushButton("  " + t("approve"))
                 btn.setIcon(qta.icon("fa5s.check", color="white"))
                 btn.setIconSize(QSize(13, 13))
                 btn.setFixedSize(112, 40)
                 btn.setStyleSheet(btn_primary(40))
                 btn.clicked.connect(lambda _, eid=row["id"]: self._approve_promotion(eid))
             else:
-                btn = QPushButton("  View")
+                btn = QPushButton("  " + t("view_profile"))
                 btn.setIcon(qta.icon("fa5s.eye", color="#374151"))
                 btn.setIconSize(QSize(13, 13))
                 btn.setFixedSize(96, 40)
@@ -449,18 +450,25 @@ class EligibleTab(QWidget):
             emp = session.query(Employee).filter_by(id=employee_id).first()
             race = calculate_months_remaining(emp, session)
             if not race["eligible"]:
-                _warning(self, t("warning"), "Employee is not yet eligible.")
+                _warning(self, t("warning"), t("employee_not_eligible"))
                 return
+            sub_race = calculate_sub_race(emp, session)
             next_title = session.query(Title).filter_by(id=race["next_title_id"]).first()
             old_title  = emp.title
             salary_before = emp.base_salary
             salary_pct = next_title.promotion_salary_increase_pct if next_title else 0
             salary_after = round(salary_before * (1 + salary_pct / 100), 2)
             confirm = _question(
-                self, "Confirm Promotion",
-                f"Promote {emp.full_name}\nfrom {old_title.name} to {next_title.name}?\n\n"
-                f"Salary increase: {salary_pct:.1f}%\n"
-                f"Base salary: EUR {salary_before:,.2f} to EUR {salary_after:,.2f}",
+                self, t("confirm_promotion"),
+                t(
+                    "confirm_promotion_body",
+                    name=emp.full_name,
+                    from_level=old_title.name,
+                    to_level=next_title.name,
+                    salary_pct=f"{salary_pct:.1f}",
+                    salary_before=f"EUR {salary_before:,.2f}",
+                    salary_after=f"EUR {salary_after:,.2f}",
+                ),
             )
             if confirm != QMessageBox.Yes:
                 return
@@ -474,7 +482,10 @@ class EligibleTab(QWidget):
                 approved_by_id=self.user.id,
                 basis="accelerated" if race["commendation_reduction"] > 0 else "time_based",
                 months_taken=race["months_elapsed"],
-                notes=f"Commendation: -{race['commendation_reduction']}mo, Sanction: +{race['sanction_addition']}mo",
+                notes=(
+                    f"Sub-race completed from {sub_race['current_step_label']} to {next_title.name}. "
+                    f"Commendation: -{race['commendation_reduction']}mo, Sanction: +{race['sanction_addition']}mo"
+                ),
             )
             session.add(history)
             log_action(
@@ -486,7 +497,7 @@ class EligibleTab(QWidget):
             )
             session.commit()
             _information(self, t("success"),
-                f"{emp.full_name} promoted to {next_title.name}!")
+                t("promoted_success", name=emp.full_name, level=next_title.name))
             self.refresh()
         except Exception as e:
             session.rollback()
@@ -495,7 +506,7 @@ class EligibleTab(QWidget):
             session.close()
 
 
-# ── History Tab ───────────────────────────────────────────────────────────────
+# History tab
 class HistoryTab(QWidget):
     def __init__(self, user):
         super().__init__()
@@ -519,14 +530,13 @@ class HistoryTab(QWidget):
         ch.setStyleSheet("background: transparent; border: none; border-bottom: 1px solid #e5e7eb;")
         chl = QHBoxLayout(ch)
         chl.setContentsMargins(32, 28, 32, 28)
-        chl.addWidget(QLabel("Recent Promotions") if False else
-                       _bold_label("Recent Promotions", size=20, weight=800))
+        chl.addWidget(_bold_label(t("recent_promotions"), size=20, weight=800))
         cl.addWidget(ch)
 
         self.table = QTableWidget()
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels([
-            "Employee", "Promotion", "Basis", "Months Taken", "Approved By", "Date"
+            t("employee"), t("promotion"), t("basis"), t("months_taken"), t("approved_by"), t("date")
         ])
         for col in range(self.table.columnCount()):
             header_item = self.table.horizontalHeaderItem(col)
@@ -545,17 +555,27 @@ class HistoryTab(QWidget):
     def refresh(self):
         session = get_session()
         try:
-            history = session.query(PromotionHistory).order_by(
-                PromotionHistory.promoted_at.desc()
-            ).all()
-            rows = [{
+            promotion_rows = [{
+                "sort_date": h.promoted_at or datetime.min,
                 "name": h.employee.full_name, "emp_id": h.employee.employee_id,
-                "from": h.from_title.name, "to": h.to_title.name,
+                "from": display_title_name(h.from_title), "to": display_title_name(h.to_title),
                 "basis": h.basis.replace("_", " ").title(),
                 "months": str(h.months_taken) + " mo" if h.months_taken else "-",
                 "by": h.approved_by.full_name,
                 "date": h.promoted_at.strftime("%Y-%m-%d") if h.promoted_at else "-",
-            } for h in history]
+                "kind": "promotion",
+            } for h in session.query(PromotionHistory).all()]
+            increment_rows = [{
+                "sort_date": inc.applied_at or datetime.min,
+                "name": inc.employee.full_name, "emp_id": inc.employee.employee_id,
+                "from": inc.notes or "Annual Increment", "to": f"EUR {inc.salary_after:,.2f}",
+                "basis": t("annual_increment"),
+                "months": "-",
+                "by": inc.approved_by.full_name,
+                "date": inc.applied_at.strftime("%Y-%m-%d") if inc.applied_at else "-",
+                "kind": "increment",
+            } for inc in session.query(SalaryIncrementHistory).all()]
+            rows = sorted(promotion_rows + increment_rows, key=lambda row: row["sort_date"], reverse=True)
         finally:
             session.close()
 
@@ -581,13 +601,21 @@ class HistoryTab(QWidget):
             pl = QHBoxLayout(promo_w)
             pl.setContentsMargins(12, 0, 4, 0)
             pl.setSpacing(8)
-            fl = QLabel(row["from"])
-            fl.setStyleSheet(f"background: #eef4ff; color: #1e40af; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600;")
-            arrow = QLabel()
-            arrow.setPixmap(qta.icon("fa5s.arrow-right", color="#10b981").pixmap(12, 12))
-            tl = QLabel(row["to"])
-            tl.setStyleSheet(f"background: #dcfce7; color: #166534; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600;")
-            pl.addWidget(fl); pl.addWidget(arrow); pl.addWidget(tl); pl.addStretch()
+            if row["kind"] == "increment":
+                fl = QLabel(row["from"])
+                fl.setWordWrap(True)
+                fl.setStyleSheet("font-size: 12px; color: #1e40af; background: transparent; font-weight: 600;")
+                tl = QLabel(row["to"])
+                tl.setStyleSheet("background: #dcfce7; color: #166534; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600;")
+                pl.addWidget(fl, 1); pl.addWidget(tl); pl.addStretch()
+            else:
+                fl = QLabel(row["from"])
+                fl.setStyleSheet(f"background: #eef4ff; color: #1e40af; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600;")
+                arrow = QLabel()
+                arrow.setPixmap(qta.icon("fa5s.arrow-right", color="#10b981").pixmap(12, 12))
+                tl = QLabel(row["to"])
+                tl.setStyleSheet(f"background: #dcfce7; color: #166534; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600;")
+                pl.addWidget(fl); pl.addWidget(arrow); pl.addWidget(tl); pl.addStretch()
             self.table.setCellWidget(i, 1, promo_w)
 
             _set_table_item(self.table, i, 2, row["basis"])
@@ -596,7 +624,7 @@ class HistoryTab(QWidget):
             _set_table_item(self.table, i, 5, row["date"])
 
 
-# ── Rules Tab ─────────────────────────────────────────────────────────────────
+# Rules tab
 class RulesTab(QWidget):
     def __init__(self, user):
         super().__init__()
@@ -713,7 +741,7 @@ class RulesTab(QWidget):
         title_row.setSpacing(8)
         icon = QLabel()
         icon.setPixmap(qta.icon("fa5s.chart-line", color="#2563eb").pixmap(17, 17))
-        title = QLabel(f"{row['from']} -> {row['to']}")
+        title = QLabel(f"{row['from']} to {row['to']}")
         title.setStyleSheet("font-size: 16px; font-weight: 800; color: #030213;")
         edit_btn = QPushButton("Edit")
         edit_btn.setFixedSize(92, 34)

@@ -20,7 +20,8 @@ from PySide6.QtGui import QColor
 from src.core.i18n import t
 from src.database.connection import (
     get_session, generate_commendation_ref, log_action,
-    can_receive_commendation, count_commendations_in_current_role
+    can_receive_commendation, count_commendations_in_current_role,
+    is_other_employee
 )
 from src.database.models import Employee, Commendation, CommendationEmployee, SystemUser
 from datetime import datetime
@@ -181,9 +182,9 @@ class CommendationsPage(QWidget):
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(0)
 
-        title = QLabel("Commendation Management")
+        title = QLabel(t("commendations_title"))
         title.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827; background: transparent;")
-        subtitle = QLabel("Issue and track employee commendations and awards")
+        subtitle = QLabel(t("commendations_subtitle"))
         subtitle.setStyleSheet("font-size: 16px; color: #4b5563; background: transparent;")
         layout.addWidget(title)
         layout.addSpacing(6)
@@ -490,7 +491,10 @@ class IssueCommendationTab(QWidget):
     def refresh_employees(self):
         session = get_session()
         try:
-            emps = session.query(Employee).filter_by(status="active").all()
+            emps = [
+                emp for emp in session.query(Employee).filter_by(status="active").all()
+                if not is_other_employee(emp)
+            ]
             emp_data = [{
                 "id": e.id,
                 "label": f"{e.employee_id} - {e.full_name} ({e.title.name if e.title else '?'})",

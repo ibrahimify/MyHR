@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QLineEdit, QComboBox, QScrollArea
 )
 
+from src.core.i18n import t
 from src.database.connection import get_session
 from src.database.models import AuditLog
 
@@ -53,6 +54,18 @@ CATEGORY_META = {
     "hierarchy": {"label": "Hierarchy", "bg": "#e0e7ff", "fg": "#4f46e5", "icon": "fa5s.sitemap"},
     "salary": {"label": "Salary", "bg": "#f3e8ff", "fg": "#7e22ce", "icon": "fa5s.coins"},
     "other": {"label": "Other", "bg": "#f3f4f6", "fg": "#374151", "icon": "fa5s.clipboard-list"},
+}
+
+CATEGORY_LABEL_KEYS = {
+    "employee": "employee_management",
+    "promotion": "promotions_title",
+    "commendation": "commendations",
+    "sanction": "sanctions",
+    "import": "data_import",
+    "settings": "settings_title",
+    "hierarchy": "hierarchy",
+    "salary": "salary",
+    "other": "other",
 }
 
 CARD_SS = """
@@ -176,9 +189,9 @@ class AuditLogPage(QWidget):
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(0)
 
-        title = QLabel("Audit Log")
+        title = QLabel(t("audit_title"))
         title.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827; background: transparent;")
-        subtitle = QLabel("Complete record of all system activities and changes")
+        subtitle = QLabel(t("audit_subtitle"))
         subtitle.setStyleSheet("font-size: 16px; color: #4b5563; background: transparent;")
         layout.addWidget(title)
         layout.addSpacing(6)
@@ -187,10 +200,10 @@ class AuditLogPage(QWidget):
 
         self.stats_row = QHBoxLayout()
         self.stats_row.setSpacing(20)
-        self._add_stat_card("total", "Total Logs", "fa5s.file-alt", "#2563eb", "#dbeafe")
-        self._add_stat_card("today", "Today's Activities", "fa5s.user", "#16a34a", "#dcfce7")
-        self._add_stat_card("week", "This Week", "fa5s.calendar-alt", "#9333ea", "#f3e8ff")
-        self._add_stat_card("active_user", "Most Active User", "fa5s.clipboard-list", "#d97706", "#fef3c7")
+        self._add_stat_card("total", t("total_logs"), "fa5s.file-alt", "#2563eb", "#dbeafe")
+        self._add_stat_card("today", t("todays_activities"), "fa5s.user", "#16a34a", "#dcfce7")
+        self._add_stat_card("week", t("this_week"), "fa5s.calendar-alt", "#9333ea", "#f3e8ff")
+        self._add_stat_card("active_user", t("most_active_user"), "fa5s.clipboard-list", "#d97706", "#fef3c7")
         layout.addLayout(self.stats_row)
         layout.addSpacing(30)
 
@@ -202,7 +215,7 @@ class AuditLogPage(QWidget):
         fl.setSpacing(16)
 
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Search actions, targets, or details...")
+        self.search.setPlaceholderText(t("search_logs"))
         self.search.setFixedHeight(44)
         self.search.setStyleSheet(INPUT_SS)
         self.search.addAction(qta.icon("fa5s.search", color="#9ca3af"), QLineEdit.LeadingPosition)
@@ -213,11 +226,11 @@ class AuditLogPage(QWidget):
         self.category_filter.setFixedHeight(44)
         self.category_filter.setStyleSheet(COMBO_SS)
         _polish_combo(self.category_filter)
-        self.category_filter.addItem("All Categories", None)
+        self.category_filter.addItem(t("all_categories"), None)
         for key, meta in CATEGORY_META.items():
             if key != "other":
-                self.category_filter.addItem(meta["label"], key)
-        self.category_filter.addItem("Other", "other")
+                self.category_filter.addItem(_category_label(key), key)
+        self.category_filter.addItem(t("other"), "other")
         self.category_filter.currentIndexChanged.connect(self._filter)
         fl.addWidget(self.category_filter, 1)
 
@@ -225,7 +238,7 @@ class AuditLogPage(QWidget):
         self.user_filter.setFixedHeight(44)
         self.user_filter.setStyleSheet(COMBO_SS)
         _polish_combo(self.user_filter)
-        self.user_filter.addItem("All Users", None)
+        self.user_filter.addItem(t("all_users"), None)
         self.user_filter.currentIndexChanged.connect(self._filter)
         fl.addWidget(self.user_filter, 1)
 
@@ -247,7 +260,7 @@ class AuditLogPage(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels([
-            "Timestamp", "User", "Action", "Target", "Details", "Category"
+            t("timestamp"), t("user"), t("action"), t("target"), t("details"), t("category")
         ])
         self.table.setStyleSheet(TABLE_SS)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -277,7 +290,7 @@ class AuditLogPage(QWidget):
         info_head = QHBoxLayout()
         info_icon = QLabel()
         info_icon.setPixmap(qta.icon("fa5s.clipboard-list", color="#2563eb").pixmap(18, 18))
-        info_title = QLabel("Audit Log Information")
+        info_title = QLabel(t("audit_log_information"))
         info_title.setStyleSheet("font-size: 17px; font-weight: 800; color: #1e40af; background: transparent;")
         info_head.addWidget(info_icon)
         info_head.addWidget(info_title)
@@ -332,14 +345,16 @@ class AuditLogPage(QWidget):
     def refresh(self):
         session = get_session()
         try:
-            logs = session.query(AuditLog).order_by(AuditLog.performed_at.desc()).limit(500).all()
-            self.all_logs = [self._serialize_log(log) for log in logs]
+            now = datetime.utcnow()
+            logs = session.query(AuditLog).order_by(AuditLog.performed_at.desc(), AuditLog.id.desc()).limit(1000).all()
+            visible_logs = [log for log in logs if not log.performed_at or log.performed_at <= now][:500]
+            self.all_logs = [self._serialize_log(log) for log in visible_logs]
 
             users = sorted({entry["user"] for entry in self.all_logs})
             current_user = self.user_filter.currentData()
             self.user_filter.blockSignals(True)
             self.user_filter.clear()
-            self.user_filter.addItem("All Users", None)
+            self.user_filter.addItem(t("all_users"), None)
             for name in users:
                 self.user_filter.addItem(name, name)
             if current_user in users:
@@ -393,7 +408,7 @@ class AuditLogPage(QWidget):
         for entry in self.all_logs:
             haystack = " ".join([
                 entry["action"], entry["raw_action"], entry["details"],
-                entry["target"], entry["user"], CATEGORY_META[entry["category"]]["label"]
+                entry["target"], entry["user"], _category_label(entry["category"])
             ]).lower()
             if search and search not in haystack:
                 continue
@@ -403,7 +418,7 @@ class AuditLogPage(QWidget):
                 continue
             filtered.append(entry)
 
-        self.count_lbl.setText(f"Showing {len(filtered)} of {len(self.all_logs)} log entries")
+        self.count_lbl.setText(t("showing_logs", shown=len(filtered), total=len(self.all_logs)))
         self._populate(filtered)
 
     def _populate(self, logs):
@@ -462,6 +477,10 @@ def _category_for_action(action):
     return root if root in CATEGORY_META else "other"
 
 
+def _category_label(category):
+    return t(CATEGORY_LABEL_KEYS.get(category, "other"))
+
+
 def _category_badge(category):
     meta = CATEGORY_META.get(category, CATEGORY_META["other"])
     cell = QWidget()
@@ -470,12 +489,13 @@ def _category_badge(category):
     layout.setContentsMargins(12, 8, 12, 8)
     layout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
-    badge = QLabel(meta["label"])
+    label = _category_label(category)
+    badge = QLabel(label)
     badge.setStyleSheet(
         f"background: {meta['bg']}; color: {meta['fg']}; border: none; "
         "border-radius: 7px; padding: 4px 10px; font-size: 12px; font-weight: 800;"
     )
-    badge.setToolTip(meta["label"])
+    badge.setToolTip(label)
     layout.addWidget(badge)
     return cell
 

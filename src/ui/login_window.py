@@ -22,15 +22,27 @@ from PySide6.QtWidgets import (
 )
 
 from src.core.app_settings import company_name, company_subtitle
-from src.core.i18n import get_language, is_rtl, set_language, t
+from src.core.i18n import available_languages, get_language, is_rtl, set_language, t
 from src.database.connection import verify_login
 
 
-LANGUAGES = [
-    ("English", "en"),
-    ("Magyar", "hu"),
-    ("\u0627\u0644\u0639\u0631\u0628\u064a\u0629", "ar"),
-]
+LANGUAGES = available_languages()
+
+MESSAGE_BOX_SS = """
+QMessageBox { background: white; color: #111827; }
+QMessageBox QLabel { color: #111827; background: transparent; font-size: 13px; }
+QPushButton {
+    background: white;
+    color: #111827;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    min-width: 84px;
+    min-height: 30px;
+    font-weight: 600;
+}
+QPushButton:hover { background: #f3f4f6; }
+QPushButton:default { background: #030213; color: white; border: none; }
+"""
 
 
 class CustomSelect(QWidget):
@@ -175,7 +187,7 @@ class CustomSelect(QWidget):
 class LoginWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("MyHR")
+        self.setWindowTitle(company_name(t("app_name")))
         self.setObjectName("LoginWindow")
         self.role_labels = {}
         self._build()
@@ -413,15 +425,7 @@ class LoginWindow(QWidget):
         QApplication.instance().setLayoutDirection(Qt.RightToLeft if is_rtl() else Qt.LeftToRight)
 
     def _language_caption(self):
-        language = get_language()
-
-        if language == "ar":
-            return "\u0627\u0644\u0644\u063a\u0629 / Language / Nyelv"
-
-        if language == "hu":
-            return "Nyelv / Language / \u0627\u0644\u0644\u063a\u0629"
-
-        return "Language / Nyelv / \u0627\u0644\u0644\u063a\u0629"
+        return t("language")
 
     def _on_language_changed(self, value):
         set_language(value)
@@ -429,6 +433,7 @@ class LoginWindow(QWidget):
         self._refresh_text()
 
     def _refresh_text(self):
+        self.setWindowTitle(company_name(t("app_name")))
         self.title_lbl.setText(company_name(t("app_name")))
         self.subtitle_lbl.setText(company_subtitle(t("app_subtitle")))
         self.language_lbl.setText(self._language_caption())
@@ -447,7 +452,7 @@ class LoginWindow(QWidget):
         password = self.password_input.text().strip()
 
         if not username or not password:
-            QMessageBox.warning(self, t("warning"), t("login_fill_fields"))
+            _warning(self, t("warning"), t("login_fill_fields"))
             return
 
         user = verify_login(username, password)
@@ -459,6 +464,24 @@ class LoginWindow(QWidget):
             self.main_window.show()
             self.close()
         else:
-            QMessageBox.critical(self, t("error"), t("login_failed"))
+            _critical(self, t("error"), t("login_failed"))
             self.password_input.clear()
             self.password_input.setFocus()
+
+
+def _styled_message_box(parent, icon, title, text):
+    box = QMessageBox(parent)
+    box.setIcon(icon)
+    box.setWindowTitle(title)
+    box.setText(text)
+    box.setStandardButtons(QMessageBox.Ok)
+    box.setStyleSheet(MESSAGE_BOX_SS)
+    return box.exec()
+
+
+def _warning(parent, title, text):
+    return _styled_message_box(parent, QMessageBox.Warning, title, text)
+
+
+def _critical(parent, title, text):
+    return _styled_message_box(parent, QMessageBox.Critical, title, text)

@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QFrame, QScrollArea, QLineEdit, QComboBox, QTableWidget,
     QTableWidgetItem, QHeaderView, QStackedWidget, QTabWidget,
     QTextEdit, QMessageBox, QDateEdit, QGridLayout, QListWidget,
-    QListWidgetItem, QSizePolicy
+    QListWidgetItem, QSizePolicy, QProgressBar
 )
 from PySide6.QtCore import Qt, QDate, QSize, Signal
 from PySide6.QtGui import QColor
@@ -21,7 +21,10 @@ from PySide6.QtGui import QColor
 from src.core.i18n import t
 from src.database.connection import (
     get_session, generate_employee_id, log_action,
-    degree_to_title_name, calculate_months_remaining
+    degree_to_title_name, calculate_months_remaining, calculate_sub_race,
+    display_title_name, ensure_others_org_unit, is_other_employee,
+    is_other_title, valid_other_manager_ids, validate_salary_for_title,
+    OTHER_ORG_UNIT_NAME
 )
 from src.database.models import (
     Employee, Title, OrgUnit,
@@ -31,7 +34,7 @@ from datetime import datetime
 import json
 
 DEGREE_OPTIONS = ["BSc", "MSc", "PhD", "Other"]
-STATUS_OPTIONS = ["active", "inactive", "on_leave"]
+STATUS_OPTIONS = ["active", "inactive", "on_leave", "terminated"]
 COMBO_STYLE = """
 QComboBox {
     border: 1px solid #e5e7eb;
@@ -347,9 +350,9 @@ class EmployeeListView(QWidget):
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(0)
 
-        title = QLabel("Employee Management")
+        title = QLabel(t("employees_title"))
         title.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827; background: transparent;")
-        subtitle = QLabel("Manage and view all employee records")
+        subtitle = QLabel(t("employees_subtitle"))
         subtitle.setStyleSheet("font-size: 16px; color: #4b5563; background: transparent;")
         layout.addWidget(title)
         layout.addSpacing(6)
@@ -364,7 +367,7 @@ class EmployeeListView(QWidget):
         bl.setSpacing(16)
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search by name, ID, or email...")
+        self.search_input.setPlaceholderText(t("search_employees"))
         self.search_input.setFixedHeight(44)
         self.search_input.setStyleSheet(INPUT_STYLE)
         self.search_input.addAction(qta.icon("fa5s.search", color="#9ca3af"), QLineEdit.LeadingPosition)
@@ -374,14 +377,14 @@ class EmployeeListView(QWidget):
         self.dept_filter = CleanSelect()
         self.dept_filter.setFixedHeight(44)
         self.dept_filter.setMinimumWidth(220)
-        self.dept_filter.addItem("All Departments", None)
+        self.dept_filter.addItem(t("all_departments"), None)
         self.dept_filter.currentIndexChanged.connect(lambda *_: self._apply_filter())
         bl.addWidget(self.dept_filter)
 
         self.status_filter = CleanSelect()
         self.status_filter.setFixedHeight(44)
         self.status_filter.setMinimumWidth(180)
-        self.status_filter.addItem("All Status", None)
+        self.status_filter.addItem(t("all_status"), None)
         for s in STATUS_OPTIONS:
             self.status_filter.addItem(s.replace("_", " ").title(), s)
         self.status_filter.currentIndexChanged.connect(lambda *_: self._apply_filter())
@@ -413,8 +416,8 @@ class EmployeeListView(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels([
-            "Employee ID", "Name", "Email", "Department",
-            "Position", "Level", "Status", "Actions"
+            t("employee_id"), t("name"), t("email"), t("department"),
+            t("position"), t("level"), t("status"), t("actions")
         ])
         for col in range(self.table.columnCount()):
             header_item = self.table.horizontalHeaderItem(col)
@@ -475,16 +478,16 @@ class EmployeeListView(QWidget):
             emps = session.query(Employee).all()
             self.all_employees = [{
                 "id": e.id, "employee_id": e.employee_id, "full_name": e.full_name,
-                "email": e.work_email or e.personal_email or "—",
-                "dept": e.org_unit.name if e.org_unit else "—",
+                "email": e.work_email or e.personal_email or "-",
+                "dept": e.org_unit.name if e.org_unit else "-",
                 "position": e.position,
-                "level": e.title.name if e.title else "—",
+                "level": e.title.name if e.title else "-",
                 "degree": e.degree, "status": e.status,
             } for e in emps]
-            depts = sorted({x["dept"] for x in self.all_employees if x["dept"] != "—"})
+            depts = sorted({x["dept"] for x in self.all_employees if x["dept"] != "-"})
             self.dept_filter.blockSignals(True)
             self.dept_filter.clear()
-            self.dept_filter.addItem("All Departments", None)
+            self.dept_filter.addItem(t("all_departments"), None)
             for d in depts:
                 self.dept_filter.addItem(d, d)
             self.dept_filter.blockSignals(False)
@@ -501,7 +504,7 @@ class EmployeeListView(QWidget):
             (not dept   or e["dept"] == dept) and
             (not status or e["status"] == status)
         ]
-        self.count_lbl.setText(f"Showing {len(filtered)} of {len(self.all_employees)} employees")
+        self.count_lbl.setText(t("showing_employees", shown=len(filtered), total=len(self.all_employees)))
         self.filtered_employees = filtered
         self._populate_table(filtered)
 
@@ -526,7 +529,7 @@ class EmployeeListView(QWidget):
 
             self.table.setCellWidget(row, 5, self._badge(emp["level"], "#dbeafe", "#1d4ed8"))
             bg, fg = STATUS_COLORS.get(emp["status"], ("#f3f4f6","#374151"))
-            self.table.setCellWidget(row, 6, self._badge(emp["status"].replace("_", " ").title(), bg, fg))
+            self.table.setCellWidget(row, 6, self._badge(t(emp["status"]), bg, fg))
 
             btn_widget = QWidget()
             btn_widget.setStyleSheet("background: transparent;")
@@ -545,7 +548,7 @@ class EmployeeListView(QWidget):
             view_btn = QPushButton()
             view_btn.setIcon(qta.icon("fa5s.eye", color="#2563eb"))
             view_btn.setIconSize(_ico)
-            view_btn.setToolTip("View profile")
+            view_btn.setToolTip(t("view_profile"))
             view_btn.setCursor(Qt.PointingHandCursor)
             view_btn.setStyleSheet(_btn_ss.format(hover="#eff6ff"))
             view_btn.clicked.connect(lambda _, eid=emp["id"]: self.on_profile(eid))
@@ -553,7 +556,7 @@ class EmployeeListView(QWidget):
             edit_btn = QPushButton()
             edit_btn.setIcon(qta.icon("fa5s.edit", color="#374151"))
             edit_btn.setIconSize(_ico)
-            edit_btn.setToolTip("Edit employee")
+            edit_btn.setToolTip(t("edit_employee"))
             edit_btn.setCursor(Qt.PointingHandCursor)
             edit_btn.setStyleSheet(_btn_ss.format(hover="#f3f4f6"))
             edit_btn.clicked.connect(lambda _, eid=emp["id"]: self._do_edit(eid))
@@ -561,7 +564,7 @@ class EmployeeListView(QWidget):
             del_btn = QPushButton()
             del_btn.setIcon(qta.icon("fa5s.trash-alt", color="#dc2626"))
             del_btn.setIconSize(_ico)
-            del_btn.setToolTip("Delete employee")
+            del_btn.setToolTip(t("delete_employee"))
             del_btn.setCursor(Qt.PointingHandCursor)
             del_btn.setStyleSheet(_btn_ss.format(hover="#fee2e2"))
             del_btn.clicked.connect(lambda _, eid=emp["id"]: self._do_delete(eid))
@@ -601,11 +604,8 @@ class EmployeeListView(QWidget):
 
     def _do_delete(self, emp_id):
         confirm = QMessageBox.question(
-            self, "Delete Employee",
-            "Are you sure you want to permanently delete this employee?\n\n"
-            "All promotion history, commendations, sanctions, and salary records "
-            "for this employee will also be removed.\n\n"
-            "This action cannot be undone.",
+            self, t("delete_employee_confirm_title"),
+            t("delete_employee_confirm"),
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No
         )
         if confirm != QMessageBox.Yes:
@@ -650,7 +650,7 @@ class EmployeeListView(QWidget):
 
             session.delete(emp)
             session.commit()
-            QMessageBox.information(self, t("success"), f"{emp_name} ({emp_code}) has been deleted.")
+            QMessageBox.information(self, t("success"), t("employee_deleted", name=emp_name, employee_id=emp_code))
             self.refresh()
         except Exception as e:
             session.rollback()
@@ -680,15 +680,15 @@ class AddEmployeeView(QWidget):
         h = QVBoxLayout(header)
         h.setContentsMargins(40, 28, 40, 12)
         h.setSpacing(0)
-        back_btn = QPushButton("  Back to Employees")
+        back_btn = QPushButton("  " + t("back_to_employees"))
         back_btn.setIcon(qta.icon("fa5s.arrow-left", color="#2563eb"))
         back_btn.setIconSize(QSize(12, 12))
         back_btn.setCursor(Qt.PointingHandCursor)
         back_btn.setStyleSheet("QPushButton { background: transparent; color: #2563eb; border: none; font-size: 13px; font-weight: 600; } QPushButton:hover { text-decoration: underline; }")
         back_btn.clicked.connect(self.on_back)
-        title = QLabel("Add New Employee")
+        title = QLabel(t("add_employee_title"))
         title.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827; background: transparent;")
-        subtitle = QLabel("Fill in the employee details to add them to the system")
+        subtitle = QLabel(t("add_employee_subtitle"))
         subtitle.setStyleSheet("font-size: 16px; color: #4b5563; background: transparent;")
         h.addWidget(back_btn, 0, Qt.AlignLeft)
         h.addSpacing(28)
@@ -724,7 +724,7 @@ class AddEmployeeView(QWidget):
         dcl = QVBoxLayout(deg_card)
         dcl.setContentsMargins(24, 24, 24, 24)
         dcl.setSpacing(18)
-        dcl.addWidget(self._lbl("Education & Level Assignment", bold=True, size=18, color="#111827"))
+        dcl.addWidget(self._lbl(t("education_level_assignment"), bold=True, size=18, color="#111827"))
         row = QHBoxLayout()
         row.setSpacing(12)
         dl = QVBoxLayout()
@@ -733,7 +733,7 @@ class AddEmployeeView(QWidget):
         self.degree_combo.setFixedHeight(44)
         for d in DEGREE_OPTIONS:
             self.degree_combo.addItem(d)
-        self.degree_combo.currentTextChanged.connect(lambda deg: self.level_display.setText(degree_to_title_name(deg)))
+        self.degree_combo.currentTextChanged.connect(self._on_degree_changed)
         dl.addWidget(self.degree_combo)
         row.addLayout(dl)
         ll = QVBoxLayout()
@@ -748,13 +748,20 @@ class AddEmployeeView(QWidget):
         dcl.addWidget(self._lbl(t("level_rule"), color="#9ca3af", size=11))
         left.addWidget(deg_card)
 
-        left.addWidget(self._section_card("Employment Details", [
+        employment_card = self._section_card(t("employment_info"), [
             ("work_email",  t("work_email"),  "text"),
             ("work_phone",  t("work_phone"),  "text"),
             ("position",    t("position"),    "text"),
             ("join_date",   t("join_date"),   "date"),
             ("base_salary", t("base_salary"), "text"),
-        ]))
+        ])
+        left.addWidget(employment_card)
+        self.salary_warning = QLabel("")
+        self.salary_warning.setWordWrap(True)
+        self.salary_warning.hide()
+        self.salary_warning.setStyleSheet("font-size: 12px; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 9px 12px;")
+        left.addWidget(self.salary_warning)
+        self.fields["base_salary"].textChanged.connect(self._update_salary_warning)
         cl.addLayout(left, 3)
 
         right = QVBoxLayout()
@@ -767,8 +774,8 @@ class AddEmployeeView(QWidget):
         ac = QVBoxLayout(actions_card)
         ac.setContentsMargins(24, 24, 24, 24)
         ac.setSpacing(16)
-        ac.addWidget(self._lbl("Actions", bold=True, size=18, color="#111827"))
-        save_btn = QPushButton("  Save Employee")
+        ac.addWidget(self._lbl(t("actions"), bold=True, size=18, color="#111827"))
+        save_btn = QPushButton("  " + t("save"))
         save_btn.setCursor(Qt.PointingHandCursor)
         save_btn.setFixedHeight(44)
         save_btn.setIcon(qta.icon("fa5s.save", color="white"))
@@ -776,7 +783,7 @@ class AddEmployeeView(QWidget):
         save_btn.setStyleSheet("QPushButton { background: #030213; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; } QPushButton:hover { background: #111827; }")
         save_btn.clicked.connect(self._save)
         ac.addWidget(save_btn)
-        cancel_btn = QPushButton("Cancel")
+        cancel_btn = QPushButton(t("cancel"))
         cancel_btn.setCursor(Qt.PointingHandCursor)
         cancel_btn.setFixedHeight(44)
         cancel_btn.setStyleSheet("QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-weight: 600; } QPushButton:hover { background: #f3f4f6; }")
@@ -789,19 +796,31 @@ class AddEmployeeView(QWidget):
         rc = QVBoxLayout(rules_card)
         rc.setContentsMargins(24, 22, 24, 22)
         rc.setSpacing(10)
-        rc.addWidget(self._lbl("Level Assignment Rules", bold=True, size=16, color="#1e40af"))
-        for line in ["PhD degree -> starts at L5", "MSc degree -> starts at L6", "BSc degree -> starts at L7"]:
-            l = QLabel("•  " + line)
+        rc.addWidget(self._lbl(t("level_assignment_rules"), bold=True, size=16, color="#1e40af"))
+        for line in [
+            t("phd_starts_l5"),
+            t("msc_starts_l6"),
+            t("bsc_starts_l7"),
+            t("other_stays_other"),
+        ]:
+            row = QHBoxLayout()
+            icon = QLabel()
+            icon.setFixedSize(14, 14)
+            icon.setPixmap(qta.icon("fa5s.check-circle", color="#2563eb").pixmap(12, 12))
+            l = QLabel(line)
             l.setStyleSheet("font-size: 14px; color: #1d4ed8; background: transparent;")
-            rc.addWidget(l)
+            row.addWidget(icon)
+            row.addWidget(l)
+            row.addStretch()
+            rc.addLayout(row)
         org_card = QFrame()
         org_card.setObjectName("EmployeeCard")
         org_card.setStyleSheet(EMP_CARD_SS)
         oc = QVBoxLayout(org_card)
         oc.setContentsMargins(24, 24, 24, 24)
         oc.setSpacing(10)
-        oc.addWidget(self._lbl("Organization", bold=True, size=18, color="#111827"))
-        oc.addWidget(self._lbl("Org Unit"))
+        oc.addWidget(self._lbl(t("organization"), bold=True, size=18, color="#111827"))
+        oc.addWidget(self._lbl(t("org_unit")))
         self.org_combo = CleanSelect()
         self.org_combo.setFixedHeight(44)
         oc.addWidget(self.org_combo)
@@ -823,11 +842,8 @@ class AddEmployeeView(QWidget):
         ic = QVBoxLayout(info_card)
         ic.setContentsMargins(24, 22, 24, 22)
         ic.setSpacing(10)
-        ic.addWidget(self._lbl("Salary Guidelines", bold=True, size=16, color="#166534"))
-        for line in ["L7 (BSc): €2,000 – €2,800", "L6 (MSc): €2,800 – €3,500", "L5 (PhD): €3,500 – €4,500"]:
-            l = QLabel(line)
-            l.setStyleSheet("font-size: 13px; color: #166534; background: transparent;")
-            ic.addWidget(l)
+        ic.addWidget(self._lbl(t("salary_guidelines"), bold=True, size=16, color="#166534"))
+        self.salary_guideline_layout = ic
         right.addWidget(info_card)
 
         cl.addLayout(right, 2)
@@ -907,24 +923,92 @@ class AddEmployeeView(QWidget):
         self.status_combo.setCurrentIndex(0)
         self._load_org_units()
         self._load_managers()
+        self._refresh_salary_guidelines()
+        self._update_salary_warning()
+
+    def _on_degree_changed(self, degree):
+        level_name = degree_to_title_name(degree)
+        self.level_display.setText(t("other_misc") if level_name == "Other" else level_name)
+        if level_name == "Other":
+            self.level_display.setStyleSheet("background: #f1f5f9; color: #334155; border-radius: 8px; font-size: 16px; font-weight: bold; border: 1px solid #cbd5e1;")
+        else:
+            self.level_display.setStyleSheet("background: #eff6ff; color: #2563eb; border-radius: 8px; font-size: 16px; font-weight: bold; border: 1px solid #bfdbfe;")
+        self._load_org_units()
+        self._load_managers()
+        self._update_salary_warning()
+
+    def _selected_title(self, session):
+        return session.query(Title).filter_by(name=degree_to_title_name(self.degree_combo.currentText())).first()
+
+    def _refresh_salary_guidelines(self):
+        if not hasattr(self, "salary_guideline_layout"):
+            return
+        while self.salary_guideline_layout.count() > 1:
+            item = self.salary_guideline_layout.takeAt(1)
+            if item.widget():
+                item.widget().deleteLater()
+        session = get_session()
+        try:
+            titles = session.query(Title).all()
+            order = {"L7": 0, "L6": 1, "L5": 2, "L4": 3, "L3": 4, "L2": 5, "L1": 6, "Other": 7}
+            for title in sorted(titles, key=lambda item: order.get(item.name, 99)):
+                label = display_title_name(title)
+                line = f"{label}: {title.currency or 'EUR'} {title.base_salary_min:,.0f} to {title.base_salary_max:,.0f}"
+                l = QLabel(line)
+                l.setStyleSheet("font-size: 13px; color: #166534; background: transparent;")
+                self.salary_guideline_layout.addWidget(l)
+        finally:
+            session.close()
+
+    def _update_salary_warning(self):
+        if not hasattr(self, "salary_warning"):
+            return
+        salary_raw = self._get("base_salary")
+        if not salary_raw:
+            self.salary_warning.hide()
+            return
+        try:
+            salary = float(salary_raw)
+        except ValueError:
+            self.salary_warning.setText(t("salary_number_required"))
+            self.salary_warning.show()
+            return
+        session = get_session()
+        try:
+            title = self._selected_title(session)
+            ok, message = validate_salary_for_title(title, salary)
+            self.salary_warning.setText(message)
+            self.salary_warning.setVisible(not ok)
+        finally:
+            session.close()
 
     def _load_org_units(self):
         self.org_combo.clear()
-        self.org_combo.addItem("— None —", None)
         session = get_session()
         try:
-            for u in session.query(OrgUnit).all():
-                self.org_combo.addItem(f"{u.unit_type.title()}: {u.name}", u.id)
+            if self.degree_combo.currentText() == "Other":
+                others = ensure_others_org_unit(session)
+                session.commit()
+                self.org_combo.addItem(OTHER_ORG_UNIT_NAME, others.id)
+            else:
+                self.org_combo.addItem(t("none"), None)
+                for u in session.query(OrgUnit).filter(OrgUnit.name != OTHER_ORG_UNIT_NAME).all():
+                    self.org_combo.addItem(f"{u.unit_type.title()}: {u.name}", u.id)
         finally:
             session.close()
 
     def _load_managers(self):
         self.manager_combo.clear()
-        self.manager_combo.addItem("— None —", None)
+        self.manager_combo.addItem(t("none"), None)
         session = get_session()
         try:
+            manager_filter = None
+            if self.degree_combo.currentText() == "Other":
+                manager_filter = valid_other_manager_ids(session)
             for e in session.query(Employee).filter_by(status="active").all():
-                self.manager_combo.addItem(f"{e.employee_id} — {e.full_name}", e.id)
+                if manager_filter is not None and e.id not in manager_filter:
+                    continue
+                self.manager_combo.addItem(f"{e.employee_id} - {e.full_name}", e.id)
         finally:
             session.close()
 
@@ -945,7 +1029,7 @@ class AddEmployeeView(QWidget):
             degree = self.degree_combo.currentText()
             title = session.query(Title).filter_by(name=degree_to_title_name(degree)).first()
             if not title:
-                QMessageBox.critical(self, t("error"), "Title not found.")
+                QMessageBox.critical(self, t("error"), t("title_not_found"))
                 return
             emp_id = generate_employee_id(session)
             join_dt = self._get("join_date")
@@ -954,8 +1038,21 @@ class AddEmployeeView(QWidget):
             try:
                 salary = float(salary_raw) if salary_raw else 0.0
             except ValueError:
-                QMessageBox.warning(self, t("warning"), "Base salary must be a number.")
+                QMessageBox.warning(self, t("warning"), t("salary_number_required"))
                 return
+            ok, salary_message = validate_salary_for_title(title, salary)
+            if not ok:
+                QMessageBox.warning(self, t("warning"), salary_message)
+                return
+            org_unit_id = self.org_combo.currentData()
+            reports_to_id = self.manager_combo.currentData()
+            if degree == "Other":
+                others = ensure_others_org_unit(session)
+                org_unit_id = others.id
+                valid_managers = valid_other_manager_ids(session)
+                if reports_to_id and reports_to_id not in valid_managers:
+                    QMessageBox.warning(self, t("warning"), t("other_manager_required"))
+                    return
             emp = Employee(
                 employee_id=emp_id, first_name=self._get("first_name"),
                 last_name=self._get("last_name"), degree=degree,
@@ -965,8 +1062,8 @@ class AddEmployeeView(QWidget):
                 work_phone=self._get("work_phone"), position=self._get("position"),
                 join_date=datetime.combine(join_dt, datetime.min.time()),
                 base_salary=salary, status=self.status_combo.currentData(),
-                title_id=title.id, org_unit_id=self.org_combo.currentData(),
-                reports_to_id=self.manager_combo.currentData(),
+                title_id=title.id, org_unit_id=org_unit_id,
+                reports_to_id=reports_to_id,
             )
             session.add(emp)
             session.flush()
@@ -1029,7 +1126,7 @@ class EditEmployeeView(QWidget):
             emp = session.query(Employee).filter_by(id=employee_db_id).first()
             if not emp:
                 return
-            self.header_title.setText(f"Edit — {emp.full_name}")
+            self.header_title.setText(f"{t('edit')} - {emp.full_name}")
 
             content = QWidget()
             content.setStyleSheet("background: #f9fafb;")
@@ -1079,20 +1176,28 @@ class EditEmployeeView(QWidget):
             self.org_combo = QComboBox()
             self.org_combo.setFixedHeight(36)
             self.org_combo.setStyleSheet(COMBO_STYLE)
-            self.org_combo.addItem("— None —", None)
-            for u in session.query(OrgUnit).all():
-                self.org_combo.addItem(f"{u.unit_type.title()}: {u.name}", u.id)
-                if emp.org_unit_id == u.id:
-                    self.org_combo.setCurrentIndex(self.org_combo.count() - 1)
+            if is_other_employee(emp):
+                others = ensure_others_org_unit(session)
+                session.flush()
+                self.org_combo.addItem(OTHER_ORG_UNIT_NAME, others.id)
+            else:
+                self.org_combo.addItem(t("none"), None)
+                for u in session.query(OrgUnit).filter(OrgUnit.name != OTHER_ORG_UNIT_NAME).all():
+                    self.org_combo.addItem(f"{u.unit_type.title()}: {u.name}", u.id)
+                    if emp.org_unit_id == u.id:
+                        self.org_combo.setCurrentIndex(self.org_combo.count() - 1)
             oc.addWidget(self.org_combo)
 
             oc.addWidget(self._small_lbl("Reports To"))
             self.manager_combo = QComboBox()
             self.manager_combo.setFixedHeight(36)
             self.manager_combo.setStyleSheet(COMBO_STYLE)
-            self.manager_combo.addItem("— None —", None)
+            self.manager_combo.addItem(t("none"), None)
+            manager_filter = valid_other_manager_ids(session) if is_other_employee(emp) else None
             for e in session.query(Employee).filter(Employee.id != employee_db_id).all():
-                self.manager_combo.addItem(f"{e.employee_id} — {e.full_name}", e.id)
+                if manager_filter is not None and e.id not in manager_filter:
+                    continue
+                self.manager_combo.addItem(f"{e.employee_id} - {e.full_name}", e.id)
                 if emp.reports_to_id == e.id:
                     self.manager_combo.setCurrentIndex(self.manager_combo.count() - 1)
             oc.addWidget(self.manager_combo)
@@ -1102,10 +1207,18 @@ class EditEmployeeView(QWidget):
             self.title_combo.setFixedHeight(36)
             self.title_combo.setStyleSheet(COMBO_STYLE)
             for title in session.query(Title).order_by(Title.name.desc()).all():
-                self.title_combo.addItem(f"{title.name} - {title.label}", title.id)
+                self.title_combo.addItem(f"{display_title_name(title)} - {title.label}", title.id)
                 if emp.title_id == title.id:
                     self.title_combo.setCurrentIndex(self.title_combo.count() - 1)
+            self.title_combo.currentIndexChanged.connect(self._update_edit_salary_warning)
             oc.addWidget(self.title_combo)
+
+            self.edit_salary_warning = QLabel("")
+            self.edit_salary_warning.setWordWrap(True)
+            self.edit_salary_warning.hide()
+            self.edit_salary_warning.setStyleSheet("font-size: 12px; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 8px 10px;")
+            oc.addWidget(self.edit_salary_warning)
+            self.fields["base_salary"].textChanged.connect(self._update_edit_salary_warning)
 
             oc.addWidget(self._small_lbl("Status"))
             self.status_combo = QComboBox()
@@ -1126,6 +1239,7 @@ class EditEmployeeView(QWidget):
             right.addWidget(save_btn)
             cl.addLayout(right, 2)
             self.scroll.setWidget(content)
+            self._update_edit_salary_warning()
         finally:
             session.close()
 
@@ -1164,6 +1278,28 @@ class EditEmployeeView(QWidget):
         w = self.fields.get(key)
         return w.text().strip() if isinstance(w, QLineEdit) else None
 
+    def _update_edit_salary_warning(self):
+        if not hasattr(self, "edit_salary_warning"):
+            return
+        salary_raw = self._get("base_salary")
+        if not salary_raw:
+            self.edit_salary_warning.hide()
+            return
+        try:
+            salary = float(salary_raw)
+        except ValueError:
+            self.edit_salary_warning.setText(t("salary_number_required"))
+            self.edit_salary_warning.show()
+            return
+        session = get_session()
+        try:
+            title = session.query(Title).filter_by(id=self.title_combo.currentData()).first()
+            ok, message = validate_salary_for_title(title, salary)
+            self.edit_salary_warning.setText(message)
+            self.edit_salary_warning.setVisible(not ok)
+        finally:
+            session.close()
+
     def _save(self):
         session = get_session()
         try:
@@ -1176,11 +1312,12 @@ class EditEmployeeView(QWidget):
             emp.work_email = self._get("work_email") or emp.work_email
             emp.work_phone = self._get("work_phone") or emp.work_phone
             salary_raw = self._get("base_salary")
+            new_salary = emp.base_salary
             if salary_raw:
                 try:
-                    emp.base_salary = float(salary_raw)
+                    new_salary = float(salary_raw)
                 except ValueError:
-                    QMessageBox.warning(self, t("warning"), "Base salary must be a number.")
+                    QMessageBox.warning(self, t("warning"), t("salary_number_required"))
                     return
 
             manager_id = self.manager_combo.currentData()
@@ -1195,10 +1332,25 @@ class EditEmployeeView(QWidget):
             if _would_create_manager_cycle(session, emp.id, manager_id):
                 QMessageBox.warning(self, t("warning"), "This reporting line would create a manager cycle.")
                 return
+            title = session.query(Title).filter_by(id=title_id).first()
+            ok, salary_message = validate_salary_for_title(title, new_salary)
+            if not ok:
+                QMessageBox.warning(self, t("warning"), salary_message)
+                return
+            if title and is_other_title(title):
+                others = ensure_others_org_unit(session)
+                valid_managers = valid_other_manager_ids(session)
+                if manager_id and manager_id not in valid_managers:
+                    QMessageBox.warning(self, t("warning"), t("other_manager_required"))
+                    return
+                emp.org_unit_id = others.id
+                emp.degree = "Other"
+            else:
+                emp.org_unit_id = self.org_combo.currentData()
 
-            emp.org_unit_id   = self.org_combo.currentData()
             emp.reports_to_id = manager_id
             emp.title_id      = title_id
+            emp.base_salary   = new_salary
             emp.status        = status
 
             if self.user.role == "admin":
@@ -1306,19 +1458,34 @@ class EmployeeProfileView(QWidget):
             sb = QLabel(emp.status.replace("_"," ").title())
             sb.setStyleSheet(f"background: {sbg}; color: {sfg}; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: bold;")
             name_row.addWidget(sb)
-            lb = QLabel(emp.title.name if emp.title else "—")
+            lb = QLabel(emp.title.name if emp.title else "-")
             lb.setStyleSheet("background: #eff6ff; color: #2563eb; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: bold;")
             name_row.addWidget(lb)
             name_row.addStretch()
             info.addLayout(name_row)
-            pos_lbl = QLabel(f"{emp.position}  ·  {emp.org_unit.name if emp.org_unit else '—'}")
+            pos_lbl = QLabel(f"{emp.position} - {emp.org_unit.name if emp.org_unit else '-'}")
             pos_lbl.setStyleSheet("font-size: 13px; color: #6b7280; background: transparent;")
             info.addWidget(pos_lbl)
             dr = QHBoxLayout()
-            for icon, val in [("✉", emp.work_email or "—"), ("📅", str(emp.join_date.date()) if emp.join_date else "—"), ("🎓", emp.degree), ("💰", f"€{emp.base_salary:,.2f}")]:
-                l = QLabel(f"{icon} {val}")
-                l.setStyleSheet("font-size: 12px; color: #9ca3af; background: transparent; margin-right: 16px;")
-                dr.addWidget(l)
+            for icon_name, val in [
+                ("fa5s.envelope", emp.work_email or "-"),
+                ("fa5s.calendar-alt", str(emp.join_date.date()) if emp.join_date else "-"),
+                ("fa5s.graduation-cap", emp.degree),
+                ("fa5s.coins", f"EUR {emp.base_salary:,.2f}"),
+            ]:
+                wrap = QWidget()
+                wrap.setStyleSheet("background: transparent; border: none;")
+                row = QHBoxLayout(wrap)
+                row.setContentsMargins(0, 0, 16, 0)
+                row.setSpacing(6)
+                icon_lbl = QLabel()
+                icon_lbl.setFixedSize(14, 14)
+                icon_lbl.setPixmap(qta.icon(icon_name, color="#9ca3af").pixmap(13, 13))
+                l = QLabel(str(val))
+                l.setStyleSheet("font-size: 12px; color: #9ca3af; background: transparent;")
+                row.addWidget(icon_lbl)
+                row.addWidget(l)
+                dr.addWidget(wrap)
             dr.addStretch()
             info.addLayout(dr)
             pc.addLayout(info)
@@ -1329,12 +1496,12 @@ class EmployeeProfileView(QWidget):
 
             emp_card = self._info_card("Employment Information", [
                 (t("employee_id"), emp.employee_id),
-                (t("department"),  emp.org_unit.name if emp.org_unit else "—"),
+                (t("department"),  emp.org_unit.name if emp.org_unit else "-"),
                 (t("position"),    emp.position),
-                (t("level"),       emp.title.name if emp.title else "—"),
+                (t("level"),       emp.title.name if emp.title else "-"),
                 (t("base_salary"), f"€{emp.base_salary:,.2f}"),
-                (t("reports_to"),  emp.reports_to.full_name if emp.reports_to else "—"),
-                (t("join_date"),   str(emp.join_date.date()) if emp.join_date else "—"),
+                (t("reports_to"),  emp.reports_to.full_name if emp.reports_to else "-"),
+                (t("join_date"),   str(emp.join_date.date()) if emp.join_date else "-"),
             ])
             cols.addWidget(emp_card)
 
@@ -1355,14 +1522,14 @@ class EmployeeProfileView(QWidget):
                 bar_fill.setStyleSheet(f"background: {'#10b981' if pct >= 100 else '#2563eb'}; border-radius: 5px;")
                 bar_fill.setFixedWidth(max(10, int(pct / 100 * 300)))
                 rc.addWidget(bar_bg)
-                el = QLabel("✅ Eligible for promotion!" if race["eligible"] else f"⏱ {race['months_remaining']} months remaining")
+                el = QLabel(t("eligible_for_promotion") if race["eligible"] else t("months_remaining_count", count=race["months_remaining"]))
                 el.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {'#10b981' if race['eligible'] else '#2563eb'}; background: transparent;")
                 rc.addWidget(el)
                 for label, val in [
-                    ("Base track duration",   f"{race['base_months']} months"),
-                    ("Months elapsed",         f"{race['months_elapsed']} months"),
-                    ("Commendation reduction", f"−{race['commendation_reduction']} months"),
-                    ("Sanction addition",      f"+{race['sanction_addition']} months"),
+                    (t("base_track_duration"), f"{race['base_months']} months"),
+                    (t("months_elapsed"),      f"{race['months_elapsed']} months"),
+                    (t("commendation_reduction"), f"-{race['commendation_reduction']} months"),
+                    (t("sanction_addition"),   f"+{race['sanction_addition']} months"),
                 ]:
                     row = QHBoxLayout()
                     k = QLabel(label); k.setStyleSheet("font-size: 12px; color: #6b7280; background: transparent;")
@@ -1377,10 +1544,10 @@ class EmployeeProfileView(QWidget):
 
             if self.user.role == "admin":
                 cl.addWidget(self._info_card("Personal Information (Admin Only)", [
-                    (t("personal_email"), emp.personal_email or "—"),
-                    (t("phone"),          emp.phone or "—"),
-                    (t("date_of_birth"),  str(emp.date_of_birth.date()) if emp.date_of_birth else "—"),
-                    (t("address"),        emp.address or "—"),
+                    (t("personal_email"), emp.personal_email or "-"),
+                    (t("phone"),          emp.phone or "-"),
+                    (t("date_of_birth"),  str(emp.date_of_birth.date()) if emp.date_of_birth else "-"),
+                    (t("address"),        emp.address or "-"),
                 ], badge="Admin Only"))
 
             cl.addStretch()
@@ -1446,13 +1613,14 @@ class EmployeeProfileView(QWidget):
             if not emp:
                 return
             race = calculate_months_remaining(emp, session)
+            sub_race = calculate_sub_race(emp, session)
             content = QWidget()
             content.setStyleSheet("background: #f9fafb;")
             page = QVBoxLayout(content)
             page.setContentsMargins(28, 28, 28, 28)
             page.setSpacing(18)
 
-            back = QPushButton("  Back to Employees")
+            back = QPushButton("  " + t("back_to_employees"))
             back.setIcon(qta.icon("fa5s.arrow-left", color="#111827"))
             back.setIconSize(QSize(12, 12))
             back.setCursor(Qt.PointingHandCursor)
@@ -1470,10 +1638,11 @@ class EmployeeProfileView(QWidget):
                 QTabBar::tab:last { border-top-right-radius: 9px; border-bottom-right-radius: 9px; }
                 QTabBar::tab:selected { background: white; color: #030213; }
             """)
-            tabs.addTab(self._details_tab(emp), "Personal Details")
-            tabs.addTab(self._promotion_tab(emp, race), "Promotion History")
-            tabs.addTab(self._commendations_tab(emp), "Commendations")
-            tabs.addTab(self._sanctions_tab(emp), "Sanctions")
+            tabs.addTab(self._details_tab(emp), t("personal_details"))
+            tabs.addTab(self._promotion_tab(emp, race, sub_race), t("promotion_history"))
+            if not is_other_employee(emp):
+                tabs.addTab(self._commendations_tab(emp), t("commendations"))
+                tabs.addTab(self._sanctions_tab(emp), t("sanctions"))
             page.addWidget(tabs)
             page.addStretch()
             self.scroll.setWidget(content)
@@ -1499,8 +1668,9 @@ class EmployeeProfileView(QWidget):
         name = QLabel(emp.full_name)
         name.setStyleSheet("font-size: 24px; font-weight: 800; color: #111827; background: transparent;")
         name_row.addWidget(name)
-        name_row.addWidget(self._badge(emp.status.replace("_", " ").title(), "#dcfce7", "#166534"))
-        name_row.addWidget(self._badge(emp.title.name if emp.title else "-", "#dbeafe", "#1e40af"))
+        name_row.addWidget(self._badge(t(emp.status), "#dcfce7", "#166534"))
+        badge_bg, badge_fg = ("#e2e8f0", "#334155") if is_other_employee(emp) else ("#dbeafe", "#1e40af")
+        name_row.addWidget(self._badge(display_title_name(emp.title), badge_bg, badge_fg))
         name_row.addStretch()
         info.addLayout(name_row)
         pos = QLabel(emp.position)
@@ -1511,7 +1681,7 @@ class EmployeeProfileView(QWidget):
             ("fa5s.envelope", emp.work_email or "-"),
             ("fa5s.phone", emp.work_phone or emp.phone or "-"),
             ("fa5s.map-marker-alt", emp.address or "-"),
-            ("fa5s.calendar-alt", f"Joined {emp.join_date.date()}" if emp.join_date else "-"),
+            ("fa5s.calendar-alt", t("joined_on", date=emp.join_date.date()) if emp.join_date else "-"),
         ]:
             row = QHBoxLayout()
             row.setSpacing(5)
@@ -1526,7 +1696,7 @@ class EmployeeProfileView(QWidget):
         meta.addStretch()
         info.addLayout(meta)
         layout.addLayout(info, 1)
-        edit = QPushButton("  Editing" if self.editing else "  Edit Profile")
+        edit = QPushButton("  " + (t("editing") if self.editing else t("edit_profile")))
         edit.setIcon(qta.icon("fa5s.edit", color="white"))
         edit.setIconSize(QSize(13, 13))
         edit.setCursor(Qt.PointingHandCursor)
@@ -1554,20 +1724,20 @@ class EmployeeProfileView(QWidget):
             (t("employee_id"), emp.employee_id),
             (t("department"), emp.org_unit.name if emp.org_unit else "-"),
             (t("position"), emp.position),
-            (t("level"), emp.title.name if emp.title else "-"),
+            (t("level"), display_title_name(emp.title)),
             (t("base_salary"), f"EUR {emp.base_salary:,.2f}"),
             (t("reports_to"), emp.reports_to.full_name if emp.reports_to else "-"),
             (t("join_date"), str(emp.join_date.date()) if emp.join_date else "-"),
         ]))
         if self.user.role == "admin":
-            layout.addWidget(self._info_card("Personal Information (Admin Only)", [
-                ("Full Name", emp.full_name),
+            layout.addWidget(self._info_card(t("personal_info_admin"), [
+                (t("full_name"), emp.full_name),
                 (t("personal_email"), emp.personal_email or "-"),
                 (t("phone"), emp.phone or "-"),
                 (t("address"), emp.address or "-"),
-                (t("degree"), emp.degree),
+                (t("degree"), t("other_misc") if emp.degree == "Other" else emp.degree),
                 (t("base_salary"), f"EUR {emp.base_salary:,.2f}"),
-            ], badge="Admin Only"))
+            ], badge=t("admin_only_badge")))
         layout.addStretch()
         return page
 
@@ -1588,7 +1758,7 @@ class EmployeeProfileView(QWidget):
             ("base_salary", t("base_salary"), str(emp.base_salary or 0), False),
         ]))
         if self.user.role == "admin":
-            left.addWidget(self._edit_card("Personal Information (Admin Only)", [
+            left.addWidget(self._edit_card(t("personal_info_admin"), [
                 ("first_name", t("first_name"), emp.first_name, True),
                 ("last_name", t("last_name"), emp.last_name, True),
                 ("personal_email", t("personal_email"), emp.personal_email or "", False),
@@ -1603,39 +1773,56 @@ class EmployeeProfileView(QWidget):
         right = QVBoxLayout(right_card)
         right.setContentsMargins(24, 24, 24, 24)
         right.setSpacing(12)
-        right.addWidget(self._info_title("Organization & Status"))
+        right.addWidget(self._info_title(t("organization_and_status")))
 
         session = get_session()
         try:
-            right.addWidget(self._edit_label("Org Unit"))
+            right.addWidget(self._edit_label(t("org_unit")))
             self.inline_org_combo = CleanSelect()
-            self.inline_org_combo.addItem("— None —", None)
-            for unit in session.query(OrgUnit).all():
-                self.inline_org_combo.addItem(f"{unit.unit_type.title()}: {unit.name}", unit.id)
-                if emp.org_unit_id == unit.id:
-                    self.inline_org_combo.setCurrentIndex(self.inline_org_combo.count() - 1)
+            if is_other_employee(emp):
+                others = ensure_others_org_unit(session)
+                session.flush()
+                self.inline_org_combo.addItem(OTHER_ORG_UNIT_NAME, others.id)
+            else:
+                self.inline_org_combo.addItem(t("none"), None)
+                for unit in session.query(OrgUnit).filter(OrgUnit.name != OTHER_ORG_UNIT_NAME).all():
+                    self.inline_org_combo.addItem(f"{unit.unit_type.title()}: {unit.name}", unit.id)
+                    if emp.org_unit_id == unit.id:
+                        self.inline_org_combo.setCurrentIndex(self.inline_org_combo.count() - 1)
             right.addWidget(self.inline_org_combo)
 
-            right.addWidget(self._edit_label("Reports To"))
+            right.addWidget(self._edit_label(t("reports_to")))
             self.inline_manager_combo = CleanSelect()
-            self.inline_manager_combo.addItem("— None —", None)
+            self.inline_manager_combo.addItem(t("none"), None)
+            manager_filter = valid_other_manager_ids(session) if is_other_employee(emp) else None
             for manager in session.query(Employee).filter(Employee.id != emp.id).all():
-                self.inline_manager_combo.addItem(f"{manager.employee_id} — {manager.full_name}", manager.id)
+                if manager_filter is not None and manager.id not in manager_filter:
+                    continue
+                self.inline_manager_combo.addItem(f"{manager.employee_id} - {manager.full_name}", manager.id)
                 if emp.reports_to_id == manager.id:
                     self.inline_manager_combo.setCurrentIndex(self.inline_manager_combo.count() - 1)
             right.addWidget(self.inline_manager_combo)
 
-            right.addWidget(self._edit_label("Current Level / Role"))
+            right.addWidget(self._edit_label(t("current_level_role")))
             self.inline_title_combo = CleanSelect()
             for title in session.query(Title).order_by(Title.name.desc()).all():
-                self.inline_title_combo.addItem(f"{title.name} - {title.label}", title.id)
+                self.inline_title_combo.addItem(f"{display_title_name(title)} - {title.label}", title.id)
                 if emp.title_id == title.id:
                     self.inline_title_combo.setCurrentIndex(self.inline_title_combo.count() - 1)
+            self.inline_title_combo.valueChanged.connect(self._update_inline_salary_warning)
             right.addWidget(self.inline_title_combo)
         finally:
             session.close()
 
-        right.addWidget(self._edit_label("Status"))
+        self.inline_salary_warning = QLabel("")
+        self.inline_salary_warning.setWordWrap(True)
+        self.inline_salary_warning.hide()
+        self.inline_salary_warning.setStyleSheet("font-size: 12px; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 8px 10px;")
+        right.addWidget(self.inline_salary_warning)
+        self.edit_fields["base_salary"].textChanged.connect(self._update_inline_salary_warning)
+        self._update_inline_salary_warning()
+
+        right.addWidget(self._edit_label(t("status")))
         self.inline_status_combo = CleanSelect()
         for status in STATUS_OPTIONS:
             self.inline_status_combo.addItem(status.replace("_", " ").title(), status)
@@ -1644,14 +1831,14 @@ class EmployeeProfileView(QWidget):
         right.addWidget(self.inline_status_combo)
         right.addSpacing(10)
 
-        save = QPushButton("Save Changes")
+        save = QPushButton(t("save_changes"))
         save.setCursor(Qt.PointingHandCursor)
         save.setFixedHeight(44)
         save.setStyleSheet("QPushButton { background: #030213; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; } QPushButton:hover { background: #111827; }")
         save.clicked.connect(self._save_inline_profile)
         right.addWidget(save)
 
-        cancel = QPushButton("Cancel")
+        cancel = QPushButton(t("cancel"))
         cancel.setCursor(Qt.PointingHandCursor)
         cancel.setFixedHeight(44)
         cancel.setStyleSheet("QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-weight: 600; } QPushButton:hover { background: #f3f4f6; }")
@@ -1695,6 +1882,29 @@ class EmployeeProfileView(QWidget):
         self.editing = False
         self.load(self.employee_db_id)
 
+    def _update_inline_salary_warning(self):
+        if not hasattr(self, "inline_salary_warning"):
+            return
+        widget = self.edit_fields.get("base_salary")
+        salary_raw = widget.text().strip() if widget else ""
+        if not salary_raw:
+            self.inline_salary_warning.hide()
+            return
+        try:
+            salary = float(salary_raw)
+        except ValueError:
+            self.inline_salary_warning.setText(t("salary_number_required"))
+            self.inline_salary_warning.show()
+            return
+        session = get_session()
+        try:
+            title = session.query(Title).filter_by(id=self.inline_title_combo.currentData()).first()
+            ok, message = validate_salary_for_title(title, salary)
+            self.inline_salary_warning.setText(message)
+            self.inline_salary_warning.setVisible(not ok)
+        finally:
+            session.close()
+
     def _save_inline_profile(self):
         session = get_session()
         try:
@@ -1708,7 +1918,7 @@ class EmployeeProfileView(QWidget):
                 return widget.text().strip() if widget else ""
 
             if not value("position"):
-                QMessageBox.warning(self, t("warning"), f"{t('position')} is required.")
+                QMessageBox.warning(self, t("warning"), f"{t('position')} {t('required_field').lower()}.")
                 return
 
             emp.position = value("position")
@@ -1716,32 +1926,47 @@ class EmployeeProfileView(QWidget):
             emp.work_phone = value("work_phone") or None
             salary_raw = value("base_salary")
             try:
-                emp.base_salary = float(salary_raw) if salary_raw else 0.0
+                new_salary = float(salary_raw) if salary_raw else 0.0
             except ValueError:
-                QMessageBox.warning(self, t("warning"), "Base salary must be a number.")
+                QMessageBox.warning(self, t("warning"), t("salary_number_required"))
                 return
 
             manager_id = self.inline_manager_combo.currentData()
             title_id = self.inline_title_combo.currentData()
             status = self.inline_status_combo.currentData()
             if title_id is None:
-                QMessageBox.warning(self, t("warning"), "Please select a valid current level.")
+                QMessageBox.warning(self, t("warning"), t("valid_level_required"))
                 return
             if status is None:
-                QMessageBox.warning(self, t("warning"), "Please select a valid status.")
+                QMessageBox.warning(self, t("warning"), t("valid_status_required"))
                 return
             if _would_create_manager_cycle(session, emp.id, manager_id):
-                QMessageBox.warning(self, t("warning"), "This reporting line would create a manager cycle.")
+                QMessageBox.warning(self, t("warning"), t("manager_cycle_error"))
                 return
+            title = session.query(Title).filter_by(id=title_id).first()
+            ok, salary_message = validate_salary_for_title(title, new_salary)
+            if not ok:
+                QMessageBox.warning(self, t("warning"), salary_message)
+                return
+            if title and is_other_title(title):
+                others = ensure_others_org_unit(session)
+                emp.org_unit_id = others.id
+                valid_managers = valid_other_manager_ids(session)
+                if manager_id and manager_id not in valid_managers:
+                    QMessageBox.warning(self, t("warning"), t("other_manager_required"))
+                    return
+                emp.degree = "Other"
+            else:
+                emp.org_unit_id = self.inline_org_combo.currentData()
 
-            emp.org_unit_id = self.inline_org_combo.currentData()
             emp.reports_to_id = manager_id
             emp.title_id = title_id
+            emp.base_salary = new_salary
             emp.status = status
 
             if self.user.role == "admin":
                 if not value("first_name") or not value("last_name"):
-                    QMessageBox.warning(self, t("warning"), "First name and last name are required.")
+                    QMessageBox.warning(self, t("warning"), t("first_last_required"))
                     return
                 emp.first_name = value("first_name")
                 emp.last_name = value("last_name")
@@ -1763,34 +1988,148 @@ class EmployeeProfileView(QWidget):
         finally:
             session.close()
 
-    def _promotion_tab(self, emp, race):
+    def _promotion_tab(self, emp, race, sub_race):
         page = QWidget()
         page.setStyleSheet("background: #f9fafb;")
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 12, 0, 0)
-        card = self._list_card("Promotion History")
+        layout.setSpacing(14)
+        layout.addWidget(self._race_overview_card(sub_race))
+        layout.addWidget(self._sub_race_card(sub_race))
+        card = self._list_card(t("promotion_history"))
         body = card.layout()
-        for promo in reversed(list(emp.promotions)):
-            body.addWidget(self._event_row("fa5s.chart-line", "#10b981", f"Promoted from {promo.from_title.name} to {promo.to_title.name}", promo.notes or promo.basis.replace("_", " ").title(), promo.promoted_at.strftime("%Y-%m-%d") if promo.promoted_at else "-"))
-        body.addWidget(self._event_row("fa5s.chart-line", "#10b981", "Initial Position", f"Initial hire ({emp.degree} degree)", emp.join_date.strftime("%Y-%m-%d") if emp.join_date else "-"))
+        timeline = []
+        for promo in emp.promotions:
+            timeline.append((
+                promo.promoted_at or datetime.min,
+                self._event_row(
+                    "fa5s.chart-line",
+                    "#10b981",
+                    t("promotion_event_title", from_level=display_title_name(promo.from_title), to_level=display_title_name(promo.to_title)),
+                    promo.notes or promo.basis.replace("_", " ").title(),
+                    promo.promoted_at.strftime("%Y-%m-%d") if promo.promoted_at else "-",
+                ),
+            ))
+        for inc in emp.salary_increments:
+            timeline.append((
+                inc.applied_at or datetime.min,
+                self._event_row(
+                    "fa5s.percentage",
+                    "#2563eb",
+                    t("sub_race_increment_event"),
+                    inc.notes or t("annual_increment"),
+                    inc.applied_at.strftime("%Y-%m-%d") if inc.applied_at else "-",
+                ),
+            ))
+        for _, widget in sorted(timeline, key=lambda item: item[0], reverse=True):
+            body.addWidget(widget)
+        body.addWidget(self._event_row("fa5s.chart-line", "#10b981", t("initial_position"), t("initial_hire_degree", degree=emp.degree), emp.join_date.strftime("%Y-%m-%d") if emp.join_date else "-"))
         if race["has_next_level"]:
-            body.addWidget(self._event_row("fa5s.clock", "#2563eb", "Current Promotion Race", f"{race['progress_pct']}% complete, {race['months_remaining']} month(s) remaining", "Live"))
+            body.addWidget(self._event_row("fa5s.clock", "#2563eb", t("current_promotion_race"), t("current_race_progress", percent=race["progress_pct"], months=race["months_remaining"]), t("live_label")))
         layout.addWidget(card)
         layout.addStretch()
         return page
+
+    def _race_overview_card(self, sub_race):
+        card = QFrame()
+        card.setObjectName("ProfileCard")
+        card.setStyleSheet(PROFILE_CARD_SS)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(12)
+        header = QHBoxLayout()
+        header.addWidget(self._info_title(t("current_promotion_race")))
+        header.addStretch()
+        layout.addLayout(header)
+
+        row = QHBoxLayout()
+        row.setSpacing(12)
+        row.addWidget(self._badge(sub_race["current_title"], "#dbeafe", "#1e40af"))
+        bar = QProgressBar()
+        bar.setRange(0, 100)
+        bar.setValue(sub_race.get("progress_pct") or 0)
+        bar.setFixedHeight(10)
+        bar.setTextVisible(False)
+        bar.setStyleSheet("QProgressBar { background: #e5e7eb; border-radius: 5px; border: none; } QProgressBar::chunk { background: #facc15; border-radius: 5px; }")
+        row.addWidget(bar, 1)
+        row.addWidget(self._badge(sub_race["next_title"] or t("annual_increment"), "#dcfce7", "#166534"))
+        layout.addLayout(row)
+
+        meta = QHBoxLayout()
+        meta.setSpacing(18)
+        start = sub_race["race_start"].strftime("%Y-%m-%d") if sub_race.get("race_start") else "-"
+        meta.addWidget(self._small_meta(t("race_started_on", date=start)))
+        if sub_race.get("expected_promotion_date"):
+            expected = sub_race["expected_promotion_date"].strftime("%Y-%m-%d")
+            meta.addWidget(self._small_meta(t("expected_promotion_on", date=expected)))
+        if sub_race.get("months_left") is not None:
+            meta.addWidget(self._small_meta(t("months_remaining_count", count=sub_race["months_left"])))
+        meta.addStretch()
+        layout.addLayout(meta)
+        return card
+
+    def _sub_race_card(self, sub_race):
+        card = QFrame()
+        card.setObjectName("ProfileCard")
+        card.setStyleSheet(PROFILE_CARD_SS)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(12)
+        layout.addWidget(self._info_title(t("sub_race")))
+
+        scroller = QScrollArea()
+        scroller.setWidgetResizable(True)
+        scroller.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroller.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroller.setFixedHeight(112)
+        scroller.setStyleSheet("border: none; background: transparent;")
+        holder = QWidget()
+        holder.setStyleSheet("background: transparent;")
+        row = QHBoxLayout(holder)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(10)
+        for step in sub_race.get("steps", []):
+            box = QFrame()
+            done = step["completed"]
+            color = "#166534" if done else "#6b7280"
+            bg = "#dcfce7" if done else "#f3f4f6"
+            border = "#bbf7d0" if done else "#e5e7eb"
+            box.setStyleSheet(f"QFrame {{ background: {bg}; border: 1px solid {border}; border-radius: 8px; }} QLabel {{ background: transparent; border: none; }}")
+            box.setFixedWidth(118)
+            bl = QVBoxLayout(box)
+            bl.setContentsMargins(10, 8, 10, 8)
+            bl.setSpacing(4)
+            title = QLabel(step["label"])
+            title.setAlignment(Qt.AlignCenter)
+            title.setStyleSheet(f"font-size: 13px; font-weight: 800; color: {color};")
+            date_text = step["due_date"].strftime("%Y-%m-%d") if step.get("due_date") else "-"
+            date = QLabel(date_text)
+            date.setAlignment(Qt.AlignCenter)
+            date.setStyleSheet(f"font-size: 11px; color: {color};")
+            inc = QLabel(step.get("increment") or "")
+            inc.setAlignment(Qt.AlignCenter)
+            inc.setStyleSheet(f"font-size: 11px; font-weight: 700; color: {color};")
+            bl.addWidget(title)
+            bl.addWidget(date)
+            bl.addWidget(inc)
+            row.addWidget(box)
+        row.addStretch()
+        scroller.setWidget(holder)
+        layout.addWidget(scroller)
+        return card
 
     def _commendations_tab(self, emp):
         page = QWidget()
         page.setStyleSheet("background: #f9fafb;")
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 12, 0, 0)
-        card = self._list_card("Commendations")
+        card = self._list_card(t("commendations"))
         body = card.layout()
         if emp.commendations:
             for comm in sorted(emp.commendations, key=lambda c: c.issued_at or datetime.min, reverse=True):
-                body.addWidget(self._event_row("fa5s.award", "#f59e0b", f"{comm.title} ({comm.commendation_ref})", f"Category {comm.category} - {abs(comm.months_impact)} month(s) faster", comm.issued_at.strftime("%Y-%m-%d") if comm.issued_at else "-"))
+                body.addWidget(self._event_row("fa5s.award", "#f59e0b", f"{comm.title} ({comm.commendation_ref})", f"{t('commendation_category')} {comm.category} - {abs(comm.months_impact)}", comm.issued_at.strftime("%Y-%m-%d") if comm.issued_at else "-"))
         else:
-            body.addWidget(self._empty_row("No commendations recorded for this employee."))
+            body.addWidget(self._empty_row(t("no_commendations")))
         layout.addWidget(card)
         layout.addStretch()
         return page
@@ -1800,15 +2139,15 @@ class EmployeeProfileView(QWidget):
         page.setStyleSheet("background: #f9fafb;")
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 12, 0, 0)
-        card = self._list_card("Sanctions")
+        card = self._list_card(t("sanctions"))
         body = card.layout()
         if emp.sanctions:
             for sanction in sorted(emp.sanctions, key=lambda s: s.issued_at or datetime.min, reverse=True):
-                status = "Resolved" if sanction.is_resolved else "Active"
+                status = t("resolved") if sanction.is_resolved else t("active")
                 resolved = f", resolved {sanction.resolved_at:%Y-%m-%d}" if sanction.resolved_at else ""
-                body.addWidget(self._event_row("fa5s.exclamation-triangle", "#ef4444", f"{sanction.sanction_type.replace('_', ' ').title()} ({sanction.sanction_ref})", f"{sanction.reason} - +{sanction.delay_months} month(s), {status}{resolved}", sanction.issued_at.strftime("%Y-%m-%d") if sanction.issued_at else "-"))
+                body.addWidget(self._event_row("fa5s.exclamation-triangle", "#ef4444", f"{t(sanction.sanction_type)} ({sanction.sanction_ref})", f"{sanction.reason} - +{sanction.delay_months}, {status}{resolved}", sanction.issued_at.strftime("%Y-%m-%d") if sanction.issued_at else "-"))
         else:
-            body.addWidget(self._empty_row("No sanctions recorded for this employee."))
+            body.addWidget(self._empty_row(t("no_sanctions")))
         layout.addWidget(card)
         layout.addStretch()
         return page
@@ -1816,6 +2155,11 @@ class EmployeeProfileView(QWidget):
     def _info_title(self, text):
         label = QLabel(text)
         label.setStyleSheet("font-size: 15px; font-weight: 700; color: #111827; background: transparent;")
+        return label
+
+    def _small_meta(self, text):
+        label = QLabel(text)
+        label.setStyleSheet("font-size: 12px; color: #6b7280; background: transparent;")
         return label
 
     def _badge(self, text, bg, fg):

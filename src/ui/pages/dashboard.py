@@ -1,5 +1,7 @@
 """Dashboard page matching the MockUI React dashboard layout."""
 
+from datetime import datetime
+
 import qtawesome as qta
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -40,7 +42,7 @@ class SalaryIncrementReviewDialog(QDialog):
         self.increment_data = increment_data
         self.user = user
         self.approved_ids = set()
-        self.setWindowTitle("Review Salary Increments")
+        self.setWindowTitle(t("review_salary_increments"))
         self.setMinimumSize(700, 460)
         self.setStyleSheet("background: white; color: #111827;")
         self._build()
@@ -50,16 +52,22 @@ class SalaryIncrementReviewDialog(QDialog):
         layout.setContentsMargins(28, 24, 28, 24)
         layout.setSpacing(16)
 
-        title = QLabel("Annual Salary Increment Review")
+        title = QLabel(t("annual_salary_increment_review"))
         title.setStyleSheet("font-size: 18px; font-weight: 700; color: #111827;")
-        sub = QLabel(f"{len(self.increment_data)} employee(s) are due for their annual salary increment.")
+        sub = QLabel(t("salary_increment_review_subtitle", count=len(self.increment_data)))
         sub.setStyleSheet("font-size: 13px; color: #6b7280;")
         layout.addWidget(title)
         layout.addWidget(sub)
 
         self.table = QTableWidget()
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["Employee", "Current Salary", "New Salary", "Increment", "Action"])
+        self.table.setHorizontalHeaderLabels([
+            t("employee"),
+            t("current_salary"),
+            t("new_salary"),
+            t("increment"),
+            t("action"),
+        ])
         self.table.setStyleSheet(TABLE_SS)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Fixed)
@@ -81,7 +89,7 @@ class SalaryIncrementReviewDialog(QDialog):
         layout.addWidget(self.table)
 
         btn_row = QHBoxLayout()
-        approve_all = QPushButton("  Approve All")
+        approve_all = QPushButton("  " + t("approve_all"))
         approve_all.setIcon(qta.icon("fa5s.check-double", color="white"))
         approve_all.setIconSize(_ICO)
         approve_all.setFixedHeight(36)
@@ -89,7 +97,7 @@ class SalaryIncrementReviewDialog(QDialog):
         approve_all.setStyleSheet(btn_primary(36))
         approve_all.clicked.connect(self._approve_all)
 
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton(t("close"))
         close_btn.setFixedHeight(36)
         close_btn.setCursor(Qt.PointingHandCursor)
         close_btn.setStyleSheet(btn_outline(36))
@@ -102,13 +110,13 @@ class SalaryIncrementReviewDialog(QDialog):
 
     def _set_row_btn(self, idx, emp_id):
         if emp_id in self.approved_ids:
-            lbl = QLabel("Approved")
+            lbl = QLabel(t("approved"))
             lbl.setAlignment(Qt.AlignCenter)
             lbl.setStyleSheet("color: #10b981; font-size: 12px; font-weight: 700;")
             self.table.setCellWidget(idx, 4, lbl)
             return
 
-        btn = QPushButton("Approve")
+        btn = QPushButton(t("approve"))
         btn.setCursor(Qt.PointingHandCursor)
         btn.setStyleSheet(
             "QPushButton { background: #dcfce7; color: #166534; border: none;"
@@ -126,16 +134,16 @@ class SalaryIncrementReviewDialog(QDialog):
                 self.approved_ids.add(emp_id)
                 self._set_row_btn(row_idx, emp_id)
             else:
-                QMessageBox.warning(self, "Error", result.get("error", "Failed."))
+                _warning(self, t("error"), result.get("error", "Failed."))
         except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
+            _critical(self, t("error"), str(e))
         finally:
             session.close()
 
     def _approve_all(self):
         pending = [r for r in self.increment_data if r["id"] not in self.approved_ids]
         if not pending:
-            QMessageBox.information(self, "Done", "All increments already approved.")
+            _information(self, t("done"), t("all_increments_approved"))
             return
 
         errors = []
@@ -156,9 +164,9 @@ class SalaryIncrementReviewDialog(QDialog):
                 session.close()
 
         if errors:
-            QMessageBox.warning(self, "Some Failed", "\n".join(errors))
+            _warning(self, t("some_failed"), "\n".join(errors))
         else:
-            QMessageBox.information(self, "Done", f"All {len(pending)} increment(s) approved.")
+            _information(self, t("done"), t("all_increments_done", count=len(pending)))
 
 
 class DashboardPage(QWidget):
@@ -203,12 +211,14 @@ class DashboardPage(QWidget):
                     "increment_str": inc_str,
                 })
 
-            recent = session.query(AuditLog).order_by(AuditLog.performed_at.desc()).limit(5).all()
+            now = datetime.utcnow()
+            recent = session.query(AuditLog).order_by(AuditLog.performed_at.desc(), AuditLog.id.desc()).limit(50).all()
+            recent = [log for log in recent if not log.performed_at or log.performed_at <= now][:5]
             self.logs_data = [
                 {
                     "action": (log.action or "Activity").replace(".", " ").replace("_", " ").title(),
-                    "target": log.description or "Organization record updated",
-                    "user": "Admin User",
+                    "target": log.description or t("organization_record_updated"),
+                    "user": log.performed_by.full_name if log.performed_by else "System",
                     "time": log.performed_at.strftime("%b %d, %H:%M") if log.performed_at else "",
                 }
                 for log in recent
@@ -255,9 +265,9 @@ class DashboardPage(QWidget):
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(0)
 
-        title = QLabel("Dashboard")
+        title = QLabel(t("dashboard_title"))
         title.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827; background: transparent;")
-        subtitle = QLabel("Welcome back! Here's what's happening with your organization.")
+        subtitle = QLabel(t("dashboard_subtitle"))
         subtitle.setStyleSheet("font-size: 16px; color: #4b5563; background: transparent;")
         layout.addWidget(title)
         layout.addSpacing(6)
@@ -266,7 +276,7 @@ class DashboardPage(QWidget):
 
         actions = QHBoxLayout()
         actions.setSpacing(12)
-        add_btn = QPushButton("  Add Employee")
+        add_btn = QPushButton("  " + t("add_employee"))
         add_btn.setIcon(qta.icon("fa5s.user-plus", color="white"))
         add_btn.setIconSize(_ICO)
         add_btn.setFixedHeight(44)
@@ -274,7 +284,7 @@ class DashboardPage(QWidget):
         add_btn.setStyleSheet(btn_primary(44))
         add_btn.clicked.connect(lambda: self.navigate("employees"))
 
-        imp_btn = QPushButton("  Import Data")
+        imp_btn = QPushButton("  " + t("nav_import"))
         imp_btn.setIcon(qta.icon("fa5s.calendar", color="#111827"))
         imp_btn.setIconSize(_ICO)
         imp_btn.setFixedHeight(44)
@@ -296,10 +306,10 @@ class DashboardPage(QWidget):
         stats.setHorizontalSpacing(24)
         stats.setVerticalSpacing(24)
         for i, card in enumerate([
-            self._stat_card("Total Employees", str(self.emp_count), "Organization records", "#3b82f6", "fa5s.users"),
-            self._stat_card("Pending Promotions", str(self.promotion_count), "Eligible right now", "#10b981", "fa5s.chart-line"),
-            self._stat_card("Commendations (This Month)", str(self.commend_count), "Awards recorded", "#f59e0b", "fa5s.award"),
-            self._stat_card("Active Sanctions", str(self.sanction_count), "Open disciplinary actions", "#ef4444", "fa5s.exclamation-triangle"),
+            self._stat_card(t("total_employees"), str(self.emp_count), t("organization_records"), "#3b82f6", "fa5s.users"),
+            self._stat_card(t("pending_promotions"), str(self.promotion_count), t("eligible_right_now"), "#10b981", "fa5s.chart-line"),
+            self._stat_card(t("commendations_this_month"), str(self.commend_count), t("awards_recorded"), "#f59e0b", "fa5s.award"),
+            self._stat_card(t("active_sanctions"), str(self.sanction_count), t("open_disciplinary_actions"), "#ef4444", "fa5s.exclamation-triangle"),
         ]):
             stats.addWidget(card, 0, i)
         layout.addLayout(stats)
@@ -331,7 +341,7 @@ class DashboardPage(QWidget):
         txt = QLabel(t("salary_increment_prompt", count=self.increment_count))
         txt.setStyleSheet("font-size: 13px; color: #854d0e;")
         row.addWidget(txt, 1)
-        btn = QPushButton("Review")
+        btn = QPushButton(t("review"))
         btn.setFixedHeight(34)
         btn.setCursor(Qt.PointingHandCursor)
         btn.setStyleSheet("QPushButton { background: #ca8a04; color: white; border: none; border-radius: 6px; padding: 0 14px; font-weight: 600; }")
@@ -387,9 +397,9 @@ class DashboardPage(QWidget):
         layout.setSpacing(0)
 
         header = QHBoxLayout()
-        title = QLabel("Recent Activities")
+        title = QLabel(t("recent_activity"))
         title.setStyleSheet("font-size: 20px; font-weight: 700; color: #111827;")
-        view = QPushButton("View All")
+        view = QPushButton(t("view_all"))
         view.setCursor(Qt.PointingHandCursor)
         view.setStyleSheet(btn_ghost(32))
         view.clicked.connect(lambda: self.navigate("audit_log"))
@@ -403,7 +413,7 @@ class DashboardPage(QWidget):
             for index, item in enumerate(self.logs_data[:5]):
                 layout.addWidget(self._activity_row(item, index == len(self.logs_data[:5]) - 1))
         else:
-            empty = QLabel("No recent activity yet.")
+            empty = QLabel(t("no_recent_activity"))
             empty.setAlignment(Qt.AlignCenter)
             empty.setStyleSheet("font-size: 15px; color: #6b7280; background: #f9fafb; border: none; border-radius: 8px; padding: 28px;")
             layout.addWidget(empty)
@@ -435,7 +445,7 @@ class DashboardPage(QWidget):
         target = QLabel(item["target"])
         target.setWordWrap(True)
         target.setStyleSheet("font-size: 16px; color: #4b5563;")
-        byline = QLabel(f"by {item['user']}")
+        byline = QLabel(t("by_user", user=item["user"]))
         byline.setStyleSheet("font-size: 14px; color: #6b7280;")
         text.addWidget(action)
         text.addWidget(target)
@@ -455,10 +465,10 @@ class DashboardPage(QWidget):
         layout.setSpacing(0)
 
         header = QHBoxLayout()
-        title = QLabel("Upcoming Eligible Promotions")
+        title = QLabel(t("upcoming_promotions"))
         title.setWordWrap(True)
         title.setStyleSheet("font-size: 20px; font-weight: 700; color: #111827;")
-        view = QPushButton("View All")
+        view = QPushButton(t("view_all"))
         view.setCursor(Qt.PointingHandCursor)
         view.setStyleSheet(btn_ghost(32))
         view.clicked.connect(lambda: self.navigate("promotions"))
@@ -474,7 +484,7 @@ class DashboardPage(QWidget):
                 if index < len(self.upcoming_promotions[:3]) - 1:
                     layout.addSpacing(20)
         else:
-            empty = QLabel("No employees are approaching promotion eligibility right now.")
+            empty = QLabel(t("no_upcoming_promotions"))
             empty.setWordWrap(True)
             empty.setAlignment(Qt.AlignCenter)
             empty.setStyleSheet("font-size: 15px; color: #6b7280; background: #f9fafb; border: none; border-radius: 8px; padding: 28px;")
@@ -499,7 +509,7 @@ class DashboardPage(QWidget):
         text.setSpacing(6)
         name = QLabel(item["name"])
         name.setStyleSheet("font-size: 18px; font-weight: 700; color: #111827;")
-        level = QLabel(f"{item['current']} -> {item['next']}")
+        level = QLabel(f"{item['current']} to {item['next']}")
         level.setStyleSheet("font-size: 16px; color: #4b5563;")
         text.addWidget(name)
         text.addWidget(level)
@@ -530,3 +540,39 @@ class DashboardPage(QWidget):
         complete.setStyleSheet("font-size: 14px; color: #6b7280;")
         layout.addWidget(complete)
         return row
+
+
+def _styled_message_box(parent, icon, title, text):
+    box = QMessageBox(parent)
+    box.setIcon(icon)
+    box.setWindowTitle(title)
+    box.setText(text)
+    box.setStandardButtons(QMessageBox.Ok)
+    box.setStyleSheet("""
+        QMessageBox { background: white; color: #111827; }
+        QMessageBox QLabel { color: #111827; background: transparent; font-size: 13px; }
+        QPushButton {
+            background: white;
+            color: #111827;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            min-width: 84px;
+            min-height: 30px;
+            font-weight: 600;
+        }
+        QPushButton:hover { background: #f3f4f6; }
+        QPushButton:default { background: #030213; color: white; border: none; }
+    """)
+    return box.exec()
+
+
+def _warning(parent, title, text):
+    return _styled_message_box(parent, QMessageBox.Warning, title, text)
+
+
+def _critical(parent, title, text):
+    return _styled_message_box(parent, QMessageBox.Critical, title, text)
+
+
+def _information(parent, title, text):
+    return _styled_message_box(parent, QMessageBox.Information, title, text)

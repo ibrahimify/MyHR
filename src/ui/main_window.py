@@ -34,7 +34,7 @@ class Sidebar(QWidget):
         self.user = user
         self.on_navigate = on_navigate
         self.on_logout = on_logout
-        self.nav_buttons = {}   # key → (QPushButton, icon_name)
+        self.nav_buttons = {}   # page key maps to (QPushButton, icon_name)
         self.active_key = "dashboard"
         self._build()
 
@@ -56,7 +56,7 @@ class Sidebar(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # ── Logo ──────────────────────────────────────────────────────────────
+        # Logo
         logo_w = QWidget()
         logo_w.setObjectName("SidebarLogo")
         logo_w.setFixedHeight(88)
@@ -100,7 +100,7 @@ class Sidebar(QWidget):
         ll.addStretch()
         layout.addWidget(logo_w)
 
-        # ── Nav ───────────────────────────────────────────────────────────────
+        # Navigation
         nav_w = QWidget()
         nav_w.setObjectName("SidebarNav")
         nav_w.setStyleSheet("QWidget#SidebarNav { background: white; border: none; }")
@@ -124,7 +124,7 @@ class Sidebar(QWidget):
         nav_l.addStretch()
         layout.addWidget(nav_w, 1)
 
-        # ── User card + logout ────────────────────────────────────────────────
+        # User card and logout
         bottom = QWidget()
         bottom.setObjectName("SidebarBottom")
         bottom.setStyleSheet("""
@@ -158,7 +158,7 @@ class Sidebar(QWidget):
         ucl.setContentsMargins(12, 12, 12, 12)
         ucl.setSpacing(12)
 
-        display_name = "Admin User" if self.user.role == "admin" else self.user.full_name
+        display_name = self.user.full_name
         avatar = QLabel()
         avatar.setFixedSize(32, 32)
         avatar.setAlignment(Qt.AlignCenter)
@@ -254,7 +254,7 @@ class MainWindow(QMainWindow):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setWindowTitle(f"{company_name('MyHR')} - Employee Management System")
+        self.setWindowTitle(f"{company_name('MyHR')} - {t('employee_management_system')}")
         self.setMinimumSize(1024, 600)
         self.setStyleSheet(f"QMainWindow {{ background: {CLR_BG}; }}")
         self._pages_cache = {}
@@ -330,15 +330,17 @@ class MainWindow(QMainWindow):
     def _navigate(self, key):
         if key in ADMIN_ONLY_PAGES and self.user.role != "admin":
             from PySide6.QtWidgets import QMessageBox
-            QMessageBox.warning(self, "Access Denied", "This section is for administrators only.")
+            QMessageBox.warning(self, t("access_denied"), t("admin_only_section"))
             return
-        if key in ("dashboard", "employees", "promotions") and key in self._pages_cache:
+        if key in ("dashboard", "employees", "promotions", "audit_log") and key in self._pages_cache:
             old = self._pages_cache.pop(key)
             self.stack.removeWidget(old)
             old.deleteLater()
         page = self._get_page(key)
         self.stack.setCurrentWidget(page)
         self.sidebar._set_active(key)
+        if hasattr(page, "refresh"):
+            page.refresh()
 
     def _navigate_to_employee(self, emp_db_id: int):
         if "employees" in self._pages_cache:

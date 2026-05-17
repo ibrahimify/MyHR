@@ -7,7 +7,7 @@ Key design decisions:
 - Annual salary increment is separate from promotion entirely
 - Language is per-session only, not stored per user
 - Org hierarchy is self-referencing (unlimited depth)
-- Employees are data subjects only — no login
+- Employees are data subjects only; they do not log in
 - Only Admin and HR Officer can log in
 """
 
@@ -24,12 +24,10 @@ class Base(DeclarativeBase):
     pass
 
 
-# ─────────────────────────────────────────────
-# 1. OrgUnit — self-referencing hierarchy
-# ─────────────────────────────────────────────
+# 1. OrgUnit: self-referencing hierarchy
 class OrgUnit(Base):
     """
-    Unlimited depth hierarchy: Organization → Division → Department → Unit → Team
+    Unlimited depth hierarchy: Organization to Division to Department to Unit to Team.
     Self-referencing via parent_id.
     head_employee_id points to whoever leads this node (CEO, HOD, Unit In-Charge, etc.)
     """
@@ -38,7 +36,7 @@ class OrgUnit(Base):
     id               = Column(Integer, primary_key=True, autoincrement=True)
     name             = Column(String(255), nullable=False)
     unit_type        = Column(
-        Enum("organization", "division", "department", "unit", "team", name="unit_type_enum"),
+        Enum("organization", "division", "department", "unit", "team", "position", name="unit_type_enum"),
         nullable=False
     )
     parent_id        = Column(Integer, ForeignKey("org_unit.id"), nullable=True)
@@ -55,12 +53,10 @@ class OrgUnit(Base):
         return f"<OrgUnit {self.name} ({self.unit_type})>"
 
 
-# ─────────────────────────────────────────────
-# 2. Title — salary levels (L3 → L7)
-# ─────────────────────────────────────────────
+# 2. Title: salary levels
 class Title(Base):
     """
-    Salary levels. BSc → L7, MSc → L6, PhD → L5 on hire.
+    Salary levels. BSc starts at L7, MSc starts at L6, PhD starts at L5.
     Admin configures salary ranges and annual increment rate per level.
     annual_increment_type: 'percentage' or 'fixed'
     annual_increment_value: % or EUR amount
@@ -95,12 +91,10 @@ class Title(Base):
         return f"<Title {self.name}>"
 
 
-# ─────────────────────────────────────────────
-# 3. Employee — core record
-# ─────────────────────────────────────────────
+# 3. Employee: core record
 class Employee(Base):
     """
-    Core employee record. Employees are DATA SUBJECTS only — no login.
+    Core employee record. Employees are data subjects only; they do not log in.
     Two layers of visibility:
       - Admin sees everything
       - HR Officer sees work-facing fields only
@@ -115,7 +109,7 @@ class Employee(Base):
     id              = Column(Integer, primary_key=True, autoincrement=True)
     employee_id     = Column(String(20), nullable=False, unique=True)  # "EMP-1001"
 
-    # Personal — Admin only
+    # Personal data: admin only
     first_name      = Column(String(100), nullable=False)
     last_name       = Column(String(100), nullable=False)
     date_of_birth   = Column(DateTime, nullable=True)
@@ -127,14 +121,14 @@ class Employee(Base):
         nullable=False
     )
 
-    # Work-facing — HR Officer can see
+    # Work-facing data: HR Officer can see
     work_email      = Column(String(255), nullable=True)
     work_phone      = Column(String(50), nullable=True)
     position        = Column(String(255), nullable=False)
     join_date       = Column(DateTime, nullable=False)
     base_salary     = Column(Float, nullable=False)
     status          = Column(
-        Enum("active", "inactive", "on_leave", name="emp_status_enum"),
+        Enum("active", "inactive", "on_leave", "terminated", name="emp_status_enum"),
         nullable=False, default="active"
     )
 
@@ -166,18 +160,16 @@ class Employee(Base):
         return f"{self.first_name} {self.last_name}"
 
     def __repr__(self):
-        return f"<Employee {self.employee_id} — {self.full_name}>"
+        return f"<Employee {self.employee_id} - {self.full_name}>"
 
 
-# ─────────────────────────────────────────────
-# 4. PromotionRule — configurable race track
-# ─────────────────────────────────────────────
+# 4. PromotionRule: configurable race track
 class PromotionRule(Base):
     """
-    One row per level transition (e.g. L7→L6).
+    One row per level transition (for example, L7 to L6).
     base_months: starting point for the promotion race
     Commendations and sanctions are OPTIONAL modifiers applied on top.
-    After promotion, the clock resets — no carryover.
+    After promotion, the clock resets; there is no carryover.
     """
     __tablename__ = "promotion_rule"
 
@@ -193,12 +185,10 @@ class PromotionRule(Base):
     to_title   = relationship("Title", foreign_keys=[to_title_id], back_populates="promotion_rules_to")
 
     def __repr__(self):
-        return f"<PromotionRule {self.from_title_id}→{self.to_title_id} base={self.base_months}mo>"
+        return f"<PromotionRule {self.from_title_id}->{self.to_title_id} base={self.base_months}mo>"
 
 
-# ─────────────────────────────────────────────
-# 5. PromotionHistory — every promotion ever
-# ─────────────────────────────────────────────
+# 5. PromotionHistory: every promotion ever
 class PromotionHistory(Base):
     """
     Every promotion applied. Immutable after creation.
@@ -227,17 +217,15 @@ class PromotionHistory(Base):
     approved_by = relationship("SystemUser")
 
     def __repr__(self):
-        return f"<PromotionHistory emp={self.employee_id} {self.from_title_id}→{self.to_title_id}>"
+        return f"<PromotionHistory emp={self.employee_id} {self.from_title_id}->{self.to_title_id}>"
 
 
-# ─────────────────────────────────────────────
-# 6. Commendation — team or individual award
-# ─────────────────────────────────────────────
+# 6. Commendation: team or individual award
 class Commendation(Base):
     """
     One commendation can apply to multiple employees (bulk team award).
-    category: 1, 2, or 3 — maps to -1, -3, -6 months off the promotion race.
-    Max 3 commendations per employee per role — enforced in business logic layer.
+    category: 1, 2, or 3 maps to -1, -3, or -6 months off the promotion race.
+    Max 3 commendations per employee per role, enforced in business logic.
     commendation_ref: unique human-readable ID e.g. "COM-2026-0418-001"
     """
     __tablename__ = "commendation"
@@ -259,20 +247,16 @@ class Commendation(Base):
         return f"<Commendation {self.commendation_ref} Cat{self.category}>"
 
 
-# ─────────────────────────────────────────────
-# Junction: commendation ↔ employee
-# ─────────────────────────────────────────────
+# Junction: commendation and employee
 class CommendationEmployee(Base):
-    """One commendation → many employees."""
+    """One commendation can apply to many employees."""
     __tablename__ = "commendation_employee"
 
     commendation_id = Column(Integer, ForeignKey("commendation.id"), primary_key=True)
     employee_id     = Column(Integer, ForeignKey("employee.id"), primary_key=True)
 
 
-# ─────────────────────────────────────────────
-# 7. Sanction — disciplinary action
-# ─────────────────────────────────────────────
+# 7. Sanction: disciplinary action
 class Sanction(Base):
     """
     Disciplinary sanction. Duration is in MONTHS (1-12), not days.
@@ -303,15 +287,13 @@ class Sanction(Base):
         return f"<Sanction {self.sanction_ref} +{self.delay_months}mo>"
 
 
-# ─────────────────────────────────────────────
-# 8. SalaryIncrementHistory — annual increments
-# ─────────────────────────────────────────────
+# 8. SalaryIncrementHistory: annual increments
 class SalaryIncrementHistory(Base):
     """
     Records every manual annual salary increment approved by admin.
     Separate from promotion entirely.
     salary_before / salary_after: for audit trail.
-    increment_type: 'percentage' or 'fixed' — copied from Title config at time of approval.
+    increment_type: 'percentage' or 'fixed', copied from Title config at approval time.
     increment_value: the actual % or amount applied.
     """
     __tablename__ = "salary_increment_history"
@@ -333,12 +315,10 @@ class SalaryIncrementHistory(Base):
     approved_by = relationship("SystemUser")
 
     def __repr__(self):
-        return f"<SalaryIncrement emp={self.employee_id} {self.salary_before}→{self.salary_after}>"
+        return f"<SalaryIncrement emp={self.employee_id} {self.salary_before}->{self.salary_after}>"
 
 
-# ─────────────────────────────────────────────
-# 9. AuditLog — immutable activity trail
-# ─────────────────────────────────────────────
+# 9. AuditLog: immutable activity trail
 class AuditLog(Base):
     """
     Every admin/HR action is logged automatically.
@@ -364,13 +344,11 @@ class AuditLog(Base):
         return f"<AuditLog {self.action} at {self.performed_at}>"
 
 
-# ─────────────────────────────────────────────
-# 10. SystemUser — Admin and HR Officer only
-# ─────────────────────────────────────────────
+# 10. SystemUser: Admin and HR Officer only
 class SystemUser(Base):
     """
     Only two roles: admin and hr_officer.
-    Employees do NOT have system accounts — they are data subjects only.
+    Employees do not have system accounts; they are data subjects only.
     language preference is per-session, not stored here.
     """
     __tablename__ = "system_user"

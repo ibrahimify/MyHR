@@ -13,18 +13,20 @@ Business logic included here:
 
 import os
 import json
+import calendar
 from datetime import datetime, date
 from hashlib import sha256
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
+from src.core.i18n import t
 from src.database.models import (
-    Base, SystemUser, Title, PromotionRule, Employee,
+    Base, SystemUser, Title, PromotionRule, Employee, OrgUnit,
     Commendation, CommendationEmployee, Sanction,
     PromotionHistory, SalaryIncrementHistory, AuditLog
 )
 
-# ── DB path ──────────────────────────────────────────────────────────────────
+# Database path
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 DB_PATH   = os.path.join(_BASE_DIR, "myhr.db")
 DB_URL    = f"sqlite:///{os.path.abspath(DB_PATH)}"
@@ -32,8 +34,11 @@ DB_URL    = f"sqlite:///{os.path.abspath(DB_PATH)}"
 engine       = create_engine(DB_URL, echo=False)
 SessionLocal = sessionmaker(bind=engine)
 
+OTHER_TITLE_NAME = "Other"
+OTHER_ORG_UNIT_NAME = "OTHERS"
 
-# ── Init + seed ───────────────────────────────────────────────────────────────
+
+# Initialization and seed data
 def init_db():
     """Create all tables and seed default data on first run."""
     Base.metadata.create_all(engine)
@@ -70,6 +75,7 @@ def _seed_defaults(session: Session):
         {"name": "L3", "label": "Director Level",   "degree_requirement": "any", "base_salary_min": 6000, "base_salary_max": 9000, "annual_increment_value": 4.0,  "promotion_salary_increase_pct": 30.0},
         {"name": "L2", "label": "Board Member",     "degree_requirement": "any", "base_salary_min": 9000, "base_salary_max": 13000, "annual_increment_value": 4.0,  "promotion_salary_increase_pct": 30.0},
         {"name": "L1", "label": "CEO / Executive",  "degree_requirement": "any", "base_salary_min": 13000, "base_salary_max": 20000, "annual_increment_value": 4.0,  "promotion_salary_increase_pct": 35.0},
+        {"name": OTHER_TITLE_NAME, "label": "Miscellaneous Employees", "degree_requirement": "any", "base_salary_min": 2000, "base_salary_max": 2800, "annual_increment_value": 3.0, "promotion_salary_increase_pct": 0.0},
     ]
     titles = {}
     for d in defaults:
@@ -112,7 +118,7 @@ def get_session() -> Session:
     return SessionLocal()
 
 
-# ── Auth ──────────────────────────────────────────────────────────────────────
+# Authentication
 class UserSession:
     """
     Plain Python object holding logged-in user data.
@@ -146,7 +152,7 @@ def verify_login(username: str, password: str):
         return None
 
 
-# ── ID generators ─────────────────────────────────────────────────────────────
+# ID generators
 def generate_employee_id(session: Session) -> str:
     """Generates next sequential EMP-XXXX ID."""
     last = session.query(Employee).order_by(Employee.id.desc()).first()
@@ -188,6 +194,19 @@ def calculate_months_remaining(employee: Employee, session: Session) -> dict:
     
     Returns dict with full breakdown for UI display.
     """
+    if is_other_employee(employee):
+        return {
+            "has_next_level": False,
+            "months_remaining": None,
+            "base_months": None,
+            "months_elapsed": _months_between(employee.join_date, datetime.utcnow()) if employee.join_date else 0,
+            "commendation_reduction": 0,
+            "sanction_addition": 0,
+            "eligible": False,
+            "next_title_id": None,
+            "progress_pct": 0,
+        }
+
     # Get promotion rule for current title
     rule = session.query(PromotionRule).filter_by(
         from_title_id=employee.title_id,
@@ -215,10 +234,7 @@ def calculate_months_remaining(employee: Employee, session: Session) -> dict:
     now = datetime.utcnow()
 
     # Months elapsed since race start
-    months_elapsed = (
-        (now.year - race_start.year) * 12 +
-        (now.month - race_start.month)
-    )
+    months_elapsed = _months_between(race_start, now)
 
     # Commendation reduction - commendations since race start
     # Using simpler subquery approach to avoid JOIN issues
@@ -262,7 +278,102 @@ def calculate_months_remaining(employee: Employee, session: Session) -> dict:
     }
 
 
-# ── Commendation cap check ─────────────────────────────────────────────────────
+def get_race_start(employee: Employee, session: Session) -> datetime:
+    """Return the date from which the current role race started."""
+    last_promo = session.query(PromotionHistory).filter_by(
+        employee_id=employee.id
+    ).order_by(PromotionHistory.promoted_at.desc()).first()
+    return last_promo.promoted_at if last_promo else employee.join_date
+
+
+def calculate_sub_race(employee: Employee, session: Session) -> dict:
+    """
+    Build yearly sub-race milestones for the employee profile.
+    Standard employees get L7.1/L7.2 style checkpoints before the next level.
+    Other/Misc employees get ongoing Other.1/Other.2 service checkpoints.
+    """
+    race_start = get_race_start(employee, session)
+    today = datetime.utcnow()
+    months_elapsed = _months_between(race_start, today) if race_start else 0
+    current_title = employee.title.name if employee.title else OTHER_TITLE_NAME
+    title = employee.title
+    increment_label = _increment_label(title)
+
+    if is_other_employee(employee):
+        completed_years = max(0, months_elapsed // 12)
+        visible_years = max(1, completed_years + 1)
+        steps = []
+        for year in range(1, visible_years + 1):
+            due_date = _add_months(race_start, year * 12) if race_start else None
+            steps.append({
+                "label": f"{OTHER_TITLE_NAME}.{year}",
+                "kind": "annual_increment",
+                "completed": bool(due_date and due_date <= today),
+                "due_date": due_date,
+                "increment": increment_label,
+            })
+        return {
+            "is_other_track": True,
+            "current_title": OTHER_TITLE_NAME,
+            "next_title": None,
+            "race_start": race_start,
+            "expected_promotion_date": None,
+            "months_left": None,
+            "progress_pct": 0,
+            "steps": steps,
+            "current_step_label": steps[completed_years - 1]["label"] if completed_years > 0 and completed_years <= len(steps) else OTHER_TITLE_NAME,
+        }
+
+    race = calculate_months_remaining(employee, session)
+    if not race["has_next_level"]:
+        return {
+            "is_other_track": False,
+            "current_title": current_title,
+            "next_title": None,
+            "race_start": race_start,
+            "expected_promotion_date": None,
+            "months_left": None,
+            "progress_pct": 0,
+            "steps": [],
+            "current_step_label": current_title,
+        }
+
+    next_title = session.query(Title).filter_by(id=race["next_title_id"]).first()
+    effective_months = max(1, race["base_months"] - race["commendation_reduction"] + race["sanction_addition"])
+    expected_date = _add_months(race_start, effective_months)
+    annual_checkpoints = max(0, (effective_months - 1) // 12)
+    steps = []
+    for year in range(1, annual_checkpoints + 1):
+        due_date = _add_months(race_start, year * 12)
+        steps.append({
+            "label": f"{current_title}.{year}",
+            "kind": "annual_increment",
+            "completed": due_date <= today,
+            "due_date": due_date,
+            "increment": increment_label,
+        })
+    steps.append({
+        "label": next_title.name if next_title else "-",
+        "kind": "promotion",
+        "completed": bool(expected_date and expected_date <= today),
+        "due_date": expected_date,
+        "increment": f"+{next_title.promotion_salary_increase_pct:.1f}%" if next_title else "",
+    })
+    completed_regular_steps = [step["label"] for step in steps if step["kind"] == "annual_increment" and step["completed"]]
+    return {
+        "is_other_track": False,
+        "current_title": current_title,
+        "next_title": next_title.name if next_title else None,
+        "race_start": race_start,
+        "expected_promotion_date": expected_date,
+        "months_left": race["months_remaining"],
+        "progress_pct": race["progress_pct"],
+        "steps": steps,
+        "current_step_label": completed_regular_steps[-1] if completed_regular_steps else current_title,
+    }
+
+
+# Commendation cap checks
 def count_commendations_in_current_role(employee: Employee, session: Session) -> int:
     """
     Returns count of commendations for this employee since their last promotion.
@@ -291,7 +402,7 @@ def can_receive_commendation(employee: Employee, session: Session) -> bool:
     return count_commendations_in_current_role(employee, session) < 3
 
 
-# ── Annual salary increment ────────────────────────────────────────────────────
+# Annual salary increment
 def get_increment_due_employees(session: Session) -> list:
     """
     Returns list of employees due for annual salary increment.
@@ -350,6 +461,8 @@ def apply_salary_increment(employee_id: int, approved_by_id: int, session: Sessi
     employee.base_salary = salary_after
     employee.annual_increment_last_applied = datetime.utcnow()
 
+    sub_race = calculate_sub_race(employee, session)
+    milestone_note = f"Sub-race milestone {sub_race['current_step_label']}"
     record = SalaryIncrementHistory(
         employee_id=employee_id,
         approved_by_id=approved_by_id,
@@ -357,7 +470,7 @@ def apply_salary_increment(employee_id: int, approved_by_id: int, session: Sessi
         salary_after=salary_after,
         increment_type=title.annual_increment_type,
         increment_value=title.annual_increment_value,
-        notes=notes,
+        notes=f"{milestone_note}. {notes}".strip(),
     )
     session.add(record)
 
@@ -376,7 +489,7 @@ def apply_salary_increment(employee_id: int, approved_by_id: int, session: Sessi
     return {"success": True, "salary_before": salary_before, "salary_after": salary_after}
 
 
-# ── Audit log helper ──────────────────────────────────────────────────────────
+# Audit log helper
 def log_action(
     session: Session,
     action: str,
@@ -400,11 +513,98 @@ def log_action(
     session.add(entry)
 
 
-# ── Utility ───────────────────────────────────────────────────────────────────
+# Utility
 def _hash(password: str) -> str:
     return sha256(password.encode()).hexdigest()
 
 
 def degree_to_title_name(degree: str) -> str:
     """Maps employee degree to starting title."""
-    return {"PhD": "L5", "MSc": "L6", "BSc": "L7"}.get(degree, "L7")
+    return {"PhD": "L5", "MSc": "L6", "BSc": "L7", "Other": OTHER_TITLE_NAME}.get(degree, "L7")
+
+
+def is_other_title(title: Title) -> bool:
+    return bool(title and title.name == OTHER_TITLE_NAME)
+
+
+def is_other_employee(employee: Employee) -> bool:
+    return bool(employee and (employee.degree == "Other" or is_other_title(employee.title)))
+
+
+def display_title_name(title: Title) -> str:
+    return OTHER_TITLE_NAME if is_other_title(title) else (title.name if title else "-")
+
+
+def ensure_others_org_unit(session: Session) -> OrgUnit:
+    """Create or return the special OTHERS branch used by Other/Misc employees."""
+    unit = session.query(OrgUnit).filter(OrgUnit.name == OTHER_ORG_UNIT_NAME).first()
+    organization = session.query(OrgUnit).filter_by(unit_type="organization").first()
+    if unit:
+        if organization and unit.parent_id != organization.id:
+            unit.parent_id = organization.id
+        return unit
+    unit = OrgUnit(
+        name=OTHER_ORG_UNIT_NAME,
+        unit_type="division",
+        parent_id=organization.id if organization else None,
+    )
+    session.add(unit)
+    session.flush()
+    return unit
+
+
+def valid_other_manager_ids(session: Session) -> set:
+    ids = set()
+    others = ensure_others_org_unit(session)
+    if others.head_employee_id:
+        ids.add(others.head_employee_id)
+    for organization in session.query(OrgUnit).filter_by(unit_type="organization").all():
+        if organization.head_employee_id:
+            ids.add(organization.head_employee_id)
+    for employee in session.query(Employee).filter(Employee.status == "active").all():
+        position = (employee.position or "").lower()
+        if "other employees head" in position or "ceo" in position:
+            ids.add(employee.id)
+    return ids
+
+
+def validate_salary_for_title(title: Title, salary: float) -> tuple[bool, str]:
+    if not title:
+        return False, t("title_not_found")
+    if salary < title.base_salary_min or salary > title.base_salary_max:
+        return (
+            False,
+            t(
+                "salary_range_warning",
+                level=display_title_name(title),
+                min_salary=f"{title.base_salary_min:,.0f}",
+                max_salary=f"{title.base_salary_max:,.0f}",
+                currency=title.currency or "EUR",
+            )
+        )
+    return True, ""
+
+
+def _months_between(start: datetime, end: datetime) -> int:
+    if not start or not end:
+        return 0
+    months = (end.year - start.year) * 12 + (end.month - start.month)
+    if end.day < start.day:
+        months -= 1
+    return max(0, months)
+
+
+def _add_months(start: datetime, months: int) -> datetime:
+    month_index = start.month - 1 + months
+    year = start.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(start.day, calendar.monthrange(year, month)[1])
+    return start.replace(year=year, month=month, day=day)
+
+
+def _increment_label(title: Title) -> str:
+    if not title:
+        return ""
+    if title.annual_increment_type == "fixed":
+        return f"+{title.annual_increment_value:,.0f} {title.currency or 'EUR'}"
+    return f"+{title.annual_increment_value:.1f}%"
