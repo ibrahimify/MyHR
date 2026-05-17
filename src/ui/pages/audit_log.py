@@ -381,7 +381,7 @@ class AuditLogPage(QWidget):
         return {
             "timestamp": log.performed_at.strftime("%Y-%m-%d %H:%M:%S") if log.performed_at else "-",
             "date": log.performed_at.date() if log.performed_at else None,
-            "user": log.performed_by_username or (log.performed_by.username if log.performed_by else "System"),
+            "user": _user_display(log),
             "user_name": log.performed_by_name or (log.performed_by.full_name if log.performed_by else "System"),
             "action": _action_label(action),
             "raw_action": action,
@@ -485,6 +485,14 @@ def _category_for_action(action):
 def _action_label(action):
     key = ACTION_LABEL_KEYS.get(action)
     return t(key) if key else action.replace("_", " ").replace(".", " ").title()
+
+
+def _user_display(log):
+    username = log.performed_by_username or (log.performed_by.username if log.performed_by else None)
+    full_name = log.performed_by_name or (log.performed_by.full_name if log.performed_by else None)
+    if username and full_name:
+        return f"{username}: {full_name}"
+    return username or full_name or "System"
 
 
 def _category_label(category):

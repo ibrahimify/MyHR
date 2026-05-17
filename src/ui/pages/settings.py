@@ -209,9 +209,7 @@ class SettingsPage(QWidget):
         self.tabs.addTab(SalaryTab(self.user), t("salary_ranges"))
         self.tabs.addTab(SettingsPromotionTab(self.user), t("promotion_rules_tab"))
         self.tabs.addTab(IncrementTab(self.user), t("annual_increment"))
-        self.tabs.addTab(SecurityTab(self.user), t("security_tab"))
-        if self.user.role == "admin":
-            self.tabs.addTab(UserManagementTab(self.user), t("user_management"))
+        self.tabs.addTab(UserManagementTab(self.user), t("user_management"))
         self.tabs.addTab(DatabaseTab(self.user), t("database_tab"))
         layout.addWidget(self.tabs, 1)
 
@@ -639,91 +637,6 @@ class IncrementTab(QWidget):
             session.close()
 
 
-class SecurityTab(QWidget):
-    def __init__(self, user):
-        super().__init__()
-        self.user = user
-        self._build()
-
-    def _build(self):
-        content, outer = _content()
-        row = QHBoxLayout()
-        row.setSpacing(30)
-        row.setAlignment(Qt.AlignTop)
-
-        card, layout = _section_card(t("change_password"), t("change_password_subtitle"), "fa5s.lock", BLUE)
-        self.current_pwd = _line_edit()
-        self.current_pwd.setEchoMode(QLineEdit.Password)
-        self.new_pwd = _line_edit()
-        self.new_pwd.setEchoMode(QLineEdit.Password)
-        self.confirm_pwd = _line_edit()
-        self.confirm_pwd.setEchoMode(QLineEdit.Password)
-        form = QGridLayout()
-        form.setVerticalSpacing(16)
-        _add_form_field(form, 0, 0, t("current_password"), self.current_pwd)
-        _add_form_field(form, 1, 0, t("new_password"), self.new_pwd)
-        _add_form_field(form, 2, 0, t("confirm_new_password"), self.confirm_pwd)
-        layout.addLayout(form)
-        row.addWidget(card, 3)
-
-        actions, actions_layout = _section_card(t("actions"), None, "fa5s.key", BLACK)
-        change = _button(t("change_password"), "fa5s.key", primary=True)
-        change.clicked.connect(self._change_password)
-        actions_layout.addWidget(change)
-        actions_layout.addSpacing(12)
-        actions_layout.addWidget(_note_card(
-            t("security_information"),
-            [
-                t("security_note_audit_retained"),
-                t("security_note_identity"),
-                t("security_note_accounts"),
-                t("security_note_hashes"),
-            ],
-            "fa5s.shield-alt",
-            "#1e40af",
-            NOTE_BLUE_SS,
-        ))
-        actions_layout.addStretch()
-        row.addWidget(actions, 1)
-        outer.addLayout(row)
-        outer.addStretch()
-        _set_page(self, content)
-
-    def _change_password(self):
-        current = self.current_pwd.text()
-        new = self.new_pwd.text()
-        confirm = self.confirm_pwd.text()
-
-        if not current or not new or not confirm:
-            _warning(self, t("warning"), t("all_fields_required"))
-            return
-        if new != confirm:
-            _warning(self, t("warning"), t("new_passwords_do_not_match"))
-            return
-        if len(new) < 6:
-            _warning(self, t("warning"), t("password_min_length"))
-            return
-
-        session = get_session()
-        try:
-            user = session.query(SystemUser).filter_by(id=self.user.id).first()
-            if not user or user.password_hash != sha256(current.encode()).hexdigest():
-                _critical(self, t("error"), t("current_password_incorrect"))
-                return
-            user.password_hash = sha256(new.encode()).hexdigest()
-            log_action(session, action="settings.password_change", performed_by_id=self.user.id, description=f"Password changed for user: {self.user.username}")
-            session.commit()
-            self.current_pwd.clear()
-            self.new_pwd.clear()
-            self.confirm_pwd.clear()
-            _information(self, t("success"), t("password_changed_successfully"))
-        except Exception as exc:
-            session.rollback()
-            _critical(self, t("error"), str(exc))
-        finally:
-            session.close()
-
-
 class UserManagementTab(QWidget):
     def __init__(self, user):
         super().__init__()
@@ -742,23 +655,31 @@ class UserManagementTab(QWidget):
         )
         top_row = QHBoxLayout()
         top_row.setSpacing(16)
-        add = _button(t("add_hr_account"), "fa5s.user-plus", primary=True)
-        add.clicked.connect(self._add_hr)
-        top_row.addWidget(add, alignment=Qt.AlignLeft)
+        if self.user.role == "admin":
+            add = _button(t("add_hr_account"), "fa5s.user-plus", primary=True)
+            add.clicked.connect(self._add_hr)
+            top_row.addWidget(add, alignment=Qt.AlignLeft)
         top_row.addStretch()
         header_layout.addLayout(top_row)
         header_layout.addWidget(_note_card(
-            t("user_management_rules"),
+            t("user_management_rules") if self.user.role == "admin" else t("security_information"),
             [
-                t("user_rule_admin_single"),
-                t("user_rule_hr_soft_delete"),
-                t("user_rule_audit_snapshot"),
+                t("user_rule_admin_single") if self.user.role == "admin" else t("security_note_audit_retained"),
+                t("user_rule_hr_soft_delete") if self.user.role == "admin" else t("security_note_identity"),
+                t("user_rule_audit_snapshot") if self.user.role == "admin" else t("security_note_hashes"),
             ],
             "fa5s.shield-alt",
             "#1e40af",
             NOTE_BLUE_SS,
         ))
         outer.addWidget(header)
+
+        outer.addWidget(self._password_card())
+
+        if self.user.role != "admin":
+            outer.addStretch()
+            _set_page(self, content)
+            return
 
         card = _plain_card()
         layout = QVBoxLayout(card)
@@ -809,7 +730,7 @@ QToolTip {
         )
         header_view = self.table.horizontalHeader()
         header_view.setStretchLastSection(False)
-        for col, width in {0: 180, 1: 240, 2: 160, 3: 130, 4: 180, 5: 210}.items():
+        for col, width in {0: 180, 1: 240, 2: 160, 3: 130, 4: 180, 5: 270}.items():
             self.table.setColumnWidth(col, width)
         for col in (0, 1):
             header_view.setSectionResizeMode(col, QHeaderView.Stretch)
@@ -822,6 +743,30 @@ QToolTip {
         outer.addWidget(card)
         outer.addStretch()
         _set_page(self, content)
+
+    def _password_card(self):
+        card, layout = _section_card(t("change_password"), t("change_password_subtitle"), "fa5s.lock", BLUE)
+        row = QHBoxLayout()
+        row.setSpacing(22)
+        form = QGridLayout()
+        form.setHorizontalSpacing(18)
+        form.setVerticalSpacing(14)
+        self.current_pwd = _line_edit()
+        self.current_pwd.setEchoMode(QLineEdit.Password)
+        self.new_pwd = _line_edit()
+        self.new_pwd.setEchoMode(QLineEdit.Password)
+        self.confirm_pwd = _line_edit()
+        self.confirm_pwd.setEchoMode(QLineEdit.Password)
+        _add_form_field(form, 0, 0, t("current_password"), self.current_pwd)
+        _add_form_field(form, 0, 1, t("new_password"), self.new_pwd)
+        _add_form_field(form, 0, 2, t("confirm_new_password"), self.confirm_pwd)
+        row.addLayout(form, 1)
+        change = _button(t("change_password"), "fa5s.key", primary=True)
+        change.setFixedWidth(190)
+        change.clicked.connect(self._change_password)
+        row.addWidget(change, alignment=Qt.AlignBottom)
+        layout.addLayout(row)
+        return card
 
     def refresh(self):
         session = get_session()
@@ -857,12 +802,12 @@ QToolTip {
         layout.setSpacing(8)
         layout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        edit = QPushButton(t("edit"))
-        edit.setIcon(qta.icon("fa5s.edit", color="#111827"))
+        edit = QPushButton("  " + t("edit"))
+        edit.setIcon(qta.icon("fa5s.edit", color="white"))
         edit.setIconSize(QSize(13, 13))
-        edit.setFixedSize(82, 36)
+        edit.setFixedSize(96, 38)
         edit.setCursor(Qt.PointingHandCursor)
-        edit.setStyleSheet(_secondary_button_ss())
+        edit.setStyleSheet(_primary_button_ss())
         edit.setToolTip(t("edit_user_account"))
         edit.clicked.connect(lambda _, uid=row["id"]: self._edit_user(uid))
         layout.addWidget(edit)
@@ -870,13 +815,47 @@ QToolTip {
         if row["role"] == "hr_officer":
             active = row["is_active"]
             toggle = QPushButton(t("deactivate") if active else t("reactivate"))
-            toggle.setFixedSize(104, 36)
+            toggle.setFixedSize(126, 38)
             toggle.setCursor(Qt.PointingHandCursor)
             toggle.setStyleSheet(_secondary_button_ss())
             toggle.setToolTip(t("deactivate_user_account") if active else t("reactivate_user_account"))
             toggle.clicked.connect(lambda _, uid=row["id"], make_active=not active: self._set_active(uid, make_active))
             layout.addWidget(toggle)
         return cell
+
+    def _change_password(self):
+        current = self.current_pwd.text()
+        new = self.new_pwd.text()
+        confirm = self.confirm_pwd.text()
+
+        if not current or not new or not confirm:
+            _warning(self, t("warning"), t("all_fields_required"))
+            return
+        if new != confirm:
+            _warning(self, t("warning"), t("new_passwords_do_not_match"))
+            return
+        if len(new) < 6:
+            _warning(self, t("warning"), t("password_min_length"))
+            return
+
+        session = get_session()
+        try:
+            user = session.query(SystemUser).filter_by(id=self.user.id).first()
+            if not user or user.password_hash != sha256(current.encode()).hexdigest():
+                _critical(self, t("error"), t("current_password_incorrect"))
+                return
+            user.password_hash = sha256(new.encode()).hexdigest()
+            log_action(session, action="settings.password_change", performed_by_id=self.user.id, description=f"Password changed for user: {self.user.username}")
+            session.commit()
+            self.current_pwd.clear()
+            self.new_pwd.clear()
+            self.confirm_pwd.clear()
+            _information(self, t("success"), t("password_changed_successfully"))
+        except Exception as exc:
+            session.rollback()
+            _critical(self, t("error"), str(exc))
+        finally:
+            session.close()
 
     def _add_hr(self):
         dialog = UserAccountDialog(self.user, parent=self)

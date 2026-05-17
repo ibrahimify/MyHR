@@ -302,7 +302,7 @@ class IssueCommendationTab(QWidget):
         _polish_combo(self.cat_combo)
         self.cat_combo.addItem(t("select_category_tier"), None)
         for cat_id, cat in CATEGORIES.items():
-            self.cat_combo.addItem(t("category_option", category=t(cat["label_key"]), months=abs(cat["months"])), cat_id)
+            self.cat_combo.addItem(t(cat["label_key"]), cat_id)
         dc.addWidget(cat_lbl)
         dc.addWidget(self.cat_combo)
         cat_hint = QLabel(t("higher_categories_hint"))
