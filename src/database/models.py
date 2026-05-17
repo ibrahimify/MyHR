@@ -330,6 +330,8 @@ class AuditLog(Base):
 
     id              = Column(Integer, primary_key=True, autoincrement=True)
     performed_by_id = Column(Integer, ForeignKey("system_user.id"), nullable=True)
+    performed_by_username = Column(String(100), nullable=True)
+    performed_by_name = Column(String(255), nullable=True)
     action          = Column(String(100), nullable=False)
     target_table    = Column(String(100), nullable=True)
     target_id       = Column(Integer, nullable=True)

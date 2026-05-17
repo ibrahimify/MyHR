@@ -42,8 +42,42 @@ OTHER_ORG_UNIT_NAME = "OTHERS"
 def init_db():
     """Create all tables and seed default data on first run."""
     Base.metadata.create_all(engine)
+    _migrate_schema()
     with SessionLocal() as session:
         _seed_defaults(session)
+
+
+def _migrate_schema():
+    """Apply small SQLite migrations that create_all cannot add to existing DBs."""
+    with engine.begin() as conn:
+        columns = {
+            row[1]
+            for row in conn.exec_driver_sql("PRAGMA table_info(audit_log)").fetchall()
+        }
+        if "performed_by_username" not in columns:
+            conn.exec_driver_sql("ALTER TABLE audit_log ADD COLUMN performed_by_username VARCHAR(100)")
+        if "performed_by_name" not in columns:
+            conn.exec_driver_sql("ALTER TABLE audit_log ADD COLUMN performed_by_name VARCHAR(255)")
+        conn.exec_driver_sql(
+            """
+            UPDATE audit_log
+            SET performed_by_username = (
+                SELECT username FROM system_user WHERE system_user.id = audit_log.performed_by_id
+            )
+            WHERE performed_by_id IS NOT NULL
+              AND (performed_by_username IS NULL OR performed_by_username = '')
+            """
+        )
+        conn.exec_driver_sql(
+            """
+            UPDATE audit_log
+            SET performed_by_name = (
+                SELECT full_name FROM system_user WHERE system_user.id = audit_log.performed_by_id
+            )
+            WHERE performed_by_id IS NOT NULL
+              AND (performed_by_name IS NULL OR performed_by_name = '')
+            """
+        )
 
 
 def _seed_defaults(session: Session):
@@ -501,8 +535,17 @@ def log_action(
     after_value: str = None,
 ):
     """Call this whenever any admin/HR action happens."""
+    performed_by_username = None
+    performed_by_name = None
+    if performed_by_id:
+        user = session.query(SystemUser).filter_by(id=performed_by_id).first()
+        if user:
+            performed_by_username = user.username
+            performed_by_name = user.full_name
     entry = AuditLog(
         performed_by_id=performed_by_id,
+        performed_by_username=performed_by_username,
+        performed_by_name=performed_by_name,
         action=action,
         target_table=target_table,
         target_id=target_id,

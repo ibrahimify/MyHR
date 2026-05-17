@@ -15,7 +15,8 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QLineEdit, QComboBox, QMessageBox, QTabWidget,
-    QSpinBox, QDoubleSpinBox, QFileDialog, QSizePolicy
+    QSpinBox, QDoubleSpinBox, QFileDialog, QSizePolicy, QTableWidget,
+    QTableWidgetItem, QHeaderView, QDialog, QFormLayout
 )
 
 from src.core.i18n import t
@@ -31,14 +32,14 @@ BLACK = "#030213"
 BLUE = "#2563eb"
 
 LEVEL_META = {
-    "L7": ("Entry Level (BSc)", "#2563eb", "#dbeafe"),
-    "L6": ("Mid Level (MSc)", "#16a34a", "#dcfce7"),
-    "L5": ("Senior Level (PhD)", "#d97706", "#fef3c7"),
-    "L4": ("Management Level", "#7c3aed", "#ede9fe"),
-    "L3": ("Director Level", "#db2777", "#fce7f3"),
-    "L2": ("Executive Level", "#0284c7", "#e0f2fe"),
-    "L1": ("CEO / Board", "#dc2626", "#fee2e2"),
-    "Other": ("Other / Misc Employees", "#475569", "#e2e8f0"),
+    "L7": ("level_l7_label", "#2563eb", "#dbeafe"),
+    "L6": ("level_l6_label", "#16a34a", "#dcfce7"),
+    "L5": ("level_l5_label", "#d97706", "#fef3c7"),
+    "L4": ("level_l4_label", "#7c3aed", "#ede9fe"),
+    "L3": ("level_l3_label", "#db2777", "#fce7f3"),
+    "L2": ("level_l2_label", "#0284c7", "#e0f2fe"),
+    "L1": ("level_l1_label", "#dc2626", "#fee2e2"),
+    "Other": ("level_other_label", "#475569", "#e2e8f0"),
 }
 LEVEL_ORDER = {level: index for index, level in enumerate(["L7", "L6", "L5", "L4", "L3", "L2", "L1", "Other"])}
 
@@ -209,6 +210,8 @@ class SettingsPage(QWidget):
         self.tabs.addTab(SettingsPromotionTab(self.user), t("promotion_rules_tab"))
         self.tabs.addTab(IncrementTab(self.user), t("annual_increment"))
         self.tabs.addTab(SecurityTab(self.user), t("security_tab"))
+        if self.user.role == "admin":
+            self.tabs.addTab(UserManagementTab(self.user), t("user_management"))
         self.tabs.addTab(DatabaseTab(self.user), t("database_tab"))
         layout.addWidget(self.tabs, 1)
 
@@ -254,9 +257,9 @@ class GeneralTab(QWidget):
         actions_layout.addWidget(_note_card(
             t("branding_update"),
             [
-                "Company name updates the sidebar immediately.",
-                "The same name is used on the login screen.",
-                "Subtitle controls the small text under the brand.",
+                t("branding_note_sidebar"),
+                t("branding_note_login"),
+                t("branding_note_subtitle"),
             ],
             "fa5s.info-circle",
             "#1e40af",
@@ -297,7 +300,7 @@ class GeneralTab(QWidget):
             sidebar.refresh_branding()
         if hasattr(window, "setWindowTitle"):
             window.setWindowTitle(f"{company_name('MyHR')} - {t('employee_management_system')}")
-        _information(self, t("success"), "General settings saved.")
+        _information(self, t("success"), t("general_settings_saved"))
 
 
 class SalaryTab(QWidget):
@@ -312,15 +315,15 @@ class SalaryTab(QWidget):
     def _build(self):
         content, outer = _content()
 
-        top, top_layout = _section_card("Salary Range Configuration", "Configure currency and level salary ranges", "fa5s.coins", BLUE)
+        top, top_layout = _section_card(t("salary_range_config"), t("salary_range_config_subtitle"), "fa5s.coins", BLUE)
         currency_row = QHBoxLayout()
         currency_row.setSpacing(14)
-        currency_row.addWidget(_label("Currency Code"))
+        currency_row.addWidget(_label(t("currency_code")))
         self.currency_input = _line_edit("EUR")
         self.currency_input.setFixedWidth(130)
         self.currency_input.textChanged.connect(self._on_currency_changed)
         currency_row.addWidget(self.currency_input)
-        note = QLabel("Applies to all levels")
+        note = QLabel(t("applies_to_all_levels"))
         note.setStyleSheet(f"font-size: 13px; color: {MUTED}; background: transparent;")
         currency_row.addWidget(note)
         currency_row.addStretch()
@@ -335,14 +338,15 @@ class SalaryTab(QWidget):
             grid.addWidget(card, index // 2, index % 2)
         outer.addLayout(grid)
 
-        save = _button("Save Salary Ranges", "fa5s.save", primary=True)
+        save = _button(t("save_salary_ranges"), "fa5s.save", primary=True)
         save.clicked.connect(self._save)
         outer.addWidget(save, alignment=Qt.AlignLeft)
         outer.addStretch()
         _set_page(self, content)
 
     def _salary_card(self, title):
-        label, color, bg = LEVEL_META.get(title.name, (title.label, BLUE, "#dbeafe"))
+        label_key, color, bg = LEVEL_META.get(title.name, (None, BLUE, "#dbeafe"))
+        label = t(label_key) if label_key else title.label
         card = _plain_card()
         layout = QVBoxLayout(card)
         layout.setContentsMargins(24, 22, 24, 24)
@@ -368,9 +372,9 @@ class SalaryTab(QWidget):
         currency_badge.setStyleSheet(f"background: {bg}; color: {color}; border-radius: 8px; font-size: 13px; font-weight: 800;")
         self.currency_badges.append(currency_badge)
 
-        fields.addWidget(_label("Minimum Salary"), 0, 0)
-        fields.addWidget(_label("Currency"), 0, 1)
-        fields.addWidget(_label("Maximum Salary"), 0, 2)
+        fields.addWidget(_label(t("salary_min")), 0, 0)
+        fields.addWidget(_label(t("currency")), 0, 1)
+        fields.addWidget(_label(t("salary_max")), 0, 2)
         fields.addWidget(min_spin, 1, 0)
         fields.addWidget(currency_badge, 1, 1)
         fields.addWidget(max_spin, 1, 2)
@@ -419,7 +423,7 @@ class SalaryTab(QWidget):
                     title.currency = currency
             log_action(session, action="settings.salary_ranges", performed_by_id=self.user.id, description="Salary ranges updated")
             session.commit()
-            _information(self, t("success"), "Salary ranges saved.")
+            _information(self, t("success"), t("salary_ranges_saved"))
         except Exception as exc:
             session.rollback()
             _critical(self, t("error"), str(exc))
@@ -438,23 +442,23 @@ class SettingsPromotionTab(QWidget):
     def _build(self):
         content, outer = _content()
 
-        card, layout = _section_card("Promotion Track Configuration", "Configure the promotion race timeline and salary bump for each level", "fa5s.chart-line", BLUE)
+        card, layout = _section_card(t("promotion_track_config"), t("promotion_track_config_subtitle"), "fa5s.chart-line", BLUE)
         layout.addWidget(_promotion_guide())
         self.rules_list = QVBoxLayout()
         self.rules_list.setSpacing(18)
         layout.addLayout(self.rules_list)
         layout.addWidget(_note_card(
-            "Track Modifiers",
+            t("track_modifiers"),
             [
-                "Commendations reduce months remaining.",
-                "Sanctions add delay months to the promotion timeline.",
-                "After promotion, the next race starts from month zero.",
+                t("track_modifier_commendations"),
+                t("track_modifier_sanctions"),
+                t("track_modifier_reset"),
             ],
             "fa5s.clock",
             "#92400e",
             NOTE_YELLOW_SS,
         ))
-        save = _button("Save Promotion Settings", "fa5s.save", primary=True)
+        save = _button(t("save_promotion_settings"), "fa5s.save", primary=True)
         save.clicked.connect(self._save)
         layout.addWidget(save, alignment=Qt.AlignRight)
         outer.addWidget(card)
@@ -497,7 +501,7 @@ class SettingsPromotionTab(QWidget):
         title_row.setSpacing(8)
         icon = QLabel()
         icon.setPixmap(qta.icon("fa5s.chart-line", color=BLUE).pixmap(17, 17))
-        title = QLabel(f"{row['from']} to {row['to']}")
+        title = QLabel(t("level_to_level", from_level=row["from"], to_level=row["to"]))
         title.setStyleSheet(f"font-size: 16px; font-weight: 800; color: {TEXT}; background: transparent;")
         title_row.addWidget(icon)
         title_row.addWidget(title)
@@ -509,12 +513,12 @@ class SettingsPromotionTab(QWidget):
         grid.setVerticalSpacing(8)
         months = _spin(1, 120, row["base_months"])
         salary = _percent_spin(row["salary_increase"])
-        grid.addWidget(_label("Base Track Duration (months)"), 0, 0)
-        grid.addWidget(_label("Base Salary Increase"), 0, 1)
+        grid.addWidget(_label(t("base_track_duration_months")), 0, 0)
+        grid.addWidget(_label(t("base_salary_increase")), 0, 1)
         grid.addWidget(months, 1, 0)
         grid.addWidget(salary, 1, 1)
-        grid.addWidget(_hint("Starting point for the promotion race"), 2, 0)
-        grid.addWidget(_hint("Upon promotion to next level"), 2, 1)
+        grid.addWidget(_hint(t("starting_point_for_race")), 2, 0)
+        grid.addWidget(_hint(t("upon_promotion_to_next")), 2, 1)
         grid.setColumnStretch(0, 1)
         grid.setColumnStretch(1, 1)
         layout.addLayout(grid)
@@ -532,7 +536,7 @@ class SettingsPromotionTab(QWidget):
                     rule.to_title.promotion_salary_increase_pct = salary_spin.value()
             log_action(session, action="settings.promotion_rules", performed_by_id=self.user.id, description="Promotion settings updated")
             session.commit()
-            _information(self, t("success"), "Promotion settings saved.")
+            _information(self, t("success"), t("promotion_settings_saved"))
         except Exception as exc:
             session.rollback()
             _critical(self, t("error"), str(exc))
@@ -551,8 +555,8 @@ class IncrementTab(QWidget):
     def _build(self):
         content, outer = _content()
         outer.addWidget(_note_card(
-            "Annual Increment Rules",
-            ["Applied manually by admin when employees reach their anniversary date."],
+            t("annual_increment_rules"),
+            [t("increment_note")],
             "fa5s.calendar-check",
             "#92400e",
             NOTE_YELLOW_SS,
@@ -565,14 +569,15 @@ class IncrementTab(QWidget):
             grid.addWidget(self._increment_card(title), index // 2, index % 2)
         outer.addLayout(grid)
 
-        save = _button("Save Increment Rules", "fa5s.save", primary=True)
+        save = _button(t("save_increment_rules"), "fa5s.save", primary=True)
         save.clicked.connect(self._save)
         outer.addWidget(save, alignment=Qt.AlignLeft)
         outer.addStretch()
         _set_page(self, content)
 
     def _increment_card(self, title):
-        label, color, bg = LEVEL_META.get(title.name, (title.label, BLUE, "#dbeafe"))
+        label_key, color, bg = LEVEL_META.get(title.name, (None, BLUE, "#dbeafe"))
+        label = t(label_key) if label_key else title.label
         card = _plain_card()
         layout = QVBoxLayout(card)
         layout.setContentsMargins(24, 22, 24, 24)
@@ -589,12 +594,12 @@ class IncrementTab(QWidget):
         fields = QGridLayout()
         fields.setHorizontalSpacing(16)
         type_combo = QComboBox()
-        type_combo.addItem("Percentage (%)", "percentage")
-        type_combo.addItem("Fixed Amount", "fixed")
+        type_combo.addItem(t("increment_percentage"), "percentage")
+        type_combo.addItem(t("increment_fixed"), "fixed")
         _style_combo(type_combo)
         value_spin = _percent_spin(3.0)
-        fields.addWidget(_label("Increment Type"), 0, 0)
-        fields.addWidget(_label("Increment Value"), 0, 1)
+        fields.addWidget(_label(t("increment_type")), 0, 0)
+        fields.addWidget(_label(t("increment_value")), 0, 1)
         fields.addWidget(type_combo, 1, 0)
         fields.addWidget(value_spin, 1, 1)
         fields.setColumnStretch(0, 1)
@@ -626,7 +631,7 @@ class IncrementTab(QWidget):
                     title.annual_increment_value = spin.value()
             log_action(session, action="settings.increment_rules", performed_by_id=self.user.id, description="Annual increment rules updated")
             session.commit()
-            _information(self, t("success"), "Annual increment rules saved.")
+            _information(self, t("success"), t("increment_rules_saved"))
         except Exception as exc:
             session.rollback()
             _critical(self, t("error"), str(exc))
@@ -646,7 +651,7 @@ class SecurityTab(QWidget):
         row.setSpacing(30)
         row.setAlignment(Qt.AlignTop)
 
-        card, layout = _section_card("Change Password", "Update your account password", "fa5s.lock", BLUE)
+        card, layout = _section_card(t("change_password"), t("change_password_subtitle"), "fa5s.lock", BLUE)
         self.current_pwd = _line_edit()
         self.current_pwd.setEchoMode(QLineEdit.Password)
         self.new_pwd = _line_edit()
@@ -655,24 +660,24 @@ class SecurityTab(QWidget):
         self.confirm_pwd.setEchoMode(QLineEdit.Password)
         form = QGridLayout()
         form.setVerticalSpacing(16)
-        _add_form_field(form, 0, 0, "Current Password", self.current_pwd)
-        _add_form_field(form, 1, 0, "New Password", self.new_pwd)
-        _add_form_field(form, 2, 0, "Confirm New Password", self.confirm_pwd)
+        _add_form_field(form, 0, 0, t("current_password"), self.current_pwd)
+        _add_form_field(form, 1, 0, t("new_password"), self.new_pwd)
+        _add_form_field(form, 2, 0, t("confirm_new_password"), self.confirm_pwd)
         layout.addLayout(form)
         row.addWidget(card, 3)
 
-        actions, actions_layout = _section_card("Actions", None, "fa5s.key", BLACK)
-        change = _button("Change Password", "fa5s.key", primary=True)
+        actions, actions_layout = _section_card(t("actions"), None, "fa5s.key", BLACK)
+        change = _button(t("change_password"), "fa5s.key", primary=True)
         change.clicked.connect(self._change_password)
         actions_layout.addWidget(change)
         actions_layout.addSpacing(12)
         actions_layout.addWidget(_note_card(
-            "Security Information",
+            t("security_information"),
             [
-                "Audit logs are retained indefinitely for compliance.",
-                "All actions are logged with user identity and timestamp.",
-                "Only admin and HR Officer accounts can log in.",
-                "Passwords are stored as SHA-256 hashes.",
+                t("security_note_audit_retained"),
+                t("security_note_identity"),
+                t("security_note_accounts"),
+                t("security_note_hashes"),
             ],
             "fa5s.shield-alt",
             "#1e40af",
@@ -690,20 +695,20 @@ class SecurityTab(QWidget):
         confirm = self.confirm_pwd.text()
 
         if not current or not new or not confirm:
-            _warning(self, t("warning"), "All fields are required.")
+            _warning(self, t("warning"), t("all_fields_required"))
             return
         if new != confirm:
-            _warning(self, t("warning"), "New passwords do not match.")
+            _warning(self, t("warning"), t("new_passwords_do_not_match"))
             return
         if len(new) < 6:
-            _warning(self, t("warning"), "Password must be at least 6 characters.")
+            _warning(self, t("warning"), t("password_min_length"))
             return
 
         session = get_session()
         try:
             user = session.query(SystemUser).filter_by(id=self.user.id).first()
             if not user or user.password_hash != sha256(current.encode()).hexdigest():
-                _critical(self, t("error"), "Current password is incorrect.")
+                _critical(self, t("error"), t("current_password_incorrect"))
                 return
             user.password_hash = sha256(new.encode()).hexdigest()
             log_action(session, action="settings.password_change", performed_by_id=self.user.id, description=f"Password changed for user: {self.user.username}")
@@ -711,7 +716,357 @@ class SecurityTab(QWidget):
             self.current_pwd.clear()
             self.new_pwd.clear()
             self.confirm_pwd.clear()
-            _information(self, t("success"), "Password changed successfully.")
+            _information(self, t("success"), t("password_changed_successfully"))
+        except Exception as exc:
+            session.rollback()
+            _critical(self, t("error"), str(exc))
+        finally:
+            session.close()
+
+
+class UserManagementTab(QWidget):
+    def __init__(self, user):
+        super().__init__()
+        self.user = user
+        self._build()
+        self.refresh()
+
+    def _build(self):
+        content, outer = _content()
+
+        header, header_layout = _section_card(
+            t("user_management"),
+            t("user_management_subtitle"),
+            "fa5s.users-cog",
+            BLUE,
+        )
+        top_row = QHBoxLayout()
+        top_row.setSpacing(16)
+        add = _button(t("add_hr_account"), "fa5s.user-plus", primary=True)
+        add.clicked.connect(self._add_hr)
+        top_row.addWidget(add, alignment=Qt.AlignLeft)
+        top_row.addStretch()
+        header_layout.addLayout(top_row)
+        header_layout.addWidget(_note_card(
+            t("user_management_rules"),
+            [
+                t("user_rule_admin_single"),
+                t("user_rule_hr_soft_delete"),
+                t("user_rule_audit_snapshot"),
+            ],
+            "fa5s.shield-alt",
+            "#1e40af",
+            NOTE_BLUE_SS,
+        ))
+        outer.addWidget(header)
+
+        card = _plain_card()
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        self.table = QTableWidget()
+        self.table.setColumnCount(6)
+        self.table.setHorizontalHeaderLabels([
+            t("username"), t("full_name"), t("role"), t("status"), t("last_login"), t("actions")
+        ])
+        self.table.setStyleSheet(
+            """
+QTableWidget {
+    background: white;
+    border: none;
+    gridline-color: #f3f4f6;
+    font-size: 14px;
+    color: #111827;
+    outline: none;
+}
+QTableWidget::item {
+    background: white;
+    padding: 0 12px;
+    border: none;
+    border-bottom: 1px solid #f3f4f6;
+}
+QTableWidget::item:hover { background: #f9fafb; }
+QTableWidget::item:selected { background: #eff6ff; color: #111827; }
+QHeaderView::section {
+    background: white;
+    border: none;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 800;
+    color: #030213;
+    min-height: 50px;
+    text-align: left;
+}
+QToolTip {
+    background-color: #111827;
+    color: white;
+    border: 1px solid #374151;
+    border-radius: 4px;
+    padding: 6px 8px;
+}
+"""
+        )
+        header_view = self.table.horizontalHeader()
+        header_view.setStretchLastSection(False)
+        for col, width in {0: 180, 1: 240, 2: 160, 3: 130, 4: 180, 5: 210}.items():
+            self.table.setColumnWidth(col, width)
+        for col in (0, 1):
+            header_view.setSectionResizeMode(col, QHeaderView.Stretch)
+        for col in (2, 3, 4, 5):
+            header_view.setSectionResizeMode(col, QHeaderView.Fixed)
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        layout.addWidget(self.table)
+        outer.addWidget(card)
+        outer.addStretch()
+        _set_page(self, content)
+
+    def refresh(self):
+        session = get_session()
+        try:
+            users = session.query(SystemUser).order_by(SystemUser.role, SystemUser.username).all()
+            rows = [{
+                "id": user.id,
+                "username": user.username,
+                "full_name": user.full_name,
+                "role": user.role,
+                "is_active": bool(user.is_active),
+                "last_login": user.last_login.strftime("%Y-%m-%d %H:%M") if user.last_login else "-",
+            } for user in users]
+        finally:
+            session.close()
+
+        self.table.setRowCount(len(rows))
+        self.table.setMinimumHeight(112 + (62 * max(1, len(rows))))
+        for row_index, row in enumerate(rows):
+            self.table.setRowHeight(row_index, 58)
+            _set_tooltip_item(self.table, row_index, 0, row["username"])
+            _set_tooltip_item(self.table, row_index, 1, row["full_name"])
+            _set_tooltip_item(self.table, row_index, 2, t("role_admin") if row["role"] == "admin" else t("role_hr"))
+            _set_tooltip_item(self.table, row_index, 3, t("active") if row["is_active"] else t("inactive"))
+            _set_tooltip_item(self.table, row_index, 4, row["last_login"])
+            self.table.setCellWidget(row_index, 5, self._actions_cell(row))
+
+    def _actions_cell(self, row):
+        cell = QWidget()
+        cell.setStyleSheet("background: transparent; border: none;")
+        layout = QHBoxLayout(cell)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(8)
+        layout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        edit = QPushButton(t("edit"))
+        edit.setIcon(qta.icon("fa5s.edit", color="#111827"))
+        edit.setIconSize(QSize(13, 13))
+        edit.setFixedSize(82, 36)
+        edit.setCursor(Qt.PointingHandCursor)
+        edit.setStyleSheet(_secondary_button_ss())
+        edit.setToolTip(t("edit_user_account"))
+        edit.clicked.connect(lambda _, uid=row["id"]: self._edit_user(uid))
+        layout.addWidget(edit)
+
+        if row["role"] == "hr_officer":
+            active = row["is_active"]
+            toggle = QPushButton(t("deactivate") if active else t("reactivate"))
+            toggle.setFixedSize(104, 36)
+            toggle.setCursor(Qt.PointingHandCursor)
+            toggle.setStyleSheet(_secondary_button_ss())
+            toggle.setToolTip(t("deactivate_user_account") if active else t("reactivate_user_account"))
+            toggle.clicked.connect(lambda _, uid=row["id"], make_active=not active: self._set_active(uid, make_active))
+            layout.addWidget(toggle)
+        return cell
+
+    def _add_hr(self):
+        dialog = UserAccountDialog(self.user, parent=self)
+        if dialog.exec() == QDialog.Accepted:
+            self.refresh()
+
+    def _edit_user(self, user_id):
+        dialog = UserAccountDialog(self.user, user_id=user_id, parent=self)
+        if dialog.exec() == QDialog.Accepted:
+            self.refresh()
+
+    def _set_active(self, user_id, make_active):
+        title = t("reactivate_user_account") if make_active else t("deactivate_user_account")
+        body = t("confirm_reactivate_user") if make_active else t("confirm_deactivate_user")
+        if _question(self, title, body) != QMessageBox.Yes:
+            return
+        session = get_session()
+        try:
+            account = session.query(SystemUser).filter_by(id=user_id, role="hr_officer").first()
+            if not account:
+                _warning(self, t("warning"), t("hr_account_not_found"))
+                return
+            account.is_active = make_active
+            log_action(
+                session,
+                action="settings.user_reactivate" if make_active else "settings.user_deactivate",
+                performed_by_id=self.user.id,
+                target_table="system_user",
+                target_id=account.id,
+                description=(
+                    f"User account {'reactivated' if make_active else 'deactivated'}: "
+                    f"{account.username} ({account.full_name})"
+                ),
+            )
+            session.commit()
+            self.refresh()
+        except Exception as exc:
+            session.rollback()
+            _critical(self, t("error"), str(exc))
+        finally:
+            session.close()
+
+
+class UserAccountDialog(QDialog):
+    def __init__(self, actor, user_id=None, parent=None):
+        super().__init__(parent)
+        self.actor = actor
+        self.user_id = user_id
+        self.account_role = "hr_officer"
+        self.setWindowTitle(t("edit_user_account") if user_id else t("add_hr_account"))
+        self.setFixedWidth(520)
+        self.setStyleSheet("QDialog { background: white; color: #111827; } QLabel { background: transparent; color: #111827; }")
+        self._build()
+        if user_id:
+            self._load()
+
+    def _build(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(28, 24, 28, 24)
+        layout.setSpacing(16)
+
+        title = QLabel(t("edit_user_account") if self.user_id else t("add_hr_account"))
+        title.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {TEXT}; background: transparent;")
+        layout.addWidget(title)
+
+        self.role_label = QLabel(t("role_hr"))
+        self.role_label.setStyleSheet("font-size: 13px; color: #2563eb; font-weight: 700; background: transparent;")
+        layout.addWidget(self.role_label)
+
+        self.username = _line_edit()
+        self.full_name = _line_edit()
+        self.password = _line_edit()
+        self.password.setEchoMode(QLineEdit.Password)
+        self.confirm = _line_edit()
+        self.confirm.setEchoMode(QLineEdit.Password)
+
+        form = QFormLayout()
+        form.setHorizontalSpacing(18)
+        form.setVerticalSpacing(14)
+        form.addRow(t("username") + " *", self.username)
+        form.addRow(t("full_name") + " *", self.full_name)
+        form.addRow(t("new_password") + (" *" if not self.user_id else ""), self.password)
+        form.addRow(t("confirm_new_password") + (" *" if not self.user_id else ""), self.confirm)
+        layout.addLayout(form)
+
+        note = QLabel(t("password_optional_edit") if self.user_id else t("password_required_new_user"))
+        note.setWordWrap(True)
+        note.setStyleSheet("font-size: 12px; color: #6b7280; background: transparent;")
+        layout.addWidget(note)
+
+        buttons = QHBoxLayout()
+        buttons.addStretch()
+        cancel = QPushButton(t("cancel"))
+        cancel.setFixedHeight(38)
+        cancel.setCursor(Qt.PointingHandCursor)
+        cancel.setStyleSheet(_secondary_button_ss())
+        cancel.clicked.connect(self.reject)
+        save = QPushButton(t("save"))
+        save.setFixedHeight(38)
+        save.setCursor(Qt.PointingHandCursor)
+        save.setStyleSheet(_primary_button_ss())
+        save.clicked.connect(self._save)
+        buttons.addWidget(cancel)
+        buttons.addWidget(save)
+        layout.addLayout(buttons)
+
+    def _load(self):
+        session = get_session()
+        try:
+            account = session.query(SystemUser).filter_by(id=self.user_id).first()
+            if not account:
+                return
+            self.account_role = account.role
+            self.username.setText(account.username)
+            self.full_name.setText(account.full_name)
+            self.role_label.setText(t("role_admin") if account.role == "admin" else t("role_hr"))
+        finally:
+            session.close()
+
+    def _save(self):
+        username = self.username.text().strip()
+        full_name = self.full_name.text().strip()
+        password = self.password.text()
+        confirm = self.confirm.text()
+
+        if not username or not full_name:
+            _warning(self, t("warning"), t("username_full_name_required"))
+            return
+        if not self.user_id and not password:
+            _warning(self, t("warning"), t("password_required_new_user"))
+            return
+        if password or confirm:
+            if password != confirm:
+                _warning(self, t("warning"), t("new_passwords_do_not_match"))
+                return
+            if len(password) < 6:
+                _warning(self, t("warning"), t("password_min_length"))
+                return
+
+        session = get_session()
+        try:
+            duplicate = session.query(SystemUser).filter(SystemUser.username == username).first()
+            if duplicate and duplicate.id != self.user_id:
+                _warning(self, t("warning"), t("username_already_exists"))
+                return
+
+            if self.user_id:
+                account = session.query(SystemUser).filter_by(id=self.user_id).first()
+                if not account:
+                    _warning(self, t("warning"), t("user_account_not_found"))
+                    return
+                before = f'{{"username": "{account.username}", "full_name": "{account.full_name}", "role": "{account.role}"}}'
+                account.username = username
+                account.full_name = full_name
+                if password:
+                    account.password_hash = sha256(password.encode()).hexdigest()
+                action = "settings.user_update"
+                description = f"User account updated: {username} ({full_name})"
+                target_id = account.id
+                if account.id == self.actor.id:
+                    self.actor.username = username
+                    self.actor.full_name = full_name
+            else:
+                account = SystemUser(
+                    username=username,
+                    full_name=full_name,
+                    role="hr_officer",
+                    password_hash=sha256(password.encode()).hexdigest(),
+                    is_active=True,
+                )
+                session.add(account)
+                session.flush()
+                before = None
+                action = "settings.user_create"
+                description = f"HR account created: {username} ({full_name})"
+                target_id = account.id
+
+            after = f'{{"username": "{account.username}", "full_name": "{account.full_name}", "role": "{account.role}", "is_active": {str(bool(account.is_active)).lower()}}}'
+            log_action(
+                session,
+                action=action,
+                performed_by_id=self.actor.id,
+                target_table="system_user",
+                target_id=target_id,
+                description=description,
+                before_value=before,
+                after_value=after,
+            )
+            session.commit()
+            self.accept()
         except Exception as exc:
             session.rollback()
             _critical(self, t("error"), str(exc))
@@ -735,35 +1090,35 @@ class DatabaseTab(QWidget):
         left.setSpacing(20)
         left.setAlignment(Qt.AlignTop)
 
-        backup, backup_layout = _section_card("Database Backup", "Create a copy of the local SQLite database", "fa5s.database", BLUE)
-        backup_info = QLabel("Backs up the myhr.db database file to a location you choose.")
+        backup, backup_layout = _section_card(t("db_backup"), t("db_backup_subtitle"), "fa5s.database", BLUE)
+        backup_info = QLabel(t("db_backup_description"))
         backup_info.setWordWrap(True)
         backup_info.setStyleSheet(f"font-size: 14px; color: {MUTED}; background: transparent;")
         backup_layout.addWidget(backup_info)
-        backup_btn = _button("Create Backup", "fa5s.save", primary=True)
+        backup_btn = _button(t("create_backup"), "fa5s.save", primary=True)
         backup_btn.clicked.connect(self._backup)
         backup_layout.addWidget(backup_btn, alignment=Qt.AlignLeft)
         left.addWidget(backup)
 
-        export, export_layout = _section_card("Export All Employees", "Export all employee records to CSV", "fa5s.file-export", BLUE)
-        export_info = QLabel("Exports a CSV file containing employee records for reporting or migration.")
+        export, export_layout = _section_card(t("export_all"), t("export_all_subtitle"), "fa5s.file-export", BLUE)
+        export_info = QLabel(t("export_all_description"))
         export_info.setWordWrap(True)
         export_info.setStyleSheet(f"font-size: 14px; color: {MUTED}; background: transparent;")
         export_layout.addWidget(export_info)
-        export_btn = _button("Export Employees CSV", "fa5s.download", primary=True)
+        export_btn = _button(t("export_employees_csv"), "fa5s.download", primary=True)
         export_btn.clicked.connect(self._export)
         export_layout.addWidget(export_btn, alignment=Qt.AlignLeft)
         left.addWidget(export)
         row.addLayout(left, 3)
 
-        right, right_layout = _section_card("Database Notes", None, "fa5s.info-circle", BLACK)
+        right, right_layout = _section_card(t("database_notes"), None, "fa5s.info-circle", BLACK)
         right_layout.addWidget(_note_card(
-            "Coming in Thesis Extension",
+            t("coming_in_thesis_extension"),
             [
-                "Scheduled automatic backups.",
-                "Yearly reporting summaries.",
-                "Data export by department or date range.",
-                "Database health check and integrity validation.",
+                t("db_note_scheduled_backups"),
+                t("db_note_yearly_reports"),
+                t("db_note_export_filters"),
+                t("db_note_health_check"),
             ],
             "fa5s.tools",
             "#92400e",
@@ -777,17 +1132,17 @@ class DatabaseTab(QWidget):
         _set_page(self, content)
 
     def _backup(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Save Backup", "myhr_backup.db", "SQLite Database (*.db)")
+        path, _ = QFileDialog.getSaveFileName(self, t("save_backup"), "myhr_backup.db", t("sqlite_database_filter"))
         if not path:
             return
         try:
             shutil.copy2(DB_PATH, path)
-            _information(self, t("success"), f"Backup saved to:\n{path}")
+            _information(self, t("success"), t("backup_saved_to", path=path))
         except Exception as exc:
             _critical(self, t("error"), str(exc))
 
     def _export(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Export Employees", "employees_export.csv", "CSV Files (*.csv)")
+        path, _ = QFileDialog.getSaveFileName(self, t("export_employees"), "employees_export.csv", t("csv_files_filter"))
         if not path:
             return
         session = get_session()
@@ -817,7 +1172,7 @@ class DatabaseTab(QWidget):
                     ])
             log_action(session, action="settings.export_employees", performed_by_id=self.user.id, description=f"Employee data exported to CSV: {len(employees)} records")
             session.commit()
-            _information(self, t("success"), f"Exported {len(employees)} employee records to:\n{path}")
+            _information(self, t("success"), t("employees_exported_to", count=len(employees), path=path))
         except Exception as exc:
             session.rollback()
             _critical(self, t("error"), str(exc))
@@ -910,13 +1265,13 @@ def _note_card(title, lines, icon_name, color, stylesheet):
 
 def _promotion_guide():
     return _note_card(
-        "How the Promotion Race Works",
+        t("how_promotion_race_works"),
         [
-            "Each promotion level is a <b>race track</b> with a base duration in months.",
-            "Employees move forward <b>1 checkpoint per month</b> automatically.",
-            "<b>Commendations</b> speed up the race by reducing months remaining.",
-            "<b>Sanctions</b> delay the race by adding months to the timeline.",
-            "When the employee reaches 0 months remaining, they become eligible for promotion.",
+            t("race_guide_level_track"),
+            t("race_guide_checkpoint"),
+            t("race_guide_commendations"),
+            t("race_guide_sanctions"),
+            t("race_guide_eligible"),
         ],
         "fa5s.chart-line",
         "#1e40af",
@@ -1033,6 +1388,13 @@ def _clear_layout(layout):
             item.widget().deleteLater()
 
 
+def _set_tooltip_item(table, row, col, text):
+    item = QTableWidgetItem(str(text))
+    item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+    item.setToolTip(str(text))
+    table.setItem(row, col, item)
+
+
 def _primary_button_ss():
     return """
 QPushButton {
@@ -1085,3 +1447,7 @@ def _critical(parent, title, text):
 
 def _information(parent, title, text):
     return _styled_message_box(parent, QMessageBox.Information, title, text)
+
+
+def _question(parent, title, text):
+    return _styled_message_box(parent, QMessageBox.Question, title, text, QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)

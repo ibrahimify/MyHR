@@ -1225,5 +1225,5 @@ def _information(parent, title, text):
 def _question(parent, title, text):
     return _styled_message_box(
         parent, QMessageBox.Question, title, text,
-        QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+        QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes
     )

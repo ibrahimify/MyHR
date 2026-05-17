@@ -22,26 +22,30 @@ from src.database.connection import get_session
 from src.database.models import AuditLog
 
 
-ACTION_LABELS = {
-    "employee.create": "Employee Added",
-    "employee.update": "Employee Updated",
-    "employee.delete": "Employee Deleted",
-    "promotion.approve": "Promotion Approved",
-    "promotion_rule.update": "Promotion Rule Updated",
-    "commendation.issue": "Commendation Issued",
-    "sanction.issue": "Sanction Applied",
-    "sanction.resolve": "Sanction Resolved",
-    "import.bulk_employees": "CSV Import",
-    "settings.salary_ranges": "Salary Ranges Updated",
-    "settings.increment_rules": "Increment Rules Updated",
-    "settings.general": "General Settings Updated",
-    "settings.promotion_rules": "Promotion Settings Updated",
-    "settings.password_change": "Password Changed",
-    "settings.export_employees": "Employee Data Exported",
-    "org_unit.create": "Organization Unit Added",
-    "org_unit.update": "Organization Unit Updated",
-    "org_unit.delete": "Organization Unit Deleted",
-    "salary_increment.apply": "Salary Increment Applied",
+ACTION_LABEL_KEYS = {
+    "employee.create": "audit_action_employee_create",
+    "employee.update": "audit_action_employee_update",
+    "employee.delete": "audit_action_employee_delete",
+    "promotion.approve": "audit_action_promotion_approve",
+    "promotion_rule.update": "audit_action_promotion_rule_update",
+    "commendation.issue": "audit_action_commendation_issue",
+    "sanction.issue": "audit_action_sanction_issue",
+    "sanction.resolve": "audit_action_sanction_resolve",
+    "import.bulk_employees": "audit_action_import_bulk",
+    "settings.salary_ranges": "audit_action_settings_salary",
+    "settings.increment_rules": "audit_action_settings_increment",
+    "settings.general": "audit_action_settings_general",
+    "settings.promotion_rules": "audit_action_settings_promotion",
+    "settings.password_change": "audit_action_password_change",
+    "settings.export_employees": "audit_action_export_employees",
+    "settings.user_create": "audit_action_user_create",
+    "settings.user_update": "audit_action_user_update",
+    "settings.user_deactivate": "audit_action_user_deactivate",
+    "settings.user_reactivate": "audit_action_user_reactivate",
+    "org_unit.create": "audit_action_org_create",
+    "org_unit.update": "audit_action_org_update",
+    "org_unit.delete": "audit_action_org_delete",
+    "salary_increment.apply": "audit_action_salary_increment",
 }
 
 CATEGORY_META = {
@@ -298,10 +302,10 @@ class AuditLogPage(QWidget):
         il.addLayout(info_head)
 
         for text in [
-            "All system activities are automatically logged for compliance and security",
-            "Logs cannot be modified or deleted to ensure data integrity",
-            "Records include user identity, timestamp, and detailed action information",
-            "Logs are retained indefinitely for audit purposes",
+            t("audit_info_auto_logged"),
+            t("audit_info_immutable"),
+            t("audit_info_identity"),
+            t("audit_info_retained"),
         ]:
             item = QLabel("&bull; " + text)
             item.setTextFormat(Qt.RichText)
@@ -377,8 +381,9 @@ class AuditLogPage(QWidget):
         return {
             "timestamp": log.performed_at.strftime("%Y-%m-%d %H:%M:%S") if log.performed_at else "-",
             "date": log.performed_at.date() if log.performed_at else None,
-            "user": log.performed_by.full_name if log.performed_by else "System",
-            "action": ACTION_LABELS.get(action, action.replace("_", " ").replace(".", " ").title()),
+            "user": log.performed_by_username or (log.performed_by.username if log.performed_by else "System"),
+            "user_name": log.performed_by_name or (log.performed_by.full_name if log.performed_by else "System"),
+            "action": _action_label(action),
             "raw_action": action,
             "details": log.description or "-",
             "category": category,
@@ -438,7 +443,7 @@ class AuditLogPage(QWidget):
             user_font = user_item.font()
             user_font.setBold(True)
             user_item.setFont(user_font)
-            user_item.setToolTip(log["user"])
+            user_item.setToolTip(log.get("user_name") or log["user"])
             self.table.setItem(row_index, 1, user_item)
 
             action_item = QTableWidgetItem(log["action"])
@@ -475,6 +480,11 @@ def _category_for_action(action):
     if root in {"salary", "salary_increment"}:
         return "salary"
     return root if root in CATEGORY_META else "other"
+
+
+def _action_label(action):
+    key = ACTION_LABEL_KEYS.get(action)
+    return t(key) if key else action.replace("_", " ").replace(".", " ").title()
 
 
 def _category_label(category):

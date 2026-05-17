@@ -1638,7 +1638,7 @@ class EmployeeProfileView(QWidget):
                 QTabBar::tab:last { border-top-right-radius: 9px; border-bottom-right-radius: 9px; }
                 QTabBar::tab:selected { background: white; color: #030213; }
             """)
-            tabs.addTab(self._details_tab(emp), t("personal_details"))
+            tabs.addTab(self._details_tab(emp, sub_race), t("personal_details"))
             tabs.addTab(self._promotion_tab(emp, race, sub_race), t("promotion_history"))
             if not is_other_employee(emp):
                 tabs.addTab(self._commendations_tab(emp), t("commendations"))
@@ -1712,15 +1712,22 @@ class EmployeeProfileView(QWidget):
         self.editing = True
         self.load(self.employee_db_id)
 
-    def _details_tab(self, emp):
+    def _details_tab(self, emp, sub_race=None):
         if self.editing:
             return self._edit_details_tab(emp)
         page = QWidget()
         page.setStyleSheet("background: #f9fafb;")
-        layout = QHBoxLayout(page)
+        layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 12, 0, 0)
         layout.setSpacing(16)
-        layout.addWidget(self._info_card("Employment Information", [
+
+        if sub_race:
+            layout.addWidget(self._race_overview_card(sub_race))
+            layout.addWidget(self._sub_race_card(sub_race))
+
+        info_row = QHBoxLayout()
+        info_row.setSpacing(16)
+        info_row.addWidget(self._info_card(t("employment_info"), [
             (t("employee_id"), emp.employee_id),
             (t("department"), emp.org_unit.name if emp.org_unit else "-"),
             (t("position"), emp.position),
@@ -1730,7 +1737,7 @@ class EmployeeProfileView(QWidget):
             (t("join_date"), str(emp.join_date.date()) if emp.join_date else "-"),
         ]))
         if self.user.role == "admin":
-            layout.addWidget(self._info_card(t("personal_info_admin"), [
+            info_row.addWidget(self._info_card(t("personal_info_admin"), [
                 (t("full_name"), emp.full_name),
                 (t("personal_email"), emp.personal_email or "-"),
                 (t("phone"), emp.phone or "-"),
@@ -1738,6 +1745,8 @@ class EmployeeProfileView(QWidget):
                 (t("degree"), t("other_misc") if emp.degree == "Other" else emp.degree),
                 (t("base_salary"), f"EUR {emp.base_salary:,.2f}"),
             ], badge=t("admin_only_badge")))
+        info_row.addStretch()
+        layout.addLayout(info_row)
         layout.addStretch()
         return page
 
@@ -1994,8 +2003,6 @@ class EmployeeProfileView(QWidget):
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 12, 0, 0)
         layout.setSpacing(14)
-        layout.addWidget(self._race_overview_card(sub_race))
-        layout.addWidget(self._sub_race_card(sub_race))
         card = self._list_card(t("promotion_history"))
         body = card.layout()
         timeline = []
@@ -2035,36 +2042,55 @@ class EmployeeProfileView(QWidget):
         card.setObjectName("ProfileCard")
         card.setStyleSheet(PROFILE_CARD_SS)
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(20, 18, 20, 18)
-        layout.setSpacing(12)
+        layout.setContentsMargins(24, 22, 24, 22)
+        layout.setSpacing(16)
         header = QHBoxLayout()
         header.addWidget(self._info_title(t("current_promotion_race")))
         header.addStretch()
         layout.addLayout(header)
 
+        next_step = next((step for step in sub_race.get("steps", []) if not step.get("completed")), None)
+        right_label = sub_race.get("next_title") or (next_step["label"] if next_step else t("annual_increment"))
+        expected_date = sub_race.get("expected_promotion_date") or (next_step.get("due_date") if next_step else None)
+        expected_text = expected_date.strftime("%Y-%m-%d") if expected_date else "-"
+        start_text = sub_race["race_start"].strftime("%Y-%m-%d") if sub_race.get("race_start") else "-"
+        middle_text = (
+            t("months_remaining_count", count=sub_race["months_left"])
+            if sub_race.get("months_left") is not None
+            else t("ongoing_service_track")
+        )
+
         row = QHBoxLayout()
-        row.setSpacing(12)
+        row.setSpacing(14)
         row.addWidget(self._badge(sub_race["current_title"], "#dbeafe", "#1e40af"))
         bar = QProgressBar()
         bar.setRange(0, 100)
         bar.setValue(sub_race.get("progress_pct") or 0)
-        bar.setFixedHeight(10)
+        bar.setFixedHeight(12)
         bar.setTextVisible(False)
-        bar.setStyleSheet("QProgressBar { background: #e5e7eb; border-radius: 5px; border: none; } QProgressBar::chunk { background: #facc15; border-radius: 5px; }")
+        bar.setStyleSheet("QProgressBar { background: #e5e7eb; border-radius: 6px; border: none; } QProgressBar::chunk { background: #facc15; border-radius: 6px; }")
+        bar.setToolTip(middle_text)
         row.addWidget(bar, 1)
-        row.addWidget(self._badge(sub_race["next_title"] or t("annual_increment"), "#dcfce7", "#166534"))
+        row.addWidget(self._badge(right_label, "#dcfce7", "#166534"))
         layout.addLayout(row)
 
-        meta = QHBoxLayout()
-        meta.setSpacing(18)
-        start = sub_race["race_start"].strftime("%Y-%m-%d") if sub_race.get("race_start") else "-"
-        meta.addWidget(self._small_meta(t("race_started_on", date=start)))
-        if sub_race.get("expected_promotion_date"):
-            expected = sub_race["expected_promotion_date"].strftime("%Y-%m-%d")
-            meta.addWidget(self._small_meta(t("expected_promotion_on", date=expected)))
-        if sub_race.get("months_left") is not None:
-            meta.addWidget(self._small_meta(t("months_remaining_count", count=sub_race["months_left"])))
-        meta.addStretch()
+        meta = QGridLayout()
+        meta.setHorizontalSpacing(18)
+        for col, (label, value, align) in enumerate([
+            (t("started"), start_text, Qt.AlignLeft),
+            (t("remaining"), middle_text, Qt.AlignCenter),
+            (t("expected"), expected_text, Qt.AlignRight),
+        ]):
+            label_widget = QLabel(label.upper())
+            label_widget.setAlignment(align)
+            label_widget.setStyleSheet("font-size: 10px; font-weight: 800; color: #9ca3af; letter-spacing: 0; background: transparent;")
+            value_widget = QLabel(value)
+            value_widget.setAlignment(align)
+            value_widget.setStyleSheet("font-size: 13px; font-weight: 700; color: #374151; background: transparent;")
+            value_widget.setToolTip(value)
+            meta.addWidget(label_widget, 0, col)
+            meta.addWidget(value_widget, 1, col)
+            meta.setColumnStretch(col, 1)
         layout.addLayout(meta)
         return card
 
@@ -2073,7 +2099,7 @@ class EmployeeProfileView(QWidget):
         card.setObjectName("ProfileCard")
         card.setStyleSheet(PROFILE_CARD_SS)
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setContentsMargins(24, 18, 24, 20)
         layout.setSpacing(12)
         layout.addWidget(self._info_title(t("sub_race")))
 
@@ -2081,13 +2107,13 @@ class EmployeeProfileView(QWidget):
         scroller.setWidgetResizable(True)
         scroller.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroller.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroller.setFixedHeight(112)
+        scroller.setFixedHeight(128)
         scroller.setStyleSheet("border: none; background: transparent;")
         holder = QWidget()
         holder.setStyleSheet("background: transparent;")
         row = QHBoxLayout(holder)
-        row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(10)
+        row.setContentsMargins(36, 0, 36, 0)
+        row.setSpacing(12)
         for step in sub_race.get("steps", []):
             box = QFrame()
             done = step["completed"]
@@ -2103,6 +2129,7 @@ class EmployeeProfileView(QWidget):
             title.setAlignment(Qt.AlignCenter)
             title.setStyleSheet(f"font-size: 13px; font-weight: 800; color: {color};")
             date_text = step["due_date"].strftime("%Y-%m-%d") if step.get("due_date") else "-"
+            box.setToolTip(f"{step['label']} - {date_text}")
             date = QLabel(date_text)
             date.setAlignment(Qt.AlignCenter)
             date.setStyleSheet(f"font-size: 11px; color: {color};")

@@ -28,9 +28,9 @@ from datetime import datetime
 
 
 CATEGORIES = {
-    1: {"label": "Category 1", "months": -1, "desc": "Good performance recognition",  "color": "#10b981", "bg": "#dcfce7"},
-    2: {"label": "Category 2", "months": -3, "desc": "Excellent achievement",          "color": "#2563eb", "bg": "#eff6ff"},
-    3: {"label": "Category 3", "months": -6, "desc": "Outstanding / exceptional work", "color": "#8b5cf6", "bg": "#f3e8ff"},
+    1: {"label_key": "category_1", "months": -1, "desc_key": "category_1_desc", "color": "#10b981", "bg": "#dcfce7"},
+    2: {"label_key": "category_2", "months": -3, "desc_key": "category_2_desc", "color": "#2563eb", "bg": "#eff6ff"},
+    3: {"label_key": "category_3", "months": -6, "desc_key": "category_3_desc", "color": "#8b5cf6", "bg": "#f3e8ff"},
 }
 
 PAGE_BG = "#f9fafb"
@@ -247,21 +247,21 @@ class IssueCommendationTab(QWidget):
         mc = QVBoxLayout(mode_card)
         mc.setContentsMargins(30, 28, 30, 28)
         mc.setSpacing(24)
-        mc_title = QLabel("Commendation Type")
+        mc_title = QLabel(t("commendation_type"))
         mc_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
         mc.addWidget(mc_title)
 
         mode_row = QHBoxLayout()
         mode_row.setSpacing(10)
 
-        self.single_btn = QPushButton("Single Employee")
+        self.single_btn = QPushButton(t("single_employee"))
         self.single_btn.setIcon(qta.icon("fa5s.user", color="#2563eb"))
         self.single_btn.setIconSize(QSize(28, 28))
         self.single_btn.setFixedHeight(150)
         self.single_btn.setCursor(Qt.PointingHandCursor)
         self.single_btn.clicked.connect(lambda: self._set_mode("single"))
 
-        self.bulk_btn = QPushButton("Team Award")
+        self.bulk_btn = QPushButton(t("team_award"))
         self.bulk_btn.setIcon(qta.icon("fa5s.users", color="#6b7280"))
         self.bulk_btn.setIconSize(QSize(28, 28))
         self.bulk_btn.setFixedHeight(150)
@@ -281,14 +281,14 @@ class IssueCommendationTab(QWidget):
         dc.setContentsMargins(30, 28, 30, 28)
         dc.setSpacing(16)
 
-        dc_title = QLabel("Commendation Details")
+        dc_title = QLabel(t("commendation_details"))
         dc_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
         dc.addWidget(dc_title)
 
-        title_lbl = QLabel("Award Title *")
+        title_lbl = QLabel(t("award_title") + " *")
         title_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
         self.title_input = QLineEdit()
-        self.title_input.setPlaceholderText("e.g. Project Excellence Award")
+        self.title_input.setPlaceholderText(t("award_title_placeholder"))
         self.title_input.setFixedHeight(44)
         self.title_input.setStyleSheet(INPUT_SS)
         dc.addWidget(title_lbl)
@@ -300,20 +300,20 @@ class IssueCommendationTab(QWidget):
         self.cat_combo.setFixedHeight(44)
         self.cat_combo.setStyleSheet(COMBO_SS)
         _polish_combo(self.cat_combo)
-        self.cat_combo.addItem("Select category tier", None)
+        self.cat_combo.addItem(t("select_category_tier"), None)
         for cat_id, cat in CATEGORIES.items():
-            self.cat_combo.addItem(f"{cat['label']} (-{abs(cat['months'])} month{'s' if abs(cat['months']) > 1 else ''})", cat_id)
+            self.cat_combo.addItem(t("category_option", category=t(cat["label_key"]), months=abs(cat["months"])), cat_id)
         dc.addWidget(cat_lbl)
         dc.addWidget(self.cat_combo)
-        cat_hint = QLabel("Higher categories accelerate the employee's promotion race more")
+        cat_hint = QLabel(t("higher_categories_hint"))
         cat_hint.setStyleSheet("font-size: 12px; color: #64748b; background: transparent;")
         dc.addWidget(cat_hint)
 
-        desc_lbl = QLabel("Description *")
+        desc_lbl = QLabel(t("description") + " *")
         desc_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
         self.desc_input = QTextEdit()
         self.desc_input.setFixedHeight(80)
-        self.desc_input.setPlaceholderText("Describe the achievement or reason for this commendation...")
+        self.desc_input.setPlaceholderText(t("commendation_description_placeholder"))
         self.desc_input.setStyleSheet(INPUT_SS)
         dc.addWidget(desc_lbl)
         dc.addWidget(self.desc_input)
@@ -327,7 +327,7 @@ class IssueCommendationTab(QWidget):
         ec.setContentsMargins(30, 28, 30, 28)
         ec.setSpacing(14)
 
-        self.emp_card_title = QLabel("Select Employee")
+        self.emp_card_title = QLabel(t("select_employee"))
         self.emp_card_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
         ec.addWidget(self.emp_card_title)
 
@@ -351,7 +351,7 @@ class IssueCommendationTab(QWidget):
         self.bulk_scroll.setWidget(self.bulk_container)
         ec.addWidget(self.bulk_scroll)
 
-        self.selected_count_lbl = QLabel("0 selected")
+        self.selected_count_lbl = QLabel(t("selected_count", count=0))
         self.selected_count_lbl.setStyleSheet("font-size: 12px; color: #6b7280; background: transparent;")
         ec.addWidget(self.selected_count_lbl)
         left.addWidget(emp_card)
@@ -378,7 +378,7 @@ class IssueCommendationTab(QWidget):
         impact_head.addWidget(ic_title)
         impact_head.addStretch()
         ic.addLayout(impact_head)
-        intro = QLabel("Commendations reduce months on the promotion race track")
+        intro = QLabel(t("commendation_impact_intro"))
         intro.setWordWrap(True)
         intro.setStyleSheet("font-size: 13px; color: #1d4ed8; background: transparent;")
         ic.addWidget(intro)
@@ -389,12 +389,12 @@ class IssueCommendationTab(QWidget):
             rl = QVBoxLayout(row)
             rl.setContentsMargins(16, 14, 16, 14)
             top = QHBoxLayout()
-            name = QLabel(cat["label"])
+            name = QLabel(t(cat["label_key"]))
             name.setStyleSheet(f"font-size: 16px; font-weight: 800; color: {cat['color']}; background: transparent;")
             badge = QLabel(f"-{abs(cat['months'])} mo")
-            badge.setText(f"-{abs(cat['months'])} month{'s' if abs(cat['months']) > 1 else ''}")
+            badge.setText(t("negative_month_count", count=abs(cat["months"])))
             badge.setStyleSheet(f"background: {cat['bg']}; color: {cat['color']}; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: bold;")
-            desc = QLabel(cat["desc"])
+            desc = QLabel(t(cat["desc_key"]))
             desc.setStyleSheet(f"font-size: 12px; color: {cat['color']}; background: transparent;")
             top.addWidget(name)
             top.addStretch()
@@ -411,11 +411,11 @@ class IssueCommendationTab(QWidget):
         ac = QVBoxLayout(actions_card)
         ac.setContentsMargins(30, 28, 30, 28)
         ac.setSpacing(16)
-        actions_title = QLabel("Actions")
+        actions_title = QLabel(t("actions"))
         actions_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
         ac.addWidget(actions_title)
         ac.addSpacing(24)
-        issue_btn = QPushButton("  Issue Commendation")
+        issue_btn = QPushButton("  " + t("issue_commendation"))
         issue_btn.setIcon(qta.icon("fa5s.award", color="white"))
         issue_btn.setIconSize(QSize(14, 14))
         issue_btn.setCursor(Qt.PointingHandCursor)
@@ -423,7 +423,7 @@ class IssueCommendationTab(QWidget):
         issue_btn.setStyleSheet("QPushButton { background: #030213; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 800; } QPushButton:hover { background: #111827; }")
         issue_btn.clicked.connect(self._issue)
         ac.addWidget(issue_btn)
-        clear_btn = QPushButton("Clear Form")
+        clear_btn = QPushButton(t("clear_form"))
         clear_btn.setCursor(Qt.PointingHandCursor)
         clear_btn.setFixedHeight(44)
         clear_btn.setStyleSheet("QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-weight: 700; } QPushButton:hover { background: #f3f4f6; }")
@@ -440,17 +440,17 @@ class IssueCommendationTab(QWidget):
         rule_head = QHBoxLayout()
         rule_icon = QLabel()
         rule_icon.setPixmap(qta.icon("fa5s.award", color="#d97706").pixmap(18, 18))
-        rc_title = QLabel("Important Rules")
+        rc_title = QLabel(t("important_rules"))
         rc_title.setStyleSheet("font-size: 17px; font-weight: 800; color: #854d0e; background: transparent;")
         rule_head.addWidget(rule_icon)
         rule_head.addWidget(rc_title)
         rule_head.addStretch()
         rc.addLayout(rule_head)
         for rule in [
-            "Maximum 3 commendations per employee per role or position",
-            "Each commendation gets a unique auto-generated ID",
-            "Visible in employee profile and audit log",
-            "Can be used for performance reviews",
+            t("commendation_rule_max"),
+            t("commendation_rule_unique_id"),
+            t("commendation_rule_visible"),
+            t("commendation_rule_reviews"),
         ]:
             lbl = QLabel("&bull; " + rule)
             lbl.setTextFormat(Qt.RichText)
@@ -486,7 +486,7 @@ class IssueCommendationTab(QWidget):
         self.single_combo.setVisible(mode == "single")
         self.bulk_scroll.setVisible(mode == "bulk")
         self.selected_count_lbl.setVisible(mode == "bulk")
-        self.emp_card_title.setText("Select Employee" if mode == "single" else "Select Employees")
+        self.emp_card_title.setText(t("select_employee") if mode == "single" else t("select_employees"))
 
     def refresh_employees(self):
         session = get_session()
@@ -505,9 +505,9 @@ class IssueCommendationTab(QWidget):
             session.close()
 
         self.single_combo.clear()
-        self.single_combo.addItem("Choose an employee", None)
+        self.single_combo.addItem(t("choose_employee"), None)
         for e in emp_data:
-            suffix = f"  [{e['count']}/3]" + ("  Max reached" if not e["can"] else "")
+            suffix = f"  [{e['count']}/3]" + (f"  {t('max_reached')}" if not e["can"] else "")
             self.single_combo.addItem(e["label"] + suffix, e["id"] if e["can"] else None)
             item = self.single_combo.model().item(self.single_combo.count() - 1)
             if item and not e["can"]:
@@ -524,7 +524,7 @@ class IssueCommendationTab(QWidget):
         self.selected_employees = set()
 
         for e in emp_data:
-            cb = QCheckBox(e["label"] + f"  [{e['count']}/3 commendations]")
+            cb = QCheckBox(e["label"] + f"  [{e['count']}/3 {t('commendations').lower()}]")
             cb.setStyleSheet("font-size: 12px; color: #111827; padding: 4px;")
             if not e["can"]:
                 cb.setEnabled(False)
@@ -541,7 +541,7 @@ class IssueCommendationTab(QWidget):
             cb.property("emp_id") for cb in self.checkboxes
             if cb.isChecked() and cb.isEnabled()
         }
-        self.selected_count_lbl.setText(f"{len(self.selected_employees)} selected")
+        self.selected_count_lbl.setText(t("selected_count", count=len(self.selected_employees)))
 
     def _clear(self):
         self.title_input.clear()
@@ -558,24 +558,24 @@ class IssueCommendationTab(QWidget):
         cat_id     = self.cat_combo.currentData()
 
         if not title_text:
-            _warning(self, t("warning"), "Award title is required.")
+            _warning(self, t("warning"), t("award_title_required"))
             return
         if not cat_id:
-            _warning(self, t("warning"), "Please select a commendation category.")
+            _warning(self, t("warning"), t("select_commendation_category_warning"))
             return
         if not desc_text:
-            _warning(self, t("warning"), "Description is required.")
+            _warning(self, t("warning"), t("description_required"))
             return
 
         if self.mode == "single":
             emp_id = self.single_combo.currentData()
             if not emp_id:
-                _warning(self, t("warning"), "Please select an employee.")
+                _warning(self, t("warning"), t("please_select_employee"))
                 return
             target_ids = [emp_id]
         else:
             if not self.selected_employees:
-                _warning(self, t("warning"), "Please select at least one employee.")
+                _warning(self, t("warning"), t("please_select_at_least_one_employee"))
                 return
             target_ids = list(self.selected_employees)
 
@@ -602,7 +602,7 @@ class IssueCommendationTab(QWidget):
 
                 if not eligible_ids:
                     _warning(self, t("warning"),
-                        "All selected employees have already reached the maximum 3 commendations for their current role.")
+                        t("all_selected_max_commendations"))
                     return
                 target_ids = eligible_ids
 
@@ -633,10 +633,15 @@ class IssueCommendationTab(QWidget):
 
             session.commit()
 
-            msg = (f"Commendation [{ref}] issued successfully!\n"
-                   f"{cat['label']}: {cat['months']} months to promotion race for {len(target_ids)} employee(s).")
+            msg = t(
+                "commendation_issued_success",
+                ref=ref,
+                category=t(cat["label_key"]),
+                months=cat["months"],
+                count=len(target_ids),
+            )
             if skipped_names:
-                msg += f"\n\nSkipped (max 3 reached): {', '.join(skipped_names)}"
+                msg += "\n\n" + t("skipped_max_reached", names=", ".join(skipped_names))
             _information(self, t("success"), msg)
 
             self._clear()
@@ -676,7 +681,7 @@ class CommendationHistoryTab(QWidget):
         hl.setContentsMargins(30, 28, 30, 28)
         icon = QLabel()
         icon.setPixmap(qta.icon("fa5s.award", color="#d97706").pixmap(18, 18))
-        title = QLabel("Recent Commendations")
+        title = QLabel(t("recent_commendations"))
         title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
         hl.addWidget(icon)
         hl.addWidget(title)
@@ -686,8 +691,8 @@ class CommendationHistoryTab(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([
-            t("commendation_id"), "Title", "Category", "Promotion Impact",
-            "Recipients", "Issued By", "Date"
+            t("commendation_id"), t("title"), t("category"), t("promotion_impact"),
+            t("recipients"), t("issued_by"), t("date")
         ])
         self.table.setStyleSheet(TABLE_SS)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -722,8 +727,8 @@ class CommendationHistoryTab(QWidget):
                 rows.append({
                     "ref": c.commendation_ref,
                     "title": c.title,
-                    "category": cat.get("label", f"Cat {c.category}"),
-                    "impact": f"-{abs(c.months_impact)} month{'s' if abs(c.months_impact) > 1 else ''}",
+                    "category": t(cat.get("label_key", "category")) if cat else f"Cat {c.category}",
+                    "impact": t("negative_month_count", count=abs(c.months_impact)),
                     "recipients": recipients,
                     "issued_by": issuer.full_name if issuer else "-",
                     "date": c.issued_at.strftime("%Y-%m-%d") if c.issued_at else "-",

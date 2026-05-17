@@ -83,6 +83,9 @@ def main():
         QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0px; }}
         QMessageBox           {{ color: #111827; background: white; }}
         QMessageBox QLabel    {{ color: #111827; }}
+        QMessageBox QPushButton {{ background: white; color: #111827; border: 1px solid #d1d5db; border-radius: 6px; min-width: 84px; min-height: 30px; font-weight: 600; }}
+        QMessageBox QPushButton:hover {{ background: #f3f4f6; }}
+        QMessageBox QPushButton:default {{ background: #030213; color: white; border: none; }}
         QDialog               {{ background: white; color: #111827; }}
         QDialog QLabel        {{ color: #111827; }}
         QToolTip              {{ background: #111827; color: white; border: none; padding: 4px 8px; border-radius: 6px; }}

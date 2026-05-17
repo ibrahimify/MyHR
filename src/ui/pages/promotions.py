@@ -348,6 +348,7 @@ class EligibleTab(QWidget):
             n2.setStyleSheet("font-size: 11px; color: #6b7280;")
             nl.addWidget(n1)
             nl.addWidget(n2)
+            name_w.setToolTip(f"{row['name']} ({row['emp_id']})")
             self.table.setCellWidget(ri, 0, name_w)
 
             self.table.setItem(ri, 1, self._badge_item(row["current"], "#dbeafe", "#1e40af"))
@@ -404,6 +405,7 @@ class EligibleTab(QWidget):
             status_row.addWidget(p_lbl)
             status_row.addStretch()
             prog_l.addLayout(status_row)
+            prog_w.setToolTip(lbl_txt)
             self.table.setCellWidget(ri, 6, prog_w)
 
             # Action button
@@ -420,11 +422,12 @@ class EligibleTab(QWidget):
                 btn.setStyleSheet(btn_primary(40))
                 btn.clicked.connect(lambda _, eid=row["id"]: self._approve_promotion(eid))
             else:
-                btn = QPushButton("  " + t("view_profile"))
+                btn = QPushButton("  " + t("view"))
                 btn.setIcon(qta.icon("fa5s.eye", color="#374151"))
                 btn.setIconSize(QSize(13, 13))
                 btn.setFixedSize(96, 40)
                 btn.setStyleSheet(btn_outline(32))
+                btn.setToolTip(t("view_profile"))
                 if self.navigate_to_employee:
                     btn.clicked.connect(lambda _, eid=row["id"]: self.navigate_to_employee(eid))
                 else:
@@ -437,11 +440,13 @@ class EligibleTab(QWidget):
         item.setBackground(QColor(bg))
         item.setForeground(QColor(fg))
         item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        item.setToolTip(text)
         return item
 
     def _set_text_item(self, row, col, text):
         item = QTableWidgetItem(text)
         item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        item.setToolTip(text)
         self.table.setItem(row, col, item)
 
     def _approve_promotion(self, employee_id):
@@ -543,7 +548,14 @@ class HistoryTab(QWidget):
             if header_item:
                 header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.setStyleSheet(PROMO_TABLE_SS)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        header = self.table.horizontalHeader()
+        header.setStretchLastSection(False)
+        for col, width in {0: 220, 1: 260, 2: 180, 3: 150, 4: 190, 5: 140}.items():
+            self.table.setColumnWidth(col, width)
+        for col in (0, 1):
+            header.setSectionResizeMode(col, QHeaderView.Stretch)
+        for col in (2, 3, 4, 5):
+            header.setSectionResizeMode(col, QHeaderView.Fixed)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -568,21 +580,22 @@ class HistoryTab(QWidget):
             increment_rows = [{
                 "sort_date": inc.applied_at or datetime.min,
                 "name": inc.employee.full_name, "emp_id": inc.employee.employee_id,
-                "from": inc.notes or "Annual Increment", "to": f"EUR {inc.salary_after:,.2f}",
+                "from": t("annual_increment"), "to": f"EUR {inc.salary_after:,.2f}",
                 "basis": t("annual_increment"),
                 "months": "-",
                 "by": inc.approved_by.full_name,
                 "date": inc.applied_at.strftime("%Y-%m-%d") if inc.applied_at else "-",
                 "kind": "increment",
+                "details": inc.notes or "",
             } for inc in session.query(SalaryIncrementHistory).all()]
             rows = sorted(promotion_rows + increment_rows, key=lambda row: row["sort_date"], reverse=True)
         finally:
             session.close()
 
         self.table.setRowCount(len(rows))
-        self.table.setMinimumHeight(112 + (56 * max(1, len(rows))))
+        self.table.setMinimumHeight(112 + (60 * max(1, len(rows))))
         for i, row in enumerate(rows):
-            self.table.setRowHeight(i, 52)
+            self.table.setRowHeight(i, 58)
             # Employee cell
             ew = QWidget()
             ew.setStyleSheet("background: white; border: none;")
@@ -594,20 +607,25 @@ class HistoryTab(QWidget):
             e2 = QLabel(row["emp_id"])
             e2.setStyleSheet("font-size: 11px; color: #6b7280;")
             el.addWidget(e1); el.addWidget(e2)
+            ew.setToolTip(f"{row['name']} ({row['emp_id']})")
             self.table.setCellWidget(i, 0, ew)
 
             promo_w = QWidget()
             promo_w.setStyleSheet("background: white; border: none;")
             pl = QHBoxLayout(promo_w)
-            pl.setContentsMargins(12, 0, 4, 0)
+            pl.setContentsMargins(12, 7, 8, 7)
             pl.setSpacing(8)
             if row["kind"] == "increment":
                 fl = QLabel(row["from"])
-                fl.setWordWrap(True)
-                fl.setStyleSheet("font-size: 12px; color: #1e40af; background: transparent; font-weight: 600;")
+                fl.setFixedHeight(28)
+                fl.setAlignment(Qt.AlignCenter)
+                fl.setStyleSheet("background: #eef4ff; color: #1e40af; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 700;")
                 tl = QLabel(row["to"])
-                tl.setStyleSheet("background: #dcfce7; color: #166534; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600;")
-                pl.addWidget(fl, 1); pl.addWidget(tl); pl.addStretch()
+                tl.setFixedHeight(28)
+                tl.setAlignment(Qt.AlignCenter)
+                tl.setStyleSheet("background: #dcfce7; color: #166534; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 700;")
+                promo_w.setToolTip(row.get("details") or f"{row['from']} -> {row['to']}")
+                pl.addWidget(fl); pl.addWidget(tl); pl.addStretch()
             else:
                 fl = QLabel(row["from"])
                 fl.setStyleSheet(f"background: #eef4ff; color: #1e40af; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600;")
@@ -615,6 +633,7 @@ class HistoryTab(QWidget):
                 arrow.setPixmap(qta.icon("fa5s.arrow-right", color="#10b981").pixmap(12, 12))
                 tl = QLabel(row["to"])
                 tl.setStyleSheet(f"background: #dcfce7; color: #166534; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600;")
+                promo_w.setToolTip(f"{row['from']} -> {row['to']}")
                 pl.addWidget(fl); pl.addWidget(arrow); pl.addWidget(tl); pl.addStretch()
             self.table.setCellWidget(i, 1, promo_w)
 
@@ -921,6 +940,7 @@ class RuleEditDialog(QDialog):
 def _set_table_item(table, row, col, text):
     item = QTableWidgetItem(str(text))
     item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+    item.setToolTip(str(text))
     table.setItem(row, col, item)
 
 
@@ -1023,7 +1043,7 @@ def _information(parent, title, text):
 
 
 def _question(parent, title, text):
-    return _styled_message_box(parent, QMessageBox.Question, title, text, QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+    return _styled_message_box(parent, QMessageBox.Question, title, text, QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
 
 
 def _bold_label(text, size=15, weight=600):

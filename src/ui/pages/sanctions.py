@@ -24,10 +24,10 @@ from datetime import datetime
 
 
 SANCTION_TYPES = [
-    ("verbal_warning",  "Verbal Warning",  "#f59e0b", "#fefce8"),
-    ("written_warning", "Written Warning", "#ef4444", "#fef2f2"),
-    ("suspension",      "Suspension",      "#dc2626", "#fef2f2"),
-    ("final_warning",   "Final Warning",   "#991b1b", "#fef2f2"),
+    ("verbal_warning",  "verbal_warning",  "#f59e0b", "#fefce8"),
+    ("written_warning", "written_warning", "#ef4444", "#fef2f2"),
+    ("suspension",      "suspension",      "#dc2626", "#fef2f2"),
+    ("final_warning",   "final_warning",   "#991b1b", "#fef2f2"),
 ]
 
 TAB_SS = """
@@ -242,7 +242,7 @@ class ActiveSanctionsTab(QWidget):
         chl.setContentsMargins(30, 28, 30, 28)
         ch_icon = QLabel()
         ch_icon.setPixmap(qta.icon("fa5s.exclamation-triangle", color="#ef4444").pixmap(18, 18))
-        ch_title = QLabel("Current Active Sanctions")
+        ch_title = QLabel(t("current_active_sanctions"))
         ch_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
         chl.addWidget(ch_icon)
         chl.addWidget(ch_title)
@@ -252,8 +252,8 @@ class ActiveSanctionsTab(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([
-            t("sanction_id"), "Employee", t("sanction_type"),
-            "Reason", "Issue Date", "Promotion Delay", "Actions"
+            t("sanction_id"), t("employee"), t("sanction_type"),
+            t("reason"), t("issue_date"), t("promotion_delay"), t("actions")
         ])
         self.table.setStyleSheet(TABLE_SS)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -293,8 +293,8 @@ class ActiveSanctionsTab(QWidget):
 
         # Stats
         for label, val, color, icon_name, bg in [
-            ("Active Sanctions", len(rows), "#ef4444", "fa5s.exclamation-triangle", "#fee2e2"),
-            ("Total Delay Months", sum(r["delay"] for r in rows), "#f59e0b", "fa5s.clock", "#fef3c7"),
+            (t("active_sanctions_label"), len(rows), "#ef4444", "fa5s.exclamation-triangle", "#fee2e2"),
+            (t("total_delay_months"), sum(r["delay"] for r in rows), "#f59e0b", "fa5s.clock", "#fef3c7"),
         ]:
             card = QFrame()
             card.setObjectName("Card")
@@ -342,7 +342,7 @@ class ActiveSanctionsTab(QWidget):
             type_bg = next(
                 (b for st, _, _, b in SANCTION_TYPES if st == row["type"]), "#f9fafb"
             )
-            type_item = QTableWidgetItem(row["type"].replace("_", " ").title())
+            type_item = QTableWidgetItem(t(row["type"]))
             type_item.setBackground(QColor(type_bg))
             type_item.setForeground(QColor(type_color))
             type_item.setToolTip(type_item.text())
@@ -355,13 +355,13 @@ class ActiveSanctionsTab(QWidget):
             date_item.setToolTip(row["date"])
             self.table.setItem(i, 4, date_item)
 
-            delay_item = QTableWidgetItem(f"+{row['delay']} month{'s' if row['delay'] != 1 else ''}")
+            delay_item = QTableWidgetItem(t("positive_month_count", count=row["delay"]))
             delay_item.setIcon(qta.icon("fa5s.clock", color="#ef4444"))
             delay_item.setForeground(QColor("#ef4444"))
             delay_item.setToolTip(delay_item.text())
             self.table.setItem(i, 5, delay_item)
 
-            resolve_btn = QPushButton("Mark Resolved")
+            resolve_btn = QPushButton(t("mark_resolved"))
             resolve_btn.setIcon(qta.icon("fa5s.check-circle", color="#166534"))
             resolve_btn.setIconSize(QSize(15, 15))
             resolve_btn.setFixedSize(158, 38)
@@ -377,8 +377,8 @@ class ActiveSanctionsTab(QWidget):
             self.table.setCellWidget(i, 6, action_cell)
 
     def _resolve(self, sanction_id):
-        confirm = _question(self, "Resolve Sanction",
-            "Mark this sanction as resolved?")
+        confirm = _question(self, t("resolve_sanction"),
+            t("confirm_resolve_sanction"))
         if confirm != QMessageBox.Yes:
             return
 
@@ -425,7 +425,7 @@ def _information(parent, title, text):
 
 
 def _question(parent, title, text):
-    return _styled_message_box(parent, QMessageBox.Question, title, text, QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+    return _styled_message_box(parent, QMessageBox.Question, title, text, QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
 
 
 def _note_line(text, color):
@@ -490,7 +490,7 @@ class SanctionHistoryTab(QWidget):
         hl.setContentsMargins(30, 28, 30, 28)
         icon = QLabel()
         icon.setPixmap(qta.icon("fa5s.check-circle", color="#10b981").pixmap(18, 18))
-        title = QLabel("Resolved Sanctions")
+        title = QLabel(t("resolved_sanctions"))
         title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
         hl.addWidget(icon)
         hl.addWidget(title)
@@ -500,8 +500,8 @@ class SanctionHistoryTab(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([
-            t("sanction_id"), "Employee", "Type", "Reason",
-            "Issue Date", "Delay Applied", "Status"
+            t("sanction_id"), t("employee"), t("type"), t("reason"),
+            t("issue_date"), t("delay_applied"), t("status")
         ])
         self.table.setStyleSheet(TABLE_SS)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -522,10 +522,10 @@ class SanctionHistoryTab(QWidget):
             rows = [{
                 "ref": s.sanction_ref,
                 "emp": f"{s.employee.full_name} ({s.employee.employee_id})",
-                "type": s.sanction_type.replace("_", " ").title(),
+                "type": t(s.sanction_type),
                 "reason": s.reason[:60] + "..." if len(s.reason) > 60 else s.reason,
                 "date": s.issued_at.strftime("%Y-%m-%d") if s.issued_at else "-",
-                "delay": f"+{s.delay_months} month{'s' if s.delay_months != 1 else ''}",
+                "delay": t("positive_month_count", count=s.delay_months),
                 "resolved": s.is_resolved,
                 "resolved_at": s.resolved_at.strftime("%Y-%m-%d") if s.resolved_at else "-",
             } for s in sanctions]
@@ -548,7 +548,7 @@ class SanctionHistoryTab(QWidget):
             delay.setForeground(QColor("#ef4444"))
             delay.setToolTip(row["delay"])
             self.table.setItem(i, 5, delay)
-            status_text = f"Resolved ({row['resolved_at']})" if row["resolved"] else "Active"
+            status_text = f"{t('resolved')} ({row['resolved_at']})" if row["resolved"] else t("active")
             status = QTableWidgetItem(status_text)
             status.setForeground(QColor("#10b981") if row["resolved"] else QColor("#ef4444"))
             status.setToolTip(status_text)
@@ -594,7 +594,7 @@ class IssueSanctionTab(QWidget):
         title_row = QHBoxLayout()
         title_icon = QLabel()
         title_icon.setPixmap(qta.icon("fa5s.exclamation-triangle", color="#ef4444").pixmap(18, 18))
-        fc_title = QLabel("Issue New Sanction")
+        fc_title = QLabel(t("issue_new_sanction"))
         fc_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
         title_row.addWidget(title_icon)
         title_row.addWidget(fc_title)
@@ -603,7 +603,7 @@ class IssueSanctionTab(QWidget):
         fc.addSpacing(18)
 
         # Employee
-        emp_lbl = QLabel("Select Employee *")
+        emp_lbl = QLabel(t("select_employee") + " *")
         emp_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
         self.emp_combo = QComboBox()
         self.emp_combo.setFixedHeight(44)
@@ -613,24 +613,24 @@ class IssueSanctionTab(QWidget):
         fc.addWidget(self.emp_combo)
 
         # Type
-        type_lbl = QLabel("Sanction Type *")
+        type_lbl = QLabel(t("sanction_type") + " *")
         type_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
         self.type_combo = QComboBox()
         self.type_combo.setFixedHeight(44)
         self.type_combo.setStyleSheet(COMBO_SS)
         _polish_combo(self.type_combo)
-        self.type_combo.addItem("Select sanction type", None)
+        self.type_combo.addItem(t("select_sanction_type"), None)
         for val, label, _, _ in SANCTION_TYPES:
-            self.type_combo.addItem(label, val)
+            self.type_combo.addItem(t(label), val)
         fc.addWidget(type_lbl)
         fc.addWidget(self.type_combo)
 
         # Reason
-        reason_lbl = QLabel("Reason / Description *")
+        reason_lbl = QLabel(t("reason_description") + " *")
         reason_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
         self.reason_input = QTextEdit()
         self.reason_input.setFixedHeight(80)
-        self.reason_input.setPlaceholderText("Describe the reason for this sanction...")
+        self.reason_input.setPlaceholderText(t("sanction_reason_placeholder"))
         self.reason_input.setStyleSheet(FIELD_SS)
         fc.addWidget(reason_lbl)
         fc.addWidget(self.reason_input)
@@ -640,7 +640,7 @@ class IssueSanctionTab(QWidget):
 
         date_col = QVBoxLayout()
         date_col.setSpacing(6)
-        date_lbl = QLabel("Issue Date *")
+        date_lbl = QLabel(t("issue_date") + " *")
         date_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
         self.issue_date_field = QFrame()
         self.issue_date_field.setFixedHeight(44)
@@ -660,15 +660,15 @@ class IssueSanctionTab(QWidget):
 
         delay_col = QVBoxLayout()
         delay_col.setSpacing(6)
-        delay_lbl = QLabel("Promotion Delay (months) *")
+        delay_lbl = QLabel(t("promotion_delay_months") + " *")
         delay_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
         self.delay_combo = QComboBox()
         self.delay_combo.setFixedHeight(44)
         self.delay_combo.setStyleSheet(COMBO_SS)
         _polish_combo(self.delay_combo)
-        self.delay_combo.addItem("Select delay in months", None)
+        self.delay_combo.addItem(t("select_delay_months"), None)
         for month in range(1, 13):
-            self.delay_combo.addItem(f"{month} month{'s' if month != 1 else ''}", month)
+            self.delay_combo.addItem(t("month_count", count=month), month)
         self.delay_combo.currentIndexChanged.connect(lambda _: self._update_delay_preview())
         delay_col.addWidget(delay_lbl)
         delay_col.addWidget(self.delay_combo)
@@ -677,7 +677,7 @@ class IssueSanctionTab(QWidget):
         date_delay_row.addLayout(delay_col, 1)
         fc.addLayout(date_delay_row)
 
-        self.delay_preview = QLabel("Select a delay to see the promotion race impact")
+        self.delay_preview = QLabel(t("select_delay_preview"))
         self.delay_preview.setStyleSheet("font-size: 12px; color: #64748b; background: transparent;")
         fc.addWidget(self.delay_preview)
         fc.addStretch()
@@ -697,11 +697,11 @@ class IssueSanctionTab(QWidget):
         ac = QVBoxLayout(actions_card)
         ac.setContentsMargins(30, 28, 30, 28)
         ac.setSpacing(16)
-        actions_title = QLabel("Actions")
+        actions_title = QLabel(t("actions"))
         actions_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
         ac.addWidget(actions_title)
         ac.addSpacing(24)
-        self.issue_btn = QPushButton("  Issue Sanction")
+        self.issue_btn = QPushButton("  " + t("issue_sanction"))
         self.issue_btn.setIcon(qta.icon("fa5s.exclamation-triangle", color="white"))
         self.issue_btn.setIconSize(QSize(14, 14))
         self.issue_btn.setCursor(Qt.PointingHandCursor)
@@ -709,7 +709,7 @@ class IssueSanctionTab(QWidget):
         self.issue_btn.setStyleSheet("QPushButton { background: #030213; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 800; } QPushButton:hover { background: #111827; }")
         self.issue_btn.clicked.connect(self._issue)
         ac.addWidget(self.issue_btn)
-        clear_btn = QPushButton("Clear Form")
+        clear_btn = QPushButton(t("clear_form"))
         clear_btn.setCursor(Qt.PointingHandCursor)
         clear_btn.setFixedHeight(44)
         clear_btn.setStyleSheet("QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-weight: 700; } QPushButton:hover { background: #f3f4f6; }")
@@ -726,17 +726,17 @@ class IssueSanctionTab(QWidget):
         impact_head = QHBoxLayout()
         impact_icon = QLabel()
         impact_icon.setPixmap(qta.icon("fa5s.stopwatch", color="#dc2626").pixmap(18, 18))
-        ic_title = QLabel("Promotion Race Impact")
+        ic_title = QLabel(t("promotion_race_impact"))
         ic_title.setStyleSheet("font-size: 17px; font-weight: 800; color: #991b1b; background: transparent;")
         impact_head.addWidget(impact_icon)
         impact_head.addWidget(ic_title)
         impact_head.addStretch()
         ic.addLayout(impact_head)
         for line in [
-            "Sanctions delay the promotion race by adding months to the timeline",
-            "The employee must wait longer before becoming eligible for promotion",
-            "Duration range: 1-12 months",
-            "Each sanction receives a unique auto-generated ID",
+            t("sanction_impact_delay"),
+            t("sanction_impact_wait"),
+            t("sanction_impact_range"),
+            t("sanction_impact_unique_id"),
         ]:
             lbl = QLabel("&bull; " + line)
             lbl.setTextFormat(Qt.RichText)
@@ -752,17 +752,17 @@ class IssueSanctionTab(QWidget):
         notes_head = QHBoxLayout()
         notes_icon = QLabel()
         notes_icon.setPixmap(qta.icon("fa5s.exclamation-triangle", color="#dc2626").pixmap(18, 18))
-        notes_title = QLabel("Important Notes")
+        notes_title = QLabel(t("important_notes"))
         notes_title.setStyleSheet("font-size: 17px; font-weight: 800; color: #991b1b; background: transparent;")
         notes_head.addWidget(notes_icon)
         notes_head.addWidget(notes_title)
         notes_head.addStretch()
         nc.addLayout(notes_head)
         for line in [
-            "All sanctions are recorded in the audit log",
-            "Employee will be notified of the sanction",
-            "Sanctions directly impact promotion timeline",
-            "Ensure proper documentation is attached",
+            t("sanction_note_audit"),
+            t("sanction_note_notify"),
+            t("sanction_note_timeline"),
+            t("sanction_note_documentation"),
         ]:
             nc.addWidget(_note_line(line, "#b91c1c"))
         right.addWidget(notes_card)
@@ -776,17 +776,17 @@ class IssueSanctionTab(QWidget):
         guide_head = QHBoxLayout()
         guide_icon = QLabel()
         guide_icon.setPixmap(qta.icon("fa5s.user", color="#2563eb").pixmap(18, 18))
-        gc_title = QLabel("Sanction Guidelines")
+        gc_title = QLabel(t("sanction_guidelines"))
         gc_title.setStyleSheet("font-size: 17px; font-weight: 800; color: #1e40af; background: transparent;")
         guide_head.addWidget(guide_icon)
         guide_head.addWidget(gc_title)
         guide_head.addStretch()
         gc.addLayout(guide_head)
         for stype, desc in [
-            ("Verbal Warning",  "Minor violations (1-2 months delay)"),
-            ("Written Warning", "Repeated violations (3-6 months delay)"),
-            ("Suspension",      "Serious misconduct (6-9 months delay)"),
-            ("Final Warning",   "Severe misconduct (9-12 months delay)"),
+            (t("verbal_warning"),  t("verbal_warning_guideline")),
+            (t("written_warning"), t("written_warning_guideline")),
+            (t("suspension"),      t("suspension_guideline")),
+            (t("final_warning"),   t("final_warning_guideline")),
         ]:
             lbl = QLabel("")
             lbl.setText(f"<b>{stype}:</b><br>{desc}")
@@ -804,7 +804,7 @@ class IssueSanctionTab(QWidget):
 
     def refresh_employees(self):
         self.emp_combo.clear()
-        self.emp_combo.addItem("Choose an employee", None)
+        self.emp_combo.addItem(t("choose_employee"), None)
         session = get_session()
         try:
             emps = session.query(Employee).filter_by(status="active").all()
@@ -818,10 +818,10 @@ class IssueSanctionTab(QWidget):
     def _update_delay_preview(self):
         val = self.delay_combo.currentData()
         if val is None:
-            self.delay_preview.setText("Select a delay to see the promotion race impact")
+            self.delay_preview.setText(t("select_delay_preview"))
             return
         self.delay_preview.setText(
-            f"+{val} month{'s' if val != 1 else ''} will be added to the employee's promotion race"
+            t("delay_preview_text", count=val)
         )
 
     def _clear(self):
@@ -837,16 +837,16 @@ class IssueSanctionTab(QWidget):
         delay = self.delay_combo.currentData()
 
         if not emp_id:
-            _warning(self, t("warning"), "Please select an employee.")
+            _warning(self, t("warning"), t("please_select_employee"))
             return
         if not sanction_type:
-            _warning(self, t("warning"), "Please select a sanction type.")
+            _warning(self, t("warning"), t("please_select_sanction_type"))
             return
         if delay is None:
-            _warning(self, t("warning"), "Please select a promotion delay.")
+            _warning(self, t("warning"), t("please_select_promotion_delay"))
             return
         if not reason:
-            _warning(self, t("warning"), "Reason is required.")
+            _warning(self, t("warning"), t("reason_required"))
             return
 
         session = get_session()
@@ -873,7 +873,7 @@ class IssueSanctionTab(QWidget):
 
             session.commit()
             _information(self, t("success"),
-                f"Sanction [{ref}] issued to {emp.full_name}.\n+{delay} month(s) added to their promotion race.")
+                t("sanction_issued_success", ref=ref, name=emp.full_name, count=delay))
             self._clear()
             self.on_issued()
         except Exception as e:

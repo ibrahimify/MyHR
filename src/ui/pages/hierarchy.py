@@ -925,7 +925,7 @@ def _critical(parent, title, text):
 
 
 def _question(parent, title, text):
-    return _styled_message_box(parent, QMessageBox.Question, title, text, QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+    return _styled_message_box(parent, QMessageBox.Question, title, text, QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
 
 
 def _primary_btn():
