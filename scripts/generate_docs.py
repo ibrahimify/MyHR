@@ -14,7 +14,7 @@ DOCS.mkdir(exist_ok=True)
 
 AUTHOR = "Muhammad Ibrahim Shoeb"
 SUPERVISOR = "Dr. Husam Al-Maghoosi"
-DATE = "17 May 2026"
+DATE = "21 May 2026"
 
 
 def setup(doc):
@@ -207,10 +207,11 @@ def build_user_guide():
         "The displayed level is Other/Misc, not L7 to L1.",
         "They are assigned to the OTHERS branch and can report only to the OTHERS head, CEO, or a configured employee responsible for Other staff.",
         "They receive annual increments, but they do not have main level promotions, commendations, or sanctions.",
+        "The demo database includes an Other Employees Head reporting to the CEO, plus janitor, cleaner, window cleaner, security guard, and painter examples.",
     ])
     doc.add_heading("View and edit employees", level=2)
     bullets(doc, [
-        "Use search and filters on the employee list.",
+        "Use search, filters, and Previous/Next pagination on the employee list. Search supports name, employee ID, position, and email.",
         "Open the profile with View. Personal Details shows the main race and sub-race immediately.",
         "Promotion History shows promotions and annual increment milestones as an audit-style history.",
         "Use Edit to update the employee. Use Delete only when a record was created by mistake because related employee history is removed too.",
@@ -251,6 +252,9 @@ def build_user_guide():
         "Press Approve for an eligible employee.",
         "Confirm the salary and level change.",
         "MyHR updates the employee, creates promotion history, and writes the audit log.",
+    ])
+    bullets(doc, [
+        "The Promotion History tab is paginated so long-running organizations can review history without loading every row into the table at once.",
     ])
     placeholder(doc, "Promotion page and profile race timeline")
 
@@ -294,6 +298,14 @@ def build_user_guide():
     ])
     placeholder(doc, "User Management tab and Audit Log")
 
+    doc.add_heading("11. Working With Larger Data Sets", level=1)
+    bullets(doc, [
+        "Employee lists are paginated. Use Previous and Next instead of expecting every employee to appear on one long page.",
+        "Promotion History is also paginated because annual increments and promotions can create many records over time.",
+        "Dashboard and promotion eligibility are calculated live from the database using optimized list queries.",
+        "If the application feels slow, check whether a very large export, import, or backup is running at the same time.",
+    ])
+
     doc.save(DOCS / "MyHR_User_Guide.docx")
 
 
@@ -312,38 +324,49 @@ def build_developer_guide():
         ["Language", "Python 3", "Rapid development and strong desktop/database libraries."],
         ["Desktop UI", "PySide6 / Qt", "Native widgets, tables, dialogs, layout management, and RTL support."],
         ["Database", "SQLite", "Offline single-file storage with simple backup."],
-        ["ORM", "SQLAlchemy", "Structured schema, relationships, and safer queries."],
+        ["ORM", "SQLAlchemy", "Structured schema, relationships, indexes, eager loading, and safer queries."],
         ["Icons", "qtawesome / Font Awesome 5", "Consistent professional UI icons."],
         ["Excel import", "openpyxl with fallback XML parser", "Supports XLSX onboarding files."],
         ["Settings", "Qt QSettings", "Stores company name and subtitle outside schema changes."],
         ["Docs", "python-docx", "Generates required Word handover documents."],
+        ["Performance pattern", "Pagination and batch calculations", "Keeps employee, dashboard, and history screens responsive as data grows."],
     ])
 
     doc.add_heading("3. Folder Structure", level=1)
     code(doc, """
 MyHR/
-  main.py
-  requirements.txt
-  README.md
-  docs/
-  scripts/seed_demo_company.py
-  src/
-    core/app_settings.py
-    core/i18n.py
-    database/models.py
-    database/connection.py
-    ui/login_window.py
-    ui/main_window.py
-    ui/styles.py
-    ui/pages/dashboard.py
-    ui/pages/employees.py
-    ui/pages/hierarchy.py
-    ui/pages/promotions.py
-    ui/pages/commendations.py
-    ui/pages/sanctions.py
-    ui/pages/audit_log.py
-    ui/pages/import_data.py
-    ui/pages/settings.py
+|-- main.py
+|-- requirements.txt
+|-- README.md
+|-- myhr.db
+|-- assets/
+|-- docs/
+|   |-- MyHR_User_Guide.docx
+|   `-- MyHR_Developer_Guide.docx
+|-- scripts/
+|   |-- generate_docs.py
+|   `-- seed_demo_company.py
+`-- src/
+    |-- core/
+    |   |-- app_settings.py
+    |   `-- i18n.py
+    |-- database/
+    |   |-- models.py
+    |   `-- connection.py
+    `-- ui/
+        |-- login_window.py
+        |-- main_window.py
+        |-- styles.py
+        `-- pages/
+            |-- dashboard.py
+            |-- employees.py
+            |-- hierarchy.py
+            |-- promotions.py
+            |-- commendations.py
+            |-- sanctions.py
+            |-- audit_log.py
+            |-- import_data.py
+            `-- settings.py
 """)
     table(doc, ["Area", "Responsibility"], [
         ["main.py", "Application entry point, database initialization, global Qt styling, login startup."],
@@ -368,6 +391,13 @@ MyHR/
         ["salary_increment_history", "id, employee_id, approved_by_id, salary_before, salary_after, increment_type, increment_value, applied_at, notes", "Annual increment audit history."],
         ["audit_log", "id, performed_by_id, performed_by_username, performed_by_name, action, target_table, target_id, description, before_value, after_value, performed_at", "Immutable action stream with user identity snapshot."],
     ])
+    doc.add_heading("Performance indexes", level=2)
+    bullets(doc, [
+        "employee is indexed by status, employee_id, work_email, title_id, org_unit_id, and reports_to_id.",
+        "org_unit is indexed by parent_id and name.",
+        "promotion_history and salary_increment_history are indexed by employee/date.",
+        "commendation_employee, commendation, sanction, and audit_log have indexes for the list and race queries used by the UI.",
+    ])
 
     doc.add_heading("5. Business Logic", level=1)
     doc.add_heading("Authentication and access control", level=2)
@@ -380,8 +410,11 @@ MyHR/
     doc.add_paragraph("Admin can edit the admin account and manage HR accounts. HR deletion sets is_active=False instead of deleting the row, preserving historical audit joins and preventing unknown users in the audit UI.")
     doc.add_heading("Other/Misc employees", level=2)
     doc.add_paragraph("degree_to_title_name maps Other to title Other. ensure_others_org_unit creates the OTHERS branch. valid_other_manager_ids limits managers to the OTHERS head, CEO, or dedicated Other employee handlers. Other employees receive annual increments but have no main promotion track and are excluded from commendation and sanction selection.")
+    doc.add_paragraph("seed_demo_company.py creates an OTHERS branch with an Other Employees Head reporting to the CEO, then adds Janitor, Cleaner, Window Cleaner, Security Guard, and Painter examples below that head.")
     doc.add_heading("Hierarchy rules", level=2)
     doc.add_paragraph("The hierarchy enforces exactly one organization and parent order organization -> division -> department -> unit -> team -> position. Disabled dropdown options and save-time validation prevent invalid structures and parent cycles.")
+    doc.add_heading("Performance-sensitive screens", level=2)
+    doc.add_paragraph("Dashboard and Promotion Eligibility use calculate_months_remaining_batch to preserve the same formula as calculate_months_remaining while loading rules, commendations, sanctions, titles, and promotion history once per list refresh. Employee Management uses database-side filtering and 50-row pagination. Promotion History lazy-loads only when its tab is opened and renders 25 rows per page.")
 
     doc.add_heading("6. Promotion Race Formula", level=1)
     code(doc, """
@@ -395,6 +428,7 @@ eligible = months_remaining == 0
 progress_pct = clamp((months_elapsed + commendation_reduction - sanction_addition) / base_months * 100, 0, 100)
 """)
     doc.add_paragraph("calculate_sub_race builds yearly L7.1/L7.2 style milestones plus the final promotion step. Other employees get ongoing Other.1, Other.2, and so on for annual increments only. Promotion approval applies the next title's promotion_salary_increase_pct to current salary and creates PromotionHistory. Annual increments are separate and create SalaryIncrementHistory.")
+    doc.add_paragraph("The batch race calculator is verified against the single-employee calculator and must remain mathematically identical. It exists only to avoid repeated queries on list screens.")
 
     doc.add_heading("7. CSV Import Validation Rules", level=1)
     bullets(doc, [
@@ -423,6 +457,7 @@ progress_pct = clamp((months_elapsed + commendation_reduction - sanction_additio
         "Create, edit, deactivate, and reactivate HR accounts.",
         "Export employees and back up the SQLite database.",
         "Log important actions with immutable audit identity snapshots.",
+        "Paginate employee and promotion history tables so the UI remains usable with thousands of records.",
     ])
 
     doc.add_heading("9. Non-Functional Requirements", level=1)
@@ -434,6 +469,7 @@ progress_pct = clamp((months_elapsed + commendation_reduction - sanction_additio
         "Auditability with user snapshots.",
         "Localization without changing client data or internal contracts.",
         "Simple backup and export for operational safety.",
+        "Bounded rendering and indexed queries for larger employee datasets.",
     ])
 
     doc.add_heading("10. Resource Requirements", level=1)
@@ -592,7 +628,7 @@ Increment -> SQLite: insert audit_log
     doc.add_heading("12. Future Scope for Thesis Semester", level=1)
     bullets(doc, [
         "Package the desktop app into a user-friendly installer.",
-        "Add automated tests for race math, import validation, access control, user management, and audit snapshots.",
+        "Add automated tests for race math, import validation, access control, user management, audit snapshots, and performance-sensitive list pages.",
         "Add richer reports for yearly promotions, salary budget impact, sanctions, commendations, and departments.",
         "Add scheduled backup reminders and backup health checks.",
         "Introduce Alembic or another migration tool if schema changes become frequent.",

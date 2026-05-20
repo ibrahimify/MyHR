@@ -56,6 +56,7 @@ Thumbs.db
 *.tmp
 .temp/
 *.log
+~$*.docx
 
 # Dependencies
 pip-log.txt
