@@ -42,6 +42,7 @@ ACTION_LABEL_KEYS = {
     "settings.user_update": "audit_action_user_update",
     "settings.user_deactivate": "audit_action_user_deactivate",
     "settings.user_reactivate": "audit_action_user_reactivate",
+    "settings.user_delete": "audit_action_user_delete",
     "org_unit.create": "audit_action_org_create",
     "org_unit.update": "audit_action_org_update",
     "org_unit.delete": "audit_action_org_delete",

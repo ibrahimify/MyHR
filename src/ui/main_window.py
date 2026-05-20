@@ -171,7 +171,7 @@ class Sidebar(QWidget):
         ic.setSpacing(0)
         name_lbl = QLabel(display_name)
         name_lbl.setStyleSheet("color: #111827; font-size: 14px; font-weight: 500; background: transparent; border: none;")
-        role_display = t("role_admin") if self.user.role == "admin" else t("role_hr")
+        role_display = self.user.username if self.user.role == "admin" else t("role_hr")
         role_lbl = QLabel(role_display)
         role_lbl.setStyleSheet("color: #6b7280; font-size: 12px; background: transparent; border: none;")
         ic.addWidget(name_lbl)

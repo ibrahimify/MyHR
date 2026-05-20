@@ -730,12 +730,17 @@ QToolTip {
         )
         header_view = self.table.horizontalHeader()
         header_view.setStretchLastSection(False)
-        for col, width in {0: 180, 1: 240, 2: 160, 3: 130, 4: 180, 5: 270}.items():
+        header_view.setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        for col, width in {0: 180, 1: 240, 2: 160, 3: 130, 4: 180, 5: 190}.items():
             self.table.setColumnWidth(col, width)
         for col in (0, 1):
             header_view.setSectionResizeMode(col, QHeaderView.Stretch)
         for col in (2, 3, 4, 5):
             header_view.setSectionResizeMode(col, QHeaderView.Fixed)
+        for col in range(self.table.columnCount()):
+            item = self.table.horizontalHeaderItem(col)
+            if item:
+                item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -771,7 +776,15 @@ QToolTip {
     def refresh(self):
         session = get_session()
         try:
-            users = session.query(SystemUser).order_by(SystemUser.role, SystemUser.username).all()
+            users = (
+                session.query(SystemUser)
+                .filter(
+                    (SystemUser.role == "admin") |
+                    ((SystemUser.role == "hr_officer") & (SystemUser.is_active == True))
+                )
+                .order_by(SystemUser.role, SystemUser.username)
+                .all()
+            )
             rows = [{
                 "id": user.id,
                 "username": user.username,
@@ -789,7 +802,7 @@ QToolTip {
             self.table.setRowHeight(row_index, 58)
             _set_tooltip_item(self.table, row_index, 0, row["username"])
             _set_tooltip_item(self.table, row_index, 1, row["full_name"])
-            _set_tooltip_item(self.table, row_index, 2, t("role_admin") if row["role"] == "admin" else t("role_hr"))
+            _set_tooltip_item(self.table, row_index, 2, row["username"] if row["role"] == "admin" else t("role_hr"))
             _set_tooltip_item(self.table, row_index, 3, t("active") if row["is_active"] else t("inactive"))
             _set_tooltip_item(self.table, row_index, 4, row["last_login"])
             self.table.setCellWidget(row_index, 5, self._actions_cell(row))
@@ -798,8 +811,8 @@ QToolTip {
         cell = QWidget()
         cell.setStyleSheet("background: transparent; border: none;")
         layout = QHBoxLayout(cell)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(8)
+        layout.setContentsMargins(10, 8, 18, 8)
+        layout.setSpacing(0)
         layout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         edit = QPushButton("  " + t("edit"))
@@ -813,14 +826,16 @@ QToolTip {
         layout.addWidget(edit)
 
         if row["role"] == "hr_officer":
-            active = row["is_active"]
-            toggle = QPushButton(t("deactivate") if active else t("reactivate"))
-            toggle.setFixedSize(126, 38)
-            toggle.setCursor(Qt.PointingHandCursor)
-            toggle.setStyleSheet(_secondary_button_ss())
-            toggle.setToolTip(t("deactivate_user_account") if active else t("reactivate_user_account"))
-            toggle.clicked.connect(lambda _, uid=row["id"], make_active=not active: self._set_active(uid, make_active))
-            layout.addWidget(toggle)
+            layout.addSpacing(14)
+            delete = QPushButton()
+            delete.setIcon(qta.icon("fa5s.trash-alt", color="#dc2626"))
+            delete.setIconSize(QSize(13, 13))
+            delete.setFixedSize(38, 38)
+            delete.setCursor(Qt.PointingHandCursor)
+            delete.setStyleSheet(_danger_icon_button_ss())
+            delete.setToolTip(t("delete_hr_login"))
+            delete.clicked.connect(lambda _, uid=row["id"]: self._delete_hr_login(uid))
+            layout.addWidget(delete)
         return cell
 
     def _change_password(self):
@@ -863,6 +878,14 @@ QToolTip {
             self.refresh()
 
     def _edit_user(self, user_id):
+        session = get_session()
+        try:
+            account = session.query(SystemUser).filter_by(id=user_id).first()
+            if not account or (account.role == "hr_officer" and not account.is_active):
+                _warning(self, t("warning"), t("hr_account_not_found"))
+                return
+        finally:
+            session.close()
         dialog = UserAccountDialog(self.user, user_id=user_id, parent=self)
         if dialog.exec() == QDialog.Accepted:
             self.refresh()
@@ -892,6 +915,37 @@ QToolTip {
             )
             session.commit()
             self.refresh()
+        except Exception as exc:
+            session.rollback()
+            _critical(self, t("error"), str(exc))
+        finally:
+            session.close()
+
+    def _delete_hr_login(self, user_id):
+        if _question(self, t("delete_hr_login"), t("confirm_delete_hr_login")) != QMessageBox.Yes:
+            return
+        session = get_session()
+        try:
+            account = session.query(SystemUser).filter_by(id=user_id, role="hr_officer").first()
+            if not account:
+                _warning(self, t("warning"), t("hr_account_not_found"))
+                return
+            before = f'{{"username": "{account.username}", "full_name": "{account.full_name}", "role": "{account.role}", "is_active": {str(bool(account.is_active)).lower()}}}'
+            account.is_active = False
+            after = f'{{"username": "{account.username}", "full_name": "{account.full_name}", "role": "{account.role}", "is_active": false}}'
+            log_action(
+                session,
+                action="settings.user_delete",
+                performed_by_id=self.user.id,
+                target_table="system_user",
+                target_id=account.id,
+                description=f"HR login deleted: {account.username} ({account.full_name})",
+                before_value=before,
+                after_value=after,
+            )
+            session.commit()
+            self.refresh()
+            _information(self, t("success"), t("hr_login_deleted"))
         except Exception as exc:
             session.rollback()
             _critical(self, t("error"), str(exc))
@@ -1402,6 +1456,21 @@ QPushButton {
     padding: 0 18px;
 }
 QPushButton:hover { background: #f3f4f6; }
+"""
+
+
+def _danger_icon_button_ss():
+    return """
+QPushButton {
+    background: white;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+}
+QPushButton:hover {
+    background: #fef2f2;
+    border-color: #fca5a5;
+}
 """
 
 
