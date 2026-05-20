@@ -1,138 +1,215 @@
-# MyHR
 
-![Status](https://img.shields.io/badge/status-In%20Progress%20%7C%20Project%20Lab-2563eb)
+ # MyHR - Employee Management System
 
-Offline desktop HR management system for employee records, hierarchy, promotions, salary increments, commendations, sanctions, imports, exports, backups, audit logs, and admin-managed HR accounts.
+A standalone desktop application for managing employee records in government-like organizations.
+
+**Supervisor:** Dr. Husam Al-Maghoosi  
+**Developer:** Muhammad Ibrahim Shoeb  
+**Status:** Active Development - Semester 1 complete, UI polish complete, Thesis extension starting
+
+---
+
+## Running the MockUI
+
+The MockUI is a React-based interactive prototype of the application interface built with Vite, TypeScript, and Tailwind CSS. It was used as the design reference for the desktop app's UI.
+
+### Prerequisites
+- Node.js 16+ and npm/pnpm installed
+
+### Setup & Run
+
+1. Navigate to the MockUI directory:
+```bash
+cd MockUI
+```
+
+2. Install dependencies:
+```bash
+npm install
+# or if using pnpm:
+pnpm install
+```
+
+3. Start the development server:
+```bash
+npm run dev
+```
+
+4. Open your browser and navigate to `http://localhost:5173` (or the port shown in terminal)
+
+### Build for Production
+```bash
+npm run build
+npm run preview
+```
+
+---
 
 ## Tech Stack
 
-| Layer | Technology | Purpose |
-|---|---|---|
-| Language | Python 3 | Main application language |
-| UI | PySide6 / Qt | Native desktop screens, dialogs, tables, and RTL support |
-| Database | SQLite | Offline single-file database |
-| ORM | SQLAlchemy | Models, relationships, indexes, and business queries |
-| Icons | qtawesome / Font Awesome 5 | Consistent icon buttons |
-| Import | openpyxl | XLSX employee import support |
-| Settings | Qt QSettings | Local company branding settings |
-| Docs | python-docx | Word guide generation |
+| Layer | Technology |
+|---|---|
+| Language | Python 3.12+ |
+| UI Framework | PySide6 6.11.0 (Qt6) |
+| Database | SQLite (local, offline) |
+| ORM | SQLAlchemy 2.0 |
+| Icons | qtawesome 1.4.2 (Font Awesome 5) |
+| Version Control | GitHub |
+| UI Reference | Figma MockUI (React + Tailwind, in `MockUI/` folder) |
 
-## Features
-
-- Admin and HR Officer login with role-aware navigation.
-- English, Hungarian, and Arabic UI, with Arabic right-to-left layout.
-- Employee add, edit, view, delete, search, filters, generated employee IDs, and paginated lists.
-- BSc, MSc, PhD level assignment plus Other/Misc employee handling.
-- OTHERS hierarchy branch for janitors, cleaners, guards, painters, and similar employees.
-- Salary range validation against admin-defined level ranges.
-- Organization hierarchy rules with one organization root and ordered parent levels.
-- Live promotion race and sub-race tracking.
-- Promotion approvals with salary updates and promotion history.
-- Annual salary increment review from the dashboard.
-- Single and team commendations with promotion-month reduction.
-- Active and resolved sanctions with promotion delay.
-- CSV/XLSX employee import with validation and manager wiring.
-- Employee CSV export and SQLite database backup.
-- Admin user management for HR accounts with soft deactivation.
-- Immutable audit log with `username: full name` identity snapshots.
-- Performance-focused list loading with database indexes and bounded table rendering.
+---
 
 ## Project Structure
 
-```text
+```
 MyHR/
-|-- main.py                         # App entry point
-|-- requirements.txt                # Python dependencies
-|-- README.md                       # Project overview
-|-- myhr.db                         # Local SQLite database
-|-- assets/                         # Project-level assets
-|-- docs/                           # Generated guides and project documents
-|   |-- MyHR_User_Guide.docx
-|   `-- MyHR_Developer_Guide.docx
-|-- scripts/
-|   |-- generate_docs.py            # Regenerates Word documentation
-|   `-- seed_demo_company.py        # Resets and seeds demo company data
-`-- src/
-    |-- core/
-    |   |-- app_settings.py         # Company branding settings
-    |   `-- i18n.py                 # EN, HU, AR translations and RTL flag
-    |-- database/
-    |   |-- models.py               # SQLAlchemy schema
-    |   `-- connection.py           # Sessions, seed defaults, business logic
-    `-- ui/
-        |-- login_window.py         # Authentication screen
-        |-- main_window.py          # Sidebar, routing, role access
-        |-- styles.py               # Shared UI styles
-        `-- pages/
-            |-- dashboard.py        # Metrics and annual increment review
-            |-- employees.py        # Employee list, forms, profile, race view
-            |-- hierarchy.py        # Organization hierarchy builder
-            |-- promotions.py       # Eligibility tracker and history
-            |-- commendations.py    # Commendation issuance and history
-            |-- sanctions.py        # Sanction issuance, resolution, history
-            |-- audit_log.py        # Immutable audit viewer
-            |-- import_data.py      # CSV/XLSX import workflow
-            `-- settings.py         # Admin configuration and user management
+├── main.py                  # Entry point - app init, global stylesheet, Fusion style
+├── requirement.txt          # Python dependencies
+├── myhr.db                  # SQLite database (auto-created on first run)
+├── docs/                    # Presentations, analysis documents
+├── MockUI/                  # React+Tailwind design reference (not the actual app)
+└── src/
+    ├── core/
+    │   └── i18n.py          # Internationalization (EN / HU / AR)
+    ├── database/
+    │   ├── models.py        # All 10 SQLAlchemy models
+    │   └── connection.py    # DB init, business logic, helpers
+    └── ui/
+        ├── assets/
+        │   └── chevron_down.svg   # Global dropdown arrow icon
+        ├── styles.py              # Shared style constants & helpers
+        ├── login_window.py        # Login screen with language selector
+        ├── main_window.py         # Main shell + white sidebar navigation
+        └── pages/
+            ├── dashboard.py       # Live stats + salary increment approval
+            ├── employees.py       # Employee list, add form, profile view
+            ├── hierarchy.py       # Org tree (unlimited depth)
+            ├── promotions.py      # Race tracker, approvals, history
+            ├── commendations.py   # Single + team awards (3 categories)
+            ├── sanctions.py       # 1–12 month promotion delays
+            ├── audit_log.py       # Immutable action log
+            ├── import_data.py     # CSV bulk import
+            └── settings.py        # Salary ranges, increment rules, security
 ```
 
-## Install and Run
+---
+
+## Features (Semester 1 - Project Lab)
+
+### Core
+- **Employee Management** - Add, edit, view employees with unique IDs (EMP-XXXX). Degree-based level auto-assignment: BSc → L7, MSc → L6, PhD → L5
+- **Organizational Hierarchy** - Unlimited depth tree (Organization → Division → Department → Unit → Team). Self-referencing structure with head/in-charge assignment
+- **Promotion Race Engine** - Live calculation (never stored). Base track duration per level transition. Commendations reduce months, sanctions add months. Clock resets after promotion
+- **Commendations** - 3 categories: Cat1 (−1mo), Cat2 (−3mo), Cat3 (−6mo). Max 3 per employee per role enforced. Bulk team awards supported. Unique COM-YYYY-MMDD-NNN IDs
+- **Sanctions** - 1–12 month promotion delay. Unique SAN-YYYY-MMDD-NNN IDs. Active/resolved tracking
+- **Salary Increment** - Dashboard alert when employees are due. Admin reviews and approves per employee via dialog
+- **CSV Import** - Upload, validate, preview, import. Template download included
+- **Audit Log** - Immutable record of every action. Searchable, filterable, with full tooltip descriptions
+- **Settings** - Configurable salary ranges per level (with live currency badge), annual increment rules, password change, DB backup, employee export
+- **Company Branding** - Settings stores company name/subtitle and reflects them on login and the sidebar
+- **Executive Levels** - Promotion levels continue through L2 Board Member and L1 CEO / Executive
+
+### UI
+- White sidebar with blue active state, Font Awesome 5 icons throughout (qtawesome)
+- Login page opens maximized with blue gradient background, real user/lock field icons
+- All dropdown menus show chevron arrow indicators
+- Page background `#f9fafb`, card `white` with `border: 1px solid #e5e7eb`
+- Matches the Figma MockUI design tokens
+
+### Multi-language
+Login screen supports English, Hungarian, and Arabic (RTL layout via Qt)
+
+### Two Actors
+- **Admin** - Full access to all modules including Settings
+- **HR Officer** - Manage employees, commendations, sanctions; no access to Settings
+
+---
+
+## Database Schema
+
+10 tables: `system_user`, `org_unit`, `employee`, `title`, `promotion_rule`, `promotion_history`, `commendation`, `commendation_employee`, `sanction`, `salary_increment_history`, `audit_log`
+
+---
+
+## Running the App
 
 ```bash
-python -m pip install -r requirements.txt
-python main.py
+# Install dependencies
+py -3.12 -m pip install pyside6 sqlalchemy qtawesome
+
+# Run
+py -3.12 main.py
 ```
 
-The SQLite database is created and seeded automatically on first run.
+**Default credentials:**
+- Admin: `admin` / `admin123`
+- HR Officer: `hr_officer` / `hr123`
 
-Optional demo data reset:
+---
 
-```bash
-python scripts/seed_demo_company.py
-```
+## Progress Log
 
-## Default Credentials
+### Session 2 - UI Overhaul + Functional Fixes
+- Fixed: Sidebar dark background → white with `border-right: 1px solid #e5e7eb`
+- Fixed: Login opens maximized with blue gradient background
+- Fixed: Login form shows real user/lock icons (qtawesome) instead of "U"/"P" text
+- Fixed: All dropdown arrows restored across all pages (were hidden by bad CSS rule)
+- Fixed: Grey borders everywhere - caused by overly broad `QWidget { }` global stylesheet rule
+- Fixed: Promotions "View" button now navigates to employee profile tab
+- Fixed: Dashboard "Review Increments" banner opens salary approval dialog with per-row approve
+- Added: `src/ui/styles.py` shared style module
+- Added: `src/ui/assets/chevron_down.svg` for consistent dropdown arrows
+- Added: qtawesome 1.4.2 dependency (Font Awesome 5 icons throughout)
+- Improved: Settings salary tab - currency field highlighted in blue, live-updating currency badge between Min/Max
 
-| Role | Username | Password |
-|---|---|---|
-| admin | `admin` | `admin123` |
-| HR Officer | `hr_officer` | `hr123` |
+### Session 3 - Figma Matching + Branding/Hierarchy Polish
+- Fixed: Company name/subtitle from Settings now feeds login and sidebar via `src/core/app_settings.py`
+- Fixed: Global label-border bleed and ugly spinbox arrow buttons
+- Fixed: Login language switching now refreshes Admin/HR Officer labels instead of leaving stale Arabic/English text
+- Fixed: Login returns to the selected session language after logout, including Arabic RTL layout
+- Improved: Login screen rebuilt closer to the Figma mockup with large centered brand icon, language selector placement, icon inputs, and clean role indicators
+- Improved: Settings salary cards are now white/subtle instead of bright colored blocks
+- Improved: Organization hierarchy rebuilt as card rows with qtawesome icons and inline add/edit/delete actions
+- Added: L2 Board Member and L1 CEO / Executive levels with promotion rules
+- Added: Employee edit can manually change current level/role for real-world promotion paths
 
-## Demo Data
+### Session 1 - Core Implementation (Semester 1)
+- All 10 pages scaffolded and fully functional
+- Business logic: promotion race engine, commendation cap enforcement, sanction delay
+- Multi-language login (EN/HU/AR) with RTL layout for Arabic
+- CSV import with validation and preview
+- Audit log (immutable, searchable, filterable)
+- Admin vs HR Officer access control enforced throughout
+- Default credentials: admin/admin123 and hr_officer/hr123
 
-The demo seed includes a normal company hierarchy plus an `OTHERS` branch:
+---
 
-- Other Employees Head reports to the CEO.
-- Janitor, Cleaner, Window Cleaner, Security Guard, and Painter report to the Other Employees Head.
-- Other/Misc employees receive annual increments and sub-race milestones.
-- Other/Misc employees do not use the standard L7 to L1 promotion race and are excluded from commendations and sanctions.
+## Thesis Extension (Semester 2 - In Progress)
 
-## Screenshots
+- Promotion rule management editor via UI (rules tab exists, full editor TBD)
+- Before/after diff view in audit log
+- Yearly reporting summaries (PDF export)
+- Improved input validation and error UX
+- Email reminder for salary increment due dates
+- Multi-language expansion (post-login translation for all pages)
 
-- `[Screenshot placeholder: Login screen]`
-- `[Screenshot placeholder: Dashboard]`
-- `[Screenshot placeholder: Employee profile with race and sub-race]`
-- `[Screenshot placeholder: Organization hierarchy with OTHERS branch]`
-- `[Screenshot placeholder: User management and audit log]`
+---
 
 ## Architecture Decisions
 
-| Decision | Reason |
-|---|---|
-| Desktop app instead of web app | Fits offline Project Lab scope and avoids server deployment. |
-| SQLite local database | Simple backup, single-file storage, and no external DB service. |
-| SQLAlchemy ORM | Keeps relationships explicit and business queries readable. |
-| Database indexes | Keeps employee, audit, race, sanction, and history queries responsive as data grows. |
-| Paginated table rendering | Prevents large employee and history lists from creating thousands of widgets at once. |
-| Live promotion calculation | Prevents stale stored eligibility values. |
-| Batch race calculation for lists | Preserves the existing formula while avoiding repeated per-employee queries. |
-| Audit identity snapshots | Old logs keep the original username and full name after account changes. |
-| Soft-delete HR users | Preserves audit references and prevents orphaned user history. |
-| Dictionary i18n | Simple EN/HU/AR translation layer for a desktop prototype. |
-| Stable internal values | User data, enums, audit codes, and import/export headers are not translated. |
+| Decision | Choice | Reason |
+|---|---|---|
+| Promotion months remaining | Calculated live | Avoids stale data, fully auditable |
+| Annual salary increment | Manual with dashboard prompt | Simpler for offline desktop app |
+| Language preference | Per session | No DB overhead, suitable for 1–2 users |
+| Employee access | None (data subjects only) | Per project requirement |
+| Dashboard/Employees/Promotions pages | Recreated on every visit | Ensures live data without manual refresh |
+
+---
 
 ## Access Control
 
-| Page / Capability | admin | HR Officer |
+| Page / Capability | Admin | HR Officer |
 |---|---:|---:|
 | Dashboard | Yes | Yes |
 | Employees | Yes | Yes |
@@ -152,25 +229,12 @@ The demo seed includes a normal company hierarchy plus an `OTHERS` branch:
 - `docs/MyHR_User_Guide.docx`
 - `docs/MyHR_Developer_Guide.docx`
 
-Regenerate the Word guides:
-
-```bash
-python scripts/generate_docs.py
-```
 
 ## Future Scope
 
 - Package the desktop app as an installer.
-- Add automated tests for promotion math, imports, audit snapshots, access control, and performance-sensitive list pages.
+- Add automated tests for promotion math, imports, audit snapshots, and access control.
 - Add richer reports for yearly promotions, salary budget impact, sanctions, and commendations.
 - Add scheduled backup reminders and backup health checks.
 - Add a formal migration tool if schema changes continue.
 - Consider encrypted backups or protected local storage for sensitive HR data.
-
-## Author and Supervisor
-
-| Role | Name |
-|---|---|
-| Developer | Muhammad Ibrahim Shoeb |
-| Supervisor | Dr. Husam Al-Maghoosi |
-| Program | BME Project Lab, Semester 8 |
