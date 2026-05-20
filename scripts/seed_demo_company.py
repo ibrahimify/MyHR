@@ -319,12 +319,18 @@ def seed_org_units(session):
 
     units = {
         "company": company,
+        "others": None,
         "divisions": {},
         "departments": {},
         "units": {},
         "teams": {},
         "leaves": [],
     }
+
+    others = OrgUnit(name="OTHERS", unit_type="division", parent_id=company.id)
+    session.add(others)
+    session.flush()
+    units["others"] = others
 
     for division_name, departments in ORG_TREE.items():
         division = OrgUnit(name=division_name, unit_type="division", parent_id=company.id)
@@ -425,6 +431,27 @@ def seed_employees(session, titles, units):
             role, title_name, executive_team, manager=ceo,
             first_name=first, last_name=last,
             join_date=TODAY - timedelta(days=RNG.randint(365 * 5, 365 * 9))
+        )
+
+    other_head = add_employee(
+        "Other Employees Head", "Other", units["others"], manager=ceo,
+        first_name="Salman", last_name="Ali",
+        join_date=TODAY - timedelta(days=365 * 6 + 45)
+    )
+    units["others"].head_employee_id = other_head.id
+
+    other_staff = [
+        ("Janitor", "Janos", "Farkas", 5),
+        ("Cleaner", "Maria", "Pop", 3),
+        ("Window Cleaner", "Wei", "Zhang", 2),
+        ("Security Guard", "Omar", "Hassan", 4),
+        ("Painter", "Carlos", "Garcia", 1),
+    ]
+    for position, first, last, years in other_staff:
+        add_employee(
+            position, "Other", units["others"], manager=other_head,
+            first_name=first, last_name=last,
+            join_date=TODAY - timedelta(days=(365 * years) + RNG.randint(20, 180))
         )
 
     for division_name, division in units["divisions"].items():
@@ -551,7 +578,7 @@ def seed_salary_increments(session, employees, admin_id):
 
 def seed_commendations(session, employees, admin_id, hr_id):
     counts = {employee.id: 0 for employee in employees}
-    non_exec = [employee for employee in employees if employee.title.name not in {"L1", "L2"}]
+    non_exec = [employee for employee in employees if employee.title.name not in {"L1", "L2", "Other"}]
     RNG.shuffle(non_exec)
 
     maxed = non_exec[:12]
@@ -607,7 +634,7 @@ def add_commendation(session, recipients, category, issued_by_id):
 
 
 def seed_sanctions(session, employees, admin_id, hr_id):
-    candidates = [employee for employee in employees if employee.title.name not in {"L1", "L2"}]
+    candidates = [employee for employee in employees if employee.title.name not in {"L1", "L2", "Other"}]
     RNG.shuffle(candidates)
 
     for employee in candidates[:30]:
@@ -709,8 +736,10 @@ def slug(value):
 
 
 def degree_for_title(title_name):
+    if title_name == "Other":
+        return "Other"
     if title_name in {"L1", "L2", "L3", "L4"}:
-        return RNG.choice(["MSc", "PhD", "Other"])
+        return RNG.choice(["MSc", "PhD"])
     if title_name == "L5":
         return RNG.choice(["MSc", "PhD"])
     if title_name == "L6":
@@ -733,6 +762,7 @@ def join_date_for_title(title_name):
         "L5": (2, 7),
         "L6": (1, 6),
         "L7": (0, 5),
+        "Other": (0, 8),
     }
     min_years, max_years = ranges[title_name]
     days = RNG.randint(min_years * 365 + 60, max_years * 365 + 120)

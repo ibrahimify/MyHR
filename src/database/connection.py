@@ -14,6 +14,7 @@ Business logic included here:
 import os
 import json
 import calendar
+from collections import defaultdict
 from datetime import datetime, date
 from hashlib import sha256
 from sqlalchemy import create_engine
@@ -68,6 +69,23 @@ def _migrate_schema():
               AND (performed_by_username IS NULL OR performed_by_username = '')
             """
         )
+        for statement in [
+            "CREATE INDEX IF NOT EXISTS ix_employee_status ON employee(status)",
+            "CREATE INDEX IF NOT EXISTS ix_employee_employee_id ON employee(employee_id)",
+            "CREATE INDEX IF NOT EXISTS ix_employee_work_email ON employee(work_email)",
+            "CREATE INDEX IF NOT EXISTS ix_employee_title_id ON employee(title_id)",
+            "CREATE INDEX IF NOT EXISTS ix_employee_org_unit_id ON employee(org_unit_id)",
+            "CREATE INDEX IF NOT EXISTS ix_employee_reports_to_id ON employee(reports_to_id)",
+            "CREATE INDEX IF NOT EXISTS ix_org_unit_parent_id ON org_unit(parent_id)",
+            "CREATE INDEX IF NOT EXISTS ix_org_unit_name ON org_unit(name)",
+            "CREATE INDEX IF NOT EXISTS ix_promotion_history_employee_date ON promotion_history(employee_id, promoted_at)",
+            "CREATE INDEX IF NOT EXISTS ix_commendation_employee_employee ON commendation_employee(employee_id, commendation_id)",
+            "CREATE INDEX IF NOT EXISTS ix_commendation_issued_at ON commendation(issued_at)",
+            "CREATE INDEX IF NOT EXISTS ix_sanction_employee_active_date ON sanction(employee_id, is_resolved, issued_at)",
+            "CREATE INDEX IF NOT EXISTS ix_salary_increment_employee_date ON salary_increment_history(employee_id, applied_at)",
+            "CREATE INDEX IF NOT EXISTS ix_audit_log_performed_at ON audit_log(performed_at)",
+        ]:
+            conn.exec_driver_sql(statement)
         conn.exec_driver_sql(
             """
             UPDATE audit_log
@@ -310,6 +328,150 @@ def calculate_months_remaining(employee: Employee, session: Session) -> dict:
         "next_title_id": rule.to_title_id,
         "progress_pct": max(0, min(100, int((months_elapsed + commendation_reduction - sanction_addition) / rule.base_months * 100))),
     }
+
+
+def calculate_months_remaining_batch(employees: list[Employee], session: Session) -> dict[int, dict]:
+    """
+    Batched version of calculate_months_remaining for list pages.
+    Uses the same formula, but preloads rules, race starts, commendations,
+    sanctions, and titles once instead of issuing queries per employee.
+    """
+    employees = list(employees or [])
+    if not employees:
+        return {}
+
+    now = datetime.utcnow()
+    employee_ids = [employee.id for employee in employees]
+    title_ids = {employee.title_id for employee in employees if employee.title_id}
+    titles_by_id = {
+        title.id: title
+        for title in session.query(Title).filter(Title.id.in_(title_ids)).all()
+    } if title_ids else {}
+
+    results = {}
+    standard_employees = []
+    for employee in employees:
+        title = titles_by_id.get(employee.title_id)
+        if employee.degree == "Other" or is_other_title(title):
+            results[employee.id] = {
+                "has_next_level": False,
+                "months_remaining": None,
+                "base_months": None,
+                "months_elapsed": _months_between(employee.join_date, now) if employee.join_date else 0,
+                "commendation_reduction": 0,
+                "sanction_addition": 0,
+                "eligible": False,
+                "next_title_id": None,
+                "progress_pct": 0,
+            }
+        else:
+            standard_employees.append(employee)
+
+    if not standard_employees:
+        return results
+
+    standard_title_ids = {employee.title_id for employee in standard_employees if employee.title_id}
+    rules_by_title_id = {
+        rule.from_title_id: rule
+        for rule in session.query(PromotionRule).filter(
+            PromotionRule.from_title_id.in_(standard_title_ids),
+            PromotionRule.is_active == True,
+        ).all()
+    } if standard_title_ids else {}
+
+    last_promotion_by_employee = {}
+    promotions = (
+        session.query(PromotionHistory)
+        .filter(PromotionHistory.employee_id.in_(employee_ids))
+        .order_by(PromotionHistory.employee_id, PromotionHistory.promoted_at.desc())
+        .all()
+    )
+    for promotion in promotions:
+        last_promotion_by_employee.setdefault(promotion.employee_id, promotion)
+
+    race_start_by_employee = {
+        employee.id: (
+            last_promotion_by_employee[employee.id].promoted_at
+            if employee.id in last_promotion_by_employee
+            else employee.join_date
+        )
+        for employee in standard_employees
+    }
+
+    comm_ids_by_employee = defaultdict(list)
+    comm_ids = set()
+    links = (
+        session.query(CommendationEmployee)
+        .filter(CommendationEmployee.employee_id.in_(employee_ids))
+        .all()
+    )
+    for link in links:
+        comm_ids_by_employee[link.employee_id].append(link.commendation_id)
+        comm_ids.add(link.commendation_id)
+
+    commendations_by_id = {
+        commendation.id: commendation
+        for commendation in session.query(Commendation).filter(Commendation.id.in_(comm_ids)).all()
+    } if comm_ids else {}
+
+    commendation_reduction_by_employee = defaultdict(int)
+    for employee_id, ids in comm_ids_by_employee.items():
+        race_start = race_start_by_employee.get(employee_id)
+        if not race_start:
+            continue
+        for commendation_id in ids:
+            commendation = commendations_by_id.get(commendation_id)
+            if commendation and commendation.issued_at and commendation.issued_at >= race_start:
+                commendation_reduction_by_employee[employee_id] += abs(commendation.months_impact)
+
+    sanction_addition_by_employee = defaultdict(int)
+    sanctions = (
+        session.query(Sanction)
+        .filter(
+            Sanction.employee_id.in_(employee_ids),
+            Sanction.is_resolved == False,
+        )
+        .all()
+    )
+    for sanction in sanctions:
+        race_start = race_start_by_employee.get(sanction.employee_id)
+        if sanction.issued_at and race_start and sanction.issued_at >= race_start:
+            sanction_addition_by_employee[sanction.employee_id] += sanction.delay_months
+
+    for employee in standard_employees:
+        rule = rules_by_title_id.get(employee.title_id)
+        if not rule:
+            results[employee.id] = {
+                "has_next_level": False,
+                "months_remaining": None,
+                "base_months": None,
+                "months_elapsed": None,
+                "commendation_reduction": 0,
+                "sanction_addition": 0,
+                "eligible": False,
+                "next_title_id": None,
+            }
+            continue
+
+        race_start = race_start_by_employee.get(employee.id)
+        months_elapsed = _months_between(race_start, now)
+        commendation_reduction = commendation_reduction_by_employee[employee.id]
+        sanction_addition = sanction_addition_by_employee[employee.id]
+        raw_remaining = rule.base_months - months_elapsed - commendation_reduction + sanction_addition
+        months_remaining = max(0, raw_remaining)
+        results[employee.id] = {
+            "has_next_level": True,
+            "months_remaining": months_remaining,
+            "base_months": rule.base_months,
+            "months_elapsed": months_elapsed,
+            "commendation_reduction": commendation_reduction,
+            "sanction_addition": sanction_addition,
+            "eligible": months_remaining == 0,
+            "next_title_id": rule.to_title_id,
+            "progress_pct": max(0, min(100, int((months_elapsed + commendation_reduction - sanction_addition) / rule.base_months * 100))),
+        }
+
+    return results
 
 
 def get_race_start(employee: Employee, session: Session) -> datetime:

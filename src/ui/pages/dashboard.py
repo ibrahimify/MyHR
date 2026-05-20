@@ -15,7 +15,7 @@ from PySide6.QtGui import QColor
 from src.core.i18n import t
 from src.database.connection import (
     get_session, get_increment_due_employees, apply_salary_increment,
-    calculate_months_remaining
+    calculate_months_remaining_batch
 )
 from src.database.models import Employee, Sanction, Commendation, AuditLog, Title
 from src.ui.styles import btn_primary, btn_outline, btn_ghost, TABLE_SS, SCROLL_SS
@@ -189,10 +189,11 @@ class DashboardPage(QWidget):
             increment_due = get_increment_due_employees(session)
             self.increment_count = len(increment_due)
             self.increment_names = [e.first_name + " " + e.last_name for e in increment_due[:3]]
+            titles_by_id = {title.id: title for title in session.query(Title).all()}
 
             self.increment_data = []
             for emp in increment_due:
-                title = session.query(Title).filter_by(id=emp.title_id).first()
+                title = titles_by_id.get(emp.title_id)
                 if not title:
                     continue
                 salary_before = emp.base_salary
@@ -218,7 +219,7 @@ class DashboardPage(QWidget):
                 {
                     "action": (log.action or "Activity").replace(".", " ").replace("_", " ").title(),
                     "target": log.description or t("organization_record_updated"),
-                    "user": log.performed_by.full_name if log.performed_by else "System",
+                    "user": log.performed_by_name or (log.performed_by.full_name if log.performed_by else "System"),
                     "time": log.performed_at.strftime("%b %d, %H:%M") if log.performed_at else "",
                 }
                 for log in recent
@@ -226,8 +227,11 @@ class DashboardPage(QWidget):
 
             upcoming = []
             active_emps = session.query(Employee).filter_by(status="active").all()
+            races = calculate_months_remaining_batch(active_emps, session)
             for emp in active_emps:
-                race = calculate_months_remaining(emp, session)
+                race = races.get(emp.id)
+                if not race:
+                    continue
                 if not race["has_next_level"]:
                     continue
                 if race["eligible"]:
@@ -235,7 +239,7 @@ class DashboardPage(QWidget):
                 months_remaining = race["months_remaining"]
                 if months_remaining > 12:
                     continue
-                next_title = session.query(Title).filter_by(id=race["next_title_id"]).first()
+                next_title = titles_by_id.get(race["next_title_id"])
                 upcoming.append({
                     "name": emp.full_name,
                     "current": emp.title.name if emp.title else "?",

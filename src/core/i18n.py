@@ -1766,6 +1766,28 @@ TRANSLATIONS["ar"].update({
 })
 
 
+TRANSLATIONS["en"].update({
+    "search_employees": "Search by name, ID, position, or email...",
+    "previous_page": "Previous",
+    "next_page": "Next",
+    "page_status": "Page {page} of {pages}",
+})
+
+TRANSLATIONS["hu"].update({
+    "search_employees": "Keresés név, azonosító, pozíció vagy e-mail alapján...",
+    "previous_page": "Előző",
+    "next_page": "Következő",
+    "page_status": "{page}. oldal / {pages}",
+})
+
+TRANSLATIONS["ar"].update({
+    "search_employees": "البحث بالاسم أو المعرّف أو المنصب أو البريد...",
+    "previous_page": "السابق",
+    "next_page": "التالي",
+    "page_status": "الصفحة {page} من {pages}",
+})
+
+
 def set_language(lang_code: str):
     """Set the active session language."""
     global _current_language

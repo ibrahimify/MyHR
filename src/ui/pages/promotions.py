@@ -10,11 +10,12 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QColor
+from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
 from src.database.connection import (
     get_session, log_action, calculate_months_remaining,
-    calculate_sub_race, display_title_name
+    calculate_months_remaining_batch, calculate_sub_race, display_title_name
 )
 from src.database.models import Employee, Title, PromotionRule, PromotionHistory, SalaryIncrementHistory
 from src.ui.styles import (
@@ -257,11 +258,15 @@ class EligibleTab(QWidget):
         session = get_session()
         try:
             employees = session.query(Employee).filter_by(status="active").all()
+            titles_by_id = {title.id: title for title in session.query(Title).all()}
+            races = calculate_months_remaining_batch(employees, session)
             rows = []
             eligible_count = soon_count = progress_count = 0
 
             for emp in employees:
-                race = calculate_months_remaining(emp, session)
+                race = races.get(emp.id)
+                if not race:
+                    continue
                 if not race["has_next_level"]:
                     continue
                 mr = race["months_remaining"]
@@ -274,7 +279,7 @@ class EligibleTab(QWidget):
 
                 next_title_name = "-"
                 if race["next_title_id"]:
-                    nt = session.query(Title).filter_by(id=race["next_title_id"]).first()
+                    nt = titles_by_id.get(race["next_title_id"])
                     if nt:
                         next_title_name = nt.name
 
@@ -283,7 +288,7 @@ class EligibleTab(QWidget):
                         "id": emp.id,
                         "name": emp.full_name,
                         "emp_id": emp.employee_id,
-                        "current": display_title_name(emp.title),
+                        "current": display_title_name(titles_by_id.get(emp.title_id)),
                         "next": next_title_name,
                         "elapsed": race["months_elapsed"],
                         "comm": race["commendation_reduction"],
@@ -516,9 +521,13 @@ class HistoryTab(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
+        self.loaded = False
+        self.rows = []
+        self.page_size = 25
+        self.current_page = 1
+        self.total_pages = 1
         self.setStyleSheet("background: #f9fafb;")
         self._build()
-        self.refresh()
 
     def _build(self):
         layout = QVBoxLayout(self)
@@ -561,86 +570,167 @@ class HistoryTab(QWidget):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         cl.addWidget(self.table)
+
+        pager = QFrame()
+        pager.setStyleSheet("background: white; border: none; border-top: 1px solid #f3f4f6;")
+        pager_layout = QHBoxLayout(pager)
+        pager_layout.setContentsMargins(16, 10, 16, 10)
+        pager_layout.setSpacing(10)
+
+        self.page_lbl = QLabel("")
+        self.page_lbl.setStyleSheet("font-size: 13px; color: #4b5563; background: transparent;")
+        pager_btn_ss = (
+            "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db;"
+            " border-radius: 6px; font-size: 13px; font-weight: 700; padding: 0 14px; }"
+            " QPushButton:hover { background: #f9fafb; }"
+            " QPushButton:disabled { color: #9ca3af; background: #f9fafb; }"
+        )
+        self.prev_btn = QPushButton(t("previous_page"))
+        self.prev_btn.setFixedHeight(34)
+        self.prev_btn.setCursor(Qt.PointingHandCursor)
+        self.prev_btn.setStyleSheet(pager_btn_ss)
+        self.prev_btn.clicked.connect(self._previous_page)
+
+        self.next_btn = QPushButton(t("next_page"))
+        self.next_btn.setFixedHeight(34)
+        self.next_btn.setCursor(Qt.PointingHandCursor)
+        self.next_btn.setStyleSheet(pager_btn_ss)
+        self.next_btn.clicked.connect(self._next_page)
+
+        pager_layout.addStretch()
+        pager_layout.addWidget(self.page_lbl)
+        pager_layout.addWidget(self.prev_btn)
+        pager_layout.addWidget(self.next_btn)
+        cl.addWidget(pager)
         layout.addWidget(card)
         layout.addStretch()
 
     def refresh(self):
         session = get_session()
         try:
+            self.loaded = True
             promotion_rows = [{
                 "sort_date": h.promoted_at or datetime.min,
                 "name": h.employee.full_name, "emp_id": h.employee.employee_id,
                 "from": display_title_name(h.from_title), "to": display_title_name(h.to_title),
                 "basis": h.basis.replace("_", " ").title(),
                 "months": str(h.months_taken) + " mo" if h.months_taken else "-",
-                "by": h.approved_by.full_name,
+                "by": h.approved_by.full_name if h.approved_by else "System",
                 "date": h.promoted_at.strftime("%Y-%m-%d") if h.promoted_at else "-",
                 "kind": "promotion",
-            } for h in session.query(PromotionHistory).all()]
+            } for h in session.query(PromotionHistory).options(
+                joinedload(PromotionHistory.employee),
+                joinedload(PromotionHistory.from_title),
+                joinedload(PromotionHistory.to_title),
+                joinedload(PromotionHistory.approved_by),
+            ).all()]
             increment_rows = [{
                 "sort_date": inc.applied_at or datetime.min,
                 "name": inc.employee.full_name, "emp_id": inc.employee.employee_id,
                 "from": t("annual_increment"), "to": f"EUR {inc.salary_after:,.2f}",
                 "basis": t("annual_increment"),
                 "months": "-",
-                "by": inc.approved_by.full_name,
+                "by": inc.approved_by.full_name if inc.approved_by else "System",
                 "date": inc.applied_at.strftime("%Y-%m-%d") if inc.applied_at else "-",
                 "kind": "increment",
                 "details": inc.notes or "",
-            } for inc in session.query(SalaryIncrementHistory).all()]
-            rows = sorted(promotion_rows + increment_rows, key=lambda row: row["sort_date"], reverse=True)
+            } for inc in session.query(SalaryIncrementHistory).options(
+                joinedload(SalaryIncrementHistory.employee),
+                joinedload(SalaryIncrementHistory.approved_by),
+            ).all()]
+            self.rows = sorted(promotion_rows + increment_rows, key=lambda row: row["sort_date"], reverse=True)
+            self.current_page = 1
         finally:
             session.close()
 
-        self.table.setRowCount(len(rows))
-        self.table.setMinimumHeight(112 + (60 * max(1, len(rows))))
-        for i, row in enumerate(rows):
-            self.table.setRowHeight(i, 58)
-            # Employee cell
-            ew = QWidget()
-            ew.setStyleSheet("background: white; border: none;")
-            el = QVBoxLayout(ew)
-            el.setContentsMargins(12, 4, 4, 4)
-            el.setSpacing(1)
-            e1 = QLabel(row["name"])
-            e1.setStyleSheet("font-size: 13px; font-weight: 600; color: #111827;")
-            e2 = QLabel(row["emp_id"])
-            e2.setStyleSheet("font-size: 11px; color: #6b7280;")
-            el.addWidget(e1); el.addWidget(e2)
-            ew.setToolTip(f"{row['name']} ({row['emp_id']})")
-            self.table.setCellWidget(i, 0, ew)
+        self._populate_page()
 
-            promo_w = QWidget()
-            promo_w.setStyleSheet("background: white; border: none;")
-            pl = QHBoxLayout(promo_w)
-            pl.setContentsMargins(12, 7, 8, 7)
-            pl.setSpacing(8)
-            if row["kind"] == "increment":
-                fl = QLabel(row["from"])
-                fl.setFixedHeight(28)
-                fl.setAlignment(Qt.AlignCenter)
-                fl.setStyleSheet("background: #eef4ff; color: #1e40af; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 700;")
-                tl = QLabel(row["to"])
-                tl.setFixedHeight(28)
-                tl.setAlignment(Qt.AlignCenter)
-                tl.setStyleSheet("background: #dcfce7; color: #166534; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 700;")
-                promo_w.setToolTip(row.get("details") or f"{row['from']} -> {row['to']}")
-                pl.addWidget(fl); pl.addWidget(tl); pl.addStretch()
-            else:
-                fl = QLabel(row["from"])
-                fl.setStyleSheet(f"background: #eef4ff; color: #1e40af; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600;")
-                arrow = QLabel()
-                arrow.setPixmap(qta.icon("fa5s.arrow-right", color="#10b981").pixmap(12, 12))
-                tl = QLabel(row["to"])
-                tl.setStyleSheet(f"background: #dcfce7; color: #166534; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600;")
-                promo_w.setToolTip(f"{row['from']} -> {row['to']}")
-                pl.addWidget(fl); pl.addWidget(arrow); pl.addWidget(tl); pl.addStretch()
-            self.table.setCellWidget(i, 1, promo_w)
+    def _populate_page(self):
+        total = len(self.rows)
+        self.total_pages = max(1, (total + self.page_size - 1) // self.page_size)
+        self.current_page = max(1, min(self.current_page, self.total_pages))
+        start = (self.current_page - 1) * self.page_size
+        page_rows = self.rows[start:start + self.page_size]
 
-            _set_table_item(self.table, i, 2, row["basis"])
-            _set_table_item(self.table, i, 3, row["months"])
-            _set_table_item(self.table, i, 4, row["by"])
-            _set_table_item(self.table, i, 5, row["date"])
+        self.table.setUpdatesEnabled(False)
+        try:
+            self.table.clearContents()
+            self.table.setRowCount(len(page_rows))
+            self.table.setMinimumHeight(112 + (60 * max(1, len(page_rows))))
+            for i, row in enumerate(page_rows):
+                self._set_history_row(i, row)
+        finally:
+            self.table.setUpdatesEnabled(True)
+
+        self.page_lbl.setText(t("page_status", page=self.current_page, pages=self.total_pages))
+        self.prev_btn.setEnabled(self.current_page > 1)
+        self.next_btn.setEnabled(self.current_page < self.total_pages)
+
+    def _set_history_row(self, i, row):
+        self.table.setRowHeight(i, 58)
+        # Employee cell
+        ew = QWidget()
+        ew.setStyleSheet("background: white; border: none;")
+        el = QVBoxLayout(ew)
+        el.setContentsMargins(12, 4, 4, 4)
+        el.setSpacing(1)
+        e1 = QLabel(row["name"])
+        e1.setStyleSheet("font-size: 13px; font-weight: 600; color: #111827;")
+        e2 = QLabel(row["emp_id"])
+        e2.setStyleSheet("font-size: 11px; color: #6b7280;")
+        el.addWidget(e1)
+        el.addWidget(e2)
+        ew.setToolTip(f"{row['name']} ({row['emp_id']})")
+        self.table.setCellWidget(i, 0, ew)
+
+        promo_w = QWidget()
+        promo_w.setStyleSheet("background: white; border: none;")
+        pl = QHBoxLayout(promo_w)
+        pl.setContentsMargins(12, 7, 8, 7)
+        pl.setSpacing(8)
+        if row["kind"] == "increment":
+            fl = QLabel(row["from"])
+            fl.setFixedHeight(28)
+            fl.setAlignment(Qt.AlignCenter)
+            fl.setStyleSheet("background: #eef4ff; color: #1e40af; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 700;")
+            tl = QLabel(row["to"])
+            tl.setFixedHeight(28)
+            tl.setAlignment(Qt.AlignCenter)
+            tl.setStyleSheet("background: #dcfce7; color: #166534; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 700;")
+            promo_w.setToolTip(row.get("details") or f"{row['from']} -> {row['to']}")
+            pl.addWidget(fl)
+            pl.addWidget(tl)
+            pl.addStretch()
+        else:
+            fl = QLabel(row["from"])
+            fl.setStyleSheet("background: #eef4ff; color: #1e40af; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600;")
+            arrow = QLabel()
+            arrow.setPixmap(qta.icon("fa5s.arrow-right", color="#10b981").pixmap(12, 12))
+            tl = QLabel(row["to"])
+            tl.setStyleSheet("background: #dcfce7; color: #166534; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600;")
+            promo_w.setToolTip(f"{row['from']} -> {row['to']}")
+            pl.addWidget(fl)
+            pl.addWidget(arrow)
+            pl.addWidget(tl)
+            pl.addStretch()
+        self.table.setCellWidget(i, 1, promo_w)
+
+        _set_table_item(self.table, i, 2, row["basis"])
+        _set_table_item(self.table, i, 3, row["months"])
+        _set_table_item(self.table, i, 4, row["by"])
+        _set_table_item(self.table, i, 5, row["date"])
+
+    def _previous_page(self):
+        if self.current_page <= 1:
+            return
+        self.current_page -= 1
+        self._populate_page()
+
+    def _next_page(self):
+        if self.current_page >= self.total_pages:
+            return
+        self.current_page += 1
+        self._populate_page()
 
 
 # Rules tab

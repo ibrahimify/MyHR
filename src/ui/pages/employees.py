@@ -8,6 +8,7 @@ Fixes:
 """
 
 import qtawesome as qta
+import math
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QLineEdit, QComboBox, QTableWidget,
@@ -17,6 +18,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QDate, QSize, Signal
 from PySide6.QtGui import QColor
+from sqlalchemy import func, or_
+from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
 from src.database.connection import (
@@ -337,6 +340,11 @@ class EmployeeListView(QWidget):
         self.on_add = on_add
         self.on_profile = on_profile
         self.all_employees = []
+        self.filtered_employees = []
+        self.page_size = 50
+        self.current_page = 1
+        self.total_count = 0
+        self.total_pages = 1
         self._on_edit_cb = None
         self.setStyleSheet("QWidget { background: #f9fafb; font-family: 'Segoe UI'; }")
         self._build()
@@ -371,14 +379,14 @@ class EmployeeListView(QWidget):
         self.search_input.setFixedHeight(44)
         self.search_input.setStyleSheet(INPUT_STYLE)
         self.search_input.addAction(qta.icon("fa5s.search", color="#9ca3af"), QLineEdit.LeadingPosition)
-        self.search_input.textChanged.connect(self._apply_filter)
+        self.search_input.textChanged.connect(self._on_filter_changed)
         bl.addWidget(self.search_input, 1)
 
         self.dept_filter = CleanSelect()
         self.dept_filter.setFixedHeight(44)
         self.dept_filter.setMinimumWidth(220)
         self.dept_filter.addItem(t("all_departments"), None)
-        self.dept_filter.currentIndexChanged.connect(lambda *_: self._apply_filter())
+        self.dept_filter.currentIndexChanged.connect(lambda *_: self._on_filter_changed())
         bl.addWidget(self.dept_filter)
 
         self.status_filter = CleanSelect()
@@ -387,7 +395,7 @@ class EmployeeListView(QWidget):
         self.status_filter.addItem(t("all_status"), None)
         for s in STATUS_OPTIONS:
             self.status_filter.addItem(s.replace("_", " ").title(), s)
-        self.status_filter.currentIndexChanged.connect(lambda *_: self._apply_filter())
+        self.status_filter.currentIndexChanged.connect(lambda *_: self._on_filter_changed())
         bl.addWidget(self.status_filter)
 
         add_btn = QPushButton("  " + t("add_employee"))
@@ -470,13 +478,118 @@ class EmployeeListView(QWidget):
         self.table.setMinimumHeight(320)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         table_layout.addWidget(self.table, 1)
+
+        pager = QFrame()
+        pager.setStyleSheet("background: white; border: none; border-top: 1px solid #f3f4f6;")
+        pager_layout = QHBoxLayout(pager)
+        pager_layout.setContentsMargins(16, 10, 16, 10)
+        pager_layout.setSpacing(10)
+
+        self.page_lbl = QLabel("")
+        self.page_lbl.setStyleSheet("font-size: 13px; color: #4b5563; background: transparent;")
+
+        pager_btn_ss = (
+            "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db;"
+            " border-radius: 6px; font-size: 13px; font-weight: 700; padding: 0 14px; }"
+            " QPushButton:hover { background: #f9fafb; }"
+            " QPushButton:disabled { color: #9ca3af; background: #f9fafb; }"
+        )
+        self.prev_btn = QPushButton(t("previous_page"))
+        self.prev_btn.setFixedHeight(34)
+        self.prev_btn.setCursor(Qt.PointingHandCursor)
+        self.prev_btn.setStyleSheet(pager_btn_ss)
+        self.prev_btn.clicked.connect(self._previous_page)
+
+        self.next_btn = QPushButton(t("next_page"))
+        self.next_btn.setFixedHeight(34)
+        self.next_btn.setCursor(Qt.PointingHandCursor)
+        self.next_btn.setStyleSheet(pager_btn_ss)
+        self.next_btn.clicked.connect(self._next_page)
+
+        pager_layout.addStretch()
+        pager_layout.addWidget(self.page_lbl)
+        pager_layout.addWidget(self.prev_btn)
+        pager_layout.addWidget(self.next_btn)
+        table_layout.addWidget(pager)
         layout.addWidget(table_card, 1)
 
     def refresh(self):
+        self.current_page = 1
+        self._load_departments()
+        self._load_page()
+
+    def _load_departments(self):
+        current_dept = self.dept_filter.currentData()
         session = get_session()
         try:
-            emps = session.query(Employee).all()
-            self.all_employees = [{
+            depts = [
+                row[0] for row in
+                session.query(OrgUnit.name)
+                .join(Employee, Employee.org_unit_id == OrgUnit.id)
+                .filter(OrgUnit.name.isnot(None))
+                .distinct()
+                .order_by(OrgUnit.name)
+                .all()
+            ]
+            self.dept_filter.blockSignals(True)
+            self.dept_filter.clear()
+            self.dept_filter.addItem(t("all_departments"), None)
+            for d in depts:
+                self.dept_filter.addItem(d, d)
+            if current_dept in depts:
+                for idx, (_, value) in enumerate(self.dept_filter._items):
+                    if value == current_dept:
+                        self.dept_filter.setCurrentIndex(idx)
+                        break
+            self.dept_filter.blockSignals(False)
+        finally:
+            session.close()
+
+    def _filtered_query(self, session):
+        query = session.query(Employee)
+
+        search = self.search_input.text().strip().lower()
+        if search:
+            pattern = f"%{search}%"
+            full_name = func.lower(Employee.first_name + " " + Employee.last_name)
+            query = query.filter(or_(
+                func.lower(Employee.first_name).like(pattern),
+                func.lower(Employee.last_name).like(pattern),
+                full_name.like(pattern),
+                func.lower(Employee.employee_id).like(pattern),
+                func.lower(Employee.position).like(pattern),
+                func.lower(Employee.work_email).like(pattern),
+                func.lower(Employee.personal_email).like(pattern),
+            ))
+
+        dept = self.dept_filter.currentData()
+        if dept:
+            query = query.join(OrgUnit, Employee.org_unit_id == OrgUnit.id).filter(OrgUnit.name == dept)
+
+        status = self.status_filter.currentData()
+        if status:
+            query = query.filter(Employee.status == status)
+
+        return query
+
+    def _load_page(self):
+        session = get_session()
+        try:
+            base_query = self._filtered_query(session)
+            self.total_count = base_query.count()
+            self.total_pages = max(1, math.ceil(self.total_count / self.page_size))
+            self.current_page = max(1, min(self.current_page, self.total_pages))
+
+            emps = (
+                base_query
+                .options(joinedload(Employee.title), joinedload(Employee.org_unit))
+                .order_by(Employee.id)
+                .offset((self.current_page - 1) * self.page_size)
+                .limit(self.page_size)
+                .all()
+            )
+
+            self.filtered_employees = [{
                 "id": e.id, "employee_id": e.employee_id, "full_name": e.full_name,
                 "email": e.work_email or e.personal_email or "-",
                 "dept": e.org_unit.name if e.org_unit else "-",
@@ -484,95 +597,110 @@ class EmployeeListView(QWidget):
                 "level": e.title.name if e.title else "-",
                 "degree": e.degree, "status": e.status,
             } for e in emps]
-            depts = sorted({x["dept"] for x in self.all_employees if x["dept"] != "-"})
-            self.dept_filter.blockSignals(True)
-            self.dept_filter.clear()
-            self.dept_filter.addItem(t("all_departments"), None)
-            for d in depts:
-                self.dept_filter.addItem(d, d)
-            self.dept_filter.blockSignals(False)
         finally:
             session.close()
-        self._apply_filter()
+
+        if self.total_count:
+            shown_start = ((self.current_page - 1) * self.page_size) + 1
+            shown_end = shown_start + len(self.filtered_employees) - 1
+            shown = f"{shown_start}-{shown_end}"
+        else:
+            shown = "0"
+        self.count_lbl.setText(t("showing_employees", shown=shown, total=self.total_count))
+        self.page_lbl.setText(t("page_status", page=self.current_page, pages=self.total_pages))
+        self.prev_btn.setEnabled(self.current_page > 1)
+        self.next_btn.setEnabled(self.current_page < self.total_pages)
+        self._populate_table(self.filtered_employees)
+
+    def _on_filter_changed(self, *_):
+        self.current_page = 1
+        self._load_page()
 
     def _apply_filter(self):
-        search = self.search_input.text().lower()
-        dept   = self.dept_filter.currentData()
-        status = self.status_filter.currentData()
-        filtered = [e for e in self.all_employees if
-            (not search or search in e["full_name"].lower() or search in e["employee_id"].lower() or search in e["email"].lower()) and
-            (not dept   or e["dept"] == dept) and
-            (not status or e["status"] == status)
-        ]
-        self.count_lbl.setText(t("showing_employees", shown=len(filtered), total=len(self.all_employees)))
-        self.filtered_employees = filtered
-        self._populate_table(filtered)
+        self._on_filter_changed()
+
+    def _previous_page(self):
+        if self.current_page <= 1:
+            return
+        self.current_page -= 1
+        self._load_page()
+
+    def _next_page(self):
+        if self.current_page >= self.total_pages:
+            return
+        self.current_page += 1
+        self._load_page()
 
     def _populate_table(self, employees):
-        self.table.setRowCount(len(employees))
         STATUS_COLORS = {"active": ("#dcfce7","#166534"), "inactive": ("#f3f4f6","#374151"), "on_leave": ("#fef9c3","#854d0e")}
+        self.table.setUpdatesEnabled(False)
+        try:
+            self.table.clearContents()
+            self.table.setRowCount(len(employees))
 
-        for row, emp in enumerate(employees):
-            self.table.setRowHeight(row, 62)
-            for col, val in enumerate([emp["employee_id"], emp["full_name"], emp["email"], emp["dept"], emp["position"]]):
-                item = QTableWidgetItem(val)
-                item.setData(Qt.UserRole, emp["id"])
-                item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                item.setToolTip(val)
-                if col == 0:
-                    font = item.font()
-                    font.setBold(True)
-                    item.setFont(font)
-                if col == 2:
-                    item.setForeground(QColor("#4b5563"))
-                self.table.setItem(row, col, item)
+            for row, emp in enumerate(employees):
+                self.table.setRowHeight(row, 62)
+                for col, val in enumerate([emp["employee_id"], emp["full_name"], emp["email"], emp["dept"], emp["position"]]):
+                    item = QTableWidgetItem(val)
+                    item.setData(Qt.UserRole, emp["id"])
+                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                    item.setToolTip(val)
+                    if col == 0:
+                        font = item.font()
+                        font.setBold(True)
+                        item.setFont(font)
+                    if col == 2:
+                        item.setForeground(QColor("#4b5563"))
+                    self.table.setItem(row, col, item)
 
-            self.table.setCellWidget(row, 5, self._badge(emp["level"], "#dbeafe", "#1d4ed8"))
-            bg, fg = STATUS_COLORS.get(emp["status"], ("#f3f4f6","#374151"))
-            self.table.setCellWidget(row, 6, self._badge(t(emp["status"]), bg, fg))
+                self.table.setCellWidget(row, 5, self._badge(emp["level"], "#dbeafe", "#1d4ed8"))
+                bg, fg = STATUS_COLORS.get(emp["status"], ("#f3f4f6","#374151"))
+                self.table.setCellWidget(row, 6, self._badge(t(emp["status"]), bg, fg))
 
-            btn_widget = QWidget()
-            btn_widget.setStyleSheet("background: transparent;")
-            btn_layout = QHBoxLayout(btn_widget)
-            btn_layout.setContentsMargins(6, 0, 6, 0)
-            btn_layout.setSpacing(8)
-            btn_layout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                btn_widget = QWidget()
+                btn_widget.setStyleSheet("background: transparent;")
+                btn_layout = QHBoxLayout(btn_widget)
+                btn_layout.setContentsMargins(6, 0, 6, 0)
+                btn_layout.setSpacing(8)
+                btn_layout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-            _ico = QSize(16, 16)
-            _btn_ss = (
-                "QPushButton {{ background: transparent; border: none; border-radius: 6px;"
-                " min-width: 30px; max-width: 30px; min-height: 30px; max-height: 30px; }}"
-                " QPushButton:hover {{ background: {hover}; }}"
-            )
+                _ico = QSize(16, 16)
+                _btn_ss = (
+                    "QPushButton {{ background: transparent; border: none; border-radius: 6px;"
+                    " min-width: 30px; max-width: 30px; min-height: 30px; max-height: 30px; }}"
+                    " QPushButton:hover {{ background: {hover}; }}"
+                )
 
-            view_btn = QPushButton()
-            view_btn.setIcon(qta.icon("fa5s.eye", color="#2563eb"))
-            view_btn.setIconSize(_ico)
-            view_btn.setToolTip(t("view_profile"))
-            view_btn.setCursor(Qt.PointingHandCursor)
-            view_btn.setStyleSheet(_btn_ss.format(hover="#eff6ff"))
-            view_btn.clicked.connect(lambda _, eid=emp["id"]: self.on_profile(eid))
+                view_btn = QPushButton()
+                view_btn.setIcon(qta.icon("fa5s.eye", color="#2563eb"))
+                view_btn.setIconSize(_ico)
+                view_btn.setToolTip(t("view_profile"))
+                view_btn.setCursor(Qt.PointingHandCursor)
+                view_btn.setStyleSheet(_btn_ss.format(hover="#eff6ff"))
+                view_btn.clicked.connect(lambda _, eid=emp["id"]: self.on_profile(eid))
 
-            edit_btn = QPushButton()
-            edit_btn.setIcon(qta.icon("fa5s.edit", color="#374151"))
-            edit_btn.setIconSize(_ico)
-            edit_btn.setToolTip(t("edit_employee"))
-            edit_btn.setCursor(Qt.PointingHandCursor)
-            edit_btn.setStyleSheet(_btn_ss.format(hover="#f3f4f6"))
-            edit_btn.clicked.connect(lambda _, eid=emp["id"]: self._do_edit(eid))
+                edit_btn = QPushButton()
+                edit_btn.setIcon(qta.icon("fa5s.edit", color="#374151"))
+                edit_btn.setIconSize(_ico)
+                edit_btn.setToolTip(t("edit_employee"))
+                edit_btn.setCursor(Qt.PointingHandCursor)
+                edit_btn.setStyleSheet(_btn_ss.format(hover="#f3f4f6"))
+                edit_btn.clicked.connect(lambda _, eid=emp["id"]: self._do_edit(eid))
 
-            del_btn = QPushButton()
-            del_btn.setIcon(qta.icon("fa5s.trash-alt", color="#dc2626"))
-            del_btn.setIconSize(_ico)
-            del_btn.setToolTip(t("delete_employee"))
-            del_btn.setCursor(Qt.PointingHandCursor)
-            del_btn.setStyleSheet(_btn_ss.format(hover="#fee2e2"))
-            del_btn.clicked.connect(lambda _, eid=emp["id"]: self._do_delete(eid))
+                del_btn = QPushButton()
+                del_btn.setIcon(qta.icon("fa5s.trash-alt", color="#dc2626"))
+                del_btn.setIconSize(_ico)
+                del_btn.setToolTip(t("delete_employee"))
+                del_btn.setCursor(Qt.PointingHandCursor)
+                del_btn.setStyleSheet(_btn_ss.format(hover="#fee2e2"))
+                del_btn.clicked.connect(lambda _, eid=emp["id"]: self._do_delete(eid))
 
-            btn_layout.addWidget(view_btn)
-            btn_layout.addWidget(edit_btn)
-            btn_layout.addWidget(del_btn)
-            self.table.setCellWidget(row, 7, btn_widget)
+                btn_layout.addWidget(view_btn)
+                btn_layout.addWidget(edit_btn)
+                btn_layout.addWidget(del_btn)
+                self.table.setCellWidget(row, 7, btn_widget)
+        finally:
+            self.table.setUpdatesEnabled(True)
 
     def _badge(self, text, bg, fg, border=None):
         wrap = QWidget()
