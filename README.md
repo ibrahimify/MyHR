@@ -94,6 +94,16 @@ python main.py
 
 ---
 
+### Load Demo Data (Optional)
+
+To populate the app with a realistic 300-person company dataset for testing:
+
+```bash
+python scripts/seed_demo_company.py
+```
+
+> This resets the database and creates employees, departments, promotions, commendations, and sanctions.
+
 ## Project Structure
 
 ```
@@ -111,7 +121,7 @@ MyHR/
 │   │       └── ...etc
 ├── guides/
 │   │   ├── MyHR_User_Guide.docx        # End-user manual
-│   │   └── MyHR_Developer_Guide.docx   # Technical handover guide
+│   │   └── MyHR_Developer_Guide.docx   # Technical handover guide  
 ├── scripts/
 │   ├── seed_demo_company.py       # Generates a 300-person demo dataset
 │   └── generate_docs.py           # Rebuilds documentation
