@@ -109,8 +109,9 @@ MyHR/
 │   │       ├── dashboard.png
 │   │       ├── employees.png
 │   │       └── ...etc
-│   ├── MyHR_User_Guide.docx       # End-user manual
-│   └── MyHR_Developer_Guide.docx  # Technical handover guide
+├── guides/
+│   │   ├── MyHR_User_Guide.docx        # End-user manual
+│   │   └── MyHR_Developer_Guide.docx   # Technical handover guide
 ├── scripts/
 │   ├── seed_demo_company.py       # Generates a 300-person demo dataset
 │   └── generate_docs.py           # Rebuilds documentation
