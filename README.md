@@ -308,6 +308,10 @@ MyHR/
 
 ---
 
+## Check the Teleprompter
+**[Launch Teleprompter](https://raw.githack.com/ibrahimify/MyHR/master/teleprompter.html)**
+---
+
 ## License
 
 Academic project -  Budapest University of Technology and Economics, 2025–2026.
