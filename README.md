@@ -309,7 +309,7 @@ MyHR/
 ---
 
 ## Check the Teleprompter
-**[Launch Teleprompter](https://raw.githack.com/ibrahimify/MyHR/master/teleprompter.html)**
+*[Launch Teleprompter](https://raw.githack.com/ibrahimify/MyHR/master/teleprompter.html)*
 ---
 
 ## License
