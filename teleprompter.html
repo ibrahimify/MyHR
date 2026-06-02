@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyHR — Speaker Notes</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #ffffff; color: #111827; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+  .controls {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: #ffffff; border-bottom: 2px solid #e5e7eb; 
+    padding: 12px 24px; display: flex; align-items: center; gap: 16px;
+  }
+  .controls h1 { font-size: 14px; color: #2563eb; letter-spacing: 2px; flex-shrink: 0; }
+  .controls button {
+    background: #2563eb; color: white; border: none; border-radius: 6px;
+    padding: 6px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .controls button:hover { background: #1d4ed8; }
+  .controls button.outline { background: transparent; border: 1px solid #d1d5db; color: #374151; }
+  .controls button.outline:hover { border-color: #2563eb; color: #2563eb; }
+  .speed-control { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .speed-control label { font-size: 12px; color: #6b7280; }
+  .speed-control input[type=range] { width: 100px; accent-color: #2563eb; }
+  .speed-val { font-size: 12px; color: #2563eb; font-weight: 600; width: 30px; }
+
+  .prompter {
+    padding: 80px 10% 60vh 10%;
+    max-width: 900px; margin: 0 auto;
+    scroll-behavior: smooth;
+  }
+
+  .slide-block { margin-bottom: 48px; opacity: 0.3; transition: opacity 0.3s; }
+  .slide-block.active { opacity: 1; }
+  .slide-block:hover { opacity: 0.9; }
+
+  .slide-label {
+    display: inline-block;
+    background: #2563eb; color: white;
+    font-size: 11px; font-weight: 700; letter-spacing: 2px;
+    padding: 3px 12px; border-radius: 4px; margin-bottom: 10px;
+  }
+  .slide-title {
+    font-size: 16px; font-weight: 700; color: #2563eb;
+    margin-bottom: 12px; letter-spacing: 0.5px;
+  }
+  .slide-time {
+    font-size: 11px; color: #9ca3af; margin-left: 8px; font-weight: 400;
+  }
+  .speech {
+    font-size: 28px; line-height: 1.6; color: #1f2937;
+    font-weight: 300; letter-spacing: 0.3px;
+  }
+
+  .progress-bar {
+    position: fixed; bottom: 0; left: 0; height: 3px;
+    background: #2563eb; transition: width 0.3s; z-index: 100;
+  }
+
+  .current-slide {
+    position: fixed; bottom: 12px; right: 24px;
+    font-size: 13px; color: #9ca3af; z-index: 100;
+  }
+
+  @media (max-width: 768px) {
+    .prompter { padding: 80px 6% 60vh 6%; }
+    .speech { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <h1>TELEPROMPTER</h1>
+  <button onclick="toggleScroll()" id="scrollBtn">▶ Start</button>
+  <button class="outline" onclick="resetScroll()">↺ Reset</button>
+  <button class="outline" onclick="prevSlide()">← Prev</button>
+  <button class="outline" onclick="nextSlide()">Next →</button>
+  <div class="speed-control">
+    <label>Speed</label>
+    <input type="range" min="1" max="10" value="2" id="speedSlider" oninput="updateSpeed()">
+    <span class="speed-val" id="speedVal">2</span>
+  </div>
+</div>
+
+<div class="prompter" id="prompter">
+
+  <div class="slide-block" data-slide="1">
+    <span class="slide-label">SLIDE 1</span>
+    <div class="slide-title">Title <span class="slide-time">~10 sec</span></div>
+    <div class="speech">Good morning. My name is Ibrahim, my supervisor is Dr. Husam. This semester I built MyHR — an employee management system.</div>
+  </div>
+
+  <div class="slide-block" data-slide="2">
+    <span class="slide-label">SLIDE 2</span>
+    <div class="slide-title">Why MyHR? <span class="slide-time">~45 sec</span></div>
+    <div class="speech">The idea is simple — government organizations manage hundreds of employees and need to track who's eligible for promotion, who got commendations, who has sanctions. Right now a lot of this is done manually or with spreadsheets. MyHR handles all of this offline, on a local desktop — no cloud, no server, no internet needed.</div>
+  </div>
+
+  <div class="slide-block" data-slide="3">
+    <span class="slide-label">SLIDE 3</span>
+    <div class="slide-title">System Overview / Dashboard <span class="slide-time">~45 sec</span></div>
+    <div class="speech">This is the main dashboard. It shows live employee stats, upcoming promotions, recent activity, and alerts when salary increments are due. The admin can approve increments directly from here. Two people use the system — the Admin who configures everything, and the HR Officer who manages daily records.</div>
+  </div>
+
+  <div class="slide-block" data-slide="4">
+    <span class="slide-label">SLIDE 4</span>
+    <div class="slide-title">Architecture <span class="slide-time">~1 min</span></div>
+    <div class="speech">Three layers. The UI is built with PySide6, which is Qt for Python. The business layer handles the core logic — the promotion engine, audit services, salary workflows. The data layer uses SQLAlchemy ORM with a local SQLite database — 11 tables total. Three things cut across all layers: audit logging, access control, and multi-language support — the app supports English, Hungarian, and Arabic with full RTL layout.</div>
+  </div>
+
+  <div class="slide-block" data-slide="5">
+    <span class="slide-label">SLIDE 5</span>
+    <div class="slide-title">Employees & Hierarchy <span class="slide-time">~1 min</span></div>
+    <div class="speech">When you add an employee, the system automatically assigns their level based on their degree — BSc goes to Level 7, MSc to Level 6, PhD to Level 5. Every employee gets a unique ID. On the right is the org hierarchy — it supports unlimited depth. You can build Organization, Division, Department, Unit, Team — as deep as you need. All with dependency checks so you can't accidentally delete a unit that has people in it.</div>
+  </div>
+
+  <div class="slide-block" data-slide="6">
+    <span class="slide-label">SLIDE 6</span>
+    <div class="slide-title">Promotion Race Engine ★ <span class="slide-time">~1.5 min — take your time</span></div>
+    <div class="speech">This is the core feature. I call it the promotion race. Think of each level as a race track. The employee moves forward one checkpoint every month automatically. Commendations speed them up — there are three categories: minus 1, minus 3, or minus 6 months. Sanctions slow them down — anywhere from 1 to 12 months added. The key architectural decision: this is calculated live every time. We never store the result. We compute it from the raw records — join date, commendations, sanctions. This avoids stale data and makes the audit trail fully transparent. When they reach zero months remaining, they're eligible for promotion.</div>
+  </div>
+
+  <div class="slide-block" data-slide="7">
+    <span class="slide-label">SLIDE 7</span>
+    <div class="slide-title">Commendations & Sanctions <span class="slide-time">~45 sec</span></div>
+    <div class="speech">Left side: commendations. Three categories with different impacts on the promotion race. Max 3 per employee per role — enforced by the system. You can issue them individually or as a bulk team award. Right side: sanctions. 1 to 12 months of delay. Once resolved, they stop affecting the race. Both get unique auto-generated IDs and everything is logged in the audit trail.</div>
+  </div>
+
+  <div class="slide-block" data-slide="8">
+    <span class="slide-label">SLIDE 8</span>
+    <div class="slide-title">Administration <span class="slide-time">~45 sec</span></div>
+    <div class="speech">The admin can create and manage HR accounts — each HR officer has their own credentials. When we look at the audit log, we can see exactly which HR did what. If an HR account is deleted, we use soft delete — deactivate instead of remove — so the audit history stays intact. Even if the admin changes their username during a handover, past logs keep the original name.</div>
+  </div>
+
+  <div class="slide-block" data-slide="9">
+    <span class="slide-label">SLIDE 9</span>
+    <div class="slide-title">Data Management <span class="slide-time">~30 sec</span></div>
+    <div class="speech">Employees can be imported in bulk from CSV or Excel files. The system validates every row before importing — you see errors highlighted and only valid rows go through. On the other side, you can export employee data and create database backups.</div>
+  </div>
+
+  <div class="slide-block" data-slide="10">
+    <span class="slide-label">SLIDE 10</span>
+    <div class="slide-title">Results <span class="slide-time">~30 sec</span></div>
+    <div class="speech">To summarize what was delivered this semester: 10 application pages, 11 database tables, 563 translation keys across three languages, over 13,000 lines of Python code. The MVP is fully functional and tested.</div>
+  </div>
+
+  <div class="slide-block" data-slide="11">
+    <span class="slide-label">SLIDE 11</span>
+    <div class="slide-title">Future Scope <span class="slide-time">~30 sec</span></div>
+    <div class="speech">For the thesis semester, I plan to add configurable promotion policies through the UI, PDF reporting, audit log diff views, dark mode, and eventually package it as a standalone installer.</div>
+  </div>
+
+  <div class="slide-block" data-slide="12">
+    <span class="slide-label">SLIDE 12</span>
+    <div class="slide-title">Thank You <span class="slide-time">let it sit</span></div>
+    <div class="speech">Thank you. The QR code links to the GitHub repository if you'd like to check the code. I'm happy to take questions.</div>
+  </div>
+
+</div>
+
+<div class="progress-bar" id="progressBar"></div>
+<div class="current-slide" id="currentSlide">Slide 1 / 12</div>
+
+<script>
+  let scrolling = false;
+  let speed = 2;
+  let animFrame;
+  const blocks = document.querySelectorAll('.slide-block');
+
+  function toggleScroll() {
+    scrolling = !scrolling;
+    document.getElementById('scrollBtn').textContent = scrolling ? '⏸ Pause' : '▶ Start';
+    if (scrolling) autoScroll();
+    else cancelAnimationFrame(animFrame);
+  }
+
+  function autoScroll() {
+    if (!scrolling) return;
+    window.scrollBy(0, speed * 0.15);
+    animFrame = requestAnimationFrame(autoScroll);
+  }
+
+  function resetScroll() {
+    scrolling = false;
+    document.getElementById('scrollBtn').textContent = '▶ Start';
+    cancelAnimationFrame(animFrame);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function updateSpeed() {
+    speed = parseInt(document.getElementById('speedSlider').value);
+    document.getElementById('speedVal').textContent = speed;
+  }
+
+  function getActiveSlide() {
+    let active = 0;
+    blocks.forEach((b, i) => {
+      const rect = b.getBoundingClientRect();
+      if (rect.top < window.innerHeight * 0.4) active = i;
+    });
+    return active;
+  }
+
+  function nextSlide() {
+    const current = getActiveSlide();
+    if (current < blocks.length - 1) {
+      blocks[current + 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  function prevSlide() {
+    const current = getActiveSlide();
+    if (current > 0) {
+      blocks[current - 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  window.addEventListener('scroll', () => {
+    const scrollTop = window.scrollY;
+    const docHeight = document.body.scrollHeight - window.innerHeight;
+    const pct = Math.min(100, (scrollTop / docHeight) * 100);
+    document.getElementById('progressBar').style.width = pct + '%';
+
+    const active = getActiveSlide();
+    document.getElementById('currentSlide').textContent = `Slide ${active + 1} / 12`;
+
+    blocks.forEach((b, i) => {
+      b.classList.toggle('active', i === active);
+    });
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') { e.preventDefault(); toggleScroll(); }
+    if (e.code === 'ArrowDown' || e.code === 'ArrowRight') { e.preventDefault(); nextSlide(); }
+    if (e.code === 'ArrowUp' || e.code === 'ArrowLeft') { e.preventDefault(); prevSlide(); }
+    if (e.code === 'KeyR') resetScroll();
+  });
+
+  // Init first slide as active
+  blocks[0].classList.add('active');
+</script>
+
+</body>
+</html>
