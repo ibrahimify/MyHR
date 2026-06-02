@@ -17,7 +17,7 @@ A standalone, offline desktop application for managing employee records, organiz
 
 ---
 
-**Supervisor:** Dr. Husam Al-Maghoosi   
+**Supervisor:** Dr. Husam Al-Magsoosi   
 **Developer:** Muhammad Ibrahim Shoeb  
 **Institution:** Budapest University of Technology and Economics   
 **Status:** <br/>Semester 1 (Project Lab) -  Complete <br/>Semester 2 (Thesis) -  In Progress
@@ -310,4 +310,4 @@ MyHR/
 
 ## License
 
-Academic project -  Budapest University of Technology and Economics (BME), 2025–2026.
+Academic project -  Budapest University of Technology and Economics, 2025–2026.
