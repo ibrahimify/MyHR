@@ -34,6 +34,7 @@ wheels/
 *.swp
 *.swo
 *~
+~$*
 .project
 .pydevproject
 .settings/
@@ -57,7 +58,14 @@ Thumbs.db
 .temp/
 *.log
 ~$*.docx
+~$*.pptx
+~$*.xlsx
 
 # Dependencies
 pip-log.txt
 pip-delete-this-directory.txt
+node_modules/
+MockUI/node_modules/
+MockUI/dist/
+MockUI/.vite/
+MockUI/.next/

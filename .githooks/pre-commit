@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+
+python -B -m compileall -q src scripts main.py

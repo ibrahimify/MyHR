@@ -352,7 +352,7 @@ def calculate_months_remaining_batch(employees: list[Employee], session: Session
     standard_employees = []
     for employee in employees:
         title = titles_by_id.get(employee.title_id)
-        if employee.degree == "Other" or is_other_title(title):
+        if is_other_title(title) or (title is None and employee.title_id is None and employee.degree == "Other"):
             results[employee.id] = {
                 "has_next_level": False,
                 "months_remaining": None,
@@ -602,8 +602,9 @@ def can_receive_commendation(employee: Employee, session: Session) -> bool:
 def get_increment_due_employees(session: Session) -> list:
     """
     Returns list of employees due for annual salary increment.
-    Eligibility: employee's join anniversary has passed and no increment
-    was applied in the current anniversary year.
+    Eligibility: employee has completed at least one full year of service,
+    the current year's join anniversary has passed, and no increment was
+    applied for that anniversary.
     """
     today = datetime.utcnow()
     due = []
@@ -611,6 +612,9 @@ def get_increment_due_employees(session: Session) -> list:
     employees = session.query(Employee).filter_by(status="active").all()
     for emp in employees:
         if not emp.join_date:
+            continue
+
+        if _months_between(emp.join_date, today) < 12:
             continue
 
         # Check if anniversary has passed this year
@@ -733,7 +737,11 @@ def is_other_title(title: Title) -> bool:
 
 
 def is_other_employee(employee: Employee) -> bool:
-    return bool(employee and (employee.degree == "Other" or is_other_title(employee.title)))
+    if not employee:
+        return False
+    if employee.title is not None:
+        return is_other_title(employee.title)
+    return employee.degree == "Other" and employee.title_id is None
 
 
 def display_title_name(title: Title) -> str:

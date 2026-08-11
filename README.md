@@ -20,7 +20,7 @@ A standalone, offline desktop application for managing employee records, organiz
 **Supervisor:** Dr. Husam Al-Magsoosi   
 **Developer:** Muhammad Ibrahim Shoeb  
 **Institution:** Budapest University of Technology and Economics   
-**Status:** <br/>Semester 1 (Project Lab) -  Complete <br/>Semester 2 (Thesis) -  In Progress
+**Status:** Project Lab finished. Thesis part starts from this checkpoint.
 
 ---
 
@@ -108,47 +108,44 @@ python scripts/seed_demo_company.py
 
 ```
 MyHR/
-├── main.py                        # Entry point
-├── requirements.txt               # Python dependencies
-├── myhr.db                        # SQLite database (auto-created on first run)
-├── docs/
-│   ├── media/
-│   │   ├── demo.gif              # App walkthrough GIF
-│   │   └── screenshots/
-│   │       ├── login.png
-│   │       ├── dashboard.png
-│   │       ├── employees.png
-│   │       └── ...etc
-├── guides/
-│   │   ├── MyHR_User_Guide.docx        # End-user manual
-│   │   └── MyHR_Developer_Guide.docx   # Technical handover guide  
-├── scripts/
-│   ├── seed_demo_company.py       # Generates a 300-person demo dataset
-│   └── generate_docs.py           # Rebuilds documentation
-├── MockUI/                        # React + Tailwind design reference (not the actual app)
-└── src/
-    ├── core/
-    │   ├── i18n.py                # Internationalization (EN / HU / AR)
-    │   └── app_settings.py        # Company branding via QSettings
-    ├── database/
-    │   ├── models.py              # 10 SQLAlchemy models + 1 junction table
-    │   └── connection.py          # DB init, business logic, audit helpers
-    └── ui/
-        ├── styles.py              # Shared style constants
-        ├── login_window.py        # Login with language selector
-        ├── main_window.py         # Sidebar navigation shell
-        ├── assets/
-        │   └── chevron_down.svg   # Dropdown arrow icon
-        └── pages/
-            ├── dashboard.py       # Stats, salary increment approval, activity feed
-            ├── employees.py       # List, add, edit, profile, delete
-            ├── hierarchy.py       # Org tree (unlimited depth)
-            ├── promotions.py      # Race tracker, approvals, rules, history
-            ├── commendations.py   # Single + team awards (3 categories)
-            ├── sanctions.py       # Disciplinary actions (1–12 month delays)
-            ├── audit_log.py       # Immutable activity log
-            ├── import_data.py     # CSV/XLSX bulk import with validation
-            └── settings.py        # Salary, increments, users, security, backup
+|-- main.py                         # Desktop app entry point
+|-- requirements.txt                # Python dependencies
+|-- README.md                       # Project overview and setup
+|-- docs/
+|   |-- guides/
+|   |   |-- MyHR_User_Guide.docx
+|   |   |-- MyHR_Developer_Guide.docx
+|   |-- media/
+|   |   |-- demo.gif
+|   |   |-- screenshots/
+|   |-- Presentation/
+|   |-- Analysis Module/
+|-- scripts/
+|   |-- seed_demo_company.py        # Rebuilds the demo company dataset
+|   |-- generate_docs.py            # Rebuilds Word documentation
+|-- MockUI/                         # React design reference only
+|-- src/
+|   |-- core/
+|   |   |-- i18n.py                 # EN/HU/AR translations and RTL support
+|   |   |-- app_settings.py         # Company branding via QSettings
+|   |-- database/
+|   |   |-- models.py               # SQLAlchemy schema
+|   |   |-- connection.py           # DB init, business logic, audit helpers
+|   |-- ui/
+|       |-- styles.py               # Shared Qt styles
+|       |-- login_window.py         # Login and language selector
+|       |-- main_window.py          # Sidebar navigation shell
+|       |-- assets/
+|       |-- pages/
+|           |-- dashboard.py
+|           |-- employees.py
+|           |-- hierarchy.py
+|           |-- promotions.py
+|           |-- commendations.py
+|           |-- sanctions.py
+|           |-- audit_log.py
+|           |-- import_data.py
+|           |-- settings.py
 ```
 
 ---
