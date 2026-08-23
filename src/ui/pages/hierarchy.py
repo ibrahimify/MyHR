@@ -981,6 +981,7 @@ class UnitEmployeesDialog(QDialog):
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setShowGrid(False)
         for col in range(self.table.columnCount()):
             item = self.table.horizontalHeaderItem(col)
             if item:

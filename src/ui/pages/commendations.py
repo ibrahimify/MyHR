@@ -712,6 +712,7 @@ class CommendationHistoryTab(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setShowGrid(False)
         cl.addWidget(self.table)
         cl.addWidget(self._pager())
         layout.addWidget(card)

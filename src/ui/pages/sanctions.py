@@ -275,6 +275,7 @@ class ActiveSanctionsTab(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setShowGrid(False)
         tcl.addWidget(self.table)
         layout.addWidget(table_card)
 
@@ -525,6 +526,7 @@ class SanctionHistoryTab(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setShowGrid(False)
         cl.addWidget(self.table)
         cl.addWidget(self._pager())
         layout.addWidget(card)

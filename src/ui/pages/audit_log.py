@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QFrame, QTableWidget, QTableWidgetItem, QHeaderView,
     QLineEdit, QComboBox, QScrollArea, QPushButton
 )
+from sqlalchemy import String, cast, func, or_
 
 from src.core.i18n import t
 from src.database.connection import get_session
@@ -280,6 +281,7 @@ class AuditLogPage(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setShowGrid(False)
         self.table.setMouseTracking(True)
         for col in range(self.table.columnCount()):
             header_item = self.table.horizontalHeaderItem(col)
@@ -358,12 +360,7 @@ class AuditLogPage(QWidget):
         self.current_page = 1
         session = get_session()
         try:
-            now = datetime.utcnow()
-            logs = session.query(AuditLog).order_by(AuditLog.performed_at.desc(), AuditLog.id.desc()).limit(1000).all()
-            visible_logs = [log for log in logs if not log.performed_at or log.performed_at <= now][:500]
-            self.all_logs = [self._serialize_log(log) for log in visible_logs]
-
-            users = sorted({entry["user"] for entry in self.all_logs})
+            users = self._load_user_filter_values(session)
             current_user = self.user_filter.currentData()
             self.user_filter.blockSignals(True)
             self.user_filter.clear()
@@ -378,6 +375,20 @@ class AuditLogPage(QWidget):
 
         self._update_stats()
         self._filter()
+
+    def _load_user_filter_values(self, session):
+        rows = (
+            session.query(AuditLog.performed_by_username, AuditLog.performed_by_name)
+            .filter(AuditLog.performed_at <= datetime.utcnow())
+            .distinct()
+            .all()
+        )
+        names = []
+        for username, full_name in rows:
+            display = _user_display_from_snapshot(username, full_name)
+            if display != "System":
+                names.append(display)
+        return sorted(set(names))
 
     def _serialize_log(self, log):
         action = log.action or "other"
@@ -400,48 +411,94 @@ class AuditLogPage(QWidget):
         }
 
     def _update_stats(self):
-        today = datetime.now().date()
-        week_start = today - timedelta(days=6)
-        user_counts = Counter(entry["user"] for entry in self.all_logs)
-        most_active = user_counts.most_common(1)[0][0] if user_counts else "-"
+        session = get_session()
+        try:
+            now = datetime.utcnow()
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            week_start = today_start - timedelta(days=6)
+            base = session.query(AuditLog).filter(AuditLog.performed_at <= now)
+            total = base.count()
+            today_count = base.filter(AuditLog.performed_at >= today_start).count()
+            week_count = base.filter(AuditLog.performed_at >= week_start).count()
+            active_row = (
+                session.query(
+                    AuditLog.performed_by_username,
+                    AuditLog.performed_by_name,
+                    func.count(AuditLog.id).label("activity_count"),
+                )
+                .filter(AuditLog.performed_at <= now)
+                .group_by(AuditLog.performed_by_username, AuditLog.performed_by_name)
+                .order_by(func.count(AuditLog.id).desc())
+                .first()
+            )
+            most_active = _user_display_from_snapshot(active_row[0], active_row[1]) if active_row else "-"
+        finally:
+            session.close()
 
-        self.stat_values["total"].setText(str(len(self.all_logs)))
-        self.stat_values["today"].setText(str(sum(1 for entry in self.all_logs if entry["date"] == today)))
-        self.stat_values["week"].setText(str(sum(1 for entry in self.all_logs if entry["date"] and entry["date"] >= week_start)))
+        self.stat_values["total"].setText(str(total))
+        self.stat_values["today"].setText(str(today_count))
+        self.stat_values["week"].setText(str(week_count))
         self.stat_values["active_user"].setText(most_active)
         self.stat_values["active_user"].setStyleSheet(
             "font-size: 18px; font-weight: 800; color: #030213; background: transparent;"
         )
 
     def _filter(self):
-        search = self.search.text().strip().lower()
-        category = self.category_filter.currentData()
-        user = self.user_filter.currentData()
-
-        self.filtered_logs = []
-        for entry in self.all_logs:
-            haystack = " ".join([
-                entry["action"], entry["raw_action"], entry["details"],
-                entry["target"], entry["user"], _category_label(entry["category"])
-            ]).lower()
-            if search and search not in haystack:
-                continue
-            if category and entry["category"] != category:
-                continue
-            if user and entry["user"] != user:
-                continue
-            self.filtered_logs.append(entry)
-
-        self.total_pages = max(1, math.ceil(len(self.filtered_logs) / self.page_size))
-        self.current_page = max(1, min(self.current_page, self.total_pages))
-        self._populate_page()
+        self.current_page = 1
+        self._load_page()
 
     def _populate_page(self):
+        self._load_page()
+
+    def _filtered_query(self, session):
+        query = session.query(AuditLog).filter(AuditLog.performed_at <= datetime.utcnow())
+        search = self.search.text().strip().lower()
+        if search:
+            pattern = f"%{search}%"
+            target_text = func.coalesce(AuditLog.target_table, "") + " #" + func.coalesce(cast(AuditLog.target_id, String), "")
+            query = query.filter(or_(
+                func.lower(AuditLog.action).like(pattern),
+                func.lower(func.coalesce(AuditLog.description, "")).like(pattern),
+                func.lower(func.coalesce(AuditLog.target_table, "")).like(pattern),
+                func.lower(target_text).like(pattern),
+                func.lower(func.coalesce(AuditLog.performed_by_username, "")).like(pattern),
+                func.lower(func.coalesce(AuditLog.performed_by_name, "")).like(pattern),
+            ))
+
+        category = self.category_filter.currentData()
+        category_filter = _category_filter(AuditLog.action, category)
+        if category_filter is not None:
+            query = query.filter(category_filter)
+
+        user = self.user_filter.currentData()
+        if user:
+            query = query.filter(
+                (func.coalesce(AuditLog.performed_by_username, "") + ": " + func.coalesce(AuditLog.performed_by_name, "")) == user
+            )
+        return query
+
+    def _load_page(self):
+        session = get_session()
+        try:
+            query = self._filtered_query(session)
+            total = query.count()
+            self.total_pages = max(1, math.ceil(total / self.page_size))
+            self.current_page = max(1, min(self.current_page, self.total_pages))
+            start = (self.current_page - 1) * self.page_size
+            logs = (
+                query
+                .order_by(AuditLog.performed_at.desc(), AuditLog.id.desc())
+                .offset(start)
+                .limit(self.page_size)
+                .all()
+            )
+            page_rows = [self._serialize_log(log) for log in logs]
+        finally:
+            session.close()
+
         start = (self.current_page - 1) * self.page_size
-        end = start + self.page_size
-        page_rows = self.filtered_logs[start:end]
         shown = f"{start + 1}-{start + len(page_rows)}" if page_rows else "0"
-        self.count_lbl.setText(t("showing_logs", shown=shown, total=len(self.filtered_logs)))
+        self.count_lbl.setText(t("showing_logs", shown=shown, total=total))
         self.page_lbl.setText(t("page_status", page=self.current_page, pages=self.total_pages))
         self.prev_btn.setEnabled(self.current_page > 1)
         self.next_btn.setEnabled(self.current_page < self.total_pages)
@@ -463,7 +520,7 @@ class AuditLogPage(QWidget):
         self.table.setUpdatesEnabled(False)
         self.table.clearContents()
         self.table.setRowCount(len(logs))
-        self.table.setMinimumHeight(420)
+        self.table.setMinimumHeight(620)
 
         try:
             for row_index, log in enumerate(logs):
@@ -554,6 +611,28 @@ def _category_for_action(action):
     return root if root in CATEGORY_META else "other"
 
 
+def _category_filter(action_column, category):
+    if not category:
+        return None
+    mapping = {
+        "employee": [action_column.like("employee.%")],
+        "promotion": [action_column.like("promotion.%"), action_column.like("promotion_rule.%")],
+        "commendation": [action_column.like("commendation.%")],
+        "sanction": [action_column.like("sanction.%")],
+        "import": [action_column.like("import.%")],
+        "settings": [action_column.like("settings.%")],
+        "hierarchy": [action_column.like("org_unit.%")],
+        "salary": [action_column.like("salary.%"), action_column.like("salary_increment.%")],
+    }
+    if category == "other":
+        known = []
+        for filters in mapping.values():
+            known.extend(filters)
+        return ~or_(*known)
+    filters = mapping.get(category)
+    return or_(*filters) if filters else None
+
+
 def _action_label(action):
     key = ACTION_LABEL_KEYS.get(action)
     return t(key) if key else action.replace("_", " ").replace(".", " ").title()
@@ -562,6 +641,10 @@ def _action_label(action):
 def _user_display(log):
     username = log.performed_by_username or (log.performed_by.username if log.performed_by else None)
     full_name = log.performed_by_name or (log.performed_by.full_name if log.performed_by else None)
+    return _user_display_from_snapshot(username, full_name)
+
+
+def _user_display_from_snapshot(username, full_name):
     if username and full_name:
         return f"{username}: {full_name}"
     return username or full_name or "System"

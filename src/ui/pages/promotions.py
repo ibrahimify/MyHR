@@ -52,6 +52,27 @@ QHeaderView::section {
     min-height: 50px;
     text-align: left;
 }
+QScrollBar:vertical {
+    background: #f9fafb;
+    width: 6px;
+    border: none;
+}
+QScrollBar::handle:vertical {
+    background: #d1d5db;
+    border-radius: 3px;
+    min-height: 32px;
+}
+QScrollBar::handle:vertical:hover { background: #9ca3af; }
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0px;
+    border: none;
+    background: transparent;
+}
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: transparent;
+}
 """
 
 PROMO_CARD_SS = """
@@ -81,6 +102,34 @@ QTabBar::tab {
 QTabBar::tab:first { border-top-left-radius: 14px; border-bottom-left-radius: 14px; }
 QTabBar::tab:last { border-top-right-radius: 14px; border-bottom-right-radius: 14px; }
 QTabBar::tab:selected { background: white; color: #030213; }
+"""
+
+PROMO_SCROLL_SS = """
+QScrollArea {
+    border: none;
+    background: #f9fafb;
+}
+QScrollBar:vertical {
+    background: #f9fafb;
+    width: 6px;
+    border: none;
+}
+QScrollBar::handle:vertical {
+    background: #d1d5db;
+    border-radius: 3px;
+    min-height: 32px;
+}
+QScrollBar::handle:vertical:hover { background: #9ca3af; }
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0px;
+    border: none;
+    background: transparent;
+}
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: transparent;
+}
 """
 
 MESSAGE_BOX_SS = """
@@ -166,7 +215,7 @@ class EligibleTab(QWidget):
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll.setStyleSheet("border: none; background: #f9fafb;")
+        scroll.setStyleSheet(PROMO_SCROLL_SS)
         content = QWidget()
         content.setStyleSheet("background: #f9fafb;")
 
@@ -229,10 +278,12 @@ class EligibleTab(QWidget):
                 header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.setStyleSheet(PROMO_TABLE_SS)
         header = self.table.horizontalHeader()
+        header.setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        header.setFixedHeight(50)
         header.setStretchLastSection(False)
         for col, width in {
-            0: 190, 1: 116, 2: 104, 3: 132,
-            4: 130, 5: 112, 6: 178, 7: 150,
+            0: 190, 1: 176, 2: 142, 3: 190,
+            4: 178, 5: 132, 6: 178, 7: 166,
         }.items():
             self.table.setColumnWidth(col, width)
         for col in (0, 6):
@@ -242,6 +293,7 @@ class EligibleTab(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setShowGrid(False)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         tcl.addWidget(self.table, 1)
@@ -347,7 +399,7 @@ class EligibleTab(QWidget):
             name_w = QWidget()
             name_w.setStyleSheet("background: white; border: none;")
             nl = QVBoxLayout(name_w)
-            nl.setContentsMargins(12, 4, 4, 4)
+            nl.setContentsMargins(0, 4, 4, 4)
             nl.setSpacing(1)
             n1 = QLabel(row["name"])
             n1.setStyleSheet("font-size: 13px; font-weight: 600; color: #111827;")
@@ -425,7 +477,7 @@ class EligibleTab(QWidget):
                 btn = QPushButton("  " + t("approve"))
                 btn.setIcon(qta.icon("fa5s.check", color="white"))
                 btn.setIconSize(QSize(13, 13))
-                btn.setFixedSize(112, 40)
+                btn.setFixedSize(124, 40)
                 btn.setStyleSheet(btn_primary(40))
                 btn.clicked.connect(lambda _, eid=row["id"]: self._approve_promotion(eid))
             else:
@@ -525,7 +577,7 @@ class HistoryTab(QWidget):
         self.user = user
         self.loaded = False
         self.rows = []
-        self.page_size = 25
+        self.page_size = 50
         self.current_page = 1
         self.total_pages = 1
         self.setObjectName("HistoryTab")
@@ -561,8 +613,10 @@ class HistoryTab(QWidget):
                 header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.setStyleSheet(PROMO_TABLE_SS)
         header = self.table.horizontalHeader()
+        header.setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        header.setFixedHeight(50)
         header.setStretchLastSection(False)
-        for col, width in {0: 220, 1: 260, 2: 180, 3: 150, 4: 190, 5: 140}.items():
+        for col, width in {0: 220, 1: 260, 2: 180, 3: 190, 4: 190, 5: 140}.items():
             self.table.setColumnWidth(col, width)
         for col in (0, 1):
             header.setSectionResizeMode(col, QHeaderView.Stretch)
@@ -571,7 +625,9 @@ class HistoryTab(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.table.setShowGrid(False)
+        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.table.setFixedHeight(50 + (58 * 10) + 18)
         cl.addWidget(self.table)
 
         pager = QFrame()
@@ -606,60 +662,83 @@ class HistoryTab(QWidget):
         pager_layout.addWidget(self.next_btn)
         cl.addWidget(pager)
         layout.addWidget(card)
-        layout.addStretch()
 
     def refresh(self):
+        self.loaded = True
+        self.current_page = 1
+        self._populate_page()
+
+    def _promotion_row(self, h):
+        return {
+            "sort_date": h.promoted_at or datetime.min,
+            "name": h.employee.full_name, "emp_id": h.employee.employee_id,
+            "from": display_title_name(h.from_title), "to": display_title_name(h.to_title),
+            "basis": h.basis.replace("_", " ").title(),
+            "months": str(h.months_taken) + " mo" if h.months_taken else "-",
+            "by": h.approved_by.full_name if h.approved_by else "System",
+            "date": h.promoted_at.strftime("%Y-%m-%d") if h.promoted_at else "-",
+            "kind": "promotion",
+        }
+
+    def _increment_row(self, inc):
+        return {
+            "sort_date": inc.applied_at or datetime.min,
+            "name": inc.employee.full_name, "emp_id": inc.employee.employee_id,
+            "from": t("annual_increment"), "to": f"EUR {inc.salary_after:,.2f}",
+            "basis": t("annual_increment"),
+            "months": "-",
+            "by": inc.approved_by.full_name if inc.approved_by else "System",
+            "date": inc.applied_at.strftime("%Y-%m-%d") if inc.applied_at else "-",
+            "kind": "increment",
+            "details": inc.notes or "",
+        }
+
+    def _load_page_rows(self):
         session = get_session()
         try:
-            self.loaded = True
-            promotion_rows = [{
-                "sort_date": h.promoted_at or datetime.min,
-                "name": h.employee.full_name, "emp_id": h.employee.employee_id,
-                "from": display_title_name(h.from_title), "to": display_title_name(h.to_title),
-                "basis": h.basis.replace("_", " ").title(),
-                "months": str(h.months_taken) + " mo" if h.months_taken else "-",
-                "by": h.approved_by.full_name if h.approved_by else "System",
-                "date": h.promoted_at.strftime("%Y-%m-%d") if h.promoted_at else "-",
-                "kind": "promotion",
-            } for h in session.query(PromotionHistory).options(
-                joinedload(PromotionHistory.employee),
-                joinedload(PromotionHistory.from_title),
-                joinedload(PromotionHistory.to_title),
-                joinedload(PromotionHistory.approved_by),
-            ).all()]
-            increment_rows = [{
-                "sort_date": inc.applied_at or datetime.min,
-                "name": inc.employee.full_name, "emp_id": inc.employee.employee_id,
-                "from": t("annual_increment"), "to": f"EUR {inc.salary_after:,.2f}",
-                "basis": t("annual_increment"),
-                "months": "-",
-                "by": inc.approved_by.full_name if inc.approved_by else "System",
-                "date": inc.applied_at.strftime("%Y-%m-%d") if inc.applied_at else "-",
-                "kind": "increment",
-                "details": inc.notes or "",
-            } for inc in session.query(SalaryIncrementHistory).options(
-                joinedload(SalaryIncrementHistory.employee),
-                joinedload(SalaryIncrementHistory.approved_by),
-            ).all()]
-            self.rows = sorted(promotion_rows + increment_rows, key=lambda row: row["sort_date"], reverse=True)
-            self.current_page = 1
+            promo_count = session.query(PromotionHistory.id).count()
+            increment_count = session.query(SalaryIncrementHistory.id).count()
+            total = promo_count + increment_count
+            self.total_pages = max(1, (total + self.page_size - 1) // self.page_size)
+            self.current_page = max(1, min(self.current_page, self.total_pages))
+            start = (self.current_page - 1) * self.page_size
+            window = start + self.page_size
+            promotions = (
+                session.query(PromotionHistory)
+                .options(
+                    joinedload(PromotionHistory.employee),
+                    joinedload(PromotionHistory.from_title),
+                    joinedload(PromotionHistory.to_title),
+                    joinedload(PromotionHistory.approved_by),
+                )
+                .order_by(PromotionHistory.promoted_at.desc(), PromotionHistory.id.desc())
+                .limit(window)
+                .all()
+            )
+            increments = (
+                session.query(SalaryIncrementHistory)
+                .options(
+                    joinedload(SalaryIncrementHistory.employee),
+                    joinedload(SalaryIncrementHistory.approved_by),
+                )
+                .order_by(SalaryIncrementHistory.applied_at.desc(), SalaryIncrementHistory.id.desc())
+                .limit(window)
+                .all()
+            )
+            rows = [self._promotion_row(row) for row in promotions]
+            rows.extend(self._increment_row(row) for row in increments)
+            rows.sort(key=lambda row: row["sort_date"], reverse=True)
+            return rows[start:start + self.page_size], total
         finally:
             session.close()
 
-        self._populate_page()
-
     def _populate_page(self):
-        total = len(self.rows)
-        self.total_pages = max(1, (total + self.page_size - 1) // self.page_size)
-        self.current_page = max(1, min(self.current_page, self.total_pages))
-        start = (self.current_page - 1) * self.page_size
-        page_rows = self.rows[start:start + self.page_size]
+        page_rows, total = self._load_page_rows()
 
         self.table.setUpdatesEnabled(False)
         try:
             self.table.clearContents()
             self.table.setRowCount(len(page_rows))
-            self.table.setMinimumHeight(112 + (60 * max(1, len(page_rows))))
             for i, row in enumerate(page_rows):
                 self._set_history_row(i, row)
         finally:
@@ -675,7 +754,7 @@ class HistoryTab(QWidget):
         ew = QWidget()
         ew.setStyleSheet("background: white; border: none;")
         el = QVBoxLayout(ew)
-        el.setContentsMargins(12, 4, 4, 4)
+        el.setContentsMargins(0, 4, 4, 4)
         el.setSpacing(1)
         e1 = QLabel(row["name"])
         e1.setStyleSheet("font-size: 13px; font-weight: 600; color: #111827;")
@@ -694,10 +773,12 @@ class HistoryTab(QWidget):
         if row["kind"] == "increment":
             fl = QLabel(row["from"])
             fl.setFixedHeight(28)
+            fl.setMinimumWidth(174)
             fl.setAlignment(Qt.AlignCenter)
             fl.setStyleSheet("background: #eef4ff; color: #1e40af; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 700;")
             tl = QLabel(row["to"])
             tl.setFixedHeight(28)
+            tl.setMinimumWidth(138)
             tl.setAlignment(Qt.AlignCenter)
             tl.setStyleSheet("background: #dcfce7; color: #166534; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 700;")
             promo_w.setToolTip(row.get("details") or f"{row['from']} -> {row['to']}")

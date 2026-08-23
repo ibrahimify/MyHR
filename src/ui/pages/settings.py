@@ -745,6 +745,7 @@ QToolTip {
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setShowGrid(False)
         layout.addWidget(self.table)
         outer.addWidget(card)
         outer.addStretch()

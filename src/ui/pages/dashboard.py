@@ -560,6 +560,7 @@ class SalaryIncrementReviewDialog(QDialog):
         self.table.setColumnWidth(4, 110)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setShowGrid(False)
         self.table.setRowCount(len(self.increment_data))
 
         for i, row in enumerate(self.increment_data):

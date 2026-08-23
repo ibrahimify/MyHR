@@ -374,6 +374,7 @@ class ImportDataPage(QWidget):
         self.preview_table.verticalHeader().setVisible(False)
         self.preview_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.preview_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.preview_table.setShowGrid(False)
         for col in range(self.preview_table.columnCount()):
             header_item = self.preview_table.horizontalHeaderItem(col)
             if header_item:
