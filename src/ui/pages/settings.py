@@ -218,9 +218,9 @@ class SettingsPage(QWidget):
     def _add_policy_tabs(self, insert_at=None):
         self.summary_tab = PolicySummaryTab(self.user)
         self.level_tab = LevelManagementTab(self.user, on_saved=self._reload_policy_tabs)
-        self.salary_tab = SalaryTab(self.user)
-        self.promotion_tab = SettingsPromotionTab(self.user)
-        self.increment_tab = IncrementTab(self.user)
+        self.salary_tab = SalaryTab(self.user, on_saved=self._refresh_policy_views)
+        self.promotion_tab = SettingsPromotionTab(self.user, on_saved=self._refresh_policy_views)
+        self.increment_tab = IncrementTab(self.user, on_saved=self._refresh_policy_views)
         tabs = [
             (self.summary_tab, t("policy_summary")),
             (self.level_tab, t("level_management")),
@@ -248,6 +248,12 @@ class SettingsPage(QWidget):
             if self.tabs.tabText(index) == current_label:
                 self.tabs.setCurrentIndex(index)
                 break
+
+    def _refresh_policy_views(self):
+        for widget in (getattr(self, "summary_tab", None), getattr(self, "level_tab", None)):
+            refresh = getattr(widget, "refresh", None)
+            if callable(refresh):
+                refresh()
 
     def _refresh_current_tab(self, index):
         widget = self.tabs.widget(index)
@@ -844,7 +850,10 @@ class AddLevelDialog(QDialog):
         self.increment_type.addItem(t("increment_percentage"), "percentage")
         self.increment_type.addItem(t("increment_fixed"), "fixed")
         _style_combo(self.increment_type)
-        self.increment_value = _percent_spin(3.0)
+        self.increment_value = _increment_value_spin(3.0)
+        self.increment_type.currentIndexChanged.connect(lambda *_: self._sync_increment_value_suffix())
+        self.currency.textChanged.connect(lambda *_: self._sync_increment_value_suffix())
+        self._sync_increment_value_suffix()
         self.target_title = QComboBox()
         if self.is_edit:
             self.target_title.addItem(t("no_promotion_target"), None)
@@ -918,6 +927,7 @@ class AddLevelDialog(QDialog):
             if increment_index >= 0:
                 self.increment_type.setCurrentIndex(increment_index)
             self.increment_value.setValue(title.annual_increment_value)
+            self._sync_increment_value_suffix()
             rule = session.query(PromotionRule).filter_by(from_title_id=title.id).first()
             if rule:
                 target_index = self.target_title.findData(rule.to_title_id)
@@ -954,6 +964,9 @@ class AddLevelDialog(QDialog):
         finally:
             session.close()
 
+    def _sync_increment_value_suffix(self):
+        _sync_increment_spin_suffix(self.increment_type, self.increment_value, self.currency.text().strip() or "EUR")
+
     def _save(self):
         level = self.level_name.text().strip()
         label = self.level_label.text().strip()
@@ -962,9 +975,6 @@ class AddLevelDialog(QDialog):
 
         if not level or not label:
             _warning(self, t("warning"), t("level_name_label_required"))
-            return
-        if level.lower() == "other":
-            _warning(self, t("warning"), t("level_name_format_warning"))
             return
         if self.salary_max.value() <= 0 or self.salary_min.value() > self.salary_max.value():
             _warning(self, t("warning"), t("salary_min_max_warning"))
@@ -979,12 +989,26 @@ class AddLevelDialog(QDialog):
             if duplicate and duplicate.id != self.title_id:
                 _warning(self, t("warning"), t("level_already_exists"))
                 return
+            current_title = session.query(Title).filter_by(id=self.title_id).first() if self.is_edit else None
+            editing_other = bool(current_title and current_title.name == "Other")
+            if level.lower() == "other" and not editing_other:
+                _warning(self, t("warning"), t("level_name_format_warning"))
+                return
             target = session.query(Title).filter_by(id=target_id).first() if target_id else None
             if not target and not self.is_edit:
                 _warning(self, t("warning"), t("promotion_target_required"))
                 return
+            proposed = {
+                rule.from_title_id: rule.to_title_id
+                for rule in session.query(PromotionRule).all()
+            }
+            proposed[self.title_id if self.is_edit else -1] = target_id
+            validation_key = _promotion_mapping_validation_key(session, proposed)
+            if validation_key:
+                _warning(self, t("warning"), t(validation_key))
+                return
             if self.is_edit:
-                title = session.query(Title).filter_by(id=self.title_id).first()
+                title = current_title
                 if not title:
                     _warning(self, t("warning"), t("level_not_found"))
                     return
@@ -1078,9 +1102,10 @@ class AddLevelDialog(QDialog):
 
 
 class SalaryTab(QWidget):
-    def __init__(self, user):
+    def __init__(self, user, on_saved=None):
         super().__init__()
         self.user = user
+        self.on_saved = on_saved
         self.fields = {}
         self.currency_badges = []
         self._build()
@@ -1201,6 +1226,8 @@ class SalaryTab(QWidget):
             log_action(session, action="settings.salary_ranges", performed_by_id=self.user.id, description="Salary ranges updated")
             session.commit()
             _information(self, t("success"), t("salary_ranges_saved"))
+            if callable(self.on_saved):
+                self.on_saved()
         except Exception as exc:
             session.rollback()
             _critical(self, t("error"), str(exc))
@@ -1209,9 +1236,10 @@ class SalaryTab(QWidget):
 
 
 class SettingsPromotionTab(QWidget):
-    def __init__(self, user):
+    def __init__(self, user, on_saved=None):
         super().__init__()
         self.user = user
+        self.on_saved = on_saved
         self.fields = {}
         self._build()
         self._load()
@@ -1352,27 +1380,13 @@ class SettingsPromotionTab(QWidget):
         try:
             titles = {title.id: title for title in session.query(Title).all()}
             proposed = {}
-            used_targets = {}
             for from_title_id, controls in self.fields.items():
                 target_id = controls["target"].currentData()
-                if target_id is None:
-                    proposed[from_title_id] = None
-                    continue
-                if target_id == from_title_id:
-                    _warning(self, t("warning"), t("promotion_target_same_level"))
-                    return
-                target = titles.get(target_id)
-                if not target or target.name == "Other":
-                    _warning(self, t("warning"), t("promotion_target_other_forbidden"))
-                    return
-                if target_id in used_targets:
-                    _warning(self, t("warning"), t("promotion_target_duplicate"))
-                    return
-                used_targets[target_id] = from_title_id
                 proposed[from_title_id] = target_id
 
-            if _has_promotion_cycle(proposed):
-                _warning(self, t("warning"), t("promotion_target_cycle_error"))
+            validation_key = _promotion_mapping_validation_key(session, proposed)
+            if validation_key:
+                _warning(self, t("warning"), t(validation_key))
                 return
 
             for from_title_id, controls in self.fields.items():
@@ -1400,6 +1414,8 @@ class SettingsPromotionTab(QWidget):
             session.commit()
             _information(self, t("success"), t("promotion_settings_saved"))
             self._load()
+            if callable(self.on_saved):
+                self.on_saved()
         except Exception as exc:
             session.rollback()
             _critical(self, t("error"), str(exc))
@@ -1408,9 +1424,10 @@ class SettingsPromotionTab(QWidget):
 
 
 class IncrementTab(QWidget):
-    def __init__(self, user):
+    def __init__(self, user, on_saved=None):
         super().__init__()
         self.user = user
+        self.on_saved = on_saved
         self.fields = {}
         self._build()
         self._load()
@@ -1460,7 +1477,12 @@ class IncrementTab(QWidget):
         type_combo.addItem(t("increment_percentage"), "percentage")
         type_combo.addItem(t("increment_fixed"), "fixed")
         _style_combo(type_combo)
-        value_spin = _percent_spin(3.0)
+        value_spin = _increment_value_spin(3.0)
+        type_combo.currentIndexChanged.connect(
+            lambda *_args, combo=type_combo, spin=value_spin, currency=title.currency or "EUR":
+            _sync_increment_spin_suffix(combo, spin, currency)
+        )
+        _sync_increment_spin_suffix(type_combo, value_spin, title.currency or "EUR")
         fields.addWidget(_label(t("increment_type")), 0, 0)
         fields.addWidget(_label(t("increment_value")), 0, 1)
         fields.addWidget(type_combo, 1, 0)
@@ -1481,6 +1503,7 @@ class IncrementTab(QWidget):
                     if index >= 0:
                         combo.setCurrentIndex(index)
                     spin.setValue(title.annual_increment_value)
+                    _sync_increment_spin_suffix(combo, spin, title.currency or "EUR")
         finally:
             session.close()
 
@@ -1495,6 +1518,8 @@ class IncrementTab(QWidget):
             log_action(session, action="settings.increment_rules", performed_by_id=self.user.id, description="Annual increment rules updated")
             session.commit()
             _information(self, t("success"), t("increment_rules_saved"))
+            if callable(self.on_saved):
+                self.on_saved()
         except Exception as exc:
             session.rollback()
             _critical(self, t("error"), str(exc))
@@ -2237,6 +2262,27 @@ def _percent_spin(value):
     return spin
 
 
+def _increment_value_spin(value):
+    spin = QDoubleSpinBox()
+    spin.setRange(0, 9999999)
+    spin.setDecimals(2)
+    spin.setValue(value)
+    spin.setStyleSheet(INPUT_SS)
+    spin.setFixedHeight(44)
+    return spin
+
+
+def _sync_increment_spin_suffix(combo, spin, currency):
+    if combo.currentData() == "fixed":
+        spin.setRange(0, 9999999)
+        spin.setDecimals(2)
+        spin.setSuffix(f" {currency or 'EUR'}")
+    else:
+        spin.setRange(0, 100)
+        spin.setDecimals(2)
+        spin.setSuffix("%")
+
+
 def _style_combo(combo):
     combo.setStyleSheet(COMBO_SS)
     combo.setFixedHeight(44)
@@ -2324,6 +2370,26 @@ def _promotion_order_map(session):
         if title.name == "Other":
             order[title.id] = (2, 0)
     return order
+
+
+def _promotion_mapping_validation_key(session, mapping):
+    titles = {title.id: title for title in session.query(Title).all()}
+    used_targets = {}
+    for from_title_id, target_id in mapping.items():
+        if target_id is None:
+            continue
+        if target_id == from_title_id:
+            return "promotion_target_same_level"
+        target = titles.get(target_id)
+        if not target or target.name == "Other":
+            return "promotion_target_other_forbidden"
+        if target_id in used_targets:
+            return "promotion_target_duplicate"
+        used_targets[target_id] = from_title_id
+
+    if _has_promotion_cycle(mapping):
+        return "promotion_target_cycle_error"
+    return None
 
 
 def _has_promotion_cycle(mapping):

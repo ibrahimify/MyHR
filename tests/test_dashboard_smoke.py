@@ -115,8 +115,8 @@ class DashboardSmokeTests(unittest.TestCase):
 
         increment_tab = IncrementTab(user)
         combo, spin = increment_tab.fields[title_id]
-        combo.setCurrentIndex(combo.findData("percentage"))
-        spin.setValue(4.5)
+        combo.setCurrentIndex(combo.findData("fixed"))
+        spin.setValue(250.0)
 
         with patch("src.ui.pages.settings._information", return_value=None):
             salary_tab._save()
@@ -128,8 +128,8 @@ class DashboardSmokeTests(unittest.TestCase):
             self.assertEqual(updated.base_salary_min, 2200)
             self.assertEqual(updated.base_salary_max, 2900)
             self.assertEqual(updated.currency, "HUF")
-            self.assertEqual(updated.annual_increment_type, "percentage")
-            self.assertEqual(updated.annual_increment_value, 4.5)
+            self.assertEqual(updated.annual_increment_type, "fixed")
+            self.assertEqual(updated.annual_increment_value, 250.0)
             updated.name = "L7"
             updated.label = "Entry Level"
             updated.base_salary_min = 2000
@@ -213,6 +213,95 @@ class DashboardSmokeTests(unittest.TestCase):
                 l7_rule.to_title_id = ids["l6"]
                 l7_rule.base_months = 36
                 session.commit()
+
+    def test_level_management_rejects_invalid_promotion_targets(self):
+        from src.ui.pages.settings import AddLevelDialog
+
+        with db.SessionLocal() as session:
+            admin = session.query(db.SystemUser).filter_by(username="admin").one()
+            l7 = session.query(db.Title).filter_by(name="L7").one()
+            l6 = session.query(db.Title).filter_by(name="L6").one()
+            l5 = session.query(db.Title).filter_by(name="L5").one()
+            ids = {"l7": l7.id, "l6": l6.id, "l5": l5.id}
+            user = SimpleNamespace(id=admin.id, username=admin.username, role=admin.role, full_name=admin.full_name)
+
+        add_dialog = AddLevelDialog(user)
+        try:
+            add_dialog.level_name.setText("L8")
+            add_dialog.level_label.setText("Interns")
+            add_dialog.currency.setText("EUR")
+            add_dialog.salary_min.setValue(500)
+            add_dialog.salary_max.setValue(900)
+            l6_index = add_dialog.target_title.findData(ids["l6"])
+            self.assertGreaterEqual(l6_index, 0)
+            add_dialog.target_title.setCurrentIndex(l6_index)
+            with patch("src.ui.pages.settings._warning", return_value=None) as warning:
+                add_dialog._save()
+            warning.assert_called_once()
+            with db.SessionLocal() as session:
+                self.assertIsNone(session.query(db.Title).filter_by(name="L8").first())
+        finally:
+            add_dialog.close()
+
+        edit_dialog = AddLevelDialog(user, title_id=ids["l6"])
+        try:
+            l7_index = edit_dialog.target_title.findData(ids["l7"])
+            self.assertGreaterEqual(l7_index, 0)
+            edit_dialog.target_title.setCurrentIndex(l7_index)
+            with patch("src.ui.pages.settings._warning", return_value=None) as warning:
+                edit_dialog._save()
+            warning.assert_called_once()
+            with db.SessionLocal() as session:
+                l6_rule = session.query(db.PromotionRule).filter_by(from_title_id=ids["l6"]).one()
+                self.assertEqual(l6_rule.to_title_id, ids["l5"])
+        finally:
+            edit_dialog.close()
+
+    def test_level_management_allows_other_policy_edits_without_rename(self):
+        from src.ui.pages.settings import AddLevelDialog
+
+        with db.SessionLocal() as session:
+            admin = session.query(db.SystemUser).filter_by(username="admin").one()
+            other = session.query(db.Title).filter_by(name="Other").one()
+            title_id = other.id
+            original = {
+                "label": other.label,
+                "min": other.base_salary_min,
+                "max": other.base_salary_max,
+                "currency": other.currency,
+                "increment_type": other.annual_increment_type,
+                "increment_value": other.annual_increment_value,
+            }
+            user = SimpleNamespace(id=admin.id, username=admin.username, role=admin.role, full_name=admin.full_name)
+
+        dialog = AddLevelDialog(user, title_id=title_id)
+        try:
+            dialog.level_label.setText("Support Staff")
+            dialog.currency.setText("HUF")
+            dialog.salary_min.setValue(100)
+            dialog.salary_max.setValue(700)
+            fixed_index = dialog.increment_type.findData("fixed")
+            self.assertGreaterEqual(fixed_index, 0)
+            dialog.increment_type.setCurrentIndex(fixed_index)
+            dialog.increment_value.setValue(50)
+            with patch("src.ui.pages.settings._information", return_value=None):
+                dialog._save()
+            with db.SessionLocal() as session:
+                other = session.query(db.Title).filter_by(id=title_id).one()
+                self.assertEqual(other.name, "Other")
+                self.assertEqual(other.label, "Support Staff")
+                self.assertEqual(other.currency, "HUF")
+                self.assertEqual(other.annual_increment_type, "fixed")
+                self.assertEqual(other.annual_increment_value, 50)
+                other.label = original["label"]
+                other.base_salary_min = original["min"]
+                other.base_salary_max = original["max"]
+                other.currency = original["currency"]
+                other.annual_increment_type = original["increment_type"]
+                other.annual_increment_value = original["increment_value"]
+                session.commit()
+        finally:
+            dialog.close()
 
     def test_history_tables_render_only_one_page(self):
         from datetime import datetime
