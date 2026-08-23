@@ -729,7 +729,20 @@ def _hash(password: str) -> str:
 
 def degree_to_title_name(degree: str) -> str:
     """Maps employee degree to starting title."""
-    return {"PhD": "L5", "MSc": "L6", "BSc": "L7", "Other": OTHER_TITLE_NAME}.get(degree, "L7")
+    if degree == "Other":
+        return OTHER_TITLE_NAME
+    fallback = {"PhD": "L5", "MSc": "L6", "BSc": "L7"}.get(degree, "L7")
+    session = get_session()
+    try:
+        title = (
+            session.query(Title)
+            .filter_by(degree_requirement=degree)
+            .order_by(Title.id.desc())
+            .first()
+        )
+        return title.name if title else fallback
+    finally:
+        session.close()
 
 
 def is_other_title(title: Title) -> bool:

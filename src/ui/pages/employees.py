@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QTextEdit, QMessageBox, QDateEdit, QGridLayout, QListWidget,
     QListWidgetItem, QSizePolicy, QProgressBar
 )
-from PySide6.QtCore import Qt, QDate, QSize, Signal
+from PySide6.QtCore import Qt, QDate, QSize, Signal, QTimer
 from PySide6.QtGui import QColor
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
@@ -445,7 +445,8 @@ class EmployeeListView(QWidget):
         for col in range(self.table.columnCount()):
             header_item = self.table.horizontalHeaderItem(col)
             if header_item:
-                header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                align = Qt.AlignCenter if col in (5, 6, 7) else Qt.AlignLeft
+                header_item.setTextAlignment(align | Qt.AlignVCenter)
         self.table.setStyleSheet("""
             QTableWidget {
                 background: white;
@@ -461,6 +462,10 @@ class EmployeeListView(QWidget):
                 border-bottom: 1px solid #f3f4f6;
             }
             QTableWidget::item:selected { background: #eff6ff; color: #111827; }
+            QHeaderView {
+                background: white;
+                border: none;
+            }
             QHeaderView::section {
                 background: white;
                 border: none;
@@ -472,19 +477,49 @@ class EmployeeListView(QWidget):
                 text-align: left;
                 min-height: 50px;
             }
+            QTableCornerButton::section {
+                background: white;
+                border: none;
+                border-bottom: 1px solid #e5e7eb;
+            }
+            QScrollBar:vertical {
+                background: transparent;
+                border: none;
+                width: 7px;
+                margin: 0;
+            }
+            QScrollBar::handle:vertical {
+                background: #d1d5db;
+                border: none;
+                border-radius: 3px;
+                min-height: 32px;
+            }
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                background: transparent;
+                border: none;
+                height: 0;
+                width: 0;
+            }
+            QScrollBar::up-arrow:vertical,
+            QScrollBar::down-arrow:vertical {
+                background: transparent;
+                border: none;
+                width: 0;
+                height: 0;
+            }
+            QScrollBar::add-page:vertical,
+            QScrollBar::sub-page:vertical {
+                background: transparent;
+                border: none;
+            }
         """)
         header = self.table.horizontalHeader()
         header.setStretchLastSection(False)
-        header.setSectionResizeMode(QHeaderView.Interactive)
-        for col, width in {
-            0: 142, 1: 172, 2: 290, 3: 190,
-            4: 224, 5: 78, 6: 116, 7: 112,
-        }.items():
-            self.table.setColumnWidth(col, width)
-        for col in (1, 2, 3, 4):
-            header.setSectionResizeMode(col, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(7, QHeaderView.Fixed)
+        for col in range(self.table.columnCount()):
+            header.setSectionResizeMode(col, QHeaderView.Fixed)
         self.table.verticalHeader().setVisible(False)
+        self.table.setCornerButtonEnabled(False)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setShowGrid(False)
@@ -527,6 +562,7 @@ class EmployeeListView(QWidget):
         pager_layout.addWidget(self.next_btn)
         table_layout.addWidget(pager)
         layout.addWidget(table_card, 1)
+        QTimer.singleShot(0, self._resize_columns)
 
     def refresh(self):
         self.current_page = 1
@@ -677,7 +713,7 @@ class EmployeeListView(QWidget):
                 btn_layout = QHBoxLayout(btn_widget)
                 btn_layout.setContentsMargins(6, 0, 6, 0)
                 btn_layout.setSpacing(8)
-                btn_layout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                btn_layout.setAlignment(Qt.AlignCenter)
 
                 _ico = QSize(16, 16)
                 _btn_ss = (
@@ -714,8 +750,38 @@ class EmployeeListView(QWidget):
                 btn_layout.addWidget(edit_btn)
                 btn_layout.addWidget(del_btn)
                 self.table.setCellWidget(row, 7, btn_widget)
+            self._resize_columns()
         finally:
             self.table.setUpdatesEnabled(True)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "table"):
+            self._resize_columns()
+
+    def _resize_columns(self):
+        if not hasattr(self, "table"):
+            return
+        available = max(900, self.table.viewport().width())
+        if available < 1180:
+            fixed = {0: 116, 5: 74, 6: 98, 7: 98}
+            weights = {1: 0.22, 2: 0.27, 3: 0.26, 4: 0.25}
+        else:
+            fixed = {0: 132, 5: 86, 6: 112, 7: 110}
+            weights = {1: 0.21, 2: 0.29, 3: 0.26, 4: 0.24}
+
+        remaining = max(520, available - sum(fixed.values()))
+        widths = dict(fixed)
+        used = sum(fixed.values())
+        dynamic_cols = list(weights.keys())
+        for col in dynamic_cols[:-1]:
+            width = int(remaining * weights[col])
+            widths[col] = width
+            used += width
+        widths[dynamic_cols[-1]] = max(120, available - used)
+
+        for col in range(self.table.columnCount()):
+            self.table.setColumnWidth(col, widths[col])
 
     def _badge(self, text, bg, fg, border=None):
         wrap = QWidget()
@@ -1074,7 +1140,7 @@ class AddEmployeeView(QWidget):
         level_name = degree_to_title_name(degree)
         self.level_display.setText(t("other_misc") if level_name == "Other" else level_name)
         if level_name == "Other":
-            self.level_display.setStyleSheet("background: #f1f5f9; color: #334155; border-radius: 8px; font-size: 16px; font-weight: bold; border: 1px solid #cbd5e1;")
+            self.level_display.setStyleSheet("background: #eff6ff; color: #2563eb; border-radius: 8px; font-size: 16px; font-weight: bold; border: 1px solid #bfdbfe;")
         else:
             self.level_display.setStyleSheet("background: #eff6ff; color: #2563eb; border-radius: 8px; font-size: 16px; font-weight: bold; border: 1px solid #bfdbfe;")
         self._load_org_units()
@@ -1816,8 +1882,7 @@ class EmployeeProfileView(QWidget):
         name.setStyleSheet("font-size: 24px; font-weight: 800; color: #111827; background: transparent;")
         name_row.addWidget(name)
         name_row.addWidget(self._badge(t(emp.status), "#dcfce7", "#166534"))
-        badge_bg, badge_fg = ("#e2e8f0", "#334155") if is_other_employee(emp) else ("#dbeafe", "#1e40af")
-        name_row.addWidget(self._badge(display_title_name(emp.title), badge_bg, badge_fg))
+        name_row.addWidget(self._badge(display_title_name(emp.title), "#dbeafe", "#1e40af"))
         name_row.addStretch()
         info.addLayout(name_row)
         pos = QLabel(emp.position)

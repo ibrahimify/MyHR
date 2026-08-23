@@ -11,7 +11,9 @@ import csv
 import shutil
 
 import qtawesome as qta
-from PySide6.QtCore import Qt, QSize
+from sqlalchemy import func
+from PySide6.QtCore import Qt, QSize, QTimer
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QLineEdit, QComboBox, QMessageBox, QTabWidget,
@@ -39,7 +41,7 @@ LEVEL_META = {
     "L3": ("level_l3_label", "#db2777", "#fce7f3"),
     "L2": ("level_l2_label", "#0284c7", "#e0f2fe"),
     "L1": ("level_l1_label", "#dc2626", "#fee2e2"),
-    "Other": ("level_other_label", "#475569", "#e2e8f0"),
+    "Other": ("level_other_label", "#2563eb", "#dbeafe"),
 }
 LEVEL_ORDER = {level: index for index, level in enumerate(["L7", "L6", "L5", "L4", "L3", "L2", "L1", "Other"])}
 
@@ -127,7 +129,7 @@ QComboBox QAbstractItemView {
     background: white;
     color: #111827;
     border: 1px solid #d1d5db;
-    border-radius: 8px;
+    border-radius: 0px;
     padding: 4px;
     selection-background-color: #eff6ff;
     selection-color: #111827;
@@ -207,12 +209,255 @@ class SettingsPage(QWidget):
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet(TAB_SS)
         self.tabs.addTab(GeneralTab(self.user), t("general"))
-        self.tabs.addTab(SalaryTab(self.user), t("salary_ranges"))
-        self.tabs.addTab(SettingsPromotionTab(self.user), t("promotion_rules_tab"))
-        self.tabs.addTab(IncrementTab(self.user), t("annual_increment"))
+        self._add_policy_tabs()
         self.tabs.addTab(UserManagementTab(self.user), t("user_management"))
         self.tabs.addTab(DatabaseTab(self.user), t("database_tab"))
+        self.tabs.currentChanged.connect(self._refresh_current_tab)
         layout.addWidget(self.tabs, 1)
+
+    def _add_policy_tabs(self, insert_at=None):
+        self.summary_tab = PolicySummaryTab(self.user)
+        self.level_tab = LevelManagementTab(self.user, on_saved=self._reload_policy_tabs)
+        self.salary_tab = SalaryTab(self.user)
+        self.promotion_tab = SettingsPromotionTab(self.user)
+        self.increment_tab = IncrementTab(self.user)
+        tabs = [
+            (self.summary_tab, t("policy_summary")),
+            (self.level_tab, t("level_management")),
+            (self.salary_tab, t("salary_ranges")),
+            (self.promotion_tab, t("promotion_rules_tab")),
+            (self.increment_tab, t("annual_increment")),
+        ]
+        if insert_at is None:
+            for widget, label in tabs:
+                self.tabs.addTab(widget, label)
+        else:
+            for offset, (widget, label) in enumerate(tabs):
+                self.tabs.insertTab(insert_at + offset, widget, label)
+
+    def _reload_policy_tabs(self):
+        current_label = self.tabs.tabText(self.tabs.currentIndex())
+        start = 1
+        for _ in range(5):
+            widget = self.tabs.widget(start)
+            self.tabs.removeTab(start)
+            if widget:
+                widget.deleteLater()
+        self._add_policy_tabs(start)
+        for index in range(self.tabs.count()):
+            if self.tabs.tabText(index) == current_label:
+                self.tabs.setCurrentIndex(index)
+                break
+
+    def _refresh_current_tab(self, index):
+        widget = self.tabs.widget(index)
+        refresh = getattr(widget, "refresh", None)
+        if callable(refresh):
+            refresh()
+
+
+class PolicySummaryTab(QWidget):
+    def __init__(self, user):
+        super().__init__()
+        self.user = user
+        self.content, self.outer = _content()
+        _set_page(self, self.content)
+        self.refresh()
+
+    def refresh(self):
+        _clear_layout(self.outer)
+
+        header, header_layout = _section_card(
+            t("policy_summary"),
+            t("policy_summary_subtitle"),
+            "fa5s.clipboard-list",
+            BLUE,
+        )
+        header_layout.addWidget(_note_card(
+            t("policy_summary_note_title"),
+            [
+                t("policy_summary_note_rules"),
+                t("policy_summary_note_readonly"),
+                t("policy_summary_note_data"),
+            ],
+            "fa5s.info-circle",
+            "#1e40af",
+            NOTE_BLUE_SS,
+        ))
+        self.outer.addWidget(header)
+
+        session = get_session()
+        try:
+            titles = session.query(Title).all()
+            titles.sort(key=_level_sort_key)
+            title_counts = {
+                title_id: count for title_id, count in
+                session.query(Employee.title_id, func.count(Employee.id))
+                .filter(Employee.status == "active")
+                .group_by(Employee.title_id)
+                .all()
+            }
+            rules = session.query(PromotionRule).all()
+            rules.sort(key=lambda rule: _level_sort_key(rule.from_title))
+
+            currency = titles[0].currency if titles else "EUR"
+            currencies = sorted({title.currency for title in titles if title.currency})
+            other_title = next((title for title in titles if title.name == "Other"), None)
+            metric_grid = QGridLayout()
+            metric_grid.setHorizontalSpacing(14)
+            metric_grid.setVerticalSpacing(14)
+            metrics = [
+                self._metric_card(t("configured_levels"), str(len(titles)), "fa5s.layer-group", BLUE, "#dbeafe"),
+                self._metric_card(t("active_promotion_tracks"), str(sum(1 for rule in rules if rule.is_active)), "fa5s.route", "#16a34a", "#dcfce7"),
+                self._metric_card(t("salary_currency"), ", ".join(currencies) or currency, "fa5s.money-bill-wave", "#7c3aed", "#ede9fe"),
+                self._metric_card(t("other_track"), t("configured") if other_title else t("not_configured"), "fa5s.user-cog", "#475569", "#e2e8f0"),
+            ]
+            for index, metric in enumerate(metrics):
+                metric_grid.addWidget(metric, index // 2, index % 2)
+            self.outer.addLayout(metric_grid)
+
+            salary_rows = []
+            increment_rows = []
+            for title in titles:
+                salary_rows.append([
+                    title.name,
+                    title.label,
+                    f"{title.base_salary_min:.0f}-{title.base_salary_max:.0f} {title.currency or currency}",
+                    str(title_counts.get(title.id, 0)),
+                ])
+                increment_rows.append([
+                    title.name,
+                    title.annual_increment_type.title(),
+                    _format_increment(title),
+                    _format_promotion_bump(title),
+                ])
+
+            promotion_rows = [[
+                rule.from_title.name,
+                rule.to_title.name,
+                t("month_count_plain", count=rule.base_months),
+                _format_promotion_bump(rule.to_title),
+                t("active") if rule.is_active else t("inactive"),
+            ] for rule in rules]
+
+        finally:
+            session.close()
+
+        summaries = QVBoxLayout()
+        summaries.setSpacing(18)
+        summaries.addWidget(self._summary_card(
+            t("salary_policy_summary"),
+            t("salary_policy_summary_subtitle"),
+            ["Level", t("name"), t("salary_range"), t("active_employees")],
+            salary_rows,
+            "fa5s.coins",
+            [78, 180, 260, 142],
+        ))
+        summaries.addWidget(self._summary_card(
+            t("promotion_policy_summary"),
+            t("promotion_policy_summary_subtitle"),
+            [t("from_level"), t("to_level"), t("duration"), t("salary_increase"), t("status")],
+            promotion_rows,
+            "fa5s.chart-line",
+            [106, 98, 124, 150, 98],
+        ))
+        summaries.addWidget(self._summary_card(
+            t("annual_increment_summary"),
+            t("annual_increment_summary_subtitle"),
+            ["Level", t("increment_type"), t("increment_value"), t("promotion_salary_increase")],
+            increment_rows,
+            "fa5s.percentage",
+            [78, 190, 170, 160],
+        ))
+        summaries.addWidget(self._summary_card(
+            t("modifier_policy_summary"),
+            t("modifier_policy_summary_subtitle"),
+            [t("type"), t("category"), t("impact"), t("notes")],
+            self._modifier_rows(),
+            "fa5s.balance-scale",
+            [130, 170, 130, 260],
+        ))
+        self.outer.addLayout(summaries)
+        self.outer.addStretch()
+
+    def _metric_card(self, label, value, icon_name, color, bg):
+        card = _plain_card()
+        card.setFixedHeight(94)
+        layout = QHBoxLayout(card)
+        layout.setContentsMargins(20, 0, 20, 0)
+        layout.setSpacing(14)
+        layout.addWidget(_badge_icon(icon_name, color, bg))
+        text = QVBoxLayout()
+        text.setSpacing(0)
+        text.setAlignment(Qt.AlignVCenter)
+        title = QLabel(label)
+        title.setStyleSheet(f"font-size: 13px; font-weight: 700; color: {MUTED}; background: transparent;")
+        number = QLabel(value)
+        number.setStyleSheet(f"font-size: 24px; font-weight: 900; color: {TEXT}; background: transparent;")
+        text.addWidget(title)
+        text.addWidget(number)
+        layout.addLayout(text)
+        layout.addStretch()
+        return card
+
+    def _summary_card(self, title, subtitle, headers, rows, icon_name, column_widths=None):
+        card = _plain_card()
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(22, 20, 22, 22)
+        layout.setSpacing(14)
+
+        head = QHBoxLayout()
+        head.setSpacing(10)
+        head.addWidget(_badge_icon(icon_name, BLUE, "#dbeafe"))
+        text = QVBoxLayout()
+        text.setSpacing(2)
+        title_lbl = QLabel(title)
+        title_lbl.setStyleSheet(f"font-size: 16px; font-weight: 900; color: {TEXT}; background: transparent;")
+        sub_lbl = QLabel(subtitle)
+        sub_lbl.setStyleSheet(f"font-size: 12px; color: {MUTED}; background: transparent;")
+        text.addWidget(title_lbl)
+        text.addWidget(sub_lbl)
+        head.addLayout(text)
+        head.addStretch()
+        layout.addLayout(head)
+
+        table = QTableWidget()
+        table.setColumnCount(len(headers))
+        table.setHorizontalHeaderLabels(headers)
+        table.setRowCount(len(rows))
+        table.setStyleSheet(_summary_table_ss())
+        table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        table.horizontalHeader().setMinimumSectionSize(54)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        table.verticalHeader().setVisible(False)
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.setShowGrid(False)
+        table.setFocusPolicy(Qt.NoFocus)
+        for col in range(table.columnCount()):
+            item = table.horizontalHeaderItem(col)
+            if item:
+                item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        for row_index, row in enumerate(rows):
+            table.setRowHeight(row_index, 42)
+            for col_index, value in enumerate(row):
+                _set_tooltip_item(table, row_index, col_index, value)
+        table.setFixedHeight(50 + (42 * max(1, len(rows))) + 4)
+        layout.addWidget(table)
+        return card
+
+    def _modifier_rows(self):
+        rows = [
+            [t("commendation"), t("category_1"), t("negative_month_count", count=1), t("commendation_modifier_note")],
+            [t("commendation"), t("category_2"), t("negative_month_count", count=3), t("commendation_modifier_note")],
+            [t("commendation"), t("category_3"), t("negative_month_count", count=6), t("commendation_modifier_note")],
+            [t("sanction"), t("verbal_warning"), t("manual_delay"), t("sanction_modifier_note")],
+            [t("sanction"), t("written_warning"), t("manual_delay"), t("sanction_modifier_note")],
+            [t("sanction"), t("suspension"), t("manual_delay"), t("sanction_modifier_note")],
+            [t("sanction"), t("final_warning"), t("manual_delay"), t("sanction_modifier_note")],
+            [t("level_other_label"), t("ongoing_service_track"), t("annual_increment_only"), t("other_track_policy_note")],
+        ]
+        return rows
 
 
 class GeneralTab(QWidget):
@@ -300,6 +545,537 @@ class GeneralTab(QWidget):
         if hasattr(window, "setWindowTitle"):
             window.setWindowTitle(f"{company_name('MyHR')} - {t('employee_management_system')}")
         _information(self, t("success"), t("general_settings_saved"))
+
+
+class LevelManagementTab(QWidget):
+    def __init__(self, user, on_saved=None):
+        super().__init__()
+        self.user = user
+        self.on_saved = on_saved
+        self._build()
+        self.refresh()
+
+    def _build(self):
+        content, outer = _content()
+
+        header, header_layout = _section_card(
+            t("level_management"),
+            t("level_management_subtitle"),
+            "fa5s.layer-group",
+            BLUE,
+        )
+        action_row = QHBoxLayout()
+        action_row.setSpacing(12)
+        if self.user.role == "admin":
+            add = _button(t("add_level"), "fa5s.plus", primary=True)
+            add.clicked.connect(self._add_level)
+            action_row.addWidget(add, alignment=Qt.AlignLeft)
+        action_row.addStretch()
+        header_layout.addLayout(action_row)
+        header_layout.addWidget(_note_card(
+            t("level_management_rules"),
+            [
+                t("level_rule_complete_policy"),
+                t("level_rule_salary_required"),
+                t("level_rule_existing_tabs"),
+            ],
+            "fa5s.info-circle",
+            "#1e40af",
+            NOTE_BLUE_SS,
+        ))
+        outer.addWidget(header)
+
+        card = _plain_card()
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        self.table = QTableWidget()
+        self.table.setColumnCount(9)
+        self.table.setHorizontalHeaderLabels([
+            t("level"), t("name"), t("degree"), t("salary"),
+            t("annual_short"), t("target"), t("months"), t("raise"), t("actions")
+        ])
+        self.table.setStyleSheet(_summary_table_ss())
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setShowGrid(False)
+        self.table.setFocusPolicy(Qt.NoFocus)
+        self.table.setAlternatingRowColors(True)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        header_view = self.table.horizontalHeader()
+        header_view.setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        header_view.setMinimumSectionSize(56)
+        for col in range(self.table.columnCount()):
+            header_view.setSectionResizeMode(col, QHeaderView.Fixed)
+        for col in range(self.table.columnCount()):
+            item = self.table.horizontalHeaderItem(col)
+            if item:
+                item.setTextAlignment((Qt.AlignCenter if col in (0, 2, 4, 5, 6, 7, 8) else Qt.AlignLeft) | Qt.AlignVCenter)
+        layout.addWidget(self.table)
+        outer.addWidget(card)
+        outer.addStretch()
+        _set_page(self, content)
+
+    def refresh(self):
+        session = get_session()
+        try:
+            titles = session.query(Title).all()
+            titles.sort(key=_level_sort_key)
+            rules_by_from = {rule.from_title_id: rule for rule in session.query(PromotionRule).all()}
+            rows = []
+            for title in titles:
+                rule = rules_by_from.get(title.id)
+                rows.append({
+                    "id": title.id,
+                    "name": title.name,
+                    "protected": title.name == "Other",
+                    "values": [
+                        title.name,
+                        title.label,
+                        title.degree_requirement,
+                        f"{title.base_salary_min:.0f}-{title.base_salary_max:.0f} {title.currency}",
+                        _format_increment(title),
+                        rule.to_title.name if rule else "-",
+                        t("month_count_plain", count=rule.base_months) if rule else "-",
+                        _format_promotion_bump(rule.to_title) if rule else _format_promotion_bump(title),
+                    ],
+                })
+        finally:
+            session.close()
+
+        _clear_table_widgets(self.table)
+        self.table.clearContents()
+        self.table.setRowCount(len(rows))
+        self.table.setFixedHeight(54 + (48 * max(1, len(rows))) + 2)
+        for row_index, row in enumerate(rows):
+            self.table.setRowHeight(row_index, 48)
+            for col_index, value in enumerate(row["values"]):
+                _set_tooltip_item(self.table, row_index, col_index, value)
+            self._style_policy_row(row_index)
+            for badge_col in (0, 4, 5, 7):
+                item = self.table.item(row_index, badge_col)
+                if item:
+                    item.setText("")
+            self.table.setCellWidget(row_index, 0, _pill_cell(row["values"][0], "#1d4ed8", "#dbeafe"))
+            self.table.setCellWidget(row_index, 4, _pill_cell(row["values"][4], "#047857", "#dcfce7"))
+            self.table.setCellWidget(row_index, 5, _pill_cell(row["values"][5], "#1d4ed8", "#dbeafe", align=Qt.AlignCenter))
+            self.table.setCellWidget(row_index, 7, _pill_cell(row["values"][7], "#047857", "#dcfce7"))
+            self.table.setCellWidget(row_index, 8, self._actions_cell(row))
+        self._resize_level_columns()
+        QTimer.singleShot(0, self._resize_level_columns)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "table"):
+            self._resize_level_columns()
+
+    def _resize_level_columns(self):
+        if not hasattr(self, "table"):
+            return
+        available = max(860, self.table.viewport().width() - 2)
+        compact = {
+            0: 96,
+            2: 78,
+            4: 112,
+            5: 96,
+            6: 100,
+            7: 116,
+            8: 118,
+        }
+        remaining = max(260, available - sum(compact.values()))
+        widths = dict(compact)
+        widths[1] = int(remaining * 0.44)
+        widths[3] = remaining - widths[1]
+        for col in range(self.table.columnCount()):
+            self.table.setColumnWidth(col, max(56, widths.get(col, 80)))
+
+    def _style_policy_row(self, row_index):
+        level_item = self.table.item(row_index, 0)
+        if level_item:
+            level_item.setBackground(QColor("#dbeafe"))
+            level_item.setForeground(QColor("#1d4ed8"))
+
+        for col in (4, 7):
+            item = self.table.item(row_index, col)
+            if item:
+                item.setBackground(QColor("#ecfdf5"))
+                item.setForeground(QColor("#047857"))
+
+        salary_item = self.table.item(row_index, 3)
+        if salary_item:
+            salary_item.setForeground(QColor("#065f46"))
+
+        for col in (2, 5, 6):
+            item = self.table.item(row_index, col)
+            if item:
+                item.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+
+    def _actions_cell(self, row):
+        cell = QWidget()
+        cell.setStyleSheet("background: transparent; border: none;")
+        layout = QHBoxLayout(cell)
+        layout.setContentsMargins(0, 5, 0, 5)
+        layout.setSpacing(8)
+        layout.setAlignment(Qt.AlignCenter)
+
+        edit = QPushButton()
+        edit.setIcon(qta.icon("fa5s.edit", color="white"))
+        edit.setIconSize(QSize(13, 13))
+        edit.setFixedSize(36, 34)
+        edit.setCursor(Qt.PointingHandCursor)
+        edit.setStyleSheet(_primary_button_ss())
+        edit.setToolTip(t("edit_level"))
+        edit.clicked.connect(lambda _, title_id=row["id"]: self._edit_level(title_id))
+        layout.addWidget(edit)
+
+        delete = QPushButton()
+        delete.setIcon(qta.icon("fa5s.trash-alt", color="#dc2626"))
+        delete.setIconSize(QSize(13, 13))
+        delete.setFixedSize(36, 34)
+        delete.setCursor(Qt.PointingHandCursor)
+        delete.setStyleSheet(_danger_icon_button_ss())
+        delete.setToolTip(t("delete_level"))
+        delete.setEnabled(not row["protected"])
+        if row["protected"]:
+            delete.setIcon(qta.icon("fa5s.trash-alt", color="#9ca3af"))
+        delete.clicked.connect(lambda _, title_id=row["id"]: self._delete_level(title_id))
+        layout.addWidget(delete)
+        return cell
+
+    def _add_level(self):
+        dialog = AddLevelDialog(self.user, parent=self)
+        if dialog.exec() == QDialog.Accepted:
+            self.refresh()
+            if callable(self.on_saved):
+                self.on_saved()
+
+    def _edit_level(self, title_id):
+        dialog = AddLevelDialog(self.user, title_id=title_id, parent=self)
+        if dialog.exec() == QDialog.Accepted:
+            self.refresh()
+            if callable(self.on_saved):
+                self.on_saved()
+
+    def _delete_level(self, title_id):
+        session = get_session()
+        try:
+            title = session.query(Title).filter_by(id=title_id).first()
+            if not title or title.name == "Other":
+                _warning(self, t("warning"), t("level_delete_protected"))
+                return
+            employee_count = session.query(Employee).filter_by(title_id=title.id).count()
+            incoming_rules = session.query(PromotionRule).filter_by(to_title_id=title.id).count()
+            if employee_count:
+                _warning(self, t("warning"), t("level_delete_has_employees"))
+                return
+            if incoming_rules:
+                _warning(self, t("warning"), t("level_delete_has_rules"))
+                return
+            if _question(self, t("delete_level"), t("confirm_delete_level", level=title.name)) != QMessageBox.Yes:
+                return
+            before = (
+                f'{{"name": "{title.name}", "label": "{title.label}", '
+                f'"salary_min": {title.base_salary_min}, "salary_max": {title.base_salary_max}, '
+                f'"currency": "{title.currency}"}}'
+            )
+            for rule in session.query(PromotionRule).filter_by(from_title_id=title.id).all():
+                session.delete(rule)
+            log_action(
+                session,
+                action="settings.level_delete",
+                performed_by_id=self.user.id,
+                target_table="title",
+                target_id=title.id,
+                description=f"Level deleted: {title.name} ({title.label})",
+                before_value=before,
+            )
+            session.delete(title)
+            session.commit()
+            self.refresh()
+            if callable(self.on_saved):
+                self.on_saved()
+            _information(self, t("success"), t("level_deleted_successfully"))
+        except Exception as exc:
+            session.rollback()
+            _critical(self, t("error"), str(exc))
+        finally:
+            session.close()
+
+
+class AddLevelDialog(QDialog):
+    def __init__(self, user, title_id=None, parent=None):
+        super().__init__(parent)
+        self.user = user
+        self.title_id = title_id
+        self.is_edit = title_id is not None
+        self.setWindowTitle(t("edit_level") if self.is_edit else t("add_level"))
+        self.setFixedWidth(620)
+        self.setStyleSheet("QDialog { background: white; color: #111827; } QLabel { background: transparent; color: #111827; }")
+        self._build()
+        if self.is_edit:
+            self._load()
+
+    def _build(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(28, 24, 28, 24)
+        layout.setSpacing(16)
+
+        title = QLabel(t("edit_level") if self.is_edit else t("add_level"))
+        title.setStyleSheet(f"font-size: 18px; font-weight: 900; color: {TEXT}; background: transparent;")
+        layout.addWidget(title)
+
+        note = QLabel(t("add_level_note"))
+        note.setWordWrap(True)
+        note.setStyleSheet(f"font-size: 13px; color: {MUTED}; background: transparent;")
+        layout.addWidget(note)
+
+        self.level_name = _line_edit("Junior Specialist")
+        self.level_label = _line_edit()
+        self.degree = QComboBox()
+        for value in ("any", "BSc", "MSc", "PhD"):
+            self.degree.addItem(value, value)
+        _style_combo(self.degree)
+
+        self.currency = _line_edit(self._default_currency())
+        self.salary_min = _money_spin()
+        self.salary_max = _money_spin()
+        self.increment_type = QComboBox()
+        self.increment_type.addItem(t("increment_percentage"), "percentage")
+        self.increment_type.addItem(t("increment_fixed"), "fixed")
+        _style_combo(self.increment_type)
+        self.increment_value = _percent_spin(3.0)
+        self.target_title = QComboBox()
+        if self.is_edit:
+            self.target_title.addItem(t("no_promotion_target"), None)
+        for title in _titles():
+            if title.name != "Other" and title.id != self.title_id:
+                self.target_title.addItem(title.name, title.id)
+        _style_combo(self.target_title)
+        self.track_months = _spin(1, 240, 36)
+        self.target_bump = _percent_spin(20.0)
+        self.target_title.currentIndexChanged.connect(self._load_target_defaults)
+        self._load_target_defaults()
+
+        form = QFormLayout()
+        form.setHorizontalSpacing(18)
+        form.setVerticalSpacing(14)
+        form.addRow(t("level") + " *", self.level_name)
+        form.addRow(t("name") + " *", self.level_label)
+        form.addRow(t("degree_requirement") + " *", self.degree)
+        form.addRow(t("currency") + " *", self.currency)
+        form.addRow(t("salary_min") + " *", self.salary_min)
+        form.addRow(t("salary_max") + " *", self.salary_max)
+        form.addRow(t("increment_type") + " *", self.increment_type)
+        form.addRow(t("increment_value") + " *", self.increment_value)
+        form.addRow(t("promotion_target") + (" *" if not self.is_edit else ""), self.target_title)
+        form.addRow(t("base_track_duration_months") + " *", self.track_months)
+        form.addRow(t("promotion_salary_increase"), self.target_bump)
+        layout.addLayout(form)
+
+        hint = QLabel(t("target_promotion_bump_note"))
+        hint.setWordWrap(True)
+        hint.setStyleSheet("font-size: 12px; color: #64748b; background: transparent;")
+        layout.addWidget(hint)
+
+        buttons = QHBoxLayout()
+        buttons.addStretch()
+        cancel = QPushButton(t("cancel"))
+        cancel.setFixedHeight(38)
+        cancel.setCursor(Qt.PointingHandCursor)
+        cancel.setStyleSheet(_secondary_button_ss())
+        cancel.clicked.connect(self.reject)
+        save = QPushButton(t("save"))
+        save.setFixedHeight(38)
+        save.setCursor(Qt.PointingHandCursor)
+        save.setStyleSheet(_primary_button_ss())
+        save.clicked.connect(self._save)
+        buttons.addWidget(cancel)
+        buttons.addWidget(save)
+        layout.addLayout(buttons)
+
+    def _default_currency(self):
+        session = get_session()
+        try:
+            title = session.query(Title).first()
+            return title.currency if title else "EUR"
+        finally:
+            session.close()
+
+    def _load(self):
+        session = get_session()
+        try:
+            title = session.query(Title).filter_by(id=self.title_id).first()
+            if not title:
+                return
+            self.level_name.setText(title.name)
+            self.level_name.setReadOnly(title.name == "Other")
+            self.level_label.setText(title.label)
+            degree_index = self.degree.findData(title.degree_requirement)
+            if degree_index >= 0:
+                self.degree.setCurrentIndex(degree_index)
+            increment_index = self.increment_type.findData(title.annual_increment_type)
+            if increment_index >= 0:
+                self.increment_type.setCurrentIndex(increment_index)
+            self.increment_value.setValue(title.annual_increment_value)
+            rule = session.query(PromotionRule).filter_by(from_title_id=title.id).first()
+            if rule:
+                target_index = self.target_title.findData(rule.to_title_id)
+                if target_index >= 0:
+                    self.target_title.setCurrentIndex(target_index)
+                self.track_months.setValue(rule.base_months)
+                self.target_bump.setValue(rule.to_title.promotion_salary_increase_pct)
+            else:
+                none_index = self.target_title.findData(None)
+                if none_index >= 0:
+                    self.target_title.setCurrentIndex(none_index)
+                self.target_bump.setValue(title.promotion_salary_increase_pct)
+            self.currency.setText(title.currency or "EUR")
+            self.salary_min.setValue(title.base_salary_min)
+            self.salary_max.setValue(title.base_salary_max)
+        finally:
+            session.close()
+
+    def _load_target_defaults(self):
+        title_id = self.target_title.currentData()
+        if not title_id:
+            return
+        session = get_session()
+        try:
+            title = session.query(Title).filter_by(id=title_id).first()
+            if title:
+                self.target_bump.setValue(title.promotion_salary_increase_pct)
+                target_min = max(0, float(title.base_salary_min or 0))
+                default_min = max(1, round(target_min * 0.75))
+                default_max = max(default_min + 1, round(target_min - 1))
+                self.salary_min.setValue(default_min)
+                self.salary_max.setValue(default_max)
+                self.currency.setText(title.currency or "EUR")
+        finally:
+            session.close()
+
+    def _save(self):
+        level = self.level_name.text().strip()
+        label = self.level_label.text().strip()
+        currency = self.currency.text().strip().upper() or "EUR"
+        target_id = self.target_title.currentData()
+
+        if not level or not label:
+            _warning(self, t("warning"), t("level_name_label_required"))
+            return
+        if level.lower() == "other":
+            _warning(self, t("warning"), t("level_name_format_warning"))
+            return
+        if self.salary_max.value() <= 0 or self.salary_min.value() > self.salary_max.value():
+            _warning(self, t("warning"), t("salary_min_max_warning"))
+            return
+        if not target_id and not self.is_edit:
+            _warning(self, t("warning"), t("promotion_target_required"))
+            return
+
+        session = get_session()
+        try:
+            duplicate = session.query(Title).filter(func.lower(Title.name) == level.lower()).first()
+            if duplicate and duplicate.id != self.title_id:
+                _warning(self, t("warning"), t("level_already_exists"))
+                return
+            target = session.query(Title).filter_by(id=target_id).first() if target_id else None
+            if not target and not self.is_edit:
+                _warning(self, t("warning"), t("promotion_target_required"))
+                return
+            if self.is_edit:
+                title = session.query(Title).filter_by(id=self.title_id).first()
+                if not title:
+                    _warning(self, t("warning"), t("level_not_found"))
+                    return
+                before = (
+                    f'{{"name": "{title.name}", "label": "{title.label}", '
+                    f'"salary_min": {title.base_salary_min}, "salary_max": {title.base_salary_max}, '
+                    f'"currency": "{title.currency}"}}'
+                )
+                if title.name != "Other":
+                    title.name = level
+                title.label = label
+                title.degree_requirement = self.degree.currentData()
+                title.base_salary_min = self.salary_min.value()
+                title.base_salary_max = self.salary_max.value()
+                title.currency = currency
+                title.annual_increment_type = self.increment_type.currentData()
+                title.annual_increment_value = self.increment_value.value()
+                rule = session.query(PromotionRule).filter_by(from_title_id=title.id).first()
+                if target:
+                    if rule:
+                        rule.to_title_id = target.id
+                        rule.base_months = self.track_months.value()
+                        rule.is_active = True
+                    else:
+                        session.add(PromotionRule(
+                            from_title_id=title.id,
+                            to_title_id=target.id,
+                            base_months=self.track_months.value(),
+                            is_active=True,
+                        ))
+                    target.promotion_salary_increase_pct = self.target_bump.value()
+                elif rule:
+                    session.delete(rule)
+                action = "settings.level_update"
+                description = f"Level updated: {level} ({label})"
+                target_table_id = title.id
+                message = t("level_updated_successfully")
+            else:
+                title = Title(
+                    name=level,
+                    label=label,
+                    degree_requirement=self.degree.currentData(),
+                    base_salary_min=self.salary_min.value(),
+                    base_salary_max=self.salary_max.value(),
+                    currency=currency,
+                    annual_increment_type=self.increment_type.currentData(),
+                    annual_increment_value=self.increment_value.value(),
+                    promotion_salary_increase_pct=0.0,
+                )
+                session.add(title)
+                session.flush()
+                target.promotion_salary_increase_pct = self.target_bump.value()
+                session.add(PromotionRule(
+                    from_title_id=title.id,
+                    to_title_id=target.id,
+                    base_months=self.track_months.value(),
+                    is_active=True,
+                ))
+                before = None
+                action = "settings.level_create"
+                description = (
+                    f"Level created: {level} ({label}) -> {target.name}; "
+                    f"salary {self.salary_min.value():.0f}-{self.salary_max.value():.0f} {currency}; "
+                    f"track {self.track_months.value()} months"
+                )
+                target_table_id = title.id
+                message = t("level_created_successfully")
+            after = (
+                f'{{"name": "{level}", "label": "{label}", '
+                f'"salary_min": {self.salary_min.value()}, "salary_max": {self.salary_max.value()}, '
+                f'"currency": "{currency}"}}'
+            )
+            log_action(
+                session,
+                action=action,
+                performed_by_id=self.user.id,
+                target_table="title",
+                target_id=target_table_id,
+                description=description,
+                before_value=before,
+                after_value=after,
+            )
+            session.commit()
+            _information(self, t("success"), message)
+            self.accept()
+        except Exception as exc:
+            session.rollback()
+            _critical(self, t("error"), str(exc))
+        finally:
+            session.close()
 
 
 class SalaryTab(QWidget):
@@ -482,7 +1258,7 @@ class SettingsPromotionTab(QWidget):
         finally:
             session.close()
 
-        rows.sort(key=lambda row: LEVEL_ORDER.get(row["from"], 99))
+        rows.sort(key=lambda row: _level_sort_key(row["from"]))
         for row in rows:
             self.rules_list.addWidget(self._rule_card(row))
 
@@ -695,6 +1471,7 @@ class UserManagementTab(QWidget):
             """
 QTableWidget {
     background: white;
+    alternate-background-color: #fcfcfd;
     border: none;
     gridline-color: #f3f4f6;
     font-size: 14px;
@@ -798,6 +1575,8 @@ QToolTip {
         finally:
             session.close()
 
+        _clear_table_widgets(self.table)
+        self.table.clearContents()
         self.table.setRowCount(len(rows))
         self.table.setMinimumHeight(112 + (62 * max(1, len(rows))))
         for row_index, row in enumerate(rows):
@@ -1373,7 +2152,7 @@ def _style_combo(combo):
     combo.setStyleSheet(COMBO_SS)
     combo.setFixedHeight(44)
     combo.view().setStyleSheet(
-        "QListView { background: white; color: #111827; border: 1px solid #d1d5db; border-radius: 8px; padding: 4px; outline: none; }"
+        "QListView { background: white; color: #111827; border: 1px solid #d1d5db; border-radius: 0px; padding: 4px; outline: none; }"
         "QListView::item { min-height: 30px; padding: 6px 10px; color: #111827; background: white; }"
         "QListView::item:hover, QListView::item:selected { background: #eff6ff; color: #111827; }"
     )
@@ -1410,17 +2189,116 @@ def _titles():
     session = get_session()
     try:
         titles = session.query(Title).all()
-        titles.sort(key=lambda title: LEVEL_ORDER.get(title.name, 99))
+        titles.sort(key=_level_sort_key)
         return titles
     finally:
         session.close()
+
+
+def _level_sort_key(title):
+    name = title.name if hasattr(title, "name") else str(title)
+    if name == "Other":
+        return (2, 0)
+    if name.startswith("L") and name[1:].isdigit():
+        return (0, -int(name[1:]))
+    return (1, LEVEL_ORDER.get(name, 999), name)
+
+
+def _format_increment(title):
+    currency = title.currency or "EUR"
+    if title.annual_increment_type == "fixed":
+        return f"+{title.annual_increment_value:.0f} {currency}"
+    value = title.annual_increment_value
+    return f"+{value:.0f}%" if float(value).is_integer() else f"+{value:.1f}%"
+
+
+def _format_promotion_bump(title):
+    value = title.promotion_salary_increase_pct
+    return f"+{value:.0f}%" if float(value).is_integer() else f"+{value:.1f}%"
+
+
+def _summary_table_ss():
+    return """
+QTableWidget {
+    background: white;
+    border: none;
+    gridline-color: #f3f4f6;
+    font-size: 13px;
+    color: #111827;
+    outline: none;
+    selection-background-color: #eff6ff;
+}
+QTableWidget::item {
+    background: white;
+    padding: 0 16px;
+    border: none;
+    border-bottom: 1px solid #f3f4f6;
+    color: #111827;
+}
+QTableWidget::item:selected { background: #eff6ff; color: #111827; }
+QHeaderView::section {
+    background: white;
+    border: none;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0 16px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #111827;
+    min-height: 42px;
+    text-align: left;
+}
+QTableCornerButton::section {
+    background: white;
+    border: none;
+    border-bottom: 1px solid #e5e7eb;
+}
+QScrollBar:vertical {
+    background: transparent;
+    width: 10px;
+    margin: 0;
+}
+QScrollBar::handle:vertical {
+    background: #d1d5db;
+    border-radius: 5px;
+    min-height: 32px;
+}
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0;
+    border: none;
+    background: transparent;
+}
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: transparent;
+}
+"""
+
+
+def _clear_table_widgets(table):
+    for row in range(table.rowCount()):
+        for col in range(table.columnCount()):
+            widget = table.cellWidget(row, col)
+            if widget:
+                table.removeCellWidget(row, col)
+                widget.hide()
+                widget.setParent(None)
+                widget.deleteLater()
 
 
 def _clear_layout(layout):
     while layout.count():
         item = layout.takeAt(0)
         if item.widget():
-            item.widget().deleteLater()
+            widget = item.widget()
+            widget.hide()
+            widget.setParent(None)
+            widget.deleteLater()
+        elif item.layout():
+            child_layout = item.layout()
+            _clear_layout(child_layout)
+            child_layout.setParent(None)
+            child_layout.deleteLater()
 
 
 def _set_tooltip_item(table, row, col, text):
@@ -1428,6 +2306,33 @@ def _set_tooltip_item(table, row, col, text):
     item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
     item.setToolTip(str(text))
     table.setItem(row, col, item)
+
+
+def _pill_cell(text, color, background, bold=False, align=Qt.AlignLeft):
+    cell = QWidget()
+    cell.setStyleSheet("background: transparent; border: none;")
+    layout = QHBoxLayout(cell)
+    if align == Qt.AlignCenter:
+        layout.setContentsMargins(0, 7, 0, 7)
+    else:
+        layout.setContentsMargins(14, 7, 8, 7)
+    layout.setSpacing(0)
+    layout.setAlignment(align | Qt.AlignVCenter)
+    label = QLabel(str(text))
+    label.setToolTip(str(text))
+    label.setAlignment(Qt.AlignCenter)
+    label.setStyleSheet(
+        f"background: {background}; color: {color}; border: none; border-radius: 7px; "
+        f"font-size: 13px; font-weight: {'900' if bold else '500'}; padding: 3px 10px;"
+    )
+    label.setMinimumHeight(26)
+    label.setMinimumWidth(max(44, len(str(text)) * 9 + 20))
+    if align == Qt.AlignCenter:
+        label.setMinimumWidth(max(label.minimumWidth(), 44))
+    layout.addWidget(label)
+    if align != Qt.AlignCenter:
+        layout.addStretch()
+    return cell
 
 
 def _primary_button_ss():
@@ -1472,6 +2377,11 @@ QPushButton {
 QPushButton:hover {
     background: #fef2f2;
     border-color: #fca5a5;
+}
+QPushButton:disabled {
+    background: #f9fafb;
+    color: #9ca3af;
+    border: 1px solid #e5e7eb;
 }
 """
 
