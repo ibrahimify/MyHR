@@ -85,6 +85,12 @@ pip install -r requirements.txt
 python main.py
 ```
 
+### Run Tests
+
+```bash
+python -m unittest discover -s tests -v
+```
+
 ### Default Credentials
 
 | Role | Username | Password |
