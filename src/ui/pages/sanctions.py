@@ -206,6 +206,10 @@ class SanctionsPage(QWidget):
         self.tabs.setCurrentIndex(2)
         self.active_tab.refresh()
 
+    def open_active_sanctions(self):
+        self.tabs.setCurrentIndex(2)
+        self.active_tab.refresh()
+
     def showEvent(self, event):
         self.active_tab.refresh()
         super().showEvent(event)

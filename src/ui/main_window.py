@@ -328,6 +328,9 @@ class MainWindow(QMainWindow):
         return page
 
     def _navigate(self, key):
+        open_active_sanctions = key == "sanctions_active"
+        if open_active_sanctions:
+            key = "sanctions"
         if key in ADMIN_ONLY_PAGES and self.user.role != "admin":
             from PySide6.QtWidgets import QMessageBox
             QMessageBox.warning(self, t("access_denied"), t("admin_only_section"))
@@ -341,6 +344,8 @@ class MainWindow(QMainWindow):
         self.sidebar._set_active(key)
         if hasattr(page, "refresh"):
             page.refresh()
+        if open_active_sanctions and hasattr(page, "open_active_sanctions"):
+            page.open_active_sanctions()
 
     def _navigate_to_employee(self, emp_db_id: int):
         if "employees" in self._pages_cache:

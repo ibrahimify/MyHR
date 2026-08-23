@@ -65,17 +65,17 @@ QPushButton:pressed {{ background: #e5e7eb; }}
 
 BTN_GHOST = """
 QPushButton {{
-    background: transparent;
+    background: #f9fafb;
     color: #374151;
-    border: none;
+    border: 1px solid #e5e7eb;
     border-radius: 6px;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     padding: 0 12px;
     min-height: {h}px;
     outline: none;
 }}
-QPushButton:hover {{ background: #f3f4f6; color: #111827; }}
+QPushButton:hover {{ background: #f3f4f6; color: #111827; border-color: #d1d5db; }}
 """
 
 BTN_DANGER = """
