@@ -161,7 +161,8 @@ class SanctionsPage(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: #f9fafb;")
+        self.setObjectName("SanctionsPage")
+        self.setStyleSheet("QWidget#SanctionsPage { background: #f9fafb; }")
         self._build()
 
     def _build(self):
@@ -215,7 +216,8 @@ class ActiveSanctionsTab(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: #f9fafb;")
+        self.setObjectName("ActiveSanctionsTab")
+        self.setStyleSheet("QWidget#ActiveSanctionsTab { background: #f9fafb; }")
         self._build()
 
     def _build(self):
@@ -468,7 +470,8 @@ class SanctionHistoryTab(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: #f9fafb;")
+        self.setObjectName("SanctionHistoryTab")
+        self.setStyleSheet("QWidget#SanctionHistoryTab { background: #f9fafb; }")
         self._build()
         self.refresh()
 
@@ -561,7 +564,8 @@ class IssueSanctionTab(QWidget):
         super().__init__()
         self.user = user
         self.on_issued = on_issued
-        self.setStyleSheet("background: #f9fafb;")
+        self.setObjectName("IssueSanctionTab")
+        self.setStyleSheet("QWidget#IssueSanctionTab { background: #f9fafb; }")
         self._build()
 
     def _build(self):

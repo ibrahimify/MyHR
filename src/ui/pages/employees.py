@@ -119,6 +119,19 @@ QFrame#ProfileCard QLabel {
 }
 """
 
+TOOLTIP_SS = """
+QToolTip, QTipLabel {
+    background: #111827;
+    background-color: #111827;
+    color: #ffffff;
+    border: 1px solid #374151;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 12px;
+    opacity: 255;
+}
+"""
+
 
 def _would_create_manager_cycle(session, employee_id, manager_id):
     current_id = manager_id
@@ -297,7 +310,8 @@ class EmployeesPage(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: #f9fafb;")
+        self.setObjectName("EmployeesPage")
+        self.setStyleSheet("QWidget#EmployeesPage { background: #f9fafb; }")
         self.stack = QStackedWidget()
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -346,7 +360,8 @@ class EmployeeListView(QWidget):
         self.total_count = 0
         self.total_pages = 1
         self._on_edit_cb = None
-        self.setStyleSheet("QWidget { background: #f9fafb; font-family: 'Segoe UI'; }")
+        self.setObjectName("EmployeeListView")
+        self.setStyleSheet("QWidget#EmployeeListView { background: #f9fafb; font-family: 'Segoe UI'; }" + TOOLTIP_SS)
         self._build()
         self.refresh()
 
@@ -793,7 +808,8 @@ class AddEmployeeView(QWidget):
         self.user = user
         self.on_back = on_back
         self.fields = {}
-        self.setStyleSheet("QWidget { background: #f9fafb; font-family: 'Segoe UI'; }")
+        self.setObjectName("AddEmployeeView")
+        self.setStyleSheet("QWidget#AddEmployeeView { background: #f9fafb; font-family: 'Segoe UI'; }" + TOOLTIP_SS)
         self._build()
         self.reset()
 
@@ -1215,7 +1231,8 @@ class EditEmployeeView(QWidget):
         self.on_back = on_back
         self.employee_db_id = None
         self.fields = {}
-        self.setStyleSheet("background: #f9fafb;")
+        self.setObjectName("EditEmployeeView")
+        self.setStyleSheet("QWidget#EditEmployeeView { background: #f9fafb; }" + TOOLTIP_SS)
         self._build_shell()
 
     def _build_shell(self):
@@ -1510,7 +1527,8 @@ class EmployeeProfileView(QWidget):
         self.on_back = on_back
         self.on_edit = on_edit
         self.employee_db_id = None
-        self.setStyleSheet("background: #f9fafb;")
+        self.setObjectName("EmployeeProfileViewLegacy")
+        self.setStyleSheet("QWidget#EmployeeProfileViewLegacy { background: #f9fafb; }" + TOOLTIP_SS)
         self._build_shell()
 
     def _build_shell(self):
@@ -1723,7 +1741,8 @@ class EmployeeProfileView(QWidget):
         self.employee_db_id = None
         self.editing = False
         self.edit_fields = {}
-        self.setStyleSheet("QWidget { background: #f9fafb; font-family: 'Segoe UI'; }")
+        self.setObjectName("EmployeeProfileView")
+        self.setStyleSheet("QWidget#EmployeeProfileView { background: #f9fafb; font-family: 'Segoe UI'; }" + TOOLTIP_SS)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self.scroll = QScrollArea()

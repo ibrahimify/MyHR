@@ -187,7 +187,8 @@ class ImportDataPage(QWidget):
         self.preview_data = []
         self.current_file = None
         self.step_widgets = []
-        self.setStyleSheet(f"background: {PAGE_BG};")
+        self.setObjectName("ImportDataPage")
+        self.setStyleSheet(f"QWidget#ImportDataPage {{ background: {PAGE_BG}; }}")
         self._build()
 
     def _build(self):

@@ -1,23 +1,26 @@
 """Dashboard page matching the MockUI React dashboard layout."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import qtawesome as qta
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QGridLayout,
     QDialog, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
-    QProgressBar
+    QProgressBar, QDateEdit
 )
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt, QSize, QRectF, QPointF, QDate
+from PySide6.QtGui import QColor, QPainter, QPen, QBrush, QFont, QPainterPath
 
 from src.core.i18n import t
 from src.database.connection import (
     get_session, get_increment_due_employees, apply_salary_increment,
     calculate_months_remaining_batch
 )
-from src.database.models import Employee, Sanction, Commendation, AuditLog, Title
+from src.database.models import (
+    Employee, Sanction, Commendation, AuditLog, Title, OrgUnit,
+    PromotionHistory
+)
 from src.ui.styles import btn_primary, btn_outline, btn_ghost, TABLE_SS, SCROLL_SS
 
 
@@ -34,6 +37,210 @@ QFrame#DashboardCard QLabel {
     background: transparent;
 }
 """
+
+FILTERS = ("week", "month", "year", "ytd", "custom")
+ORG_LEVELS = ("division", "department", "unit", "team")
+
+
+def _pct_delta(current, previous):
+    if previous == 0:
+        if current == 0:
+            return "0%"
+        return f"+{current}"
+    value = ((current - previous) / previous) * 100
+    sign = "+" if value >= 0 else ""
+    return f"{sign}{value:.0f}%"
+
+
+def _month_key(dt):
+    return dt.strftime("%Y-%m")
+
+
+def _filter_window(filter_key, custom_start=None, custom_end=None):
+    now = datetime.utcnow()
+    today = datetime(now.year, now.month, now.day)
+    if filter_key == "week":
+        start = today - timedelta(days=6)
+        previous_start = start - timedelta(days=7)
+        previous_end = start
+        return start, now, previous_start, previous_end
+    if filter_key == "year":
+        start = datetime(now.year - 1, now.month, 1)
+        previous_start = datetime(now.year - 2, now.month, 1)
+        previous_end = start
+        return start, now, previous_start, previous_end
+    if filter_key == "ytd":
+        start = datetime(now.year, 1, 1)
+        previous_start = datetime(now.year - 1, 1, 1)
+        previous_end = datetime(now.year - 1, now.month, now.day)
+        return start, now, previous_start, previous_end
+    if filter_key == "custom" and custom_start and custom_end:
+        start = custom_start
+        end = custom_end
+        span = max(end - start, timedelta(days=1))
+        return start, end, start - span, start
+    start = today - timedelta(days=29)
+    previous_start = start - timedelta(days=30)
+    previous_end = start
+    return start, now, previous_start, previous_end
+
+
+class BarChartWidget(QWidget):
+    def __init__(self, data=None, color="#3b82f6", parent=None):
+        super().__init__(parent)
+        self.data = data or []
+        self.color = QColor(color)
+        self.setMinimumHeight(320)
+        self.setMouseTracking(True)
+
+    def set_data(self, data):
+        self.data = data or []
+        self.update()
+
+    def mouseMoveEvent(self, event):
+        hit = getattr(self, "_hit_boxes", [])
+        for rect, label, value in hit:
+            if rect.contains(event.position().toPoint()):
+                self.setToolTip(f"{label}: {value}")
+                return
+        self.setToolTip("")
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        rect = self.rect().adjusted(12, 10, -12, -10)
+        chart = rect.adjusted(168, 8, -38, -18)
+
+        if not self.data:
+            self._draw_empty(painter, rect)
+            return
+
+        max_value = max([value for _, value in self.data] + [1])
+        count = len(self.data)
+        gap = 8
+        bar_h = max(11, min(24, (chart.height() - gap * (count - 1)) / max(count, 1)))
+        self._hit_boxes = []
+
+        painter.setPen(QPen(QColor("#e5e7eb"), 1, Qt.DashLine))
+        for i in range(1, 4):
+            x = chart.left() + chart.width() * i / 4
+            painter.drawLine(QPointF(x, chart.top()), QPointF(x, chart.bottom()))
+
+        label_font = QFont()
+        label_font.setPointSize(8)
+        painter.setFont(label_font)
+
+        for idx, (label, value) in enumerate(self.data):
+            ratio = value / max_value if max_value else 0
+            bar_w = max(3, chart.width() * ratio)
+            x = chart.left()
+            y = chart.top() + idx * (bar_h + gap)
+            bar = QRectF(x, y, bar_w, bar_h)
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(self.color))
+            painter.drawRoundedRect(bar, 6, 6)
+            self._hit_boxes.append((bar.toRect(), label, value))
+
+            painter.setPen(QColor("#4b5563"))
+            short = painter.fontMetrics().elidedText(label, Qt.ElideRight, 156)
+            painter.drawText(QRectF(rect.left(), y - 1, 156, bar_h + 2), Qt.AlignVCenter | Qt.AlignRight, short)
+            painter.setPen(QColor("#6b7280"))
+            painter.drawText(QRectF(chart.left() + bar_w + 8, y - 1, 34, bar_h + 2), Qt.AlignVCenter | Qt.AlignLeft, str(value))
+
+        painter.setPen(QColor("#6b7280"))
+        painter.drawText(QRectF(chart.left(), chart.bottom() + 2, 40, 18), Qt.AlignLeft, "0")
+        painter.drawText(QRectF(chart.right() - 40, chart.bottom() + 2, 40, 18), Qt.AlignRight, str(max_value))
+
+    def _draw_grid(self, painter, chart):
+        painter.setPen(QPen(QColor("#e5e7eb"), 1, Qt.DashLine))
+        for i in range(1, 4):
+            y = chart.top() + chart.height() * i / 4
+            painter.drawLine(QPointF(chart.left(), y), QPointF(chart.right(), y))
+
+    def _draw_empty(self, painter, rect):
+        painter.setPen(QColor("#6b7280"))
+        painter.drawText(rect, Qt.AlignCenter, t("no_data"))
+
+
+class LineChartWidget(QWidget):
+    def __init__(self, data=None, color="#10b981", parent=None):
+        super().__init__(parent)
+        self.data = data or []
+        self.color = QColor(color)
+        self.setMinimumHeight(260)
+        self.setMouseTracking(True)
+
+    def set_data(self, data):
+        self.data = data or []
+        self.update()
+
+    def mouseMoveEvent(self, event):
+        for point, label, value in getattr(self, "_hit_points", []):
+            if (point - event.position()).manhattanLength() <= 10:
+                self.setToolTip(f"{label}: {value}")
+                return
+        self.setToolTip("")
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        rect = self.rect().adjusted(10, 14, -10, -18)
+        chart = rect.adjusted(42, 10, -12, -34)
+        painter.setPen(QPen(QColor("#e5e7eb"), 1, Qt.DashLine))
+        for i in range(1, 4):
+            y = chart.top() + chart.height() * i / 4
+            painter.drawLine(QPointF(chart.left(), y), QPointF(chart.right(), y))
+
+        painter.setPen(QPen(QColor("#9ca3af"), 1))
+        painter.drawLine(chart.bottomLeft(), chart.bottomRight())
+        painter.drawLine(chart.bottomLeft(), chart.topLeft())
+
+        if not self.data:
+            painter.setPen(QColor("#6b7280"))
+            painter.drawText(rect, Qt.AlignCenter, t("no_data"))
+            return
+
+        max_value = max([value for _, value in self.data] + [1])
+        step = chart.width() / max(len(self.data) - 1, 1)
+        points = []
+        self._hit_points = []
+        for idx, (label, value) in enumerate(self.data):
+            x = chart.left() + idx * step
+            y = chart.bottom() - (chart.height() * value / max_value if max_value else 0)
+            point = QPointF(x, y)
+            points.append(point)
+            self._hit_points.append((point, label, value))
+
+        if len(points) > 1:
+            path = QPainterPath(points[0])
+            for index in range(1, len(points)):
+                previous = points[index - 1]
+                current = points[index]
+                dx = (current.x() - previous.x()) * 0.45
+                c1 = QPointF(previous.x() + dx, previous.y())
+                c2 = QPointF(current.x() - dx, current.y())
+                path.cubicTo(c1, c2, current)
+            painter.setPen(QPen(self.color, 3))
+            painter.drawPath(path)
+
+        painter.setBrush(QBrush(QColor("white")))
+        painter.setPen(QPen(self.color, 3))
+        for point in points:
+            painter.drawEllipse(point, 5, 5)
+
+        painter.setPen(QColor("#4b5563"))
+        font = QFont()
+        font.setPointSize(8)
+        painter.setFont(font)
+        for idx, (label, _) in enumerate(self.data):
+            if len(self.data) > 8 and idx % 2:
+                continue
+            x = chart.left() + idx * step
+            painter.drawText(QRectF(x - 34, chart.bottom() + 8, 68, 22), Qt.AlignCenter, label)
+
+        painter.setPen(QColor("#6b7280"))
+        painter.drawText(QRectF(rect.left(), chart.top() - 4, 38, 18), Qt.AlignRight, str(max_value))
+        painter.drawText(QRectF(rect.left(), chart.bottom() - 10, 38, 18), Qt.AlignRight, "0")
 
 
 class SalaryIncrementReviewDialog(QDialog):
@@ -174,17 +381,55 @@ class DashboardPage(QWidget):
         super().__init__()
         self.user = user
         self.navigate = navigate_fn
-        self.setStyleSheet("QWidget { background: #f9fafb; } QLabel { border: none; }")
+        self.chart_filter = "ytd"
+        self.org_chart_level = "division"
+        self.custom_start = None
+        self.custom_end = None
+        self.filter_buttons = {}
+        self.org_filter_buttons = {}
+        self.setObjectName("DashboardPage")
+        self.setStyleSheet(
+            "QWidget#DashboardPage { background: #f9fafb; } "
+            "QWidget#DashboardPage QLabel { border: none; }"
+        )
         self._load_data()
         self._build()
 
     def _load_data(self):
         session = get_session()
         try:
+            start, end, prev_start, prev_end = _filter_window(
+                self.chart_filter, self.custom_start, self.custom_end
+            )
+
             self.emp_count = session.query(Employee).count()
             self.sanction_count = session.query(Sanction).filter_by(is_resolved=False).count()
-            self.commend_count = session.query(Commendation).count()
+            self.commend_count = session.query(Commendation).filter(
+                Commendation.issued_at >= start,
+                Commendation.issued_at <= end,
+            ).count()
             self.promotion_count = 0
+            self.employee_delta = _pct_delta(
+                session.query(Employee).filter(Employee.created_at >= start, Employee.created_at <= end).count(),
+                session.query(Employee).filter(Employee.created_at >= prev_start, Employee.created_at < prev_end).count(),
+            )
+            self.commend_delta = _pct_delta(
+                self.commend_count,
+                session.query(Commendation).filter(
+                    Commendation.issued_at >= prev_start,
+                    Commendation.issued_at < prev_end,
+                ).count(),
+            )
+            self.sanction_delta = _pct_delta(
+                session.query(Sanction).filter(
+                    Sanction.issued_at >= start,
+                    Sanction.issued_at <= end,
+                ).count(),
+                session.query(Sanction).filter(
+                    Sanction.issued_at >= prev_start,
+                    Sanction.issued_at < prev_end,
+                ).count(),
+            )
 
             increment_due = get_increment_due_employees(session)
             self.increment_count = len(increment_due)
@@ -250,8 +495,82 @@ class DashboardPage(QWidget):
                 })
             upcoming.sort(key=lambda x: (0 if x["eligible"] else 1, x["months_remaining"]))
             self.upcoming_promotions = upcoming[:3]
+            self.promotion_delta = f"+{self.promotion_count}"
+            self.department_chart_data = self._org_distribution(session, self.org_chart_level)
+            self.promotion_trend_data = self._promotion_trend(session, start, end)
         finally:
             session.close()
+
+    def _org_distribution(self, session, level):
+        units = {unit.id: unit for unit in session.query(OrgUnit).all()}
+
+        def level_label(org_unit_id):
+            unit = units.get(org_unit_id)
+            fallback = unit.name if unit else t("not_available")
+            while unit is not None:
+                if unit.unit_type == level:
+                    return unit.name
+                unit = units.get(unit.parent_id) if unit.parent_id else None
+            return fallback
+
+        counts = {}
+        employee_units = (
+            session.query(Employee.org_unit_id)
+            .filter(Employee.status == "active")
+            .all()
+        )
+        for (org_unit_id,) in employee_units:
+            label = level_label(org_unit_id)
+            counts[label] = counts.get(label, 0) + 1
+        ranked = sorted(counts.items(), key=lambda item: item[1], reverse=True)
+        if level == "division" or len(ranked) <= 14:
+            return ranked
+        top = ranked[:13]
+        grouped_count = sum(value for _, value in ranked[13:])
+        return top + [(t(f"all_other_{level}s"), grouped_count)]
+
+    def _promotion_trend(self, session, start, end):
+        promotions = session.query(PromotionHistory.promoted_at).filter(
+            PromotionHistory.promoted_at >= start,
+            PromotionHistory.promoted_at <= end,
+        ).all()
+        dates = [row[0] for row in promotions if row[0]]
+        span_days = max((end - start).days, 1)
+        if span_days <= 45:
+            labels = []
+            cursor = datetime(start.year, start.month, start.day)
+            end_day = datetime(end.year, end.month, end.day)
+            while cursor <= end_day:
+                labels.append(cursor.strftime("%b %d"))
+                cursor += timedelta(days=1)
+            counts = {label: 0 for label in labels}
+            for dt in dates:
+                label = dt.strftime("%b %d")
+                if label in counts:
+                    counts[label] += 1
+            if len(labels) > 14:
+                compact = []
+                for i in range(0, len(labels), 3):
+                    label_slice = labels[i:i + 3]
+                    compact.append((label_slice[0], sum(counts[label] for label in label_slice)))
+                return compact
+            return [(label, counts[label]) for label in labels]
+
+        labels = []
+        cursor = datetime(start.year, start.month, 1)
+        end_month = datetime(end.year, end.month, 1)
+        while cursor <= end_month:
+            labels.append(_month_key(cursor))
+            if cursor.month == 12:
+                cursor = datetime(cursor.year + 1, 1, 1)
+            else:
+                cursor = datetime(cursor.year, cursor.month + 1, 1)
+        counts = {label: 0 for label in labels}
+        for dt in dates:
+            key = _month_key(dt)
+            if key in counts:
+                counts[key] += 1
+        return [(datetime.strptime(label, "%Y-%m").strftime("%b"), counts[label]) for label in labels]
 
     def _build(self):
         outer = QVBoxLayout(self)
@@ -310,13 +629,20 @@ class DashboardPage(QWidget):
         stats.setHorizontalSpacing(24)
         stats.setVerticalSpacing(24)
         for i, card in enumerate([
-            self._stat_card(t("total_employees"), str(self.emp_count), t("organization_records"), "#3b82f6", "fa5s.users"),
-            self._stat_card(t("pending_promotions"), str(self.promotion_count), t("eligible_right_now"), "#10b981", "fa5s.chart-line"),
-            self._stat_card(t("commendations_this_month"), str(self.commend_count), t("awards_recorded"), "#f59e0b", "fa5s.award"),
-            self._stat_card(t("active_sanctions"), str(self.sanction_count), t("open_disciplinary_actions"), "#ef4444", "fa5s.exclamation-triangle"),
+            self._stat_card(t("total_employees"), str(self.emp_count), self.employee_delta, t("new_ytd"), "#3b82f6", "fa5s.users"),
+            self._stat_card(t("pending_promotions"), str(self.promotion_count), self.promotion_delta, t("eligible_now_snapshot"), "#10b981", "fa5s.chart-line"),
+            self._stat_card(t("commendations"), str(self.commend_count), self.commend_delta, t("vs_previous_ytd"), "#f59e0b", "fa5s.award"),
+            self._stat_card(t("active_sanctions"), str(self.sanction_count), self.sanction_delta, t("issued_vs_previous_ytd"), "#ef4444", "fa5s.exclamation-triangle"),
         ]):
             stats.addWidget(card, 0, i)
         layout.addLayout(stats)
+        layout.addSpacing(36)
+
+        charts = QHBoxLayout()
+        charts.setSpacing(24)
+        charts.addWidget(self._department_chart_card(), 1)
+        charts.addWidget(self._promotion_chart_card(), 1)
+        layout.addLayout(charts)
         layout.addSpacing(36)
 
         bottom = QHBoxLayout()
@@ -362,7 +688,7 @@ class DashboardPage(QWidget):
         card.setStyleSheet(DASH_CARD_SS)
         return card
 
-    def _stat_card(self, label, value, change, color, icon_name):
+    def _stat_card(self, label, value, delta, detail, color, icon_name):
         card = self._card()
         card.setMinimumHeight(172)
         layout = QHBoxLayout(card)
@@ -376,9 +702,10 @@ class DashboardPage(QWidget):
         label_lbl.setStyleSheet("font-size: 16px; color: #4b5563;")
         value_lbl = QLabel(value)
         value_lbl.setStyleSheet("font-size: 36px; font-weight: 800; color: #111827;")
-        change_lbl = QLabel(change)
+        delta_color = "#059669" if not str(delta).startswith("-") else "#dc2626"
+        change_lbl = QLabel(f"{delta} {detail}")
         change_lbl.setWordWrap(True)
-        change_lbl.setStyleSheet("font-size: 15px; color: #059669;")
+        change_lbl.setStyleSheet(f"font-size: 15px; color: {delta_color};")
         text.addWidget(label_lbl)
         text.addWidget(value_lbl)
         text.addWidget(change_lbl)
@@ -392,6 +719,188 @@ class DashboardPage(QWidget):
         icon_box.setPixmap(qta.icon(icon_name, color="white").pixmap(26, 26))
         layout.addWidget(icon_box, 0, Qt.AlignTop)
         return card
+
+    def _department_chart_card(self):
+        card = self._card()
+        card.setMinimumHeight(420)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(28, 24, 28, 24)
+        layout.setSpacing(16)
+
+        header = QHBoxLayout()
+        self.org_chart_title = QLabel(t("employees_by_division"))
+        self.org_chart_title.setStyleSheet("font-size: 20px; font-weight: 700; color: #111827;")
+        header.addWidget(self.org_chart_title)
+        header.addStretch()
+        header.addLayout(self._org_filter_pills())
+        layout.addLayout(header)
+
+        self.department_chart = BarChartWidget(self.department_chart_data, "#3b82f6")
+        layout.addWidget(self.department_chart, 1)
+        return card
+
+    def _org_filter_pills(self):
+        row = QHBoxLayout()
+        row.setSpacing(6)
+        self.org_filter_buttons = {}
+        labels = {
+            "division": t("filter_division"),
+            "department": t("filter_department"),
+            "unit": t("filter_unit"),
+            "team": t("filter_team"),
+        }
+        for key in ORG_LEVELS:
+            btn = QPushButton(labels[key])
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setFixedHeight(30)
+            btn.clicked.connect(lambda _, value=key: self._set_org_chart_level(value))
+            self.org_filter_buttons[key] = btn
+            row.addWidget(btn)
+        self._sync_org_filter_buttons()
+        return row
+
+    def _sync_org_filter_buttons(self):
+        for key, btn in self.org_filter_buttons.items():
+            btn.setStyleSheet(self._filter_button_ss(key == self.org_chart_level))
+
+    def _set_org_chart_level(self, level):
+        self.org_chart_level = level
+        session = get_session()
+        try:
+            self.department_chart_data = self._org_distribution(session, level)
+        finally:
+            session.close()
+        self.department_chart.set_data(self.department_chart_data)
+        self.org_chart_title.setText(t(f"employees_by_{level}"))
+        self._sync_org_filter_buttons()
+
+    def _promotion_chart_card(self):
+        card = self._card()
+        card.setMinimumHeight(360)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(28, 24, 28, 24)
+        layout.setSpacing(14)
+
+        header = QHBoxLayout()
+        title = QLabel(t("promotion_trend"))
+        title.setStyleSheet("font-size: 20px; font-weight: 700; color: #111827;")
+        header.addWidget(title)
+        header.addStretch()
+        header.addLayout(self._filter_pills())
+        layout.addLayout(header)
+
+        self.promotion_chart = LineChartWidget(self.promotion_trend_data, "#10b981")
+        layout.addWidget(self.promotion_chart, 1)
+        return card
+
+    def _filter_pills(self):
+        row = QHBoxLayout()
+        row.setSpacing(6)
+        self.filter_buttons = {}
+        labels = {
+            "week": t("filter_week"),
+            "month": t("filter_month"),
+            "year": t("filter_year"),
+            "ytd": t("filter_ytd"),
+            "custom": t("filter_custom"),
+        }
+        for key in FILTERS:
+            btn = QPushButton(labels[key])
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setFixedHeight(30)
+            btn.clicked.connect(lambda _, value=key: self._set_chart_filter(value))
+            self.filter_buttons[key] = btn
+            row.addWidget(btn)
+        self._sync_filter_buttons()
+        return row
+
+    def _filter_button_ss(self, active):
+        if active:
+            return (
+                "QPushButton { background: #030213; color: white; border: none; "
+                "border-radius: 15px; padding: 0 12px; font-size: 12px; font-weight: 700; }"
+            )
+        return (
+            "QPushButton { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; "
+            "border-radius: 15px; padding: 0 12px; font-size: 12px; font-weight: 600; }"
+            "QPushButton:hover { background: #e5e7eb; }"
+        )
+
+    def _sync_filter_buttons(self):
+        for key, btn in self.filter_buttons.items():
+            btn.setStyleSheet(self._filter_button_ss(key == self.chart_filter))
+
+    def _set_chart_filter(self, filter_key):
+        if filter_key == "custom" and not self._choose_custom_range():
+            return
+        self.chart_filter = filter_key
+        session = get_session()
+        try:
+            start, end, _, _ = _filter_window(self.chart_filter, self.custom_start, self.custom_end)
+            self.promotion_trend_data = self._promotion_trend(session, start, end)
+        finally:
+            session.close()
+        self.promotion_chart.set_data(self.promotion_trend_data)
+        self._sync_filter_buttons()
+
+    def _choose_custom_range(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle(t("custom_date_range"))
+        dialog.setStyleSheet("background: white; color: #111827;")
+        dialog.setMinimumWidth(360)
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(12)
+
+        title = QLabel(t("custom_date_range"))
+        title.setStyleSheet("font-size: 17px; font-weight: 700; color: #111827;")
+        layout.addWidget(title)
+
+        start_edit = QDateEdit()
+        start_edit.setCalendarPopup(True)
+        start_edit.setDisplayFormat("yyyy-MM-dd")
+        end_edit = QDateEdit()
+        end_edit.setCalendarPopup(True)
+        end_edit.setDisplayFormat("yyyy-MM-dd")
+
+        today = QDate.currentDate()
+        default_start = today.addMonths(-1)
+        start_edit.setDate(default_start)
+        end_edit.setDate(today)
+
+        layout.addWidget(QLabel(t("start_date")))
+        layout.addWidget(start_edit)
+        layout.addWidget(QLabel(t("end_date")))
+        layout.addWidget(end_edit)
+
+        row = QHBoxLayout()
+        apply_btn = QPushButton(t("apply"))
+        apply_btn.setStyleSheet(btn_primary(36))
+        cancel_btn = QPushButton(t("cancel"))
+        cancel_btn.setStyleSheet(btn_outline(36))
+        apply_btn.clicked.connect(dialog.accept)
+        cancel_btn.clicked.connect(dialog.reject)
+        row.addStretch()
+        row.addWidget(cancel_btn)
+        row.addWidget(apply_btn)
+        layout.addLayout(row)
+
+        custom_btn = self.filter_buttons.get("custom")
+        if custom_btn:
+            pos = custom_btn.mapToGlobal(custom_btn.rect().bottomRight())
+            dialog.adjustSize()
+            dialog.move(pos.x() - dialog.width(), pos.y() + 8)
+
+        if dialog.exec() != QDialog.Accepted:
+            return False
+        start_date = start_edit.date().toPython()
+        end_date = end_edit.date().toPython()
+        if start_date > end_date:
+            _warning(self, t("warning"), t("invalid_date_range"))
+            return False
+        self.custom_start = datetime(start_date.year, start_date.month, start_date.day)
+        self.custom_end = datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59)
+        return True
 
     def _recent_card(self):
         card = self._card()

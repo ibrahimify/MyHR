@@ -185,7 +185,8 @@ class SettingsPage(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet(f"background: {PAGE_BG};")
+        self.setObjectName("SettingsPage")
+        self.setStyleSheet(f"QWidget#SettingsPage {{ background: {PAGE_BG}; }}")
         self._build()
 
     def _build(self):

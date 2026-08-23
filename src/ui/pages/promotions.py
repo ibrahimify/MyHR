@@ -109,7 +109,8 @@ class PromotionsPage(QWidget):
         super().__init__()
         self.user = user
         self.navigate_to_employee = navigate_to_employee
-        self.setStyleSheet("background: #f9fafb;")
+        self.setObjectName("PromotionsPage")
+        self.setStyleSheet("QWidget#PromotionsPage { background: #f9fafb; }")
         self._build()
 
     def _build(self):
@@ -152,7 +153,8 @@ class EligibleTab(QWidget):
         super().__init__()
         self.user = user
         self.navigate_to_employee = navigate_to_employee
-        self.setStyleSheet("background: #f9fafb;")
+        self.setObjectName("EligibleTab")
+        self.setStyleSheet("QWidget#EligibleTab { background: #f9fafb; }")
         self._build()
 
     def _build(self):
@@ -526,7 +528,8 @@ class HistoryTab(QWidget):
         self.page_size = 25
         self.current_page = 1
         self.total_pages = 1
-        self.setStyleSheet("background: #f9fafb;")
+        self.setObjectName("HistoryTab")
+        self.setStyleSheet("QWidget#HistoryTab { background: #f9fafb; }")
         self._build()
 
     def _build(self):
@@ -738,7 +741,8 @@ class RulesTab(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: #f9fafb;")
+        self.setObjectName("RulesTab")
+        self.setStyleSheet("QWidget#RulesTab { background: #f9fafb; }")
         self._build()
         self.refresh()
 

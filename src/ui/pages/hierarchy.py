@@ -106,7 +106,8 @@ class HierarchyPage(QWidget):
         self.user = user
         self.units_data = []
         self.collapsed_units = set()
-        self.setStyleSheet("background: #f9fafb;")
+        self.setObjectName("HierarchyPage")
+        self.setStyleSheet("QWidget#HierarchyPage { background: #f9fafb; }")
         self._build()
         self.refresh()
 

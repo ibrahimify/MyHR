@@ -1,9 +1,71 @@
 import sys
 import os
-from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QLabel, QAbstractItemView
+from PySide6.QtCore import Qt, QObject, QEvent, QPoint
+from PySide6.QtGui import QColor, QPalette
 from src.database.connection import init_db
 from src.ui.login_window import LoginWindow
+
+
+class AppTooltipFilter(QObject):
+    """Consistent black tooltip surface for all widgets and item views."""
+
+    def __init__(self, app):
+        super().__init__(app)
+        self._popup = QLabel()
+        self._popup.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self._popup.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self._popup.setStyleSheet("""
+            QLabel {
+                background: #111827;
+                color: #ffffff;
+                border: 1px solid #374151;
+                border-radius: 6px;
+                padding: 6px 8px;
+                font-size: 12px;
+                font-family: 'Segoe UI';
+            }
+        """)
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.ToolTip:
+            text = self._tooltip_text(watched, event)
+            if text:
+                self._show(text, event.globalPos())
+                return True
+            self._popup.hide()
+            return False
+
+        if event.type() in (
+            QEvent.Leave,
+            QEvent.MouseButtonPress,
+            QEvent.Wheel,
+            QEvent.KeyPress,
+            QEvent.Hide,
+        ):
+            self._popup.hide()
+        return False
+
+    def _tooltip_text(self, watched, event):
+        view = watched.parent() if isinstance(watched.parent(), QAbstractItemView) else None
+        if view is not None:
+            index = view.indexAt(event.pos())
+            if index.isValid():
+                return str(index.data(Qt.ToolTipRole) or "").strip()
+
+        current = watched
+        while current is not None:
+            tooltip = str(current.toolTip() or "").strip() if hasattr(current, "toolTip") else ""
+            if tooltip:
+                return tooltip
+            current = current.parent()
+        return ""
+
+    def _show(self, text, global_pos):
+        self._popup.setText(text)
+        self._popup.adjustSize()
+        self._popup.move(global_pos + QPoint(12, 18))
+        self._popup.show()
 
 
 def main():
@@ -17,6 +79,15 @@ def main():
     font.setFamily("Segoe UI")
     font.setPointSize(10)
     app.setFont(font)
+
+    palette = app.palette()
+    for group in (QPalette.Active, QPalette.Inactive, QPalette.Disabled):
+        palette.setColor(group, QPalette.ToolTipBase, QColor("#111827"))
+        palette.setColor(group, QPalette.ToolTipText, QColor("#ffffff"))
+    app.setPalette(palette)
+    tooltip_filter = AppTooltipFilter(app)
+    app.installEventFilter(tooltip_filter)
+    app._tooltip_filter = tooltip_filter
 
     arrow_path = os.path.join(os.path.dirname(__file__), "src", "ui", "assets", "chevron_down.svg").replace("\\", "/")
 
@@ -88,7 +159,16 @@ def main():
         QMessageBox QPushButton:default {{ background: #030213; color: white; border: none; }}
         QDialog               {{ background: white; color: #111827; }}
         QDialog QLabel        {{ color: #111827; }}
-        QToolTip              {{ background: #111827; color: white; border: none; padding: 4px 8px; border-radius: 6px; }}
+        QToolTip, QTipLabel   {{
+            background: #111827;
+            background-color: #111827;
+            color: #ffffff;
+            border: 1px solid #374151;
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            opacity: 255;
+        }}
         QTabWidget::pane      {{ border: none; background: #f9fafb; }}
         QTabBar::tab          {{ background: white; color: #6b7280; padding: 10px 20px; border: none; border-bottom: 2px solid transparent; font-size: 13px; }}
         QTabBar::tab:selected {{ color: #030213; border-bottom: 2px solid #030213; font-weight: bold; }}

@@ -174,7 +174,8 @@ class CommendationsPage(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: #f9fafb;")
+        self.setObjectName("CommendationsPage")
+        self.setStyleSheet("QWidget#CommendationsPage { background: #f9fafb; }")
         self._build()
 
     def _build(self):
@@ -220,7 +221,8 @@ class IssueCommendationTab(QWidget):
         self.on_issued = on_issued
         self.selected_employees = set()
         self.mode = "single"
-        self.setStyleSheet("background: #f9fafb;")
+        self.setObjectName("IssueCommendationTab")
+        self.setStyleSheet("QWidget#IssueCommendationTab { background: #f9fafb; }")
         self._build()
 
     def _build(self):
@@ -659,7 +661,8 @@ class CommendationHistoryTab(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.setStyleSheet("background: #f9fafb;")
+        self.setObjectName("CommendationHistoryTab")
+        self.setStyleSheet("QWidget#CommendationHistoryTab { background: #f9fafb; }")
         self._build()
         self.refresh()
 

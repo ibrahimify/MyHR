@@ -175,7 +175,8 @@ class AuditLogPage(QWidget):
         self.user = user
         self.all_logs = []
         self.stat_values = {}
-        self.setStyleSheet("background: #f9fafb;")
+        self.setObjectName("AuditLogPage")
+        self.setStyleSheet("QWidget#AuditLogPage { background: #f9fafb; }")
         self._build()
         self.refresh()
 
