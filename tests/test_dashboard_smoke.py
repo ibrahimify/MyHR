@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -91,6 +92,52 @@ class DashboardSmokeTests(unittest.TestCase):
             self.assertIsInstance(window.stack.currentWidget(), EmployeesPage)
         finally:
             window.close()
+
+    def test_settings_tabs_save_renamed_levels_by_database_id(self):
+        from src.ui.pages.settings import IncrementTab, SalaryTab
+
+        with db.SessionLocal() as session:
+            admin = session.query(db.SystemUser).filter_by(username="admin").one()
+            title = session.query(db.Title).filter_by(name="L7").one()
+            title.name = "Entry Track"
+            title.label = "Entry Track"
+            title.base_salary_min = 2100
+            title.base_salary_max = 2800
+            title_id = title.id
+            session.commit()
+            user = SimpleNamespace(id=admin.id, username=admin.username, role=admin.role, full_name=admin.full_name)
+
+        salary_tab = SalaryTab(user)
+        min_spin, max_spin = salary_tab.fields[title_id]
+        min_spin.setValue(2200)
+        max_spin.setValue(2900)
+        salary_tab.currency_input.setText("HUF")
+
+        increment_tab = IncrementTab(user)
+        combo, spin = increment_tab.fields[title_id]
+        combo.setCurrentIndex(combo.findData("percentage"))
+        spin.setValue(4.5)
+
+        with patch("src.ui.pages.settings._information", return_value=None):
+            salary_tab._save()
+            increment_tab._save()
+
+        with db.SessionLocal() as session:
+            updated = session.query(db.Title).filter_by(id=title_id).one()
+            self.assertEqual(updated.name, "Entry Track")
+            self.assertEqual(updated.base_salary_min, 2200)
+            self.assertEqual(updated.base_salary_max, 2900)
+            self.assertEqual(updated.currency, "HUF")
+            self.assertEqual(updated.annual_increment_type, "percentage")
+            self.assertEqual(updated.annual_increment_value, 4.5)
+            updated.name = "L7"
+            updated.label = "Entry Level"
+            updated.base_salary_min = 2000
+            updated.base_salary_max = 2800
+            updated.currency = "EUR"
+            updated.annual_increment_type = "percentage"
+            updated.annual_increment_value = 3.0
+            session.commit()
 
     def test_history_tables_render_only_one_page(self):
         from datetime import datetime

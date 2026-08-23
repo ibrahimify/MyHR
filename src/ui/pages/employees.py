@@ -38,6 +38,17 @@ import json
 
 DEGREE_OPTIONS = ["BSc", "MSc", "PhD", "Other"]
 STATUS_OPTIONS = ["active", "inactive", "on_leave", "terminated"]
+
+
+def _title_sort_key(title):
+    name = title.name if title else ""
+    if name == "Other":
+        return (2, 0)
+    if name.startswith("L") and name[1:].isdigit():
+        return (0, -int(name[1:]))
+    return (1, name)
+
+
 COMBO_STYLE = """
 QComboBox {
     border: 1px solid #e5e7eb;
@@ -948,14 +959,15 @@ class AddEmployeeView(QWidget):
         row.addLayout(dl)
         ll = QVBoxLayout()
         ll.addWidget(self._lbl(t("auto_level")))
-        self.level_display = QLabel("L7")
+        self.level_display = QLabel(self._starting_level_label("BSc"))
         self.level_display.setFixedHeight(44)
         self.level_display.setAlignment(Qt.AlignCenter)
         self.level_display.setStyleSheet("background: #eff6ff; color: #2563eb; border-radius: 8px; font-size: 16px; font-weight: bold; border: 1px solid #bfdbfe;")
         ll.addWidget(self.level_display)
         row.addLayout(ll)
         dcl.addLayout(row)
-        dcl.addWidget(self._lbl(t("level_rule"), color="#9ca3af", size=11))
+        self.level_rule_label = self._lbl(t("level_rule_dynamic"), color="#9ca3af", size=11)
+        dcl.addWidget(self.level_rule_label)
         left.addWidget(deg_card)
 
         employment_card = self._section_card(t("employment_info"), [
@@ -1007,12 +1019,9 @@ class AddEmployeeView(QWidget):
         rc.setContentsMargins(24, 22, 24, 22)
         rc.setSpacing(10)
         rc.addWidget(self._lbl(t("level_assignment_rules"), bold=True, size=16, color="#1e40af"))
-        for line in [
-            t("phd_starts_l5"),
-            t("msc_starts_l6"),
-            t("bsc_starts_l7"),
-            t("other_stays_other"),
-        ]:
+        self.assignment_rules_layout = rc
+        self.assignment_rule_rows = []
+        for line in self._assignment_rule_lines():
             row = QHBoxLayout()
             icon = QLabel()
             icon.setFixedSize(14, 14)
@@ -1023,6 +1032,7 @@ class AddEmployeeView(QWidget):
             row.addWidget(l)
             row.addStretch()
             rc.addLayout(row)
+            self.assignment_rule_rows.append(l)
         org_card = QFrame()
         org_card.setObjectName("EmployeeCard")
         org_card.setStyleSheet(EMP_CARD_SS)
@@ -1129,8 +1139,9 @@ class AddEmployeeView(QWidget):
             elif isinstance(widget, QTextEdit): widget.clear()
             elif isinstance(widget, QDateEdit): widget.setDate(QDate.currentDate())
         self.degree_combo.setCurrentIndex(0)
-        self.level_display.setText("L7")
+        self.level_display.setText(self._starting_level_label(self.degree_combo.currentText()))
         self.status_combo.setCurrentIndex(0)
+        self._refresh_assignment_rules()
         self._load_org_units()
         self._load_managers()
         self._refresh_salary_guidelines()
@@ -1138,7 +1149,7 @@ class AddEmployeeView(QWidget):
 
     def _on_degree_changed(self, degree):
         level_name = degree_to_title_name(degree)
-        self.level_display.setText(t("other_misc") if level_name == "Other" else level_name)
+        self.level_display.setText(self._starting_level_label(degree))
         if level_name == "Other":
             self.level_display.setStyleSheet("background: #eff6ff; color: #2563eb; border-radius: 8px; font-size: 16px; font-weight: bold; border: 1px solid #bfdbfe;")
         else:
@@ -1146,6 +1157,24 @@ class AddEmployeeView(QWidget):
         self._load_org_units()
         self._load_managers()
         self._update_salary_warning()
+
+    def _starting_level_label(self, degree):
+        level_name = degree_to_title_name(degree)
+        return t("other_misc") if level_name == "Other" else level_name
+
+    def _assignment_rule_lines(self):
+        return [
+            t("degree_starts_at_level", degree="PhD", level=self._starting_level_label("PhD")),
+            t("degree_starts_at_level", degree="MSc", level=self._starting_level_label("MSc")),
+            t("degree_starts_at_level", degree="BSc", level=self._starting_level_label("BSc")),
+            t("other_stays_other"),
+        ]
+
+    def _refresh_assignment_rules(self):
+        if not hasattr(self, "assignment_rule_rows"):
+            return
+        for label, text in zip(self.assignment_rule_rows, self._assignment_rule_lines()):
+            label.setText(text)
 
     def _selected_title(self, session):
         return session.query(Title).filter_by(name=degree_to_title_name(self.degree_combo.currentText())).first()
@@ -1160,8 +1189,7 @@ class AddEmployeeView(QWidget):
         session = get_session()
         try:
             titles = session.query(Title).all()
-            order = {"L7": 0, "L6": 1, "L5": 2, "L4": 3, "L3": 4, "L2": 5, "L1": 6, "Other": 7}
-            for title in sorted(titles, key=lambda item: order.get(item.name, 99)):
+            for title in sorted(titles, key=_title_sort_key):
                 label = display_title_name(title)
                 line = f"{label}: {title.currency or 'EUR'} {title.base_salary_min:,.0f} to {title.base_salary_max:,.0f}"
                 l = QLabel(line)

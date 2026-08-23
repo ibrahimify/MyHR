@@ -658,7 +658,7 @@ class LevelManagementTab(QWidget):
                 item = self.table.item(row_index, badge_col)
                 if item:
                     item.setText("")
-            self.table.setCellWidget(row_index, 0, _pill_cell(row["values"][0], "#1d4ed8", "#dbeafe"))
+            self.table.setCellWidget(row_index, 0, _pill_cell(row["values"][0], "#1d4ed8", "#dbeafe", align=Qt.AlignCenter, min_width=76, fixed_width=True))
             self.table.setCellWidget(row_index, 4, _pill_cell(row["values"][4], "#047857", "#dcfce7"))
             self.table.setCellWidget(row_index, 5, _pill_cell(row["values"][5], "#1d4ed8", "#dbeafe", align=Qt.AlignCenter))
             self.table.setCellWidget(row_index, 7, _pill_cell(row["values"][7], "#047857", "#dcfce7"))
@@ -676,7 +676,7 @@ class LevelManagementTab(QWidget):
             return
         available = max(860, self.table.viewport().width() - 2)
         compact = {
-            0: 96,
+            0: 112,
             2: 78,
             4: 112,
             5: 96,
@@ -1156,7 +1156,7 @@ class SalaryTab(QWidget):
         fields.setColumnStretch(0, 1)
         fields.setColumnStretch(2, 1)
         layout.addLayout(fields)
-        self.fields[title.name] = (min_spin, max_spin)
+        self.fields[title.id] = (min_spin, max_spin)
         return card
 
     def _on_currency_changed(self, value):
@@ -1177,8 +1177,8 @@ class SalaryTab(QWidget):
         session = get_session()
         try:
             for title in session.query(Title).all():
-                if title.name in self.fields:
-                    min_spin, max_spin = self.fields[title.name]
+                if title.id in self.fields:
+                    min_spin, max_spin = self.fields[title.id]
                     min_spin.setValue(title.base_salary_min)
                     max_spin.setValue(title.base_salary_max)
                     self.currency_input.setText(title.currency or "EUR")
@@ -1190,9 +1190,12 @@ class SalaryTab(QWidget):
         session = get_session()
         try:
             currency = self.currency_input.text().strip() or "EUR"
-            for level, (min_spin, max_spin) in self.fields.items():
-                title = session.query(Title).filter_by(name=level).first()
+            for title_id, (min_spin, max_spin) in self.fields.items():
+                title = session.query(Title).filter_by(id=title_id).first()
                 if title:
+                    if min_spin.value() > max_spin.value():
+                        _warning(self, t("warning"), t("salary_min_max_warning"))
+                        return
                     title.base_salary_min = min_spin.value()
                     title.base_salary_max = max_spin.value()
                     title.currency = currency
@@ -1380,14 +1383,14 @@ class IncrementTab(QWidget):
         fields.setColumnStretch(0, 1)
         fields.setColumnStretch(1, 1)
         layout.addLayout(fields)
-        self.fields[title.name] = (type_combo, value_spin)
+        self.fields[title.id] = (type_combo, value_spin)
         return card
 
     def _load(self):
         session = get_session()
         try:
-            for level, (combo, spin) in self.fields.items():
-                title = session.query(Title).filter_by(name=level).first()
+            for title_id, (combo, spin) in self.fields.items():
+                title = session.query(Title).filter_by(id=title_id).first()
                 if title:
                     index = combo.findData(title.annual_increment_type)
                     if index >= 0:
@@ -1399,8 +1402,8 @@ class IncrementTab(QWidget):
     def _save(self):
         session = get_session()
         try:
-            for level, (combo, spin) in self.fields.items():
-                title = session.query(Title).filter_by(name=level).first()
+            for title_id, (combo, spin) in self.fields.items():
+                title = session.query(Title).filter_by(id=title_id).first()
                 if title:
                     title.annual_increment_type = combo.currentData()
                     title.annual_increment_value = spin.value()
@@ -2308,7 +2311,7 @@ def _set_tooltip_item(table, row, col, text):
     table.setItem(row, col, item)
 
 
-def _pill_cell(text, color, background, bold=False, align=Qt.AlignLeft):
+def _pill_cell(text, color, background, bold=False, align=Qt.AlignLeft, min_width=None, fixed_width=False):
     cell = QWidget()
     cell.setStyleSheet("background: transparent; border: none;")
     layout = QHBoxLayout(cell)
@@ -2326,7 +2329,11 @@ def _pill_cell(text, color, background, bold=False, align=Qt.AlignLeft):
         f"font-size: 13px; font-weight: {'900' if bold else '500'}; padding: 3px 10px;"
     )
     label.setMinimumHeight(26)
-    label.setMinimumWidth(max(44, len(str(text)) * 9 + 20))
+    computed_width = max(44, len(str(text)) * 10 + 32)
+    width = max(min_width or 0, computed_width)
+    label.setMinimumWidth(width)
+    if fixed_width:
+        label.setFixedWidth(width)
     if align == Qt.AlignCenter:
         label.setMinimumWidth(max(label.minimumWidth(), 44))
     layout.addWidget(label)
