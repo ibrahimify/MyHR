@@ -139,6 +139,81 @@ class DashboardSmokeTests(unittest.TestCase):
             updated.annual_increment_value = 3.0
             session.commit()
 
+    def test_promotion_rules_edit_custom_targets_and_reject_cycles(self):
+        from src.ui.pages.settings import SettingsPromotionTab
+
+        with db.SessionLocal() as session:
+            admin = session.query(db.SystemUser).filter_by(username="admin").one()
+            l7 = session.query(db.Title).filter_by(name="L7").one()
+            l6 = session.query(db.Title).filter_by(name="L6").one()
+            l5 = session.query(db.Title).filter_by(name="L5").one()
+            l4 = session.query(db.Title).filter_by(name="L4").one()
+            l6.name = "LL6"
+            l6.label = "Custom Mid"
+            ids = {
+                "l7": l7.id,
+                "l6": l6.id,
+                "l5": l5.id,
+                "l4": l4.id,
+            }
+            session.commit()
+            user = SimpleNamespace(id=admin.id, username=admin.username, role=admin.role, full_name=admin.full_name)
+
+        try:
+            tab = SettingsPromotionTab(user)
+            l7_target = tab.fields[ids["l7"]]["target"]
+            l6_index = l7_target.findData(ids["l6"])
+            self.assertGreaterEqual(l6_index, 0)
+            self.assertIn("LL6", l7_target.itemText(l6_index))
+
+            tab.fields[ids["l7"]]["months"].setValue(42)
+            tab.fields[ids["l7"]]["salary"].setValue(22.0)
+
+            with patch("src.ui.pages.settings._information", return_value=None):
+                tab._save()
+
+            with db.SessionLocal() as session:
+                rule = session.query(db.PromotionRule).filter_by(from_title_id=ids["l7"]).one()
+                target = session.query(db.Title).filter_by(id=ids["l6"]).one()
+                self.assertEqual(rule.to_title_id, ids["l6"])
+                self.assertEqual(rule.base_months, 42)
+                self.assertEqual(target.promotion_salary_increase_pct, 22.0)
+
+            l7_target = tab.fields[ids["l7"]]["target"]
+            l5_index = l7_target.findData(ids["l5"])
+            self.assertGreaterEqual(l5_index, 0)
+            l7_target.setCurrentIndex(l5_index)
+            with patch("src.ui.pages.settings._warning", return_value=None) as warning:
+                tab._save()
+            warning.assert_called_once()
+
+            tab._load()
+            l6_target = tab.fields[ids["l6"]]["target"]
+            l7_index = l6_target.findData(ids["l7"])
+            self.assertGreaterEqual(l7_index, 0)
+            l6_target.setCurrentIndex(l7_index)
+            with patch("src.ui.pages.settings._warning", return_value=None) as warning:
+                tab._save()
+            warning.assert_called_once()
+
+            with db.SessionLocal() as session:
+                l7_rule = session.query(db.PromotionRule).filter_by(from_title_id=ids["l7"]).one()
+                l6_rule = session.query(db.PromotionRule).filter_by(from_title_id=ids["l6"]).one()
+                self.assertEqual(l7_rule.to_title_id, ids["l6"])
+                self.assertEqual(l6_rule.to_title_id, ids["l5"])
+        finally:
+            with db.SessionLocal() as session:
+                l6 = session.query(db.Title).filter_by(id=ids["l6"]).one()
+                l5 = session.query(db.Title).filter_by(id=ids["l5"]).one()
+                l6.name = "L6"
+                l6.label = "Mid Level"
+                l6.promotion_salary_increase_pct = 20.0
+                l5.promotion_salary_increase_pct = 25.0
+                l7_rule = session.query(db.PromotionRule).filter_by(from_title_id=ids["l7"]).one()
+                l7_rule.to_title_id = ids["l6"]
+                l7_rule.base_months = 36
+                session.commit()
+
     def test_history_tables_render_only_one_page(self):
         from datetime import datetime
 

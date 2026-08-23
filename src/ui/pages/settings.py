@@ -288,8 +288,8 @@ class PolicySummaryTab(QWidget):
 
         session = get_session()
         try:
-            titles = session.query(Title).all()
-            titles.sort(key=_level_sort_key)
+            titles = _ordered_titles(session)
+            order_map = _promotion_order_map(session)
             title_counts = {
                 title_id: count for title_id, count in
                 session.query(Employee.title_id, func.count(Employee.id))
@@ -298,7 +298,7 @@ class PolicySummaryTab(QWidget):
                 .all()
             }
             rules = session.query(PromotionRule).all()
-            rules.sort(key=lambda rule: _level_sort_key(rule.from_title))
+            rules.sort(key=lambda rule: order_map.get(rule.from_title_id, _level_sort_key(rule.from_title)))
 
             currency = titles[0].currency if titles else "EUR"
             currencies = sorted({title.currency for title in titles if title.currency})
@@ -621,8 +621,7 @@ class LevelManagementTab(QWidget):
     def refresh(self):
         session = get_session()
         try:
-            titles = session.query(Title).all()
-            titles.sort(key=_level_sort_key)
+            titles = _ordered_titles(session)
             rules_by_from = {rule.from_title_id: rule for rule in session.query(PromotionRule).all()}
             rows = []
             for title in titles:
@@ -1249,19 +1248,29 @@ class SettingsPromotionTab(QWidget):
 
         session = get_session()
         try:
+            titles = _ordered_titles(session)
+            target_titles = [title for title in titles if title.name != "Other"]
+            rules_by_from = {
+                rule.from_title_id: rule
+                for rule in session.query(PromotionRule).all()
+            }
             rows = []
-            for rule in session.query(PromotionRule).all():
+            for title in target_titles:
+                rule = rules_by_from.get(title.id)
                 rows.append({
-                    "id": rule.id,
-                    "from": rule.from_title.name,
-                    "to": rule.to_title.name,
-                    "base_months": rule.base_months,
-                    "salary_increase": rule.to_title.promotion_salary_increase_pct,
+                    "id": rule.id if rule else None,
+                    "from_id": title.id,
+                    "from": title.name,
+                    "from_label": title.label,
+                    "to_id": rule.to_title_id if rule else None,
+                    "to": rule.to_title.name if rule else t("no_promotion_target"),
+                    "base_months": rule.base_months if rule else 36,
+                    "salary_increase": rule.to_title.promotion_salary_increase_pct if rule else 0.0,
+                    "target_titles": target_titles,
                 })
         finally:
             session.close()
 
-        rows.sort(key=lambda row: _level_sort_key(row["from"]))
         for row in rows:
             self.rules_list.addWidget(self._rule_card(row))
 
@@ -1281,40 +1290,116 @@ class SettingsPromotionTab(QWidget):
         icon.setPixmap(qta.icon("fa5s.chart-line", color=BLUE).pixmap(17, 17))
         title = QLabel(t("level_to_level", from_level=row["from"], to_level=row["to"]))
         title.setStyleSheet(f"font-size: 16px; font-weight: 800; color: {TEXT}; background: transparent;")
+        subtitle = QLabel(row["from_label"])
+        subtitle.setStyleSheet(f"font-size: 12px; color: {MUTED}; background: transparent;")
+        text = QVBoxLayout()
+        text.setSpacing(2)
+        text.addWidget(title)
+        text.addWidget(subtitle)
         title_row.addWidget(icon)
-        title_row.addWidget(title)
+        title_row.addLayout(text)
         title_row.addStretch()
         layout.addLayout(title_row)
 
         grid = QGridLayout()
         grid.setHorizontalSpacing(18)
         grid.setVerticalSpacing(8)
+        target_combo = QComboBox()
+        target_combo.addItem(t("no_promotion_target"), None)
+        for target in row["target_titles"]:
+            if target.id != row["from_id"]:
+                target_combo.addItem(_level_option_label(target), target.id)
+        target_index = target_combo.findData(row["to_id"])
+        if target_index >= 0:
+            target_combo.setCurrentIndex(target_index)
+        _style_combo(target_combo)
+        target_combo.setMinimumWidth(360)
         months = _spin(1, 120, row["base_months"])
         salary = _percent_spin(row["salary_increase"])
-        grid.addWidget(_label(t("base_track_duration_months")), 0, 0)
-        grid.addWidget(_label(t("base_salary_increase")), 0, 1)
-        grid.addWidget(months, 1, 0)
-        grid.addWidget(salary, 1, 1)
-        grid.addWidget(_hint(t("starting_point_for_race")), 2, 0)
-        grid.addWidget(_hint(t("upon_promotion_to_next")), 2, 1)
-        grid.setColumnStretch(0, 1)
+        months.setMinimumWidth(180)
+        salary.setMinimumWidth(180)
+        def update_enabled():
+            enabled = target_combo.currentData() is not None
+            months.setEnabled(enabled)
+            salary.setEnabled(enabled)
+        target_combo.currentIndexChanged.connect(lambda *_: update_enabled())
+        update_enabled()
+
+        grid.addWidget(_label(t("promotion_target")), 0, 0)
+        grid.addWidget(_label(t("base_track_duration")), 0, 1)
+        grid.addWidget(_label(t("base_salary_increase")), 0, 2)
+        grid.addWidget(target_combo, 1, 0)
+        grid.addWidget(months, 1, 1)
+        grid.addWidget(salary, 1, 2)
+        grid.addWidget(_hint(t("promotion_rule_no_target_hint")), 2, 0)
+        grid.addWidget(_hint(t("starting_point_for_race")), 2, 1)
+        grid.addWidget(_hint(t("upon_promotion_to_next")), 2, 2)
+        grid.setColumnStretch(0, 3)
         grid.setColumnStretch(1, 1)
+        grid.setColumnStretch(2, 1)
         layout.addLayout(grid)
 
-        self.fields[row["id"]] = (months, salary)
+        self.fields[row["from_id"]] = {
+            "rule_id": row["id"],
+            "target": target_combo,
+            "months": months,
+            "salary": salary,
+        }
         return card
 
     def _save(self):
         session = get_session()
         try:
-            for rule_id, (months_spin, salary_spin) in self.fields.items():
-                rule = session.query(PromotionRule).filter_by(id=rule_id).first()
+            titles = {title.id: title for title in session.query(Title).all()}
+            proposed = {}
+            used_targets = {}
+            for from_title_id, controls in self.fields.items():
+                target_id = controls["target"].currentData()
+                if target_id is None:
+                    proposed[from_title_id] = None
+                    continue
+                if target_id == from_title_id:
+                    _warning(self, t("warning"), t("promotion_target_same_level"))
+                    return
+                target = titles.get(target_id)
+                if not target or target.name == "Other":
+                    _warning(self, t("warning"), t("promotion_target_other_forbidden"))
+                    return
+                if target_id in used_targets:
+                    _warning(self, t("warning"), t("promotion_target_duplicate"))
+                    return
+                used_targets[target_id] = from_title_id
+                proposed[from_title_id] = target_id
+
+            if _has_promotion_cycle(proposed):
+                _warning(self, t("warning"), t("promotion_target_cycle_error"))
+                return
+
+            for from_title_id, controls in self.fields.items():
+                target_id = proposed[from_title_id]
+                rule_id = controls["rule_id"]
+                rule = session.query(PromotionRule).filter_by(id=rule_id).first() if rule_id else None
+                if target_id is None:
+                    if rule:
+                        session.delete(rule)
+                    continue
                 if rule:
-                    rule.base_months = months_spin.value()
-                    rule.to_title.promotion_salary_increase_pct = salary_spin.value()
+                    rule.to_title_id = target_id
+                    rule.base_months = controls["months"].value()
+                    rule.is_active = True
+                else:
+                    rule = PromotionRule(
+                        from_title_id=from_title_id,
+                        to_title_id=target_id,
+                        base_months=controls["months"].value(),
+                        is_active=True,
+                    )
+                    session.add(rule)
+                titles[target_id].promotion_salary_increase_pct = controls["salary"].value()
             log_action(session, action="settings.promotion_rules", performed_by_id=self.user.id, description="Promotion settings updated")
             session.commit()
             _information(self, t("success"), t("promotion_settings_saved"))
+            self._load()
         except Exception as exc:
             session.rollback()
             _critical(self, t("error"), str(exc))
@@ -2111,6 +2196,7 @@ def _label(text):
 
 def _hint(text):
     label = QLabel(text)
+    label.setWordWrap(True)
     label.setStyleSheet("font-size: 13px; color: #64748b; background: transparent;")
     return label
 
@@ -2191,11 +2277,69 @@ def _badge_icon(icon_name, color, background):
 def _titles():
     session = get_session()
     try:
-        titles = session.query(Title).all()
-        titles.sort(key=_level_sort_key)
-        return titles
+        return _ordered_titles(session)
     finally:
         session.close()
+
+
+def _ordered_titles(session):
+    titles = session.query(Title).all()
+    order_map = _promotion_order_map(session)
+    titles.sort(key=lambda title: order_map.get(title.id, _level_sort_key(title)))
+    return titles
+
+
+def _promotion_order_map(session):
+    titles = session.query(Title).all()
+    title_by_id = {title.id: title for title in titles}
+    non_other_ids = [title.id for title in titles if title.name != "Other"]
+    links = {}
+    incoming = set()
+    for rule in session.query(PromotionRule).all():
+        if rule.from_title_id in non_other_ids and rule.to_title_id in non_other_ids:
+            links[rule.from_title_id] = rule.to_title_id
+            incoming.add(rule.to_title_id)
+
+    starts = [title_id for title_id in non_other_ids if title_id not in incoming]
+    starts.sort(key=lambda title_id: _level_sort_key(title_by_id[title_id]))
+
+    order = {}
+    visited = set()
+    index = 0
+    for start in starts:
+        current = start
+        while current and current not in visited and current in title_by_id:
+            order[current] = (0, index)
+            visited.add(current)
+            index += 1
+            current = links.get(current)
+
+    remaining = [title_id for title_id in non_other_ids if title_id not in visited]
+    remaining.sort(key=lambda title_id: _level_sort_key(title_by_id[title_id]))
+    for title_id in remaining:
+        order[title_id] = (1, index, _level_sort_key(title_by_id[title_id]))
+        index += 1
+
+    for title in titles:
+        if title.name == "Other":
+            order[title.id] = (2, 0)
+    return order
+
+
+def _has_promotion_cycle(mapping):
+    for start in mapping:
+        seen = set()
+        current = start
+        while current in mapping and mapping[current] is not None:
+            if current in seen:
+                return True
+            seen.add(current)
+            current = mapping[current]
+    return False
+
+
+def _level_option_label(title):
+    return f"{title.name} - {title.label}" if title.label else title.name
 
 
 def _level_sort_key(title):
