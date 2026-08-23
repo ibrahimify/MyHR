@@ -862,9 +862,6 @@ class DashboardPage(QWidget):
     def _workforce_timeline(self, session, filter_key, metric):
         buckets = _timeline_buckets(filter_key)
         labels = [label for label, _, _ in buckets]
-        employees = session.query(Employee).filter(Employee.join_date != None).all()
-        promotions = session.query(PromotionHistory.promoted_at).filter(PromotionHistory.promoted_at != None).all()
-        increments = session.query(SalaryIncrementHistory.applied_at).filter(SalaryIncrementHistory.applied_at != None).all()
 
         headcount_values = []
         promotion_values = []
@@ -872,16 +869,25 @@ class DashboardPage(QWidget):
 
         for _, bucket_start, bucket_end in buckets:
             headcount_values.append(
-                sum(
-                    1 for emp in employees
-                    if emp.status == "active" and emp.join_date and emp.join_date < bucket_end
-                )
+                session.query(Employee.id).filter(
+                    Employee.status == "active",
+                    Employee.join_date != None,
+                    Employee.join_date < bucket_end,
+                ).count()
             )
             promotion_values.append(
-                sum(1 for (dt,) in promotions if bucket_start <= dt < bucket_end)
+                session.query(PromotionHistory.id).filter(
+                    PromotionHistory.promoted_at != None,
+                    PromotionHistory.promoted_at >= bucket_start,
+                    PromotionHistory.promoted_at < bucket_end,
+                ).count()
             )
             increment_values.append(
-                sum(1 for (dt,) in increments if bucket_start <= dt < bucket_end)
+                session.query(SalaryIncrementHistory.id).filter(
+                    SalaryIncrementHistory.applied_at != None,
+                    SalaryIncrementHistory.applied_at >= bucket_start,
+                    SalaryIncrementHistory.applied_at < bucket_end,
+                ).count()
             )
 
         options = {

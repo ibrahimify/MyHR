@@ -1,11 +1,13 @@
-"""Organization hierarchy page with Figma-style readable node cards."""
+"""Organization hierarchy page with lazy canvas rendering."""
 
 import qtawesome as qta
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, QRectF, QPointF
+from PySide6.QtGui import QColor, QPainter, QPen, QBrush, QFont, QPainterPath
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
     QScrollArea, QDialog, QFormLayout, QLineEdit, QComboBox, QMessageBox,
-    QTableWidget, QTableWidgetItem, QHeaderView
+    QTableWidget, QTableWidgetItem, QHeaderView, QGraphicsView, QGraphicsScene,
+    QGraphicsItem, QGraphicsPathItem, QGridLayout
 )
 
 from src.core.i18n import t
@@ -14,7 +16,15 @@ from src.database.models import OrgUnit, Employee
 
 
 UNIT_TYPES = ["organization", "division", "department", "unit", "team", "position"]
-TYPE_ORDER_HINT = ["organization", "division", "department", "unit", "team", "position"]
+TYPE_ORDER_HINT = ["organization", "division", "department", "unit", "team", "employee"]
+NEXT_TYPE_LABEL = {
+    "organization": ("division", "divisions"),
+    "division": ("department", "departments"),
+    "department": ("unit", "units"),
+    "unit": ("team", "teams"),
+    "team": ("member", "members"),
+    "position": ("employee", "employees"),
+}
 PARENT_BY_TYPE = {
     "organization": None,
     "division": "organization",
@@ -30,6 +40,7 @@ TYPE_COLORS = {
     "unit": ("#f0fdf4", "#166534", "#bbf7d0", "fa5s.briefcase"),
     "team": ("#f9fafb", "#374151", "#e5e7eb", "fa5s.users"),
     "position": ("#f9fafb", "#6b7280", "#e5e7eb", "fa5s.user-tie"),
+    "employee": ("#f8fafc", "#475569", "#e2e8f0", "fa5s.user-tie"),
 }
 
 INPUT_SS = """
@@ -100,12 +111,152 @@ QPushButton:default {
 """
 
 
+NODE_W = 350
+NODE_H = 98
+H_GAP = 56
+V_GAP = 98
+
+
+class HierarchyCanvasView(QGraphicsView):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setRenderHint(QPainter.Antialiasing)
+        self.setDragMode(QGraphicsView.ScrollHandDrag)
+        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
+        self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.setStyleSheet("""
+            QGraphicsView {
+                background: #f3f4f6;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+            }
+        """)
+
+    def drawBackground(self, painter, rect):
+        painter.fillRect(rect, QColor("#f3f4f6"))
+        painter.setPen(QPen(QColor("#cbd5e1"), 1))
+        spacing = 22
+        left = int(rect.left()) - (int(rect.left()) % spacing)
+        top = int(rect.top()) - (int(rect.top()) % spacing)
+        for x in range(left, int(rect.right()) + spacing, spacing):
+            for y in range(top, int(rect.bottom()) + spacing, spacing):
+                painter.drawPoint(x, y)
+
+    def wheelEvent(self, event):
+        factor = 1.15 if event.angleDelta().y() > 0 else 1 / 1.15
+        current = self.transform().m11()
+        next_scale = current * factor
+        if 0.08 <= next_scale <= 2.5:
+            self.scale(factor, factor)
+
+
+class HierarchyNodeItem(QGraphicsItem):
+    def __init__(self, data, expanded=False, selected=False, callbacks=None):
+        super().__init__()
+        self.data = data
+        self.expanded = expanded
+        self.selected = selected
+        self.callbacks = callbacks or {}
+        self.setAcceptedMouseButtons(Qt.LeftButton)
+        self.setAcceptHoverEvents(True)
+        self.setCursor(Qt.PointingHandCursor)
+        subtitle = data.get("subtitle") or data.get("type", "")
+        self.setToolTip(f"{data.get('name', '-')}\n{subtitle}")
+
+    def boundingRect(self):
+        return QRectF(0, 0, NODE_W, NODE_H)
+
+    def paint(self, painter, option, widget=None):
+        bg, fg, border, _ = TYPE_COLORS.get(
+            self.data.get("type", "team"),
+            ("#f9fafb", "#374151", "#e5e7eb", "fa5s.circle"),
+        )
+        painter.setPen(QPen(QColor("#2563eb" if self.selected else border), 2 if self.selected else 1))
+        painter.setBrush(QBrush(QColor(bg)))
+        painter.drawRoundedRect(self.boundingRect().adjusted(1, 1, -1, -1), 8, 8)
+
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(QColor("#ffffff")))
+        painter.drawRoundedRect(QRectF(14, 18, 34, 34), 8, 8)
+        icon = qta.icon(self._icon_name(), color=fg)
+        painter.drawPixmap(QRectF(21, 25, 20, 20).toRect(), icon.pixmap(20, 20))
+
+        painter.setPen(QColor("#111827"))
+        title_font = QFont()
+        title_font.setPointSize(10)
+        title_font.setBold(True)
+        painter.setFont(title_font)
+        painter.drawText(QRectF(58, 15, 245, 24), Qt.AlignLeft | Qt.AlignVCenter, self._elide(painter, self.data.get("name", "-"), 245))
+
+        painter.setPen(QColor("#4b5563"))
+        meta_font = QFont()
+        meta_font.setPointSize(8)
+        painter.setFont(meta_font)
+        meta = self.data.get("subtitle") or self.data.get("type", "").title()
+        painter.drawText(QRectF(58, 40, 255, 18), Qt.AlignLeft | Qt.AlignVCenter, self._elide(painter, meta, 255))
+
+        count_text = self.data.get("count_text", "")
+        if count_text:
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(QColor("#ffffff")))
+            painter.drawRoundedRect(QRectF(58, 66, 132, 18), 6, 6)
+            painter.setPen(QColor(fg))
+            painter.drawText(QRectF(58, 66, 132, 18), Qt.AlignCenter, count_text)
+
+        if self.data.get("has_children"):
+            painter.setPen(QPen(QColor("#cbd5e1"), 1))
+            painter.setBrush(QBrush(QColor("#ffffff")))
+            self.toggle_rect = QRectF(NODE_W - 38, 37, 24, 24)
+            painter.drawRoundedRect(self.toggle_rect, 12, 12)
+            painter.setPen(QPen(QColor("#374151"), 1.6, Qt.SolidLine, Qt.RoundCap))
+            center = self.toggle_rect.center()
+            painter.drawLine(QPointF(center.x() - 5, center.y()), QPointF(center.x() + 5, center.y()))
+            if not self.expanded:
+                painter.drawLine(QPointF(center.x(), center.y() - 5), QPointF(center.x(), center.y() + 5))
+        else:
+            self.toggle_rect = QRectF()
+
+    def mousePressEvent(self, event):
+        if self.toggle_rect.contains(event.pos()) and self.data.get("has_children"):
+            callback = self.callbacks.get("toggle")
+            if callback:
+                callback(self.data["id"], self.data.get("kind", "unit"))
+        else:
+            callback = self.callbacks.get("select")
+            if callback:
+                callback(self.data)
+        event.accept()
+
+    def _icon_name(self):
+        if self.data.get("kind") == "employee":
+            return "fa5s.user-tie"
+        return {
+            "organization": "fa5s.building",
+            "division": "fa5s.layer-group",
+            "department": "fa5s.sitemap",
+            "unit": "fa5s.briefcase",
+            "team": "fa5s.users",
+            "position": "fa5s.user-tie",
+            "employee": "fa5s.user-tie",
+        }.get(self.data.get("type"), "fa5s.circle")
+
+    def _elide(self, painter, text, width):
+        return painter.fontMetrics().elidedText(str(text), Qt.ElideRight, int(width))
+
+
 class HierarchyPage(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
-        self.units_data = []
-        self.collapsed_units = set()
+        self.scene = QGraphicsScene(self)
+        self.expanded = set()
+        self.children_cache = {}
+        self.selected_node = None
+        self.node_items = {}
+        self.edge_items = []
+        self._did_initial_expand = False
         self.setObjectName("HierarchyPage")
         self.setStyleSheet("QWidget#HierarchyPage { background: #f9fafb; }")
         self._build()
@@ -113,320 +264,615 @@ class HierarchyPage(QWidget):
 
     def _build(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(0, 0, 0, 0)
-        root.setSpacing(0)
+        root.setContentsMargins(40, 40, 40, 40)
+        root.setSpacing(18)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("border: none; background: #f9fafb;")
-        content = QWidget()
-        content.setStyleSheet("background: #f9fafb;")
-        self.layout = QVBoxLayout(content)
-        self.layout.setContentsMargins(40, 40, 40, 40)
-        self.layout.setSpacing(0)
-
+        header = QHBoxLayout()
+        title_col = QVBoxLayout()
+        title_col.setSpacing(6)
         title = QLabel(t("hierarchy_title"))
         title.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827; background: transparent;")
         subtitle = QLabel(t("hierarchy_subtitle"))
         subtitle.setStyleSheet("font-size: 16px; color: #4b5563; background: transparent;")
-        self.layout.addWidget(title)
-        self.layout.addSpacing(6)
-        self.layout.addWidget(subtitle)
-        self.layout.addSpacing(40)
+        title_col.addWidget(title)
+        title_col.addWidget(subtitle)
+        header.addLayout(title_col, 1)
 
-        controls = QFrame()
-        controls.setObjectName("HierarchyControls")
-        controls.setStyleSheet("QFrame#HierarchyControls { background: white; border-radius: 8px; border: 1px solid #e5e7eb; }")
-        cl = QHBoxLayout(controls)
-        cl.setContentsMargins(20, 16, 20, 16)
-        cl.setSpacing(16)
+        add_root = QPushButton("  " + t("add_unit"))
+        add_root.setIcon(qta.icon("fa5s.plus", color="white"))
+        add_root.setIconSize(QSize(14, 14))
+        add_root.setCursor(Qt.PointingHandCursor)
+        add_root.setFixedHeight(42)
+        add_root.setStyleSheet(_primary_btn())
+        add_root.clicked.connect(lambda: self._add_unit())
+        header.addWidget(add_root)
+        root.addLayout(header)
+
+        toolbar = QFrame()
+        toolbar.setObjectName("HierarchyToolbar")
+        toolbar.setStyleSheet("QFrame#HierarchyToolbar { background: white; border: 1px solid #e5e7eb; border-radius: 8px; }")
+        tools = QHBoxLayout(toolbar)
+        tools.setContentsMargins(16, 14, 16, 14)
+        tools.setSpacing(10)
+
         self.search = QLineEdit()
         self.search.setPlaceholderText(t("search_hierarchy"))
-        self.search.setFixedHeight(44)
+        self.search.setFixedHeight(40)
         self.search.setStyleSheet(INPUT_SS)
         self.search.addAction(qta.icon("fa5s.search", color="#9ca3af"), QLineEdit.LeadingPosition)
-        self.search.textChanged.connect(self.refresh)
-        cl.addWidget(self.search, 1)
-        add_dept = QPushButton("  " + t("add_department"))
-        add_dept.setIcon(qta.icon("fa5s.building", color="#111827"))
-        add_dept.setIconSize(QSize(14, 14))
-        add_dept.setCursor(Qt.PointingHandCursor)
-        add_dept.setFixedHeight(44)
-        add_dept.setStyleSheet(_outline_btn())
-        add_dept.clicked.connect(lambda: self._add_unit("department"))
-        add_unit = QPushButton("  " + t("add_unit"))
-        add_unit.setIcon(qta.icon("fa5s.plus", color="white"))
-        add_unit.setIconSize(QSize(14, 14))
-        add_unit.setCursor(Qt.PointingHandCursor)
-        add_unit.setFixedHeight(44)
-        add_unit.setStyleSheet(_primary_btn())
-        add_unit.clicked.connect(self._add_unit)
-        cl.addWidget(add_dept)
-        cl.addWidget(add_unit)
-        self.layout.addWidget(controls)
-        self.layout.addSpacing(28)
+        self.search.returnPressed.connect(self._run_search)
+        self.search.textChanged.connect(self._on_search_text_changed)
+        tools.addWidget(self.search, 1)
 
-        legend = QHBoxLayout()
-        legend.setSpacing(18)
-        for kind in TYPE_ORDER_HINT:
-            bg, fg, border, icon = TYPE_COLORS[kind]
-            legend.addWidget(_legend(kind.title(), bg, fg, icon))
-        legend.addStretch()
-        self.layout.addLayout(legend)
-        self.layout.addSpacing(14)
+        search_btn = QPushButton(t("search"))
+        search_btn.setIcon(qta.icon("fa5s.search", color="#111827"))
+        search_btn.setIconSize(QSize(13, 13))
+        search_btn.setFixedHeight(40)
+        search_btn.setCursor(Qt.PointingHandCursor)
+        search_btn.setStyleSheet(_outline_btn())
+        search_btn.clicked.connect(self._run_search)
+        tools.addWidget(search_btn)
+        root.addWidget(toolbar)
 
-        hint = QHBoxLayout()
-        hint.setSpacing(8)
-        for i, kind in enumerate(TYPE_ORDER_HINT):
-            bg, fg, border, icon = TYPE_COLORS[kind]
-            hint.addWidget(_hint_pill(kind.title(), bg, fg, border, icon))
-            if i < len(TYPE_ORDER_HINT) - 1:
+        structure = QFrame()
+        structure.setObjectName("HierarchyStructureHint")
+        structure.setStyleSheet("QFrame#HierarchyStructureHint { background: transparent; border: none; }")
+        structure_row = QHBoxLayout(structure)
+        structure_row.setContentsMargins(2, 0, 2, 0)
+        structure_row.setSpacing(8)
+        for index, unit_type in enumerate(TYPE_ORDER_HINT):
+            structure_row.addWidget(_hierarchy_step(unit_type))
+            if index < len(TYPE_ORDER_HINT) - 1:
                 arrow = QLabel()
-                arrow.setFixedSize(16, 16)
-                arrow.setAlignment(Qt.AlignCenter)
-                arrow.setPixmap(qta.icon("fa5s.chevron-right", color="#9ca3af").pixmap(10, 10))
+                arrow.setPixmap(qta.icon("fa5s.chevron-right", color="#9ca3af").pixmap(9, 9))
                 arrow.setStyleSheet("background: transparent; border: none;")
-                hint.addWidget(arrow)
-        hint.addStretch()
-        self.layout.addLayout(hint)
-        self.layout.addSpacing(28)
+                structure_row.addWidget(arrow)
+        structure_row.addStretch()
+        root.addWidget(structure)
 
-        self.tree_container = QFrame()
-        self.tree_container.setObjectName("HierarchyTree")
-        self.tree_container.setStyleSheet("QFrame#HierarchyTree { background: white; border-radius: 8px; border: 1px solid #e5e7eb; }")
-        self.tree_layout = QVBoxLayout(self.tree_container)
-        self.tree_layout.setContentsMargins(28, 28, 28, 28)
-        self.tree_layout.setSpacing(14)
-        self.layout.addWidget(self.tree_container)
-        self.layout.addStretch()
+        body = QHBoxLayout()
+        body.setSpacing(18)
+        self.view = HierarchyCanvasView()
+        self.view.setScene(self.scene)
+        self.view.setMinimumHeight(620)
 
-        scroll.setWidget(content)
-        root.addWidget(scroll)
+        canvas_shell = QWidget()
+        canvas_shell.setStyleSheet("background: transparent;")
+        canvas_grid = QGridLayout(canvas_shell)
+        canvas_grid.setContentsMargins(0, 0, 0, 0)
+        canvas_grid.setSpacing(0)
+        canvas_grid.addWidget(self.view, 0, 0)
+        canvas_controls = QFrame()
+        canvas_controls.setObjectName("CanvasControls")
+        canvas_controls.setStyleSheet("""
+            QFrame#CanvasControls {
+                background: rgba(255,255,255,235);
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                margin-top: 10px;
+                margin-right: 10px;
+            }
+        """)
+        controls_row = QHBoxLayout(canvas_controls)
+        controls_row.setContentsMargins(8, 8, 8, 8)
+        controls_row.setSpacing(6)
+        for label, icon, handler in [
+            ("Fit", "fa5s.expand-arrows-alt", self._fit_canvas),
+            ("Reset", "fa5s.undo", self._reset_canvas),
+            ("-", None, lambda: self._zoom(0.85)),
+            ("+", None, lambda: self._zoom(1.15)),
+        ]:
+            btn = QPushButton(label)
+            if icon:
+                btn.setIcon(qta.icon(icon, color="#111827"))
+                btn.setIconSize(QSize(12, 12))
+            btn.setFixedHeight(32)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setStyleSheet(_canvas_control_btn())
+            btn.clicked.connect(handler)
+            controls_row.addWidget(btn)
+        canvas_grid.addWidget(canvas_controls, 0, 0, alignment=Qt.AlignTop | Qt.AlignRight)
+        body.addWidget(canvas_shell, 1)
+
+        self.inspector = self._build_inspector()
+        body.addWidget(self.inspector)
+        root.addLayout(body, 1)
+
+    def _build_inspector(self):
+        card = QFrame()
+        card.setFixedWidth(320)
+        card.setObjectName("HierarchyInspector")
+        card.setStyleSheet("""
+            QFrame#HierarchyInspector { background: white; border: 1px solid #e5e7eb; border-radius: 8px; }
+            QFrame#HierarchyInspector QLabel { background: transparent; border: none; }
+        """)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(22, 22, 22, 22)
+        layout.setSpacing(14)
+
+        self.inspector_title = QLabel("Selected Node")
+        self.inspector_title.setWordWrap(True)
+        self.inspector_title.setStyleSheet("font-size: 18px; font-weight: 800; color: #111827;")
+        self.inspector_subtitle = QLabel("Select a unit or employee on the canvas.")
+        self.inspector_subtitle.setWordWrap(True)
+        self.inspector_subtitle.setStyleSheet("font-size: 13px; color: #6b7280;")
+        layout.addWidget(self.inspector_title)
+        layout.addWidget(self.inspector_subtitle)
+
+        self.inspector_meta = QVBoxLayout()
+        self.inspector_meta.setSpacing(10)
+        layout.addLayout(self.inspector_meta)
+
+        self.action_add = QPushButton("  Add Child Unit")
+        self.action_add.setIcon(qta.icon("fa5s.plus", color="white"))
+        self.action_add.setStyleSheet(_primary_btn())
+        self.action_add.clicked.connect(self._add_child_from_selection)
+        self.action_edit = QPushButton("  Edit Unit")
+        self.action_edit.setIcon(qta.icon("fa5s.edit", color="#111827"))
+        self.action_edit.setStyleSheet(_outline_btn())
+        self.action_edit.clicked.connect(self._edit_selected_unit)
+        self.action_view = QPushButton("  View Employees")
+        self.action_view.setIcon(qta.icon("fa5s.user-friends", color="#111827"))
+        self.action_view.setStyleSheet(_outline_btn())
+        self.action_view.clicked.connect(self._view_selected_unit_employees)
+        self.action_delete = QPushButton("  Delete Unit")
+        self.action_delete.setIcon(qta.icon("fa5s.trash-alt", color="#dc2626"))
+        self.action_delete.setStyleSheet(_danger_outline_btn())
+        self.action_delete.clicked.connect(self._delete_selected_unit)
+        for btn in [self.action_add, self.action_edit, self.action_view, self.action_delete]:
+            btn.setFixedHeight(38)
+            btn.setCursor(Qt.PointingHandCursor)
+            layout.addWidget(btn)
+        layout.addStretch()
+        self._sync_inspector()
+        return card
 
     def refresh(self):
-        while self.tree_layout.count():
-            item = self.tree_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+        self.children_cache.clear()
+        self.selected_node = None
+        self._render_initial()
 
+    def _render_initial(self, preserve_view=False):
+        view_state = self._capture_view_state() if preserve_view else None
+        self.scene.clear()
+        self.node_items.clear()
+        self.edge_items.clear()
+        query = self.search.text().strip()
+        if query:
+            self._render_search(query)
+            return
+
+        roots = self._load_children(None)
+        if not roots:
+            self._render_empty(t("no_org_units"))
+            self._sync_inspector()
+            return
+        if not self._did_initial_expand:
+            self.expanded.update(self._node_key(root) for root in roots)
+            self._did_initial_expand = True
+        self._layout_tree(roots)
+        if view_state:
+            self._restore_view_state(view_state)
+        else:
+            self.view.resetTransform()
+            self.view.centerOn(self.scene.itemsBoundingRect().center())
+        self._sync_inspector()
+
+    def _layout_tree(self, roots):
+        self.scene.clear()
+        self.node_items.clear()
+        positioned = []
+        x_cursor = 0
+        for root in roots:
+            width = self._subtree_width(root)
+            self._position_subtree(root, x_cursor + width / 2 - NODE_W / 2, 0, positioned)
+            x_cursor += width + H_GAP
+
+        if not positioned:
+            return
+        min_x = min(x for _, x, _ in positioned)
+        for node, x, y in positioned:
+            self._add_canvas_node(node, x - min_x + 40, y + 40)
+        for node, x, y in positioned:
+            if self._node_key(node) not in self.expanded:
+                continue
+            parent_item = self.node_items.get((node["kind"], node["id"]))
+            child_items = []
+            for child in self._load_children(node):
+                child_item = self.node_items.get((child["kind"], child["id"]))
+                if child_item:
+                    child_items.append(child_item)
+            if parent_item and child_items:
+                self._draw_edges(parent_item, child_items)
+        self.scene.setSceneRect(self.scene.itemsBoundingRect().adjusted(-80, -80, 80, 80))
+
+    def _subtree_width(self, node):
+        if self._node_key(node) not in self.expanded:
+            return NODE_W
+        children = self._load_children(node)
+        if not children:
+            return NODE_W
+        return max(NODE_W, sum(self._subtree_width(child) for child in children) + H_GAP * (len(children) - 1))
+
+    def _position_subtree(self, node, x, y, positioned):
+        positioned.append((node, x, y))
+        if self._node_key(node) not in self.expanded:
+            return
+        children = self._load_children(node)
+        if not children:
+            return
+        total_width = sum(self._subtree_width(child) for child in children) + H_GAP * (len(children) - 1)
+        child_x = x + NODE_W / 2 - total_width / 2
+        for child in children:
+            width = self._subtree_width(child)
+            self._position_subtree(child, child_x + width / 2 - NODE_W / 2, y + NODE_H + V_GAP, positioned)
+            child_x += width + H_GAP
+
+    def _add_canvas_node(self, node, x, y):
+        item = HierarchyNodeItem(
+            node,
+            expanded=self._node_key(node) in self.expanded,
+            selected=self.selected_node and self.selected_node.get("kind") == node["kind"] and self.selected_node.get("id") == node["id"],
+            callbacks={"toggle": self._toggle_node, "select": self._select_node},
+        )
+        item.setPos(QPointF(x, y))
+        self.scene.addItem(item)
+        self.node_items[(node["kind"], node["id"])] = item
+
+    def _draw_edges(self, parent_item, child_items):
+        parent_pos = parent_item.pos()
+        child_centers = [QPointF(item.pos().x() + NODE_W / 2, item.pos().y()) for item in child_items]
+        parent_center = QPointF(parent_pos.x() + NODE_W / 2, parent_pos.y() + NODE_H)
+        trunk_y = parent_center.y() + (child_centers[0].y() - parent_center.y()) / 2
+        path = QPainterPath(parent_center)
+        path.lineTo(QPointF(parent_center.x(), trunk_y))
+        min_x = min(point.x() for point in child_centers)
+        max_x = max(point.x() for point in child_centers)
+        path.moveTo(QPointF(min_x, trunk_y))
+        path.lineTo(QPointF(max_x, trunk_y))
+        for child_center in child_centers:
+            path.moveTo(QPointF(child_center.x(), trunk_y))
+            path.lineTo(child_center)
+        edge = QGraphicsPathItem(path)
+        edge.setPen(QPen(QColor("#94a3b8"), 1.35))
+        edge.setZValue(-1)
+        self.scene.addItem(edge)
+        self.edge_items.append(edge)
+
+    def _draw_edge(self, parent_pos, child_pos):
+        start = QPointF(parent_pos.x() + NODE_W / 2, parent_pos.y() + NODE_H)
+        end = QPointF(child_pos.x() + NODE_W / 2, child_pos.y())
+        mid_y = start.y() + (end.y() - start.y()) / 2
+        path = QPainterPath(start)
+        path.lineTo(QPointF(start.x(), mid_y))
+        path.lineTo(QPointF(end.x(), mid_y))
+        path.lineTo(end)
+        edge = QGraphicsPathItem(path)
+        edge.setPen(QPen(QColor("#94a3b8"), 1.5))
+        edge.setZValue(-1)
+        self.scene.addItem(edge)
+        self.edge_items.append(edge)
+
+    def _node_key(self, node):
+        return (node.get("kind", "unit"), node["id"])
+
+    def _capture_view_state(self):
+        return self.view.transform(), self.view.mapToScene(self.view.viewport().rect().center())
+
+    def _restore_view_state(self, view_state):
+        transform, center = view_state
+        self.view.setTransform(transform)
+        self.view.centerOn(center)
+
+    def _load_children(self, parent):
+        parent_id = None if parent is None else parent["id"]
+        cache_key = ("root", None) if parent is None else self._node_key(parent)
+        if cache_key in self.children_cache:
+            return self.children_cache[cache_key]
         session = get_session()
         try:
-            units = session.query(OrgUnit).all()
-            query = self.search.text().strip().lower() if hasattr(self, "search") else ""
-            unit_ids = [u.id for u in units]
-            employees_by_unit = {unit_id: [] for unit_id in unit_ids}
-            if unit_ids:
-                for emp in session.query(Employee).filter(Employee.org_unit_id.in_(unit_ids)).all():
-                    employees_by_unit.setdefault(emp.org_unit_id, []).append(emp)
-            self.units_data = [{
-                "id": u.id,
-                "name": u.name,
-                "type": u.unit_type,
-                "parent_id": u.parent_id,
-                "head": u.head.full_name if u.head else "Unassigned",
-                "head_position": u.head.position if u.head and u.head.position else "",
-                "emp_count": len(u.employees),
-                "people_count": 0,
-                "search_text": " ".join([
-                    u.name or "",
-                    u.unit_type or "",
-                    u.head.full_name if u.head else "",
-                    u.head.position if u.head and u.head.position else "",
-                    " ".join(e.full_name for e in employees_by_unit.get(u.id, [])),
-                    " ".join(e.position or "" for e in employees_by_unit.get(u.id, [])),
-                ]).lower(),
-            } for u in units]
+            if parent and parent.get("kind") == "employee":
+                employees = (
+                    session.query(Employee)
+                    .filter_by(reports_to_id=parent_id, status="active")
+                    .order_by(Employee.last_name, Employee.first_name)
+                    .all()
+                )
+                data = [self._employee_to_node(session, employee) for employee in employees]
+                self.children_cache[cache_key] = data
+                return data
+            if parent_id is None:
+                organization = session.query(OrgUnit).filter(OrgUnit.unit_type == "organization").order_by(OrgUnit.id).first()
+                if organization:
+                    data = [self._unit_to_node(session, organization)]
+                    self.children_cache[cache_key] = data
+                    return data
+                else:
+                    query = session.query(OrgUnit).filter(OrgUnit.parent_id.is_(None))
+            else:
+                query = session.query(OrgUnit).filter(OrgUnit.parent_id == parent_id)
+            units = query.order_by(OrgUnit.unit_type, OrgUnit.name).all()
+            data = [self._unit_to_node(session, unit) for unit in units]
+            if parent and parent.get("kind") == "unit" and not units:
+                employees = self._leaf_unit_employees(session, parent_id, parent.get("head_employee_id"))
+                data.extend(self._employee_to_node(session, employee) for employee in employees)
+        finally:
+            session.close()
+        self.children_cache[cache_key] = data
+        return data
+
+    def _unit_to_node(self, session, unit):
+        child_count = session.query(OrgUnit.id).filter_by(parent_id=unit.id).count()
+        direct_people = session.query(Employee.id).filter_by(org_unit_id=unit.id, status="active").count()
+        visible_people = self._leaf_unit_employee_count(session, unit) if child_count == 0 else 0
+        head_name = unit.head.full_name if unit.head else "Unassigned"
+        head_position = _display_position(unit.head.position) if unit.head and unit.head.position else unit.unit_type.title()
+        count_text = self._unit_count_text(unit.unit_type, child_count, visible_people)
+        return {
+            "kind": "unit",
+            "id": unit.id,
+            "name": unit.name,
+            "type": unit.unit_type,
+            "parent_id": unit.parent_id,
+            "subtitle": f"{head_name} - {head_position}" if unit.head else head_name,
+            "head": head_name,
+            "head_position": head_position,
+            "head_employee_id": unit.head_employee_id,
+            "child_count": child_count,
+            "direct_people": direct_people,
+            "visible_people": visible_people,
+            "has_children": child_count > 0 or visible_people > 0,
+            "count_text": count_text,
+        }
+
+    def _leaf_unit_employees(self, session, unit_id, head_employee_id):
+        query = session.query(Employee).filter_by(org_unit_id=unit_id, status="active")
+        if head_employee_id:
+            direct_reports = (
+                query
+                .filter(Employee.reports_to_id == head_employee_id)
+                .order_by(Employee.last_name, Employee.first_name)
+                .all()
+            )
+            if direct_reports:
+                return direct_reports
+            query = query.filter(Employee.id != head_employee_id)
+        return query.order_by(Employee.last_name, Employee.first_name).all()
+
+    def _leaf_unit_employee_count(self, session, unit):
+        if not unit.head_employee_id:
+            return session.query(Employee.id).filter_by(org_unit_id=unit.id, status="active").count()
+        direct_reports = (
+            session.query(Employee.id)
+            .filter_by(org_unit_id=unit.id, reports_to_id=unit.head_employee_id, status="active")
+            .count()
+        )
+        if direct_reports:
+            return direct_reports
+        return (
+            session.query(Employee.id)
+            .filter(Employee.org_unit_id == unit.id, Employee.status == "active", Employee.id != unit.head_employee_id)
+            .count()
+        )
+
+    def _unit_count_text(self, unit_type, child_count, direct_people):
+        if direct_people:
+            label = "member" if unit_type == "team" and direct_people == 1 else "members" if unit_type == "team" else "employee" if direct_people == 1 else "employees"
+            return f"{direct_people} {label}"
+        if child_count:
+            singular, plural = NEXT_TYPE_LABEL.get(unit_type, ("child unit", "child units"))
+            return f"{child_count} {singular if child_count == 1 else plural}"
+        return ""
+
+    def _toggle_node(self, node_id, kind="unit"):
+        if kind not in {"unit", "employee"}:
+            return
+        key = (kind, node_id)
+        if key in self.expanded:
+            self.expanded.remove(key)
+        else:
+            self.expanded.add(key)
+        self._render_initial(preserve_view=True)
+
+    def _select_node(self, node):
+        self.selected_node = node
+        self._render_initial(preserve_view=True)
+        self._sync_inspector()
+
+    def _sync_inspector(self):
+        while self.inspector_meta.count():
+            item = self.inspector_meta.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        node = self.selected_node
+        is_unit = bool(node and node.get("kind") == "unit")
+        self.inspector_title.setText(node["name"] if node else "Selected Node")
+        self.inspector_subtitle.setText((node.get("type", "").title() if is_unit else node.get("subtitle", "")) if node else "Select a unit or employee on the canvas.")
+        if node:
+            rows = [
+                ("Type", node.get("type", node.get("kind", "-")).title()),
+                ("Head", node.get("head", "-")),
+                ("Direct employees", str(node.get("direct_people", "-"))),
+                ("Child units", str(node.get("child_count", "-"))),
+            ] if is_unit else [
+                ("Employee ID", node.get("employee_id", "-")),
+                ("Position", node.get("position", "-")),
+                ("Level", node.get("level", "-")),
+                ("Direct reports", str(node.get("child_count", 0))),
+            ]
+            for label, value in rows:
+                self.inspector_meta.addWidget(_meta_row(label, value))
+        for btn in [self.action_add, self.action_edit, self.action_view, self.action_delete]:
+            btn.setVisible(is_unit)
+
+    def _run_search(self):
+        self.expanded.clear()
+        self._render_initial()
+
+    def _on_search_text_changed(self):
+        if not self.search.text().strip():
+            self.refresh()
+
+    def _render_search(self, query):
+        self.scene.clear()
+        self.node_items.clear()
+        result = self._search_context(query)
+        if not result:
+            self._render_empty(t("no_matching_org_units"))
+            self._sync_inspector()
+            return
+        nodes, edges = result
+        y_step = NODE_H + 54
+        x_center = 360
+        for index, node in enumerate(nodes):
+            if node.get("relation") == "report":
+                continue
+            self._add_canvas_node(node, x_center, 50 + index * y_step)
+        report_nodes = [node for node in nodes if node.get("relation") == "report"]
+        start_x = max(40, x_center - ((len(report_nodes) - 1) * (NODE_W + 34)) / 2)
+        report_y = 50 + (len(nodes) - len(report_nodes)) * y_step
+        for idx, node in enumerate(report_nodes[:4]):
+            self._add_canvas_node(node, start_x + idx * (NODE_W + 34), report_y)
+        for parent_key, child_key in edges:
+            parent = self.node_items.get(parent_key)
+            child = self.node_items.get(child_key)
+            if parent and child:
+                self._draw_edge(parent.pos(), child.pos())
+        self.scene.setSceneRect(self.scene.itemsBoundingRect().adjusted(-80, -80, 80, 80))
+        self.view.resetTransform()
+        self.view.centerOn(self.scene.itemsBoundingRect().center())
+        self._sync_inspector()
+
+    def _search_context(self, query):
+        session = get_session()
+        try:
+            pattern = f"%{query}%"
+            employee = (
+                session.query(Employee)
+                .filter((Employee.first_name + " " + Employee.last_name).like(pattern) | Employee.employee_id.like(pattern))
+                .order_by(Employee.id)
+                .first()
+            )
+            if employee:
+                return self._employee_context(session, employee)
+            unit = session.query(OrgUnit).filter(OrgUnit.name.like(pattern)).order_by(OrgUnit.id).first()
+            if unit:
+                return self._unit_context(session, unit)
+            return None
         finally:
             session.close()
 
-        if not self.units_data:
-            empty = QLabel(t("no_org_units"))
-            empty.setAlignment(Qt.AlignCenter)
-            empty.setStyleSheet("font-size: 13px; color: #9ca3af; padding: 32px; background: transparent;")
-            self.tree_layout.addWidget(empty)
-            return
+    def _employee_context(self, session, employee):
+        chain = []
+        current = employee
+        seen = set()
+        while current and current.id not in seen:
+            seen.add(current.id)
+            chain.append(self._employee_to_node(session, current))
+            current = current.reports_to
+        chain.reverse()
+        report_query = session.query(Employee).filter_by(reports_to_id=employee.id, status="active")
+        total_reports = report_query.count()
+        reports = report_query.order_by(Employee.first_name, Employee.last_name).limit(4).all()
+        report_nodes = [self._employee_to_node(session, report, relation="report") for report in reports]
+        if total_reports > len(report_nodes):
+            report_nodes.append({
+                "kind": "employee",
+                "id": -employee.id,
+                "name": f"+{total_reports - len(report_nodes)} more direct reports",
+                "type": "employee",
+                "subtitle": "Grouped reports",
+                "child_count": 0,
+                "has_children": False,
+                "relation": "report",
+                "count_text": "",
+            })
+        nodes = chain + report_nodes
+        edges = []
+        for parent, child in zip(chain, chain[1:]):
+            edges.append((("employee", parent["id"]), ("employee", child["id"])))
+        for report in report_nodes:
+            edges.append((("employee", employee.id), ("employee", report["id"])))
+        self.selected_node = chain[-1] if chain else None
+        return nodes, edges
 
-        children = {}
-        for unit in self.units_data:
-            children.setdefault(unit["parent_id"], []).append(unit)
-        for siblings in children.values():
-            siblings.sort(key=lambda item: (UNIT_TYPES.index(item["type"]) if item["type"] in UNIT_TYPES else 99, item["name"].lower()))
+    def _unit_context(self, session, unit):
+        chain = []
+        current = unit
+        while current:
+            chain.append(self._unit_to_node(session, current))
+            current = current.parent
+        chain.reverse()
+        child_units = session.query(OrgUnit).filter_by(parent_id=unit.id).order_by(OrgUnit.name).limit(4).all()
+        children = [self._unit_to_node(session, child) for child in child_units]
+        if not child_units:
+            employees = self._leaf_unit_employees(session, unit.id, unit.head_employee_id)[:4]
+            children.extend(self._employee_to_node(session, employee) for employee in employees)
+        for child in children:
+            child["relation"] = "report"
+        nodes = chain + children
+        edges = []
+        for parent, child in zip(chain, chain[1:]):
+            edges.append((("unit", parent["id"]), ("unit", child["id"])))
+        for child in children:
+            edges.append((("unit", unit.id), ("unit", child["id"])))
+        self.selected_node = chain[-1] if chain else None
+        return nodes, edges
 
-        by_id = {unit["id"]: unit for unit in self.units_data}
+    def _employee_to_node(self, session, employee, relation=None):
+        direct_reports = session.query(Employee.id).filter_by(reports_to_id=employee.id, status="active").count()
+        return {
+            "kind": "employee",
+            "id": employee.id,
+            "name": employee.full_name,
+            "type": "employee",
+            "employee_id": employee.employee_id,
+            "position": employee.position or "-",
+            "level": employee.title.name if employee.title else "-",
+            "subtitle": _display_position(employee.position) if employee.position else employee.employee_id,
+            "child_count": direct_reports,
+            "has_children": direct_reports > 0,
+            "relation": relation,
+            "count_text": f"{direct_reports} reports" if direct_reports else "",
+        }
 
-        def subtree_people_count(unit):
-            total = unit["emp_count"]
-            for child in children.get(unit["id"], []):
-                total += subtree_people_count(child)
-            return total
+    def _render_empty(self, text):
+        self.scene.clear()
+        label = self.scene.addText(text)
+        label.setDefaultTextColor(QColor("#6b7280"))
+        label.setPos(40, 40)
+        self.scene.setSceneRect(QRectF(0, 0, 600, 320))
 
-        for unit in self.units_data:
-            unit["people_count"] = subtree_people_count(unit)
+    def _fit_canvas(self):
+        if self.scene.items():
+            self.view.fitInView(self.scene.itemsBoundingRect().adjusted(-80, -80, 80, 80), Qt.KeepAspectRatio)
 
-        visible_ids = None
-        if query:
-            visible_ids = set()
-            matched = [unit for unit in self.units_data if query in unit["search_text"]]
-            for unit in matched:
-                current = unit
-                while current:
-                    visible_ids.add(current["id"])
-                    current = by_id.get(current["parent_id"])
+    def _reset_canvas(self):
+        self.view.resetTransform()
+        if self.scene.items():
+            self.view.centerOn(self.scene.sceneRect().center())
 
-                stack = list(children.get(unit["id"], []))
-                while stack:
-                    child = stack.pop()
-                    visible_ids.add(child["id"])
-                    stack.extend(children.get(child["id"], []))
+    def _zoom(self, factor):
+        current = self.view.transform().m11()
+        next_scale = current * factor
+        if 0.08 <= next_scale <= 2.5:
+            self.view.scale(factor, factor)
 
-            if not visible_ids:
-                empty = QLabel(t("no_matching_org_units"))
-                empty.setAlignment(Qt.AlignCenter)
-                empty.setStyleSheet("font-size: 13px; color: #9ca3af; padding: 32px; background: transparent;")
-                self.tree_layout.addWidget(empty)
-                return
+    def _add_child_from_selection(self):
+        if self.selected_node and self.selected_node.get("kind") == "unit":
+            self._add_unit(parent_id=self.selected_node["id"])
 
-        for root_unit in children.get(None, []):
-            if visible_ids is None or root_unit["id"] in visible_ids:
-                self._add_node(root_unit, children, 0, visible_ids, bool(query))
+    def _edit_selected_unit(self):
+        if self.selected_node and self.selected_node.get("kind") == "unit":
+            self._edit_unit(self.selected_node["id"])
 
-    def _add_node(self, unit, children, depth, visible_ids=None, force_open=False):
-        child_units = [
-            child for child in children.get(unit["id"], [])
-            if visible_ids is None or child["id"] in visible_ids
-        ]
-        has_children = bool(child_units)
-        is_collapsed = unit["id"] in self.collapsed_units and not force_open
+    def _view_selected_unit_employees(self):
+        if self.selected_node and self.selected_node.get("kind") == "unit":
+            self._show_unit_employees(self.selected_node["id"])
 
-        wrap = QWidget()
-        wrap.setStyleSheet("background: transparent;")
-        wrap_row = QHBoxLayout(wrap)
-        wrap_row.setContentsMargins(0, 0, 0, 0)
-        wrap_row.setSpacing(0)
-
-        for _ in range(depth):
-            guide = QFrame()
-            guide.setFixedWidth(46)
-            guide.setStyleSheet("background: transparent; border: none; border-left: 2px solid #e5e7eb; margin-left: 22px;")
-            wrap_row.addWidget(guide)
-
-        chevron = QPushButton()
-        chevron.setFixedSize(28, 28)
-        chevron.setCursor(Qt.PointingHandCursor if has_children else Qt.ArrowCursor)
-        chevron.setStyleSheet("QPushButton { background: transparent; border: none; border-radius: 6px; } QPushButton:hover { background: #f3f4f6; }")
-        if has_children:
-            icon_name = "fa5s.chevron-right" if is_collapsed else "fa5s.chevron-down"
-            chevron.setIcon(qta.icon(icon_name, color="#374151"))
-            chevron.setIconSize(QSize(12, 12))
-            chevron.clicked.connect(lambda _, uid=unit["id"]: self._toggle_node(uid))
-        else:
-            chevron.setEnabled(False)
-        wrap_row.addWidget(chevron)
-
-        node = QFrame()
-        node.setObjectName("HierarchyNode")
-        if unit["type"] == "team" and unit["people_count"] > 0:
-            node.setCursor(Qt.PointingHandCursor)
-            node.mouseReleaseEvent = lambda event, uid=unit["id"]: self._show_unit_employees(uid)
-        bg, fg, border, icon = TYPE_COLORS.get(unit["type"], ("#f9fafb", "#374151", "#e5e7eb", "fa5s.circle"))
-        node.setStyleSheet(f"""
-            QFrame#HierarchyNode {{
-                background: {bg};
-                border-radius: 8px;
-                border: 1px solid {border};
-            }}
-            QFrame#HierarchyNode QLabel {{
-                background: transparent;
-                border: none;
-            }}
-        """)
-        row = QHBoxLayout(node)
-        row.setContentsMargins(20, 16, 16, 16)
-        row.setSpacing(14)
-
-        icon_lbl = QLabel()
-        icon_lbl.setFixedSize(24, 24)
-        icon_lbl.setAlignment(Qt.AlignCenter)
-        icon_lbl.setPixmap(qta.icon(icon, color=fg).pixmap(18, 18))
-        row.addWidget(icon_lbl)
-        text_col = QVBoxLayout()
-        text_col.setSpacing(8)
-        title_row = QHBoxLayout()
-        title_row.setSpacing(10)
-        name = QLabel(unit["name"])
-        name.setStyleSheet("font-size: 16px; font-weight: 800; color: #111827; background: transparent;")
-        badge = QLabel(unit["type"])
-        badge.setStyleSheet("background: white; color: #111827; border: 1px solid #dbe2ea; border-radius: 6px; padding: 3px 10px; font-size: 12px; font-weight: 700;")
-        title_row.addWidget(name)
-        title_row.addWidget(badge)
-        title_row.addStretch()
-        meta = QWidget()
-        meta.setStyleSheet("background: transparent; border: none;")
-        meta_row = QHBoxLayout(meta)
-        meta_row.setContentsMargins(0, 0, 0, 0)
-        meta_row.setSpacing(8)
-        head_label = QLabel(t("head"))
-        head_label.setStyleSheet("font-size: 14px; font-weight: 800; color: #374151; background: transparent; border: none;")
-        head_text = unit["head"]
-        if unit["head_position"]:
-            head_text = f"{unit['head_position']} - {unit['head']}"
-        head_value = QLabel(head_text)
-        head_value.setStyleSheet("font-size: 14px; color: #374151; background: transparent; border: none;")
-        people_icon = QLabel()
-        people_icon.setFixedSize(16, 16)
-        people_icon.setAlignment(Qt.AlignCenter)
-        people_icon.setPixmap(qta.icon("fa5s.user-friends", color="#4b5563").pixmap(14, 14))
-        people_icon.setStyleSheet("background: transparent; border: none;")
-        people = QLabel(t("employees_count", count=unit["people_count"]))
-        people.setStyleSheet("font-size: 14px; color: #374151; background: transparent; border: none;")
-        meta_row.addWidget(head_label)
-        meta_row.addWidget(head_value)
-        meta_row.addSpacing(10)
-        meta_row.addWidget(people_icon)
-        meta_row.addWidget(people)
-        meta_row.addStretch()
-        text_col.addLayout(title_row)
-        text_col.addWidget(meta)
-        row.addLayout(text_col, 1)
-
-        if unit["people_count"] > 0:
-            view_btn = QPushButton()
-            view_btn.setToolTip(t("view_employees"))
-            view_btn.setIcon(qta.icon("fa5s.user-friends", color="#111827"))
-            view_btn.setIconSize(QSize(13, 13))
-            view_btn.setFixedSize(28, 28)
-            view_btn.setCursor(Qt.PointingHandCursor)
-            view_btn.setStyleSheet("QPushButton { background: white; border: 1px solid #e5e7eb; border-radius: 6px; } QPushButton:hover { background: #eff6ff; border-color: #bfdbfe; }")
-            view_btn.clicked.connect(lambda _, uid=unit["id"]: self._show_unit_employees(uid))
-            row.addWidget(view_btn)
-
-        for icon_name, color, handler in [
-            ("fa5s.plus", "#2563eb", lambda _, uid=unit["id"]: self._add_unit(parent_id=uid)),
-            ("fa5s.edit", "#2563eb", lambda _, uid=unit["id"]: self._edit_unit(uid)),
-            ("fa5s.trash-alt", "#dc2626", lambda _, uid=unit["id"]: self._delete_unit(uid)),
-        ]:
-            btn = QPushButton()
-            btn.setIcon(qta.icon(icon_name, color=color))
-            btn.setIconSize(QSize(13, 13))
-            btn.setFixedSize(28, 28)
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.setStyleSheet("QPushButton { background: white; border: 1px solid #e5e7eb; border-radius: 6px; } QPushButton:hover { background: #f9fafb; }")
-            btn.clicked.connect(handler)
-            row.addWidget(btn)
-
-        wrap_row.addWidget(node, 1)
-        self.tree_layout.addWidget(wrap)
-
-        if not is_collapsed:
-            for child in child_units:
-                self._add_node(child, children, depth + 1, visible_ids, force_open)
-
-    def _toggle_node(self, unit_id):
-        if unit_id in self.collapsed_units:
-            self.collapsed_units.remove(unit_id)
-        else:
-            self.collapsed_units.add(unit_id)
-        self.refresh()
+    def _delete_selected_unit(self):
+        if self.selected_node and self.selected_node.get("kind") == "unit":
+            self._delete_unit(self.selected_node["id"])
 
     def _show_unit_employees(self, unit_id):
         dialog = UnitEmployeesDialog(unit_id, parent=self)
@@ -449,7 +895,7 @@ class HierarchyPage(QWidget):
             if not unit:
                 return
             children = session.query(OrgUnit).filter_by(parent_id=unit_id).count()
-            emp_count = len(unit.employees)
+            emp_count = session.query(Employee).filter_by(org_unit_id=unit_id).count()
             if children or emp_count:
                 _warning(self, t("warning"), "Reassign child units and employees before deleting this node.")
                 return
@@ -806,6 +1252,67 @@ def _hint_pill(text, bg, fg, border, icon):
     return pill
 
 
+def _hierarchy_step(unit_type):
+    bg, fg, border, icon = TYPE_COLORS.get(unit_type, TYPE_COLORS["employee"])
+    label = "Employee" if unit_type == "employee" else unit_type.title()
+    pill = QFrame()
+    pill.setObjectName("HierarchyStep")
+    pill.setStyleSheet(f"""
+        QFrame#HierarchyStep {{
+            background: {bg};
+            border: 1px solid {border};
+            border-radius: 8px;
+        }}
+        QFrame#HierarchyStep QLabel {{
+            background: transparent;
+            border: none;
+        }}
+    """)
+    row = QHBoxLayout(pill)
+    row.setContentsMargins(10, 5, 10, 5)
+    row.setSpacing(7)
+    icon_lbl = QLabel()
+    icon_lbl.setPixmap(qta.icon(icon, color=fg).pixmap(12, 12))
+    icon_lbl.setStyleSheet("background: transparent; border: none;")
+    text_lbl = QLabel(label)
+    text_lbl.setStyleSheet(f"background: transparent; border: none; color: {fg}; font-size: 12px; font-weight: 800;")
+    row.addWidget(icon_lbl)
+    row.addWidget(text_lbl)
+    return pill
+
+
+def _display_position(position):
+    if not position:
+        return ""
+    normalized = position.strip().lower()
+    abbreviations = {
+        "chief executive officer": "CEO",
+        "chief technology officer": "CTO",
+        "chief operating officer": "COO",
+        "chief financial officer": "CFO",
+        "chief human resources officer": "CHRO",
+        "vice president": "VP",
+    }
+    return abbreviations.get(normalized, position)
+
+
+def _meta_row(label, value):
+    row = QFrame()
+    row.setStyleSheet("QFrame { background: #f9fafb; border: 1px solid #eef2f7; border-radius: 8px; }")
+    layout = QHBoxLayout(row)
+    layout.setContentsMargins(12, 8, 12, 8)
+    layout.setSpacing(10)
+    label_widget = QLabel(label)
+    label_widget.setStyleSheet("font-size: 12px; color: #6b7280; background: transparent; border: none;")
+    value_widget = QLabel(str(value))
+    value_widget.setWordWrap(True)
+    value_widget.setStyleSheet("font-size: 13px; color: #111827; font-weight: 700; background: transparent; border: none;")
+    layout.addWidget(label_widget)
+    layout.addStretch()
+    layout.addWidget(value_widget)
+    return row
+
+
 def _form_label(text):
     label = QLabel(text)
     label.setMinimumWidth(122)
@@ -935,3 +1442,11 @@ def _primary_btn():
 
 def _outline_btn():
     return "QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 14px; font-size: 13px; font-weight: 700; min-height: 36px; } QPushButton:hover { background: #f9fafb; }"
+
+
+def _canvas_control_btn():
+    return "QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 7px; padding: 0 10px; font-size: 12px; font-weight: 800; min-width: 32px; } QPushButton:hover { background: #f3f4f6; border-color: #cbd5e1; }"
+
+
+def _danger_outline_btn():
+    return "QPushButton { background: white; color: #dc2626; border: 1px solid #fecaca; border-radius: 8px; padding: 0 14px; font-size: 13px; font-weight: 700; min-height: 36px; } QPushButton:hover { background: #fef2f2; }"

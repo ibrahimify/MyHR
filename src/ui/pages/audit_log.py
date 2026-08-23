@@ -5,6 +5,7 @@ Audit Log Page
 - Shows who, what, when, before/after values
 """
 
+import math
 from collections import Counter
 from datetime import datetime, timedelta
 
@@ -14,7 +15,7 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QFrame, QTableWidget, QTableWidgetItem, QHeaderView,
-    QLineEdit, QComboBox, QScrollArea
+    QLineEdit, QComboBox, QScrollArea, QPushButton
 )
 
 from src.core.i18n import t
@@ -174,6 +175,10 @@ class AuditLogPage(QWidget):
         super().__init__()
         self.user = user
         self.all_logs = []
+        self.filtered_logs = []
+        self.current_page = 1
+        self.page_size = 50
+        self.total_pages = 1
         self.stat_values = {}
         self.setObjectName("AuditLogPage")
         self.setStyleSheet("QWidget#AuditLogPage { background: #f9fafb; }")
@@ -281,6 +286,7 @@ class AuditLogPage(QWidget):
             if header_item:
                 header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         tl.addWidget(self.table)
+        tl.addWidget(self._pager())
         layout.addWidget(table_card)
         layout.addSpacing(30)
 
@@ -349,6 +355,7 @@ class AuditLogPage(QWidget):
         self.stat_values[key] = value
 
     def refresh(self):
+        self.current_page = 1
         session = get_session()
         try:
             now = datetime.utcnow()
@@ -411,7 +418,7 @@ class AuditLogPage(QWidget):
         category = self.category_filter.currentData()
         user = self.user_filter.currentData()
 
-        filtered = []
+        self.filtered_logs = []
         for entry in self.all_logs:
             haystack = " ".join([
                 entry["action"], entry["raw_action"], entry["details"],
@@ -423,50 +430,113 @@ class AuditLogPage(QWidget):
                 continue
             if user and entry["user"] != user:
                 continue
-            filtered.append(entry)
+            self.filtered_logs.append(entry)
 
-        self.count_lbl.setText(t("showing_logs", shown=len(filtered), total=len(self.all_logs)))
-        self._populate(filtered)
+        self.total_pages = max(1, math.ceil(len(self.filtered_logs) / self.page_size))
+        self.current_page = max(1, min(self.current_page, self.total_pages))
+        self._populate_page()
+
+    def _populate_page(self):
+        start = (self.current_page - 1) * self.page_size
+        end = start + self.page_size
+        page_rows = self.filtered_logs[start:end]
+        shown = f"{start + 1}-{start + len(page_rows)}" if page_rows else "0"
+        self.count_lbl.setText(t("showing_logs", shown=shown, total=len(self.filtered_logs)))
+        self.page_lbl.setText(t("page_status", page=self.current_page, pages=self.total_pages))
+        self.prev_btn.setEnabled(self.current_page > 1)
+        self.next_btn.setEnabled(self.current_page < self.total_pages)
+        self._populate(page_rows)
+
+    def _previous_page(self):
+        if self.current_page <= 1:
+            return
+        self.current_page -= 1
+        self._populate_page()
+
+    def _next_page(self):
+        if self.current_page >= self.total_pages:
+            return
+        self.current_page += 1
+        self._populate_page()
 
     def _populate(self, logs):
+        self.table.setUpdatesEnabled(False)
+        self.table.clearContents()
         self.table.setRowCount(len(logs))
-        self.table.setMinimumHeight(112 + (56 * max(1, len(logs))))
+        self.table.setMinimumHeight(420)
 
-        for row_index, log in enumerate(logs):
-            self.table.setRowHeight(row_index, 56)
+        try:
+            for row_index, log in enumerate(logs):
+                self.table.setRowHeight(row_index, 56)
 
-            timestamp = QTableWidgetItem(log["timestamp"])
-            timestamp.setForeground(QColor("#374151"))
-            timestamp.setToolTip(log["timestamp"])
-            self.table.setItem(row_index, 0, timestamp)
+                timestamp = QTableWidgetItem(log["timestamp"])
+                timestamp.setForeground(QColor("#374151"))
+                timestamp.setToolTip(log["timestamp"])
+                self.table.setItem(row_index, 0, timestamp)
 
-            user_item = QTableWidgetItem(log["user"])
-            user_item.setIcon(qta.icon("fa5s.user", color="#2563eb"))
-            user_font = user_item.font()
-            user_font.setBold(True)
-            user_item.setFont(user_font)
-            user_item.setToolTip(log.get("user_name") or log["user"])
-            self.table.setItem(row_index, 1, user_item)
+                user_item = QTableWidgetItem(log["user"])
+                user_item.setIcon(qta.icon("fa5s.user", color="#2563eb"))
+                user_font = user_item.font()
+                user_font.setBold(True)
+                user_item.setFont(user_font)
+                user_item.setToolTip(log.get("user_name") or log["user"])
+                self.table.setItem(row_index, 1, user_item)
 
-            action_item = QTableWidgetItem(log["action"])
-            action_font = action_item.font()
-            action_font.setBold(True)
-            action_item.setFont(action_font)
-            action_item.setToolTip(log["raw_action"])
-            self.table.setItem(row_index, 2, action_item)
+                action_item = QTableWidgetItem(log["action"])
+                action_font = action_item.font()
+                action_font.setBold(True)
+                action_item.setFont(action_font)
+                action_item.setToolTip(log["raw_action"])
+                self.table.setItem(row_index, 2, action_item)
 
-            target_item = QTableWidgetItem(log["target"])
-            target_item.setForeground(QColor("#374151"))
-            target_item.setToolTip(log["target"])
-            self.table.setItem(row_index, 3, target_item)
+                target_item = QTableWidgetItem(log["target"])
+                target_item.setForeground(QColor("#374151"))
+                target_item.setToolTip(log["target"])
+                self.table.setItem(row_index, 3, target_item)
 
-            details = log["details"]
-            details_item = QTableWidgetItem(details[:90] + "..." if len(details) > 90 else details)
-            details_item.setForeground(QColor("#374151"))
-            details_item.setToolTip(details)
-            self.table.setItem(row_index, 4, details_item)
+                details = log["details"]
+                details_item = QTableWidgetItem(details[:90] + "..." if len(details) > 90 else details)
+                details_item.setForeground(QColor("#374151"))
+                details_item.setToolTip(details)
+                self.table.setItem(row_index, 4, details_item)
 
-            self.table.setCellWidget(row_index, 5, _category_badge(log["category"]))
+                self.table.setCellWidget(row_index, 5, _category_badge(log["category"]))
+        finally:
+            self.table.setUpdatesEnabled(True)
+
+    def _pager(self):
+        pager = QFrame()
+        pager.setStyleSheet("background: white; border: none; border-top: 1px solid #f3f4f6;")
+        layout = QHBoxLayout(pager)
+        layout.setContentsMargins(16, 10, 16, 10)
+        layout.setSpacing(10)
+
+        self.page_lbl = QLabel("")
+        self.page_lbl.setStyleSheet("font-size: 13px; color: #4b5563; background: transparent;")
+
+        btn_ss = (
+            "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db;"
+            " border-radius: 6px; font-size: 13px; font-weight: 700; padding: 0 14px; }"
+            " QPushButton:hover { background: #f9fafb; }"
+            " QPushButton:disabled { color: #9ca3af; background: #f9fafb; }"
+        )
+        self.prev_btn = QPushButton(t("previous_page"))
+        self.prev_btn.setFixedHeight(34)
+        self.prev_btn.setCursor(Qt.PointingHandCursor)
+        self.prev_btn.setStyleSheet(btn_ss)
+        self.prev_btn.clicked.connect(self._previous_page)
+
+        self.next_btn = QPushButton(t("next_page"))
+        self.next_btn.setFixedHeight(34)
+        self.next_btn.setCursor(Qt.PointingHandCursor)
+        self.next_btn.setStyleSheet(btn_ss)
+        self.next_btn.clicked.connect(self._next_page)
+
+        layout.addStretch()
+        layout.addWidget(self.page_lbl)
+        layout.addWidget(self.prev_btn)
+        layout.addWidget(self.next_btn)
+        return pager
 
     def showEvent(self, event):
         self.refresh()

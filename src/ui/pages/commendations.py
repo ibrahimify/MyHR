@@ -7,6 +7,8 @@ Commendations Page
 - History view
 """
 
+import math
+
 import qtawesome as qta
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -16,6 +18,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QColor
+from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
 from src.database.connection import (
@@ -23,7 +26,7 @@ from src.database.connection import (
     can_receive_commendation, count_commendations_in_current_role,
     is_other_employee
 )
-from src.database.models import Employee, Commendation, CommendationEmployee, SystemUser
+from src.database.models import Employee, Commendation, CommendationEmployee
 from datetime import datetime
 
 
@@ -661,6 +664,9 @@ class CommendationHistoryTab(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
+        self.current_page = 1
+        self.page_size = 50
+        self.total_pages = 1
         self.setObjectName("CommendationHistoryTab")
         self.setStyleSheet("QWidget#CommendationHistoryTab { background: #f9fafb; }")
         self._build()
@@ -707,25 +713,27 @@ class CommendationHistoryTab(QWidget):
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         cl.addWidget(self.table)
+        cl.addWidget(self._pager())
         layout.addWidget(card)
 
     def refresh(self):
         session = get_session()
         try:
-            comms = session.query(Commendation).order_by(Commendation.issued_at.desc()).all()
+            total = session.query(Commendation).count()
+            self.total_pages = max(1, math.ceil(total / self.page_size))
+            self.current_page = max(1, min(self.current_page, self.total_pages))
+            comms = (
+                session.query(Commendation)
+                .options(joinedload(Commendation.employees), joinedload(Commendation.issued_by))
+                .order_by(Commendation.issued_at.desc(), Commendation.id.desc())
+                .offset((self.current_page - 1) * self.page_size)
+                .limit(self.page_size)
+                .all()
+            )
             rows = []
             for c in comms:
-                recipient_rows = (
-                    session.query(Employee)
-                    .join(CommendationEmployee, CommendationEmployee.employee_id == Employee.id)
-                    .filter(CommendationEmployee.commendation_id == c.id)
-                    .order_by(Employee.first_name, Employee.last_name)
-                    .all()
-                )
-                recipients = ", ".join(e.full_name for e in recipient_rows) or "-"
+                recipients = ", ".join(sorted(e.full_name for e in c.employees)) or "-"
                 issuer = c.issued_by
-                if issuer is None and c.issued_by_id:
-                    issuer = session.query(SystemUser).filter_by(id=c.issued_by_id).first()
                 cat = CATEGORIES.get(c.category, {})
                 rows.append({
                     "ref": c.commendation_ref,
@@ -740,36 +748,86 @@ class CommendationHistoryTab(QWidget):
         finally:
             session.close()
 
+        self.page_lbl.setText(t("page_status", page=self.current_page, pages=self.total_pages))
+        self.prev_btn.setEnabled(self.current_page > 1)
+        self.next_btn.setEnabled(self.current_page < self.total_pages)
+        self.table.setUpdatesEnabled(False)
+        self.table.clearContents()
         self.table.setRowCount(len(rows))
-        self.table.setMinimumHeight(112 + (56 * max(1, len(rows))))
-        for i, row in enumerate(rows):
-            self.table.setRowHeight(i, 52)
+        self.table.setMinimumHeight(420)
+        try:
+            for i, row in enumerate(rows):
+                self.table.setRowHeight(i, 52)
 
-            ref_item = QTableWidgetItem(row["ref"])
-            ref_item.setForeground(QColor("#6b7280"))
-            ref_item.setToolTip(row["ref"])
-            self.table.setItem(i, 0, ref_item)
-            title_item = QTableWidgetItem(row["title"])
-            title_item.setToolTip(row["title"])
-            self.table.setItem(i, 1, title_item)
+                ref_item = QTableWidgetItem(row["ref"])
+                ref_item.setForeground(QColor("#6b7280"))
+                ref_item.setToolTip(row["ref"])
+                self.table.setItem(i, 0, ref_item)
+                title_item = QTableWidgetItem(row["title"])
+                title_item.setToolTip(row["title"])
+                self.table.setItem(i, 1, title_item)
 
-            cat = CATEGORIES.get(row["cat_id"], {})
-            cat_item = QTableWidgetItem(row["category"])
-            cat_item.setBackground(QColor(cat.get("bg", "#f9fafb")))
-            cat_item.setForeground(QColor(cat.get("color", "#374151")))
-            cat_item.setToolTip(row["category"])
-            self.table.setItem(i, 2, cat_item)
+                cat = CATEGORIES.get(row["cat_id"], {})
+                cat_item = QTableWidgetItem(row["category"])
+                cat_item.setBackground(QColor(cat.get("bg", "#f9fafb")))
+                cat_item.setForeground(QColor(cat.get("color", "#374151")))
+                cat_item.setToolTip(row["category"])
+                self.table.setItem(i, 2, cat_item)
 
-            impact_item = QTableWidgetItem(row["impact"])
-            impact_item.setIcon(qta.icon("fa5s.clock", color="#10b981"))
-            impact_item.setForeground(QColor("#10b981"))
-            impact_item.setToolTip(row["impact"])
-            self.table.setItem(i, 3, impact_item)
+                impact_item = QTableWidgetItem(row["impact"])
+                impact_item.setIcon(qta.icon("fa5s.clock", color="#10b981"))
+                impact_item.setForeground(QColor("#10b981"))
+                impact_item.setToolTip(row["impact"])
+                self.table.setItem(i, 3, impact_item)
 
-            for col, key in [(4, "recipients"), (5, "issued_by"), (6, "date")]:
-                item = QTableWidgetItem(row[key])
-                item.setToolTip(row[key])
-                self.table.setItem(i, col, item)
+                for col, key in [(4, "recipients"), (5, "issued_by"), (6, "date")]:
+                    item = QTableWidgetItem(row[key])
+                    item.setToolTip(row[key])
+                    self.table.setItem(i, col, item)
+        finally:
+            self.table.setUpdatesEnabled(True)
+
+    def _previous_page(self):
+        if self.current_page <= 1:
+            return
+        self.current_page -= 1
+        self.refresh()
+
+    def _next_page(self):
+        if self.current_page >= self.total_pages:
+            return
+        self.current_page += 1
+        self.refresh()
+
+    def _pager(self):
+        pager = QFrame()
+        pager.setStyleSheet("background: white; border: none; border-top: 1px solid #f3f4f6;")
+        layout = QHBoxLayout(pager)
+        layout.setContentsMargins(16, 10, 16, 10)
+        layout.setSpacing(10)
+        self.page_lbl = QLabel("")
+        self.page_lbl.setStyleSheet("font-size: 13px; color: #4b5563; background: transparent;")
+        btn_ss = (
+            "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db;"
+            " border-radius: 6px; font-size: 13px; font-weight: 700; padding: 0 14px; }"
+            " QPushButton:hover { background: #f9fafb; }"
+            " QPushButton:disabled { color: #9ca3af; background: #f9fafb; }"
+        )
+        self.prev_btn = QPushButton(t("previous_page"))
+        self.prev_btn.setFixedHeight(34)
+        self.prev_btn.setCursor(Qt.PointingHandCursor)
+        self.prev_btn.setStyleSheet(btn_ss)
+        self.prev_btn.clicked.connect(self._previous_page)
+        self.next_btn = QPushButton(t("next_page"))
+        self.next_btn.setFixedHeight(34)
+        self.next_btn.setCursor(Qt.PointingHandCursor)
+        self.next_btn.setStyleSheet(btn_ss)
+        self.next_btn.clicked.connect(self._next_page)
+        layout.addStretch()
+        layout.addWidget(self.page_lbl)
+        layout.addWidget(self.prev_btn)
+        layout.addWidget(self.next_btn)
+        return pager
 
 
 def _styled_message_box(parent, icon, title, text, buttons=QMessageBox.Ok, default_button=QMessageBox.Ok):

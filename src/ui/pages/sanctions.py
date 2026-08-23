@@ -7,6 +7,8 @@ Sanctions Page
 - Shows clearly how many months added to promotion race
 """
 
+import math
+
 import qtawesome as qta
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -16,6 +18,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QColor
+from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
 from src.database.connection import get_session, generate_sanction_ref, log_action, is_other_employee
@@ -474,6 +477,9 @@ class SanctionHistoryTab(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
+        self.current_page = 1
+        self.page_size = 50
+        self.total_pages = 1
         self.setObjectName("SanctionHistoryTab")
         self.setStyleSheet("QWidget#SanctionHistoryTab { background: #f9fafb; }")
         self._build()
@@ -520,12 +526,23 @@ class SanctionHistoryTab(QWidget):
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         cl.addWidget(self.table)
+        cl.addWidget(self._pager())
         layout.addWidget(card)
 
     def refresh(self):
         session = get_session()
         try:
-            sanctions = session.query(Sanction).order_by(Sanction.issued_at.desc()).all()
+            total = session.query(Sanction).count()
+            self.total_pages = max(1, math.ceil(total / self.page_size))
+            self.current_page = max(1, min(self.current_page, self.total_pages))
+            sanctions = (
+                session.query(Sanction)
+                .options(joinedload(Sanction.employee))
+                .order_by(Sanction.issued_at.desc(), Sanction.id.desc())
+                .offset((self.current_page - 1) * self.page_size)
+                .limit(self.page_size)
+                .all()
+            )
             rows = [{
                 "ref": s.sanction_ref,
                 "emp": f"{s.employee.full_name} ({s.employee.employee_id})",
@@ -539,27 +556,77 @@ class SanctionHistoryTab(QWidget):
         finally:
             session.close()
 
+        self.page_lbl.setText(t("page_status", page=self.current_page, pages=self.total_pages))
+        self.prev_btn.setEnabled(self.current_page > 1)
+        self.next_btn.setEnabled(self.current_page < self.total_pages)
+        self.table.setUpdatesEnabled(False)
+        self.table.clearContents()
         self.table.setRowCount(len(rows))
-        self.table.setMinimumHeight(112 + (56 * max(1, len(rows))))
-        for i, row in enumerate(rows):
-            self.table.setRowHeight(i, 52)
-            ref = QTableWidgetItem(row["ref"])
-            ref.setForeground(QColor("#6b7280"))
-            ref.setToolTip(row["ref"])
-            self.table.setItem(i, 0, ref)
-            for col, key in [(1, "emp"), (2, "type"), (3, "reason"), (4, "date")]:
-                item = QTableWidgetItem(row[key])
-                item.setToolTip(row[key])
-                self.table.setItem(i, col, item)
-            delay = QTableWidgetItem(row["delay"])
-            delay.setForeground(QColor("#ef4444"))
-            delay.setToolTip(row["delay"])
-            self.table.setItem(i, 5, delay)
-            status_text = f"{t('resolved')} ({row['resolved_at']})" if row["resolved"] else t("active")
-            status = QTableWidgetItem(status_text)
-            status.setForeground(QColor("#10b981") if row["resolved"] else QColor("#ef4444"))
-            status.setToolTip(status_text)
-            self.table.setItem(i, 6, status)
+        self.table.setMinimumHeight(420)
+        try:
+            for i, row in enumerate(rows):
+                self.table.setRowHeight(i, 52)
+                ref = QTableWidgetItem(row["ref"])
+                ref.setForeground(QColor("#6b7280"))
+                ref.setToolTip(row["ref"])
+                self.table.setItem(i, 0, ref)
+                for col, key in [(1, "emp"), (2, "type"), (3, "reason"), (4, "date")]:
+                    item = QTableWidgetItem(row[key])
+                    item.setToolTip(row[key])
+                    self.table.setItem(i, col, item)
+                delay = QTableWidgetItem(row["delay"])
+                delay.setForeground(QColor("#ef4444"))
+                delay.setToolTip(row["delay"])
+                self.table.setItem(i, 5, delay)
+                status_text = f"{t('resolved')} ({row['resolved_at']})" if row["resolved"] else t("active")
+                status = QTableWidgetItem(status_text)
+                status.setForeground(QColor("#10b981") if row["resolved"] else QColor("#ef4444"))
+                status.setToolTip(status_text)
+                self.table.setItem(i, 6, status)
+        finally:
+            self.table.setUpdatesEnabled(True)
+
+    def _previous_page(self):
+        if self.current_page <= 1:
+            return
+        self.current_page -= 1
+        self.refresh()
+
+    def _next_page(self):
+        if self.current_page >= self.total_pages:
+            return
+        self.current_page += 1
+        self.refresh()
+
+    def _pager(self):
+        pager = QFrame()
+        pager.setStyleSheet("background: white; border: none; border-top: 1px solid #f3f4f6;")
+        layout = QHBoxLayout(pager)
+        layout.setContentsMargins(16, 10, 16, 10)
+        layout.setSpacing(10)
+        self.page_lbl = QLabel("")
+        self.page_lbl.setStyleSheet("font-size: 13px; color: #4b5563; background: transparent;")
+        btn_ss = (
+            "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db;"
+            " border-radius: 6px; font-size: 13px; font-weight: 700; padding: 0 14px; }"
+            " QPushButton:hover { background: #f9fafb; }"
+            " QPushButton:disabled { color: #9ca3af; background: #f9fafb; }"
+        )
+        self.prev_btn = QPushButton(t("previous_page"))
+        self.prev_btn.setFixedHeight(34)
+        self.prev_btn.setCursor(Qt.PointingHandCursor)
+        self.prev_btn.setStyleSheet(btn_ss)
+        self.prev_btn.clicked.connect(self._previous_page)
+        self.next_btn = QPushButton(t("next_page"))
+        self.next_btn.setFixedHeight(34)
+        self.next_btn.setCursor(Qt.PointingHandCursor)
+        self.next_btn.setStyleSheet(btn_ss)
+        self.next_btn.clicked.connect(self._next_page)
+        layout.addStretch()
+        layout.addWidget(self.page_lbl)
+        layout.addWidget(self.prev_btn)
+        layout.addWidget(self.next_btn)
+        return pager
 
 
 # Issue Sanction Tab
