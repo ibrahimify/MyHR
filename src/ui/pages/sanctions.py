@@ -266,12 +266,17 @@ class ActiveSanctionsTab(QWidget):
         ])
         self.table.setStyleSheet(TABLE_SS)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.Fixed)
         self.table.horizontalHeader().setSectionResizeMode(6, QHeaderView.Fixed)
-        self.table.setColumnWidth(6, 180)
+        self.table.setColumnWidth(5, 190)
+        self.table.setColumnWidth(6, 240)
         for col in range(self.table.columnCount()):
             header_item = self.table.horizontalHeaderItem(col)
             if header_item:
-                header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                if col == 6:
+                    header_item.setTextAlignment(Qt.AlignCenter)
+                else:
+                    header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -372,17 +377,22 @@ class ActiveSanctionsTab(QWidget):
             self.table.setItem(i, 5, delay_item)
 
             resolve_btn = QPushButton(t("mark_resolved"))
-            resolve_btn.setIcon(qta.icon("fa5s.check-circle", color="#166534"))
+            resolve_btn.setIcon(qta.icon("fa5s.check-circle", color="white"))
             resolve_btn.setIconSize(QSize(15, 15))
-            resolve_btn.setFixedSize(158, 38)
+            resolve_btn.setFixedSize(196, 38)
             resolve_btn.setCursor(Qt.PointingHandCursor)
-            resolve_btn.setStyleSheet("QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; font-weight: 800; padding: 0 14px; text-align: center; } QPushButton:hover { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }")
+            resolve_btn.setStyleSheet(
+                "QPushButton { background: #16a34a; color: white; border: none; "
+                "border-radius: 8px; font-size: 13px; font-weight: 800; "
+                "padding: 0 16px; text-align: center; } "
+                "QPushButton:hover { background: #15803d; }"
+            )
             resolve_btn.clicked.connect(lambda _, sid=row["id"]: self._resolve(sid))
             action_cell = QWidget()
             action_cell.setStyleSheet("background: transparent; border: none;")
             action_layout = QHBoxLayout(action_cell)
             action_layout.setContentsMargins(8, 6, 8, 6)
-            action_layout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            action_layout.setAlignment(Qt.AlignCenter)
             action_layout.addWidget(resolve_btn)
             self.table.setCellWidget(i, 6, action_cell)
 

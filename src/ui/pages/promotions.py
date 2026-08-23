@@ -275,7 +275,10 @@ class EligibleTab(QWidget):
         for col in range(self.table.columnCount()):
             header_item = self.table.horizontalHeaderItem(col)
             if header_item:
-                header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                if col == 7:
+                    header_item.setTextAlignment(Qt.AlignCenter)
+                else:
+                    header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.setStyleSheet(PROMO_TABLE_SS)
         header = self.table.horizontalHeader()
         header.setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
@@ -423,7 +426,7 @@ class EligibleTab(QWidget):
             prog_w = QWidget()
             prog_w.setStyleSheet("background: white; border: none;")
             prog_l = QVBoxLayout(prog_w)
-            prog_l.setContentsMargins(12, 8, 12, 8)
+            prog_l.setContentsMargins(0, 8, 12, 8)
             prog_l.setSpacing(3)
             bar = QProgressBar()
             bar.setRange(0, 100)
@@ -472,7 +475,7 @@ class EligibleTab(QWidget):
             act_w.setStyleSheet("background: white; border: none;")
             act_l = QHBoxLayout(act_w)
             act_l.setContentsMargins(6, 8, 6, 8)
-            act_l.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            act_l.setAlignment(Qt.AlignCenter)
             if row["status"] == "eligible":
                 btn = QPushButton("  " + t("approve"))
                 btn.setIcon(qta.icon("fa5s.check", color="white"))
