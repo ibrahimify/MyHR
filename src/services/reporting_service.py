@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from calendar import month_abbr
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -11,7 +10,7 @@ from html import escape
 from sqlalchemy import func
 
 from src.core.app_settings import company_name, company_subtitle
-from src.core.i18n import t
+from src.core.i18n import is_rtl, t
 from src.database.connection import get_session, OTHER_TITLE_NAME
 from src.database.models import (
     AuditLog,
@@ -171,137 +170,200 @@ def build_yearly_report_html(report: YearlyReport) -> str:
     """Render the yearly report as print-ready HTML for Qt PDF export."""
     generated = report.generated_at.strftime("%Y-%m-%d %H:%M")
     title = t("yearly_workforce_report")
-    metric_cards = "".join(_metric_card(metric) for metric in report.metrics)
-    salary_cards = "".join(_metric_card(metric) for metric in report.salary_summary)
+    direction = "rtl" if is_rtl() else "ltr"
+    align = "right" if is_rtl() else "left"
+    opposite_align = "left" if is_rtl() else "right"
+    section_count = 6
     return f"""
 <!doctype html>
-<html>
+<html dir="{direction}">
 <head>
 <meta charset="utf-8">
 <style>
 body {{
-    color: #111827;
+    color: #1c2430;
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 10pt;
-    line-height: 1.45;
-}}
-h1 {{
-    color: #030213;
-    font-size: 28pt;
+    font-size: 9.5pt;
+    line-height: 1.5;
     margin: 0;
 }}
-h2 {{
-    color: #030213;
-    font-size: 16pt;
-    margin: 22px 0 10px;
-}}
-h3 {{
-    color: #111827;
-    font-size: 12pt;
-    margin: 0 0 6px;
+h1, h2 {{
+    color: #16202e;
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 700;
 }}
 p {{
     margin: 0 0 8px;
 }}
+.hr {{
+    border: none;
+    border-top: 1px solid #c7ccd4;
+    margin: 14px 0;
+}}
+.hr-accent {{
+    border: none;
+    border-top: 2px solid #1f3a5f;
+    margin: 8px 0 24px;
+}}
+.page {{
+    background: #ffffff;
+    color: #1c2430;
+}}
 .cover {{
-    border-bottom: 3px solid #2563eb;
-    padding-bottom: 18px;
-    margin-bottom: 24px;
+    padding-top: 8px;
+}}
+.masthead {{
+    color: #55606e;
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }}
 .company {{
-    color: #2563eb;
+    color: #16202e;
     font-size: 13pt;
     font-weight: 700;
-    margin-bottom: 8px;
+    margin-top: 4px;
 }}
-.meta {{
-    color: #4b5563;
-    font-size: 9pt;
-    margin-top: 12px;
+.subtitle {{
+    color: #55606e;
+    font-size: 9.5pt;
+    margin-top: 2px;
 }}
-.summary {{
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    border-radius: 8px;
-    padding: 14px 16px;
-    margin: 14px 0 18px;
+h1.title {{
+    font-size: 25pt;
+    margin: 30px 0 4px;
 }}
-.cards {{
+.period {{
+    color: #1f3a5f;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 11pt;
+    margin-bottom: 26px;
+}}
+h2.section-title {{
+    font-size: 13pt;
+    margin: 0 0 4px;
+}}
+.section-page {{
+    page-break-before: always;
+}}
+.section-header {{
     width: 100%;
-    border-collapse: separate;
-    border-spacing: 8px;
-    margin: 8px 0 12px;
+    border-collapse: collapse;
+    margin-bottom: 6px;
 }}
-.card {{
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 12px;
-    width: 25%;
+.section-header td {{
+    border: none;
+    padding: 0;
     vertical-align: top;
 }}
-.label {{
-    color: #4b5563;
-    font-size: 8.5pt;
+.section-header .meta {{
+    color: #55606e;
+    font-size: 8pt;
+    text-align: {opposite_align};
+}}
+.summary {{
+    background: #f7f8fa;
+    border: 1px solid #c7ccd4;
+    border-left: 3px solid #1f3a5f;
+    padding: 14px 16px;
+    margin: 4px 0 20px;
+    page-break-inside: avoid;
+}}
+table.metrics {{
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 6px;
+}}
+table.metrics td {{
+    border: 1px solid #d9dee5;
+    padding: 10px 12px;
+    width: 50%;
+    vertical-align: top;
+    page-break-inside: avoid;
+}}
+table.metrics .m-label {{
+    color: #55606e;
+    font-size: 8pt;
     text-transform: uppercase;
     letter-spacing: 0.4px;
 }}
-.value {{
-    color: #030213;
-    font-size: 19pt;
-    font-weight: 800;
-    margin-top: 4px;
+table.metrics .m-value {{
+    color: #16202e;
+    font-size: 14pt;
+    font-weight: 700;
+    margin-top: 3px;
 }}
-.detail {{
-    color: #2563eb;
-    font-size: 8.5pt;
+table.metrics .m-detail {{
+    color: #55606e;
+    font-size: 8pt;
     margin-top: 2px;
 }}
 table.data {{
     width: 100%;
     border-collapse: collapse;
-    margin-top: 8px;
+    margin-top: 6px;
+    font-size: 9pt;
+    table-layout: fixed;
 }}
 table.data th {{
-    background: #f3f4f6;
-    color: #111827;
-    border-bottom: 1px solid #d1d5db;
+    background: #f1f2f4;
+    color: #16202e;
+    border-bottom: 1px solid #1f3a5f;
     font-weight: 700;
-    padding: 7px 8px;
-    text-align: left;
+    padding: 7px 9px;
+    text-align: {align};
+    word-wrap: break-word;
 }}
 table.data td {{
-    border-bottom: 1px solid #e5e7eb;
-    padding: 7px 8px;
-    color: #111827;
+    border-bottom: 1px solid #e2e5ea;
+    padding: 7px 9px;
+    color: #1c2430;
+    vertical-align: top;
+    word-wrap: break-word;
 }}
-.footer {{
-    color: #6b7280;
-    border-top: 1px solid #e5e7eb;
+table.data tr:nth-child(even) td {{
+    background: #fafafb;
+}}
+.page-footer {{
+    color: #8a93a1;
+    border-top: 1px solid #d9dee5;
     margin-top: 28px;
-    padding-top: 10px;
-    font-size: 8.5pt;
+    padding-top: 8px;
+    font-size: 7.5pt;
+}}
+.page-footer table {{
+    width: 100%;
+    border-collapse: collapse;
+}}
+.page-footer td {{
+    border: none;
+    padding: 0;
+    vertical-align: top;
+}}
+.page-footer .right {{
+    text-align: {opposite_align};
+    white-space: nowrap;
 }}
 </style>
 </head>
 <body>
-    <div class="cover">
+    <div class="page cover">
+        <div class="masthead">{escape(t("report_period", year=report.year))}</div>
         <div class="company">{escape(report.company)}</div>
-        <h1>{escape(title)}</h1>
-        <p class="meta">{escape(report.subtitle)} | {escape(t("report_period", year=report.year))} | {escape(t("generated_on", value=generated))}</p>
+        <div class="subtitle">{escape(report.subtitle)}</div>
+        <h1 class="title">{escape(title)}</h1>
+        <div class="period">{escape(t("report_period", year=report.year))} &middot; {escape(t("generated_on", value=generated))}</div>
+        <hr class="hr-accent">
+        <h2 class="section-title">{escape(t("executive_summary"))}</h2>
+        <div class="summary">{escape(report.executive_summary)}</div>
+        {_report_footer(report, t("executive_summary"), 0, section_count)}
     </div>
-    <h2>{escape(t("executive_summary"))}</h2>
-    <div class="summary">{escape(report.executive_summary)}</div>
-    <h2>{escape(t("workforce_highlights"))}</h2>
-    {_cards_table(metric_cards)}
-    <h2>{escape(t("salary_and_compliance"))}</h2>
-    {_cards_table(salary_cards)}
-    {_data_table(t("department_breakdown"), [t("department"), t("employees"), t("active"), t("average_salary")], report.department_rows)}
-    {_data_table(t("level_breakdown"), [t("level"), t("name"), t("employees"), t("salary_range")], report.level_rows)}
-    {_data_table(t("monthly_activity"), [t("month"), t("promotions"), t("increments"), t("commendations"), t("sanctions")], report.monthly_rows)}
-    {_data_table(t("audit_summary"), [t("category"), t("events"), t("most_recent_action")], report.audit_rows)}
-    <div class="footer">
-        {escape(t("report_footer_note"))}
-    </div>
+    {_report_section(report, t("workforce_highlights"), _metric_table(report.metrics), 1, section_count)}
+    {_report_section(report, t("salary_and_compliance"), _metric_table(report.salary_summary), 2, section_count)}
+    {_report_section(report, t("department_breakdown"), _data_table([t("department"), t("report_header_employees"), t("active"), t("report_metric_average_salary")], report.department_rows), 3, section_count)}
+    {_report_section(report, t("level_breakdown"), _data_table([t("level"), t("name"), t("report_header_employees"), t("salary_range")], report.level_rows), 4, section_count)}
+    {_report_section(report, t("monthly_activity"), _data_table([t("filter_month"), t("promotions"), t("report_metric_increments"), t("report_metric_commendations"), t("report_metric_sanctions")], report.monthly_rows), 5, section_count)}
+    {_report_section(report, t("audit_summary"), _data_table([t("category"), t("events"), t("most_recent_action")], report.audit_rows), 6, section_count)}
 </body>
 </html>
 """
@@ -313,14 +375,36 @@ def _department_rows(employees: list[Employee]) -> list[list[str]]:
         name = employee.org_unit.name if employee.org_unit else t("unassigned")
         grouped[name].append(employee)
 
-    rows = []
+    summary = []
     for name, items in sorted(grouped.items(), key=lambda pair: (-len(pair[1]), pair[0])):
         active = [employee for employee in items if employee.status == "active"]
         average_salary = (
             sum(float(employee.base_salary or 0) for employee in active) / len(active)
             if active else 0
         )
-        rows.append([name, str(len(items)), str(len(active)), _money(average_salary, _primary_currency(active))])
+        summary.append((name, items, active, average_salary))
+    if not summary:
+        return [[t("no_data"), "0", "0", _money(0, "EUR")]]
+
+    top_rows = summary[:12]
+    rows = [
+        [name, str(len(items)), str(len(active)), _money(average_salary, _primary_currency(active))]
+        for name, items, active, average_salary in top_rows
+    ]
+    remaining = summary[12:]
+    if remaining:
+        remaining_items = [employee for _, items, _, _ in remaining for employee in items]
+        remaining_active = [employee for _, _, active, _ in remaining for employee in active]
+        remaining_average = (
+            sum(float(employee.base_salary or 0) for employee in remaining_active) / len(remaining_active)
+            if remaining_active else 0
+        )
+        rows.append([
+            t("remaining_units"),
+            str(len(remaining_items)),
+            str(len(remaining_active)),
+            _money(remaining_average, _primary_currency(remaining_active)),
+        ])
     return rows or [[t("no_data"), "0", "0", _money(0, "EUR")]]
 
 
@@ -348,7 +432,7 @@ def _monthly_activity_rows(promotions, increments, commendations, sanctions) -> 
     }
     return [
         [
-            month_abbr[month],
+            _report_month(month),
             str(buckets["promotions"].get(month, 0)),
             str(buckets["increments"].get(month, 0)),
             str(buckets["commendations"].get(month, 0)),
@@ -370,32 +454,71 @@ def _audit_rows(audit_logs: list[AuditLog]) -> list[list[str]]:
     return rows or [[t("no_data"), "0", "-"]]
 
 
-def _metric_card(metric: ReportMetric) -> str:
+def _report_month(month: int) -> str:
+    return t(f"report_month_{month:02d}")
+
+
+def _report_section(report: YearlyReport, title: str, content: str, index: int, total: int) -> str:
+    header = (
+        "<table class=\"section-header\"><tr>"
+        f"<td><div class=\"masthead\">{escape(report.company)} &middot; {escape(t('yearly_workforce_report'))}</div></td>"
+        f"<td class=\"meta\">{escape(t('report_period', year=report.year))}</td>"
+        "</tr></table>"
+    )
     return (
-        "<td class=\"card\">"
-        f"<div class=\"label\">{escape(metric.label)}</div>"
-        f"<div class=\"value\">{escape(metric.value)}</div>"
-        f"<div class=\"detail\">{escape(metric.detail)}</div>"
+        "<div class=\"page section-page\">"
+        f"{header}"
+        "<hr class=\"hr\">"
+        f"<h2 class=\"section-title\">{escape(title)}</h2>"
+        f"{content}"
+        f"{_report_footer(report, title, index, total)}"
+        "</div>"
+    )
+
+
+def _report_footer(report: YearlyReport, title: str, index: int, total: int) -> str:
+    if index:
+        page_text = f"{escape(title)} &middot; {index}/{total}"
+    else:
+        page_text = escape(t("executive_summary"))
+    return (
+        "<div class=\"page-footer\">"
+        "<table><tr>"
+        f"<td>{escape(t('report_footer_note'))}</td>"
+        f"<td class=\"right\">{page_text}</td>"
+        "</tr></table>"
+        "</div>"
+    )
+
+
+def _metric_table(metrics: list[ReportMetric]) -> str:
+    cells = [_metric_cell(metric) for metric in metrics]
+    rows = []
+    for index in range(0, len(cells), 2):
+        row_cells = cells[index:index + 2]
+        if len(row_cells) == 1:
+            row_cells.append("<td></td>")
+        rows.append("<tr>" + "".join(row_cells) + "</tr>")
+    return "<table class=\"metrics\">" + "".join(rows) + "</table>"
+
+
+def _metric_cell(metric: ReportMetric) -> str:
+    return (
+        "<td>"
+        f"<div class=\"m-label\">{escape(metric.label)}</div>"
+        f"<div class=\"m-value\">{escape(metric.value)}</div>"
+        f"<div class=\"m-detail\">{escape(metric.detail)}</div>"
         "</td>"
     )
 
 
-def _cards_table(cards: str) -> str:
-    cells = cards.split("</td>")
-    cells = [cell + "</td>" for cell in cells if cell.strip()]
-    rows = []
-    for index in range(0, len(cells), 4):
-        rows.append("<tr>" + "".join(cells[index:index + 4]) + "</tr>")
-    return "<table class=\"cards\">" + "".join(rows) + "</table>"
-
-
-def _data_table(title: str, headers: list[str], rows: list[list[str]]) -> str:
+def _data_table(headers: list[str], rows: list[list[str]]) -> str:
     head = "".join(f"<th>{escape(header)}</th>" for header in headers)
     body = "".join(
         "<tr>" + "".join(f"<td>{escape(str(value))}</td>" for value in row) + "</tr>"
         for row in rows
     )
-    return f"<h2>{escape(title)}</h2><table class=\"data\"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>"
+    return f"<table class=\"data\"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>"
 
 
 def _money(value: float, currency: str) -> str:

@@ -457,6 +457,7 @@ class DashboardSmokeTests(unittest.TestCase):
         self.assertIn("Yearly Workforce Report", html)
         self.assertIn("Executive Summary", html)
         self.assertNotIn("Thesis Extension", html)
+        self.assertNotIn("average_salary", html)
 
         fd, name = tempfile.mkstemp(prefix="myhr_report_", suffix=".pdf")
         os.close(fd)
@@ -470,6 +471,19 @@ class DashboardSmokeTests(unittest.TestCase):
                 target.unlink()
             except OSError:
                 pass
+
+    def test_yearly_report_uses_current_company_settings(self):
+        from src.services.reporting_service import build_yearly_report, build_yearly_report_html
+
+        with patch("src.services.reporting_service.company_name", return_value="Nexasoft Labs"), \
+             patch("src.services.reporting_service.company_subtitle", return_value="People Operations"):
+            report = build_yearly_report(2026)
+            html = build_yearly_report_html(report)
+
+        self.assertEqual(report.company, "Nexasoft Labs")
+        self.assertEqual(report.subtitle, "People Operations")
+        self.assertIn("Nexasoft Labs", html)
+        self.assertIn("People Operations", html)
 
     def test_audit_log_filters_details_and_exports_current_view(self):
         from datetime import datetime, timedelta

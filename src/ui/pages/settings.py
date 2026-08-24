@@ -15,7 +15,7 @@ from datetime import datetime
 import qtawesome as qta
 from sqlalchemy import func
 from PySide6.QtCore import Qt, QSize, QTimer, QMarginsF
-from PySide6.QtGui import QColor, QTextDocument, QPageLayout, QPageSize
+from PySide6.QtGui import QColor, QFont, QTextDocument, QPageLayout, QPageSize
 from PySide6.QtPrintSupport import QPrinter
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QPushButton,
@@ -2222,6 +2222,8 @@ def _write_pdf(path, html):
     printer.setPageSize(QPageSize(QPageSize.A4))
     printer.setPageMargins(QMarginsF(14, 14, 14, 14), QPageLayout.Millimeter)
     document = QTextDocument()
+    document.setDefaultFont(QFont("Segoe UI", 10))
+    document.setPageSize(printer.pageLayout().paintRectPoints().size())
     document.setHtml(html)
     document.print_(printer)
 
