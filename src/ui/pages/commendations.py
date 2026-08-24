@@ -21,6 +21,7 @@ from PySide6.QtGui import QColor
 from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
+from src.ui.animations import install_tab_transition
 from src.ui.styles import (
     EMPLOYEE_PICKER_LIST_SS,
     employee_picker_checkbox_ss,
@@ -211,6 +212,7 @@ class CommendationsPage(QWidget):
         self.tabs.addTab(self.issue_tab,   t("issue_commendation"))
         self.tabs.addTab(self.history_tab, t("commendation_history"))
         self.tabs.currentChanged.connect(lambda i: self.history_tab.refresh() if i == 1 else None)
+        install_tab_transition(self.tabs)
         layout.addWidget(self.tabs, 1)
 
     def _on_issued(self):

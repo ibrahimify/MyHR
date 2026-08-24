@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 
 from src.core.i18n import t
 from src.core.app_settings import app_settings, company_name
+from src.ui.animations import install_tab_transition
 from src.ui.styles import polish_combo_box
 from src.database.connection import get_session, log_action, DB_PATH
 from src.database.models import AuditLog, Title, SystemUser, PromotionRule, Employee, OrgUnit
@@ -157,25 +158,29 @@ QTabWidget::pane {
     margin-top: 26px;
 }
 QTabBar {
-    background: #e5e7eb;
-    border-radius: 14px;
+    background: #e8ebf0;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    padding: 5px;
 }
 QTabBar::tab {
     background: transparent;
     color: #030213;
     border: none;
-    padding: 9px 16px;
-    min-height: 26px;
+    border-radius: 13px;
+    padding: 7px 16px;
+    margin: 4px 2px;
+    min-height: 24px;
     font-size: 14px;
     font-weight: 800;
 }
 QTabBar::tab:selected {
     background: white;
-    border-radius: 14px;
+    border: 1px solid #f8fafc;
+    color: #030213;
 }
 QTabBar::tab:hover {
     background: #f3f4f6;
-    border-radius: 14px;
 }
 """
 
@@ -225,7 +230,8 @@ class SettingsPage(QWidget):
         self._add_policy_tabs()
         self.tabs.addTab(UserManagementTab(self.user), t("user_management"))
         self.tabs.addTab(DatabaseTab(self.user), t("database_tab"))
-        self.tabs.currentChanged.connect(self._refresh_current_tab)
+        self.tabs.currentChanged.connect(self._handle_tab_changed)
+        install_tab_transition(self.tabs, duration=240, offset=10)
         layout.addWidget(self.tabs, 1)
 
     def _add_policy_tabs(self, insert_at=None):
@@ -273,6 +279,9 @@ class SettingsPage(QWidget):
         refresh = getattr(widget, "refresh", None)
         if callable(refresh):
             refresh()
+
+    def _handle_tab_changed(self, index):
+        self._refresh_current_tab(index)
 
 
 class PolicySummaryTab(QWidget):

@@ -18,6 +18,7 @@ from src.database.connection import (
     calculate_months_remaining_batch, calculate_sub_race, display_title_name
 )
 from src.database.models import Employee, Title, PromotionRule, PromotionHistory, SalaryIncrementHistory
+from src.ui.animations import install_tab_transition
 from src.ui.styles import (
     btn_primary, btn_outline, INPUT_SS
 )
@@ -185,6 +186,7 @@ class PromotionsPage(QWidget):
         self.tabs.addTab(self.eligible_tab, t("eligible_employees"))
         self.tabs.addTab(self.history_tab,  t("promotion_history"))
         self.tabs.currentChanged.connect(self._on_tab_change)
+        install_tab_transition(self.tabs)
         layout.addWidget(self.tabs, 1)
 
     def _on_tab_change(self, index):

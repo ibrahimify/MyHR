@@ -22,6 +22,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
+from src.ui.animations import animate_widget_entry
 from src.ui.styles import polish_combo_box
 from src.database.connection import (
     get_session, generate_employee_id, log_action,
@@ -350,22 +351,26 @@ class EmployeesPage(QWidget):
         self.stack.addWidget(self.edit_page)
         self.stack.setCurrentWidget(self.list_page)
 
+    def _set_view(self, widget):
+        self.stack.setCurrentWidget(widget)
+        animate_widget_entry(widget, duration=180, offset=8)
+
     def _show_list(self):
         self.list_page.refresh()
-        self.stack.setCurrentWidget(self.list_page)
+        self._set_view(self.list_page)
 
     def _show_add(self):
         self.add_page.reset()
-        self.stack.setCurrentWidget(self.add_page)
+        self._set_view(self.add_page)
 
     def _show_profile(self, employee_id):
         self.profile_page.editing = False
         self.profile_page.load(employee_id)
-        self.stack.setCurrentWidget(self.profile_page)
+        self._set_view(self.profile_page)
 
     def _show_edit(self, employee_id):
         self.profile_page.load(employee_id)
-        self.stack.setCurrentWidget(self.profile_page)
+        self._set_view(self.profile_page)
         self.profile_page._begin_inline_edit()
 
 

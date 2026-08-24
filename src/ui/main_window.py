@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize
 from src.core.i18n import t
 from src.core.app_settings import company_name, company_subtitle
+from src.ui.animations import animate_widget_entry
 from src.ui.styles import CLR_BG, CLR_BLUE_DARK
 
 
@@ -344,6 +345,7 @@ class MainWindow(QMainWindow):
         self.sidebar._set_active(key)
         if hasattr(page, "refresh"):
             page.refresh()
+        animate_widget_entry(page, duration=180, offset=8)
         if open_active_sanctions and hasattr(page, "open_active_sanctions"):
             page.open_active_sanctions()
 
@@ -356,6 +358,7 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentWidget(page)
         self.sidebar._set_active("employees")
         page._show_profile(emp_db_id)
+        animate_widget_entry(page, duration=180, offset=8)
 
     def _logout(self):
         from src.ui.login_window import LoginWindow
