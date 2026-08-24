@@ -1,5 +1,6 @@
 import os
 import csv
+import json
 import tempfile
 import unittest
 from types import SimpleNamespace
@@ -570,7 +571,7 @@ class DashboardSmokeTests(unittest.TestCase):
         page._filter()
         self.assertEqual(page.table.rowCount(), 1)
         self.assertIn("status", _format_snapshot('{"status": "active"}'))
-        self.assertIn("Status: inactive -> active", _format_diff('{"status": "inactive"}', '{"status": "active"}'))
+        self.assertIn("Status: Inactive -> Active", _format_diff('{"status": "inactive"}', '{"status": "active"}'))
 
         fd, name = tempfile.mkstemp(prefix="myhr_audit_", suffix=".csv")
         os.close(fd)
@@ -583,11 +584,18 @@ class DashboardSmokeTests(unittest.TestCase):
                 rows = list(csv.reader(handle))
             self.assertGreaterEqual(len(rows), 2)
             self.assertEqual(rows[0][:5], ["Timestamp", "User", "Action", "Action Code", "Target"])
+            self.assertEqual(rows[0][7], "Changes")
             self.assertIn("Employee Updated", rows[1])
             self.assertIn("employee.update", rows[1])
             self.assertIn("Audit export current item", rows[1])
-            self.assertIn("Status: inactive", rows[1])
-            self.assertIn("Status: active", rows[1])
+            self.assertIn("Status: Inactive -> Active", rows[1])
+            self.assertIn("Status: Inactive", rows[1])
+            self.assertIn("Status: Active", rows[1])
+            recorded = _format_diff("", '{"year": 2026, "report_type": "audit", "org_unit_id": null}')
+            self.assertIn("Recorded: Year: 2026", recorded)
+            self.assertIn("Report Type: Audit", recorded)
+            self.assertNotIn("None", recorded)
+            self.assertNotIn("Org Unit Id", recorded)
         finally:
             try:
                 target.unlink()
@@ -666,6 +674,39 @@ class DashboardSmokeTests(unittest.TestCase):
         self.assertTrue(all(target != "-" for target in targets))
         self.assertIn("Level Updated", actions)
         self.assertIn("Level Deleted", actions)
+
+    def test_yearly_report_export_audit_payload_is_valid_json(self):
+        from pathlib import Path
+
+        from src.database.models import AuditLog
+        from src.ui.pages.settings import DatabaseTab
+
+        user = SimpleNamespace(id=1, username="admin", role="admin", full_name="Smoke Admin")
+        tab = DatabaseTab(user)
+        fd, name = tempfile.mkstemp(prefix="myhr_report_", suffix=".pdf")
+        os.close(fd)
+        target = Path(name)
+        try:
+            with patch("src.ui.pages.settings.QFileDialog.getSaveFileName", return_value=(str(target), "PDF Files (*.pdf)")), \
+                 patch("src.ui.pages.settings._information", return_value=None):
+                tab._export_yearly_report()
+            with db.SessionLocal() as session:
+                log = (
+                    session.query(AuditLog)
+                    .filter(AuditLog.action == "settings.export_yearly_report")
+                    .order_by(AuditLog.id.desc())
+                    .first()
+                )
+                self.assertIsNotNone(log)
+                payload = json.loads(log.after_value)
+                self.assertEqual(payload["path"], str(target))
+                self.assertIn(payload["report_type"], {"full", "executive", "audit"})
+        finally:
+            tab.close()
+            try:
+                target.unlink()
+            except OSError:
+                pass
 
     def test_hierarchy_canvas_lazy_expand_and_search_focus(self):
         from datetime import datetime

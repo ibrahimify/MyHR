@@ -360,6 +360,8 @@ class AuditLogPage(QWidget):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setShowGrid(False)
         self.table.setMouseTracking(True)
+        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.table.cellDoubleClicked.connect(self._open_log_details)
         for col in range(self.table.columnCount()):
             header_item = self.table.horizontalHeaderItem(col)
@@ -629,11 +631,13 @@ class AuditLogPage(QWidget):
         self.table.setUpdatesEnabled(False)
         self.table.clearContents()
         self.table.setRowCount(len(logs))
-        self.table.setMinimumHeight(620)
+        row_height = 56
+        header_height = 52
+        self.table.setFixedHeight(max(620, header_height + (len(logs) * row_height) + 4))
 
         try:
             for row_index, log in enumerate(logs):
-                self.table.setRowHeight(row_index, 56)
+                self.table.setRowHeight(row_index, row_height)
 
                 timestamp = QTableWidgetItem(log["timestamp"])
                 timestamp.setForeground(QColor("#374151"))
@@ -713,6 +717,7 @@ class AuditLogPage(QWidget):
                     "Target",
                     "Details",
                     "Category",
+                    "Changes",
                     "Before",
                     "After",
                 ])
@@ -727,6 +732,7 @@ class AuditLogPage(QWidget):
                         row["target"],
                         row["details"],
                         _category_label(row["category"]),
+                        _format_diff_for_export(row["before"], row["after"]),
                         _format_snapshot_for_export(row["before"]),
                         _format_snapshot_for_export(row["after"]),
                     ])
@@ -915,14 +921,20 @@ def _format_diff(before, after):
     after_payload = _json_dict(after)
     if not before_payload and not after_payload:
         return t("not_available")
+    if not before_payload:
+        summary = _format_snapshot_pairs(after_payload, include_path=False)
+        return f"Recorded: {summary}" if summary else t("no_changes_detected")
+    if not after_payload:
+        summary = _format_snapshot_pairs(before_payload, include_path=False)
+        return f"Previous record: {summary}" if summary else t("no_changes_detected")
     keys = sorted(set(before_payload) | set(after_payload))
     changes = []
     for key in keys:
         old = before_payload.get(key, "-")
         new = after_payload.get(key, "-")
         if old != new:
-            label = str(key).replace("_", " ").title()
-            changes.append(f"{label}: {_export_value(old)} -> {_export_value(new)}")
+            label = _audit_field_label(key)
+            changes.append(f"{label}: {_export_value(old, key)} -> {_export_value(new, key)}")
     return "\n".join(changes) if changes else t("no_changes_detected")
 
 
@@ -940,21 +952,74 @@ def _format_snapshot_for_export(value):
         return ""
     payload = _json_dict(value)
     if payload:
-        return "; ".join(
-            f"{str(key).replace('_', ' ').title()}: {_export_value(val)}"
-            for key, val in payload.items()
-        )
+        return _format_snapshot_pairs(payload)
     return str(value)
 
 
-def _export_value(value):
+def _format_diff_for_export(before, after):
+    diff = _format_diff(before, after)
+    if diff == t("not_available"):
+        return ""
+    return diff.replace("\n", "; ")
+
+
+def _export_value(value, key=None):
+    if _is_blank_audit_value(value):
+        return ""
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
     if isinstance(value, float):
         return f"{value:g}"
     if isinstance(value, (list, tuple)):
         return ", ".join(str(item) for item in value)
     if isinstance(value, dict):
         return json.dumps(value, ensure_ascii=False, sort_keys=True)
-    return str(value)
+    text = str(value)
+    if key in {"report_type", "status"}:
+        return text.replace("_", " ").title()
+    if "_" in text and len(text.split()) == 1:
+        return text.replace("_", " ").title()
+    return text
+
+
+def _format_snapshot_pairs(payload, include_path=True):
+    pairs = []
+    for key, value in payload.items():
+        if key == "path" and not include_path:
+            continue
+        if str(key).endswith("_id") and key != "employee_id":
+            continue
+        if _is_blank_audit_value(value):
+            continue
+        pairs.append(f"{_audit_field_label(key)}: {_export_value(value, key)}")
+    return "; ".join(pairs)
+
+
+def _audit_field_label(key):
+    labels = {
+        "base_salary": "Base Salary",
+        "base_salary_min": "Minimum Salary",
+        "base_salary_max": "Maximum Salary",
+        "employee_id": "Employee ID",
+        "full_name": "Full Name",
+        "is_active": "Active",
+        "org_unit_id": "Org Unit Filter",
+        "performed_by_id": "Performed By",
+        "report_type": "Report Type",
+        "salary_max": "Maximum Salary",
+        "salary_min": "Minimum Salary",
+        "target_id": "Target ID",
+        "title_id": "Level Filter",
+    }
+    return labels.get(str(key), str(key).replace("_", " ").title())
+
+
+def _is_blank_audit_value(value):
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return value.strip().lower() in {"", "none", "null", "-"}
+    return False
 
 
 def _resolve_target(session, log):

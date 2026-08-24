@@ -8,6 +8,7 @@ Settings Page
 
 from hashlib import sha256
 import csv
+import json
 import os
 import shutil
 import sqlite3
@@ -2241,10 +2242,16 @@ class DatabaseTab(QWidget):
                 action="settings.export_yearly_report",
                 performed_by_id=self.user.id,
                 description=f"Yearly workforce report exported to PDF: {year}",
-                after_value=(
-                    f'{{"year": {int(year)}, "path": "{path}", "report_type": "{filters.report_type}", '
-                    f'"org_unit_id": {filters.org_unit_id or "null"}, "title_id": {filters.title_id or "null"}, '
-                    f'"status": "{filters.status or "all"}"}}'
+                after_value=json.dumps(
+                    {
+                        "year": int(year),
+                        "path": path,
+                        "report_type": filters.report_type,
+                        "org_unit_id": filters.org_unit_id,
+                        "title_id": filters.title_id,
+                        "status": filters.status or "all",
+                    },
+                    ensure_ascii=False,
                 ),
             )
             session.commit()
