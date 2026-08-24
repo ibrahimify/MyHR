@@ -21,7 +21,10 @@ from src.database.models import (
     Employee, Sanction, Commendation, AuditLog, Title, OrgUnit,
     PromotionHistory, SalaryIncrementHistory
 )
-from src.ui.styles import btn_primary, btn_outline, btn_ghost, TABLE_SS, SCROLL_SS
+from src.ui.styles import (
+    btn_primary, btn_outline, btn_ghost, TABLE_SS, SCROLL_SS,
+    enable_table_row_selection, prepare_table_cell_widget,
+)
 
 
 _ICO = QSize(16, 16)
@@ -557,10 +560,11 @@ class SalaryIncrementReviewDialog(QDialog):
         self.table.setStyleSheet(TABLE_SS)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Fixed)
-        self.table.setColumnWidth(4, 110)
+        self.table.setColumnWidth(4, 172)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setShowGrid(False)
+        enable_table_row_selection(self.table)
         self.table.setRowCount(len(self.increment_data))
 
         for i, row in enumerate(self.increment_data):
@@ -596,22 +600,37 @@ class SalaryIncrementReviewDialog(QDialog):
         layout.addLayout(btn_row)
 
     def _set_row_btn(self, idx, emp_id):
+        cell = prepare_table_cell_widget(QWidget())
+        layout = QHBoxLayout(cell)
+        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setAlignment(Qt.AlignCenter)
         if emp_id in self.approved_ids:
             lbl = QLabel(t("approved"))
             lbl.setAlignment(Qt.AlignCenter)
-            lbl.setStyleSheet("color: #10b981; font-size: 12px; font-weight: 700;")
-            self.table.setCellWidget(idx, 4, lbl)
+            lbl.setFixedSize(120, 32)
+            lbl.setStyleSheet(
+                "background: #dcfce7; color: #047857; border: 1px solid #bbf7d0; border-radius: 8px; "
+                "font-size: 12px; font-weight: 800;"
+            )
+            layout.addWidget(lbl)
+            self.table.setCellWidget(idx, 4, cell)
             return
 
-        btn = QPushButton(t("approve"))
+        btn = QPushButton("  " + t("approve"))
+        btn.setIcon(qta.icon("fa5s.check", color="white"))
+        btn.setIconSize(QSize(13, 13))
+        btn.setFixedSize(120, 34)
         btn.setCursor(Qt.PointingHandCursor)
         btn.setStyleSheet(
-            "QPushButton { background: #dcfce7; color: #166534; border: none;"
-            " border-radius: 6px; font-size: 12px; font-weight: 600; margin: 8px; }"
-            " QPushButton:hover { background: #bbf7d0; }"
+            "QPushButton { background: white; color: #047857; border: 1px solid #bbf7d0; "
+            "border-radius: 8px; font-size: 12px; font-weight: 800; padding: 0 12px; } "
+            "QPushButton:hover { background: #ecfdf5; border-color: #86efac; } "
+            "QPushButton:pressed { background: #d1fae5; }"
         )
+        btn.setIcon(qta.icon("fa5s.check", color="#047857"))
         btn.clicked.connect(lambda _, eid=emp_id, ridx=idx: self._approve_one(eid, ridx))
-        self.table.setCellWidget(idx, 4, btn)
+        layout.addWidget(btn)
+        self.table.setCellWidget(idx, 4, cell)
 
     def _approve_one(self, emp_id, row_idx):
         session = get_session()

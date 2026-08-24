@@ -22,8 +22,8 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
-from src.ui.animations import animate_widget_entry
-from src.ui.styles import polish_combo_box
+from src.ui.animations import animate_widget_entry, install_tab_transition
+from src.ui.styles import PILL_TAB_SS, enable_table_row_selection, prepare_table_cell_widget, polish_combo_box
 from src.database.connection import (
     get_session, generate_employee_id, log_action,
     degree_to_title_name, calculate_months_remaining, calculate_sub_race,
@@ -547,8 +547,8 @@ class EmployeeListView(QWidget):
             header.setSectionResizeMode(col, QHeaderView.Fixed)
         self.table.verticalHeader().setVisible(False)
         self.table.setCornerButtonEnabled(False)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        enable_table_row_selection(self.table)
         self.table.setShowGrid(False)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
@@ -735,8 +735,7 @@ class EmployeeListView(QWidget):
                 bg, fg = STATUS_COLORS.get(emp["status"], ("#f3f4f6","#374151"))
                 self.table.setCellWidget(row, 6, self._badge(t(emp["status"]), bg, fg))
 
-                btn_widget = QWidget()
-                btn_widget.setStyleSheet("background: transparent;")
+                btn_widget = prepare_table_cell_widget(QWidget())
                 btn_layout = QHBoxLayout(btn_widget)
                 btn_layout.setContentsMargins(6, 0, 6, 0)
                 btn_layout.setSpacing(8)
@@ -811,8 +810,7 @@ class EmployeeListView(QWidget):
             self.table.setColumnWidth(col, widths[col])
 
     def _badge(self, text, bg, fg, border=None):
-        wrap = QWidget()
-        wrap.setStyleSheet("background: transparent;")
+        wrap = prepare_table_cell_widget(QWidget())
         layout = QHBoxLayout(wrap)
         layout.setContentsMargins(4, 0, 4, 0)
         layout.setSpacing(0)
@@ -1892,18 +1890,13 @@ class EmployeeProfileView(QWidget):
             page.addWidget(self._profile_header(emp))
 
             tabs = QTabWidget()
-            tabs.setStyleSheet("""
-                QTabWidget::pane { border: none; background: #f9fafb; margin-top: 14px; }
-                QTabBar::tab { background: #e5e7eb; color: #111827; padding: 8px 14px; border: none; font-size: 12px; font-weight: 600; }
-                QTabBar::tab:first { border-top-left-radius: 9px; border-bottom-left-radius: 9px; }
-                QTabBar::tab:last { border-top-right-radius: 9px; border-bottom-right-radius: 9px; }
-                QTabBar::tab:selected { background: white; color: #030213; }
-            """)
+            tabs.setStyleSheet(PILL_TAB_SS)
             tabs.addTab(self._details_tab(emp, sub_race), t("personal_details"))
             tabs.addTab(self._promotion_tab(emp, race, sub_race), t("promotion_history"))
             if not is_other_employee(emp):
                 tabs.addTab(self._commendations_tab(emp), t("commendations"))
                 tabs.addTab(self._sanctions_tab(emp), t("sanctions"))
+            install_tab_transition(tabs)
             page.addWidget(tabs)
             page.addStretch()
             self.scroll.setWidget(content)

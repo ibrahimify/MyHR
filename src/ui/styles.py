@@ -2,7 +2,7 @@
 
 from PySide6.QtCore import QEvent, QObject, QRectF, Qt
 from PySide6.QtGui import QPainterPath, QRegion
-from PySide6.QtWidgets import QFrame
+from PySide6.QtWidgets import QAbstractItemView, QFrame
 
 # Colors
 CLR_BG = "#f9fafb"
@@ -16,6 +16,9 @@ CLR_TEXT_MUTED = "#6b7280"
 CLR_TEXT_LIGHT = "#9ca3af"
 CLR_INPUT_BG = "#f3f3f5"
 CLR_ROW_HOVER = "#f9fafb"
+TABLE_ROW_BG = "white"
+TABLE_ROW_HOVER_BG = "#f8fafc"
+TABLE_ROW_SELECTED_BG = "#eff6ff"
 
 # Buttons
 BTN_PRIMARY = """
@@ -197,6 +200,9 @@ QTableWidget::item:selected {
     background: #eff6ff;
     color: #111827;
 }
+QTableWidget::item:hover {
+    background: #f8fafc;
+}
 QHeaderView::section {
     background: #f9fafb;
     border: none;
@@ -213,6 +219,40 @@ QTableCornerButton::section {
     border-bottom: 1px solid #e5e7eb;
 }
 """
+
+
+def table_cell_widget_ss(background=TABLE_ROW_BG):
+    return (
+        f"QWidget#TableCellWidget {{ background: {background}; border: none; }}"
+        "QWidget#TableCellWidget QLabel { background: transparent; border: none; }"
+    )
+
+
+def prepare_table_cell_widget(widget, background=TABLE_ROW_BG):
+    widget.setObjectName("TableCellWidget")
+    widget.setAttribute(Qt.WA_StyledBackground, True)
+    widget.setStyleSheet(table_cell_widget_ss(background))
+    return widget
+
+
+def sync_table_widget_cells(table, selected_bg=TABLE_ROW_SELECTED_BG):
+    for row in range(table.rowCount()):
+        selected = table.selectionModel().isRowSelected(row, table.rootIndex())
+        bg = selected_bg if selected else TABLE_ROW_BG
+        for col in range(table.columnCount()):
+            widget = table.cellWidget(row, col)
+            if widget and widget.objectName() == "TableCellWidget":
+                widget.setStyleSheet(table_cell_widget_ss(bg))
+
+
+def enable_table_row_selection(table, selected_bg=TABLE_ROW_SELECTED_BG):
+    table.setSelectionBehavior(QAbstractItemView.SelectRows)
+    table.setMouseTracking(True)
+    table.setShowGrid(False)
+    if getattr(table, "_myhr_selection_sync_installed", False):
+        return
+    table.itemSelectionChanged.connect(lambda: sync_table_widget_cells(table, selected_bg))
+    table._myhr_selection_sync_installed = True
 
 # Cards. The QLabel rule prevents frame borders from appearing around text.
 CARD_SS = """
@@ -275,6 +315,40 @@ QTabBar::tab:selected {
 }
 QTabBar::tab:hover {
     color: #111827;
+}
+"""
+
+
+PILL_TAB_SS = """
+QTabWidget::pane {
+    border: none;
+    background: #f9fafb;
+    margin-top: 26px;
+}
+QTabBar {
+    background: #e8ebf0;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    padding: 5px;
+}
+QTabBar::tab {
+    background: transparent;
+    color: #030213;
+    border: none;
+    border-radius: 13px;
+    padding: 7px 16px;
+    margin: 4px 2px;
+    min-height: 24px;
+    font-size: 14px;
+    font-weight: 800;
+}
+QTabBar::tab:selected {
+    background: white;
+    border: 1px solid #f8fafc;
+    color: #030213;
+}
+QTabBar::tab:hover {
+    background: #f3f4f6;
 }
 """
 

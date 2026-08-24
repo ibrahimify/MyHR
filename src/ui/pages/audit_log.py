@@ -26,7 +26,7 @@ from sqlalchemy import String, cast, func, or_
 
 from src.core.app_settings import company_name, company_subtitle
 from src.core.i18n import is_rtl, t
-from src.ui.styles import polish_combo_box
+from src.ui.styles import enable_table_row_selection, prepare_table_cell_widget, polish_combo_box
 from src.database.connection import get_session, log_action
 from src.database.models import (
     AuditLog,
@@ -375,9 +375,7 @@ class AuditLogPage(QWidget):
         self.table.setColumnWidth(0, 190)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table.setShowGrid(False)
-        self.table.setMouseTracking(True)
+        enable_table_row_selection(self.table)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.table.cellDoubleClicked.connect(self._open_log_details)
@@ -1623,8 +1621,7 @@ def _category_label(category):
 
 def _category_badge(category):
     meta = CATEGORY_META.get(category, CATEGORY_META["other"])
-    cell = QWidget()
-    cell.setStyleSheet("background: transparent; border: none;")
+    cell = prepare_table_cell_widget(QWidget())
     layout = QHBoxLayout(cell)
     layout.setContentsMargins(12, 8, 12, 8)
     layout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)

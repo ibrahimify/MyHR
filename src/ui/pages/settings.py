@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
 from src.core.i18n import t
 from src.core.app_settings import app_settings, company_name
 from src.ui.animations import install_tab_transition
-from src.ui.styles import polish_combo_box
+from src.ui.styles import PILL_TAB_SS, enable_table_row_selection, prepare_table_cell_widget, polish_combo_box
 from src.database.connection import get_session, log_action, DB_PATH
 from src.database.models import AuditLog, Title, SystemUser, PromotionRule, Employee, OrgUnit
 from src.services.reporting_service import (
@@ -151,39 +151,6 @@ QComboBox QAbstractItemView {
 }
 """
 
-TAB_SS = """
-QTabWidget::pane {
-    border: none;
-    background: #f9fafb;
-    margin-top: 26px;
-}
-QTabBar {
-    background: #e8ebf0;
-    border: 1px solid #e5e7eb;
-    border-radius: 18px;
-    padding: 5px;
-}
-QTabBar::tab {
-    background: transparent;
-    color: #030213;
-    border: none;
-    border-radius: 13px;
-    padding: 7px 16px;
-    margin: 4px 2px;
-    min-height: 24px;
-    font-size: 14px;
-    font-weight: 800;
-}
-QTabBar::tab:selected {
-    background: white;
-    border: 1px solid #f8fafc;
-    color: #030213;
-}
-QTabBar::tab:hover {
-    background: #f3f4f6;
-}
-"""
-
 MESSAGE_BOX_SS = """
 QMessageBox { background: white; color: #111827; }
 QMessageBox QLabel { color: #111827; background: transparent; font-size: 13px; }
@@ -225,7 +192,7 @@ class SettingsPage(QWidget):
         layout.addSpacing(40)
 
         self.tabs = QTabWidget()
-        self.tabs.setStyleSheet(TAB_SS)
+        self.tabs.setStyleSheet(PILL_TAB_SS)
         self.tabs.addTab(GeneralTab(self.user), t("general"))
         self._add_policy_tabs()
         self.tabs.addTab(UserManagementTab(self.user), t("user_management"))
@@ -459,7 +426,7 @@ class PolicySummaryTab(QWidget):
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         table.verticalHeader().setVisible(False)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
-        table.setSelectionBehavior(QTableWidget.SelectRows)
+        enable_table_row_selection(table)
         table.setShowGrid(False)
         table.setFocusPolicy(Qt.NoFocus)
         for col in range(table.columnCount()):
@@ -626,7 +593,7 @@ class LevelManagementTab(QWidget):
         self.table.setStyleSheet(_summary_table_ss())
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        enable_table_row_selection(self.table)
         self.table.setShowGrid(False)
         self.table.setFocusPolicy(Qt.NoFocus)
         self.table.setAlternatingRowColors(True)
@@ -740,8 +707,7 @@ class LevelManagementTab(QWidget):
                 item.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
 
     def _actions_cell(self, row):
-        cell = QWidget()
-        cell.setStyleSheet("background: transparent; border: none;")
+        cell = prepare_table_cell_widget(QWidget())
         layout = QHBoxLayout(cell)
         layout.setContentsMargins(0, 5, 0, 5)
         layout.setSpacing(8)
@@ -1687,7 +1653,7 @@ QToolTip {
                 item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        enable_table_row_selection(self.table)
         self.table.setShowGrid(False)
         layout.addWidget(self.table)
         outer.addWidget(card)
@@ -1755,8 +1721,7 @@ QToolTip {
             self.table.setCellWidget(row_index, 5, self._actions_cell(row))
 
     def _actions_cell(self, row):
-        cell = QWidget()
-        cell.setStyleSheet("background: transparent; border: none;")
+        cell = prepare_table_cell_widget(QWidget())
         layout = QHBoxLayout(cell)
         layout.setContentsMargins(10, 8, 18, 8)
         layout.setSpacing(0)
@@ -2172,9 +2137,7 @@ class DatabaseTab(QWidget):
         self.report_history_table.setStyleSheet(_summary_table_ss())
         self.report_history_table.verticalHeader().setVisible(False)
         self.report_history_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.report_history_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.report_history_table.setSelectionMode(QTableWidget.NoSelection)
-        self.report_history_table.setFocusPolicy(Qt.NoFocus)
+        enable_table_row_selection(self.report_history_table)
         self.report_history_table.setShowGrid(False)
         self.report_history_table.setWordWrap(True)
         self.report_history_table.setMouseTracking(True)
@@ -3252,8 +3215,7 @@ def _set_tooltip_item(table, row, col, text):
 
 
 def _pill_cell(text, color, background, bold=False, align=Qt.AlignLeft, min_width=None, fixed_width=False):
-    cell = QWidget()
-    cell.setStyleSheet("background: transparent; border: none;")
+    cell = prepare_table_cell_widget(QWidget())
     layout = QHBoxLayout(cell)
     if align == Qt.AlignCenter:
         layout.setContentsMargins(0, 7, 0, 7)

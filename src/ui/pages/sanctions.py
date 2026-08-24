@@ -23,7 +23,13 @@ from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
 from src.ui.animations import install_tab_transition
-from src.ui.styles import EMPLOYEE_PICKER_LIST_SS, polish_combo_box
+from src.ui.styles import (
+    EMPLOYEE_PICKER_LIST_SS,
+    PILL_TAB_SS,
+    enable_table_row_selection,
+    prepare_table_cell_widget,
+    polish_combo_box,
+)
 from src.database.connection import get_session, generate_sanction_ref, log_action, is_other_employee
 from src.database.models import Employee, Sanction
 from datetime import datetime
@@ -35,23 +41,6 @@ SANCTION_TYPES = [
     ("suspension",      "suspension",      "#dc2626", "#fef2f2"),
     ("final_warning",   "final_warning",   "#991b1b", "#fef2f2"),
 ]
-
-TAB_SS = """
-QTabWidget::pane { border: none; background: #f9fafb; margin-top: 24px; }
-QTabBar { background: #e5e7eb; border-radius: 14px; }
-QTabBar::tab {
-    background: transparent;
-    color: #111827;
-    padding: 9px 14px;
-    border: none;
-    font-size: 14px;
-    font-weight: 700;
-    min-height: 24px;
-}
-QTabBar::tab:first { border-top-left-radius: 14px; border-bottom-left-radius: 14px; }
-QTabBar::tab:last { border-top-right-radius: 14px; border-bottom-right-radius: 14px; }
-QTabBar::tab:selected { background: white; color: #030213; }
-"""
 
 CARD_SS = """
 QFrame#Card {
@@ -187,7 +176,7 @@ class SanctionsPage(QWidget):
 
         # Tabs
         self.tabs = QTabWidget()
-        self.tabs.setStyleSheet(TAB_SS)
+        self.tabs.setStyleSheet(PILL_TAB_SS)
 
         self.active_tab  = ActiveSanctionsTab(self.user)
         self.history_tab = SanctionHistoryTab(self.user)
@@ -285,7 +274,7 @@ class ActiveSanctionsTab(QWidget):
                     header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        enable_table_row_selection(self.table, selected_bg="#fef2f2")
         self.table.setShowGrid(False)
         tcl.addWidget(self.table)
         layout.addWidget(table_card)
@@ -383,19 +372,19 @@ class ActiveSanctionsTab(QWidget):
             self.table.setItem(i, 5, delay_item)
 
             resolve_btn = QPushButton(t("mark_resolved"))
-            resolve_btn.setIcon(qta.icon("fa5s.check-circle", color="white"))
+            resolve_btn.setIcon(qta.icon("fa5s.check-circle", color="#047857"))
             resolve_btn.setIconSize(QSize(15, 15))
-            resolve_btn.setFixedSize(196, 38)
+            resolve_btn.setFixedSize(178, 36)
             resolve_btn.setCursor(Qt.PointingHandCursor)
             resolve_btn.setStyleSheet(
-                "QPushButton { background: #16a34a; color: white; border: none; "
+                "QPushButton { background: white; color: #047857; border: 1px solid #bbf7d0; "
                 "border-radius: 8px; font-size: 13px; font-weight: 800; "
-                "padding: 0 16px; text-align: center; } "
-                "QPushButton:hover { background: #15803d; }"
+                "padding: 0 14px; text-align: center; } "
+                "QPushButton:hover { background: #ecfdf5; border-color: #86efac; } "
+                "QPushButton:pressed { background: #d1fae5; }"
             )
             resolve_btn.clicked.connect(lambda _, sid=row["id"]: self._resolve(sid))
-            action_cell = QWidget()
-            action_cell.setStyleSheet("background: transparent; border: none;")
+            action_cell = prepare_table_cell_widget(QWidget())
             action_layout = QHBoxLayout(action_cell)
             action_layout.setContentsMargins(8, 6, 8, 6)
             action_layout.setAlignment(Qt.AlignCenter)
@@ -518,7 +507,7 @@ class SanctionHistoryTab(QWidget):
                 header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        enable_table_row_selection(self.table, selected_bg="#fef2f2")
         self.table.setShowGrid(False)
         cl.addWidget(self.table)
         cl.addWidget(self._pager())

@@ -32,6 +32,7 @@ from src.database.models import (
     Employee, Title, OrgUnit, Commendation,
     CommendationEmployee, Sanction
 )
+from src.ui.styles import enable_table_row_selection
 
 
 REQUIRED_COLUMNS = [
@@ -373,8 +374,7 @@ class ImportDataPage(QWidget):
         self.preview_table.setColumnWidth(0, 64)
         self.preview_table.verticalHeader().setVisible(False)
         self.preview_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.preview_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.preview_table.setShowGrid(False)
+        enable_table_row_selection(self.preview_table)
         for col in range(self.preview_table.columnCount()):
             header_item = self.preview_table.horizontalHeaderItem(col)
             if header_item:

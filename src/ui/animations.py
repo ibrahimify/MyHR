@@ -18,7 +18,8 @@ def animate_widget_entry(widget, *, duration=190, offset=8):
         effect = QGraphicsOpacityEffect(widget)
         effect.setOpacity(0.0)
         widget.setGraphicsEffect(effect)
-        widget.move(start_pos)
+        if offset:
+            widget.move(start_pos)
 
         fade = QPropertyAnimation(effect, b"opacity")
         fade.setDuration(duration)
@@ -26,15 +27,15 @@ def animate_widget_entry(widget, *, duration=190, offset=8):
         fade.setEndValue(1.0)
         fade.setEasingCurve(QEasingCurve.OutCubic)
 
-        slide = QPropertyAnimation(widget, b"pos")
-        slide.setDuration(duration)
-        slide.setStartValue(start_pos)
-        slide.setEndValue(end_pos)
-        slide.setEasingCurve(QEasingCurve.OutCubic)
-
         group = QParallelAnimationGroup(widget)
         group.addAnimation(fade)
-        group.addAnimation(slide)
+        if offset:
+            slide = QPropertyAnimation(widget, b"pos")
+            slide.setDuration(duration)
+            slide.setStartValue(start_pos)
+            slide.setEndValue(end_pos)
+            slide.setEasingCurve(QEasingCurve.OutCubic)
+            group.addAnimation(slide)
 
         def finish():
             widget.move(end_pos)

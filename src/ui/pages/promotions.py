@@ -20,7 +20,8 @@ from src.database.connection import (
 from src.database.models import Employee, Title, PromotionRule, PromotionHistory, SalaryIncrementHistory
 from src.ui.animations import install_tab_transition
 from src.ui.styles import (
-    btn_primary, btn_outline, INPUT_SS
+    btn_primary, btn_outline, INPUT_SS, PILL_TAB_SS,
+    enable_table_row_selection, prepare_table_cell_widget
 )
 
 _ICO = QSize(16, 16)
@@ -86,23 +87,6 @@ QFrame#PromoCard QLabel {
     border: none;
     background: transparent;
 }
-"""
-
-PROMO_TAB_SS = """
-QTabWidget::pane { border: none; background: #f9fafb; margin-top: 24px; }
-QTabBar { background: #e5e7eb; border-radius: 14px; }
-QTabBar::tab {
-    background: transparent;
-    color: #111827;
-    padding: 9px 14px;
-    border: none;
-    font-size: 14px;
-    font-weight: 700;
-    min-height: 24px;
-}
-QTabBar::tab:first { border-top-left-radius: 14px; border-bottom-left-radius: 14px; }
-QTabBar::tab:last { border-top-right-radius: 14px; border-bottom-right-radius: 14px; }
-QTabBar::tab:selected { background: white; color: #030213; }
 """
 
 PROMO_SCROLL_SS = """
@@ -178,7 +162,7 @@ class PromotionsPage(QWidget):
         layout.addSpacing(40)
 
         self.tabs = QTabWidget()
-        self.tabs.setStyleSheet(PROMO_TAB_SS)
+        self.tabs.setStyleSheet(PILL_TAB_SS)
 
         self.eligible_tab = EligibleTab(self.user, navigate_to_employee=self.navigate_to_employee)
         self.history_tab  = HistoryTab(self.user)
@@ -301,7 +285,7 @@ class EligibleTab(QWidget):
             header.setSectionResizeMode(col, QHeaderView.Fixed)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        enable_table_row_selection(self.table)
         self.table.setShowGrid(False)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -460,8 +444,7 @@ class EligibleTab(QWidget):
         self.table.setRowHeight(ri, 64)
 
         # Employee name + ID
-        name_w = QWidget()
-        name_w.setStyleSheet("background: white; border: none;")
+        name_w = prepare_table_cell_widget(QWidget())
         nl = QVBoxLayout(name_w)
         nl.setContentsMargins(0, 4, 4, 4)
         nl.setSpacing(1)
@@ -484,8 +467,7 @@ class EligibleTab(QWidget):
         mr = row["mr"]
         bm = max(row["base_months"], 1)
         pct = max(0, min(100, int(100 - (mr / bm * 100))))
-        prog_w = QWidget()
-        prog_w.setStyleSheet("background: white; border: none;")
+        prog_w = prepare_table_cell_widget(QWidget())
         prog_w.setMinimumWidth(172)
         prog_l = QVBoxLayout(prog_w)
         prog_l.setContentsMargins(0, 8, 12, 8)
@@ -534,8 +516,7 @@ class EligibleTab(QWidget):
         self.table.setCellWidget(ri, 6, prog_w)
 
         # Action button
-        act_w = QWidget()
-        act_w.setStyleSheet("background: white; border: none;")
+        act_w = prepare_table_cell_widget(QWidget())
         act_l = QHBoxLayout(act_w)
         act_l.setContentsMargins(2, 8, 2, 8)
         act_l.setAlignment(Qt.AlignCenter)
@@ -702,7 +683,7 @@ class HistoryTab(QWidget):
             header.setSectionResizeMode(col, QHeaderView.Fixed)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        enable_table_row_selection(self.table)
         self.table.setShowGrid(False)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.table.setFixedHeight(50 + (58 * 10) + 18)
@@ -829,8 +810,7 @@ class HistoryTab(QWidget):
     def _set_history_row(self, i, row):
         self.table.setRowHeight(i, 58)
         # Employee cell
-        ew = QWidget()
-        ew.setStyleSheet("background: white; border: none;")
+        ew = prepare_table_cell_widget(QWidget())
         el = QVBoxLayout(ew)
         el.setContentsMargins(0, 4, 4, 4)
         el.setSpacing(1)
@@ -843,8 +823,7 @@ class HistoryTab(QWidget):
         ew.setToolTip(f"{row['name']} ({row['emp_id']})")
         self.table.setCellWidget(i, 0, ew)
 
-        promo_w = QWidget()
-        promo_w.setStyleSheet("background: white; border: none;")
+        promo_w = prepare_table_cell_widget(QWidget())
         pl = QHBoxLayout(promo_w)
         pl.setContentsMargins(12, 7, 8, 7)
         pl.setSpacing(8)

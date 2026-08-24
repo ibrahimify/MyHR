@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QPushButton, QLabel, QStackedWidget, QFrame
 )
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, QTimer
 from src.core.i18n import t
 from src.core.app_settings import company_name, company_subtitle
 from src.ui.animations import animate_widget_entry
@@ -259,8 +259,10 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(1024, 600)
         self.setStyleSheet(f"QMainWindow {{ background: {CLR_BG}; }}")
         self._pages_cache = {}
+        self._page_animation_ready = False
         self._build()
         self.showMaximized()
+        QTimer.singleShot(350, self._enable_page_animations)
 
     def _build(self):
         central = QWidget()
@@ -286,7 +288,10 @@ class MainWindow(QMainWindow):
         """)
         layout.addWidget(self.stack)
 
-        self._navigate("dashboard")
+        self._navigate("dashboard", animate=False)
+
+    def _enable_page_animations(self):
+        self._page_animation_ready = True
 
     def _get_page(self, key):
         if key in self._pages_cache:
@@ -328,7 +333,7 @@ class MainWindow(QMainWindow):
         self._pages_cache[key] = page
         return page
 
-    def _navigate(self, key):
+    def _navigate(self, key, animate=True):
         open_active_sanctions = key == "sanctions_active"
         if open_active_sanctions:
             key = "sanctions"
@@ -345,7 +350,8 @@ class MainWindow(QMainWindow):
         self.sidebar._set_active(key)
         if hasattr(page, "refresh"):
             page.refresh()
-        animate_widget_entry(page, duration=180, offset=8)
+        if animate and self._page_animation_ready:
+            animate_widget_entry(page, duration=160, offset=0)
         if open_active_sanctions and hasattr(page, "open_active_sanctions"):
             page.open_active_sanctions()
 
@@ -358,7 +364,7 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentWidget(page)
         self.sidebar._set_active("employees")
         page._show_profile(emp_db_id)
-        animate_widget_entry(page, duration=180, offset=8)
+        animate_widget_entry(page, duration=160, offset=0)
 
     def _logout(self):
         from src.ui.login_window import LoginWindow

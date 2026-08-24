@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.core.i18n import t
-from src.ui.styles import polish_combo_box
+from src.ui.styles import TABLE_SS, enable_table_row_selection, polish_combo_box
 from src.database.connection import get_session, log_action
 from src.database.models import OrgUnit, Employee
 
@@ -916,36 +916,7 @@ class UnitEmployeesDialog(QDialog):
         self.unit_id = unit_id
         self.setWindowTitle(t("employees_in_unit"))
         self.resize(860, 520)
-        self.setStyleSheet("""
-            QDialog { background: white; color: #111827; }
-            QLabel { color: #111827; background: transparent; border: none; }
-            QTableWidget {
-                background: white;
-                border: 1px solid #e5e7eb;
-                border-radius: 8px;
-                gridline-color: #f3f4f6;
-                color: #111827;
-                selection-background-color: #eff6ff;
-                selection-color: #111827;
-                outline: none;
-            }
-            QTableWidget::item {
-                border: none;
-                border-bottom: 1px solid #f3f4f6;
-                padding: 0 10px;
-                color: #111827;
-            }
-            QHeaderView::section {
-                background: white;
-                color: #030213;
-                border: none;
-                border-bottom: 1px solid #e5e7eb;
-                padding: 0 10px;
-                font-size: 13px;
-                font-weight: 800;
-                min-height: 44px;
-            }
-        """)
+        self.setStyleSheet("QDialog { background: white; color: #111827; } QLabel { color: #111827; background: transparent; border: none; }")
         self._build()
         self._load()
 
@@ -974,6 +945,7 @@ class UnitEmployeesDialog(QDialog):
         layout.addLayout(header)
 
         self.table = QTableWidget()
+        self.table.setStyleSheet(TABLE_SS)
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels([
             t("employee_id"), t("name"), t("position"), t("level"), t("status"), t("email")
@@ -981,8 +953,7 @@ class UnitEmployeesDialog(QDialog):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table.setShowGrid(False)
+        enable_table_row_selection(self.table)
         for col in range(self.table.columnCount()):
             item = self.table.horizontalHeaderItem(col)
             if item:

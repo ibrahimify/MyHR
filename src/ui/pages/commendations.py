@@ -24,6 +24,8 @@ from src.core.i18n import t
 from src.ui.animations import install_tab_transition
 from src.ui.styles import (
     EMPLOYEE_PICKER_LIST_SS,
+    PILL_TAB_SS,
+    enable_table_row_selection,
     employee_picker_checkbox_ss,
     employee_picker_row_ss,
     polish_combo_box,
@@ -47,23 +49,6 @@ PAGE_BG = "#f9fafb"
 TEXT = "#030213"
 MUTED = "#4b5563"
 BORDER = "#e5e7eb"
-
-TAB_SS = """
-QTabWidget::pane { border: none; background: #f9fafb; margin-top: 24px; }
-QTabBar { background: #e5e7eb; border-radius: 14px; }
-QTabBar::tab {
-    background: transparent;
-    color: #111827;
-    padding: 9px 14px;
-    border: none;
-    font-size: 14px;
-    font-weight: 700;
-    min-height: 24px;
-}
-QTabBar::tab:first { border-top-left-radius: 14px; border-bottom-left-radius: 14px; }
-QTabBar::tab:last { border-top-right-radius: 14px; border-bottom-right-radius: 14px; }
-QTabBar::tab:selected { background: white; color: #030213; }
-"""
 
 CARD_SS = """
 QFrame#Card {
@@ -204,7 +189,7 @@ class CommendationsPage(QWidget):
 
         # Tabs
         self.tabs = QTabWidget()
-        self.tabs.setStyleSheet(TAB_SS)
+        self.tabs.setStyleSheet(PILL_TAB_SS)
 
         self.issue_tab   = IssueCommendationTab(self.user, self._on_issued)
         self.history_tab = CommendationHistoryTab(self.user)
@@ -821,8 +806,7 @@ class CommendationHistoryTab(QWidget):
                 header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table.setShowGrid(False)
+        enable_table_row_selection(self.table)
         cl.addWidget(self.table)
         cl.addWidget(self._pager())
         layout.addWidget(card)
