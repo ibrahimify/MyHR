@@ -563,6 +563,8 @@ class DashboardSmokeTests(unittest.TestCase):
         page.refresh()
         self.assertGreaterEqual(page.search.minimumWidth(), 360)
         self.assertEqual(page.search_btn.text(), "Search")
+        self.assertEqual(page.export_csv_btn.text(), "Export CSV")
+        self.assertEqual(page.export_pdf_btn.text(), "Export PDF")
         page.search.setText("Audit export")
         page.date_filter.setCurrentIndex(page.date_filter.findData("last_30"))
         employee_target_index = page.target_filter.findData("employee")
@@ -599,6 +601,34 @@ class DashboardSmokeTests(unittest.TestCase):
         finally:
             try:
                 target.unlink()
+            except OSError:
+                pass
+
+        fd, name = tempfile.mkstemp(prefix="myhr_audit_", suffix=".pdf")
+        os.close(fd)
+        pdf_target = Path(name)
+        try:
+            with patch("src.ui.pages.audit_log.QFileDialog.getSaveFileName", return_value=(str(pdf_target), "PDF Files (*.pdf)")), \
+                 patch("src.ui.pages.audit_log._info", return_value=None):
+                page._export_pdf()
+            self.assertGreater(pdf_target.stat().st_size, 1000)
+            with pdf_target.open("rb") as handle:
+                self.assertEqual(handle.read(4), b"%PDF")
+            with db.SessionLocal() as session:
+                log = (
+                    session.query(AuditLog)
+                    .filter(AuditLog.action == "audit.export_pdf")
+                    .order_by(AuditLog.id.desc())
+                    .first()
+                )
+                self.assertIsNotNone(log)
+                payload = json.loads(log.after_value)
+                self.assertEqual(payload["path"], str(pdf_target))
+                self.assertEqual(payload["count"], 1)
+                self.assertIn("Audit export", payload["scope"])
+        finally:
+            try:
+                pdf_target.unlink()
             except OSError:
                 pass
 

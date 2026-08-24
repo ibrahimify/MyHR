@@ -8,11 +8,14 @@ Audit Log Page
 import math
 import csv
 import json
+from collections import Counter
 from datetime import datetime, timedelta
+from html import escape
 
 import qtawesome as qta
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor
+from PySide6.QtCore import QMarginsF, Qt
+from PySide6.QtGui import QColor, QFont, QPageLayout, QPageSize, QTextDocument
+from PySide6.QtPrintSupport import QPrinter
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
     QFrame, QTableWidget, QTableWidgetItem, QHeaderView,
@@ -21,7 +24,8 @@ from PySide6.QtWidgets import (
 )
 from sqlalchemy import String, cast, func, or_
 
-from src.core.i18n import t
+from src.core.app_settings import company_name, company_subtitle
+from src.core.i18n import is_rtl, t
 from src.database.connection import get_session, log_action
 from src.database.models import (
     AuditLog,
@@ -55,6 +59,7 @@ ACTION_LABEL_KEYS = {
     "settings.export_yearly_report": "audit_action_export_yearly_report",
     "settings.database_health_check": "audit_action_database_health_check",
     "audit.export": "audit_action_export_audit",
+    "audit.export_pdf": "audit_action_export_audit_pdf",
     "settings.level_create": "audit_action_level_create",
     "settings.level_update": "audit_action_level_update",
     "settings.level_delete": "audit_action_level_delete",
@@ -272,17 +277,29 @@ class AuditLogPage(QWidget):
         self.search_btn.clicked.connect(self._filter)
         fl.addWidget(self.search_btn, 0, 4)
 
-        export_btn = QPushButton(t("export_current_view"))
-        export_btn.setFixedHeight(44)
-        export_btn.setCursor(Qt.PointingHandCursor)
-        export_btn.setIcon(qta.icon("fa5s.download", color="#111827"))
-        export_btn.setStyleSheet(
+        self.export_csv_btn = QPushButton(t("export_csv"))
+        self.export_csv_btn.setFixedHeight(44)
+        self.export_csv_btn.setCursor(Qt.PointingHandCursor)
+        self.export_csv_btn.setIcon(qta.icon("fa5s.download", color="#111827"))
+        self.export_csv_btn.setStyleSheet(
             "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db; "
             "border-radius: 8px; padding: 0 14px; font-size: 13px; font-weight: 800; }"
             "QPushButton:hover { background: #f9fafb; }"
         )
-        export_btn.clicked.connect(self._export_current_view)
-        fl.addWidget(export_btn, 0, 5)
+        self.export_csv_btn.clicked.connect(self._export_current_view)
+        fl.addWidget(self.export_csv_btn, 0, 5)
+
+        self.export_pdf_btn = QPushButton(t("export_pdf"))
+        self.export_pdf_btn.setFixedHeight(44)
+        self.export_pdf_btn.setCursor(Qt.PointingHandCursor)
+        self.export_pdf_btn.setIcon(qta.icon("fa5s.file-pdf", color="#111827"))
+        self.export_pdf_btn.setStyleSheet(
+            "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db; "
+            "border-radius: 8px; padding: 0 14px; font-size: 13px; font-weight: 800; }"
+            "QPushButton:hover { background: #f9fafb; }"
+        )
+        self.export_pdf_btn.clicked.connect(self._export_pdf)
+        fl.addWidget(self.export_pdf_btn, 0, 6)
 
         self.category_filter = QComboBox()
         self.category_filter.setFixedHeight(44)
@@ -322,9 +339,9 @@ class AuditLogPage(QWidget):
         _polish_combo(self.user_filter)
         self.user_filter.addItem(t("all_users"), None)
         self.user_filter.currentIndexChanged.connect(self._filter)
-        fl.addWidget(self.user_filter, 1, 3, 1, 3)
+        fl.addWidget(self.user_filter, 1, 3, 1, 4)
 
-        for col in range(6):
+        for col in range(7):
             fl.setColumnStretch(col, 1)
         fl.setColumnStretch(0, 2)
         fl.setColumnStretch(1, 2)
@@ -694,6 +711,18 @@ class AuditLogPage(QWidget):
             session.close()
         AuditDetailDialog(data, self).exec()
 
+    def _export_rows(self, session):
+        logs = (
+            self._filtered_query(session)
+            .order_by(AuditLog.performed_at.desc(), AuditLog.id.desc())
+            .all()
+        )
+        self._target_session = session
+        try:
+            return [self._serialize_log(log) for log in logs]
+        finally:
+            self._target_session = None
+
     def _export_current_view(self):
         path, _ = QFileDialog.getSaveFileName(self, t("export_audit"), "audit_log_export.csv", t("csv_files_filter"))
         if not path:
@@ -702,11 +731,7 @@ class AuditLogPage(QWidget):
             path += ".csv"
         session = get_session()
         try:
-            logs = (
-                self._filtered_query(session)
-                .order_by(AuditLog.performed_at.desc(), AuditLog.id.desc())
-                .all()
-            )
+            rows = self._export_rows(session)
             with open(path, "w", newline="", encoding="utf-8") as handle:
                 writer = csv.writer(handle)
                 writer.writerow([
@@ -721,9 +746,7 @@ class AuditLogPage(QWidget):
                     "Before",
                     "After",
                 ])
-                self._target_session = session
-                for log in logs:
-                    row = self._serialize_log(log)
+                for row in rows:
                     writer.writerow([
                         row["timestamp"],
                         row["user"],
@@ -736,15 +759,18 @@ class AuditLogPage(QWidget):
                         _format_snapshot_for_export(row["before"]),
                         _format_snapshot_for_export(row["after"]),
                     ])
-                self._target_session = None
             log_action(
                 session,
                 action="audit.export",
                 performed_by_id=self.user.id,
-                description=f"Audit log exported to CSV: {len(logs)} records",
+                description=f"Audit log exported to CSV: {len(rows)} records",
+                after_value=json.dumps(
+                    {"count": len(rows), "path": path, "scope": self._export_scope_text()},
+                    ensure_ascii=False,
+                ),
             )
             session.commit()
-            _info(self, t("success"), t("audit_exported_to", count=len(logs), path=path))
+            _info(self, t("success"), t("audit_exported_to", count=len(rows), path=path))
             self.refresh()
         except Exception as exc:
             session.rollback()
@@ -752,6 +778,56 @@ class AuditLogPage(QWidget):
         finally:
             self._target_session = None
             session.close()
+
+    def _export_pdf(self):
+        path, _ = QFileDialog.getSaveFileName(self, t("export_audit_pdf"), "audit_log_report.pdf", t("pdf_files_filter"))
+        if not path:
+            return
+        if not path.lower().endswith(".pdf"):
+            path += ".pdf"
+        session = get_session()
+        try:
+            rows = self._export_rows(session)
+            scope = self._export_scope_text()
+            generated_at = datetime.utcnow()
+            html = _build_audit_pdf_html(rows, scope, generated_at, self.user)
+            _write_audit_pdf(path, html)
+            log_action(
+                session,
+                action="audit.export_pdf",
+                performed_by_id=self.user.id,
+                description=f"Audit log exported to PDF: {len(rows)} records",
+                after_value=json.dumps(
+                    {"count": len(rows), "path": path, "scope": scope},
+                    ensure_ascii=False,
+                ),
+            )
+            session.commit()
+            _info(self, t("success"), t("audit_pdf_exported_to", count=len(rows), path=path))
+            self.refresh()
+        except Exception as exc:
+            session.rollback()
+            _error(self, t("error"), str(exc))
+        finally:
+            self._target_session = None
+            session.close()
+
+    def _export_scope_text(self):
+        parts = []
+        search = self.search.text().strip()
+        if search:
+            parts.append(f"{t('search')}: {search}")
+        for label_key, combo in [
+            ("category", self.category_filter),
+            ("target", self.target_filter),
+            ("date", self.date_filter),
+            ("user", self.user_filter),
+        ]:
+            data = combo.currentData()
+            if data is None or data == "all":
+                continue
+            parts.append(f"{t(label_key)}: {combo.currentText()}")
+        return "; ".join(parts) if parts else t("all_audit_records")
 
     def _pager(self):
         pager = QFrame()
@@ -790,6 +866,216 @@ class AuditLogPage(QWidget):
     def showEvent(self, event):
         self.refresh()
         super().showEvent(event)
+
+
+def _build_audit_pdf_html(rows, scope, generated_at, user):
+    generated = generated_at.strftime("%Y-%m-%d %H:%M")
+    generated_by = _user_display_from_snapshot(
+        getattr(user, "username", ""),
+        getattr(user, "full_name", ""),
+    )
+    direction = "rtl" if is_rtl() else "ltr"
+    align = "right" if is_rtl() else "left"
+    opposite_align = "left" if is_rtl() else "right"
+    category_counts = Counter(_category_label(row["category"]) for row in rows)
+    category_rows = "".join(
+        f"<tr><td>{_html(category)}</td><td>{count}</td></tr>"
+        for category, count in sorted(category_counts.items(), key=lambda item: (-item[1], item[0]))
+    ) or f"<tr><td>{_html(t('no_data'))}</td><td>0</td></tr>"
+    record_rows = "".join(_audit_pdf_row(row) for row in rows) or (
+        "<tr>"
+        f"<td colspan=\"6\">{_html(t('audit_pdf_no_records'))}</td>"
+        "</tr>"
+    )
+    return f"""
+<!doctype html>
+<html dir="{direction}">
+<head>
+<meta charset="utf-8">
+<style>
+body {{
+    color: #1f2937;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 7.4pt;
+    line-height: 1.25;
+    margin: 0;
+    background: #ffffff;
+}}
+html {{
+    background: #ffffff;
+}}
+h1, h2 {{
+    color: #111827;
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 700;
+}}
+.cover {{
+    border-bottom: 2px solid #1f3a5f;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+}}
+.masthead {{
+    color: #6b7280;
+    font-size: 7pt;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}}
+.company {{
+    color: #111827;
+    font-size: 10pt;
+    font-weight: 700;
+    margin-top: 3px;
+}}
+.subtitle {{
+    color: #4b5563;
+    font-size: 7.5pt;
+}}
+h1 {{
+    font-size: 18pt;
+    margin: 16px 0 3px;
+}}
+.generated {{
+    color: #1f3a5f;
+    font-size: 8pt;
+    margin-bottom: 6px;
+}}
+.summary {{
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0 10px;
+}}
+.summary td {{
+    border: 1px solid #d8dee7;
+    padding: 6px 8px;
+    vertical-align: top;
+}}
+.label {{
+    color: #6b7280;
+    font-size: 6.8pt;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+}}
+.value {{
+    color: #111827;
+    font-size: 8.5pt;
+    font-weight: 700;
+    margin-top: 2px;
+}}
+.section-title {{
+    color: #111827;
+    font-size: 10pt;
+    margin: 10px 0 5px;
+}}
+table.data {{
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}}
+table.data th {{
+    background: #f3f4f6;
+    border-bottom: 1px solid #1f3a5f;
+    color: #111827;
+    font-size: 6.8pt;
+    font-weight: 700;
+    padding: 5px 6px;
+    text-align: {align};
+}}
+table.data td {{
+    border-bottom: 1px solid #e5e7eb;
+    color: #1f2937;
+    padding: 5px 6px;
+    vertical-align: top;
+    word-wrap: break-word;
+}}
+table.data tr:nth-child(even) td {{
+    background: #fafafa;
+}}
+.small {{
+    color: #4b5563;
+    font-size: 7.5pt;
+}}
+.footer {{
+    border-top: 1px solid #d8dee7;
+    color: #6b7280;
+    font-size: 6.8pt;
+    margin-top: 12px;
+    padding-top: 6px;
+    text-align: {opposite_align};
+}}
+</style>
+</head>
+<body>
+    <div class="cover">
+        <div class="masthead">{_html(t("audit_pdf_title"))}</div>
+        <div class="company">{_html(company_name("MyHR"))}</div>
+        <div class="subtitle">{_html(company_subtitle("Employee Management"))}</div>
+        <h1>{_html(t("audit_pdf_title"))}</h1>
+        <div class="generated">{_html(t("generated_on", value=generated))}</div>
+    </div>
+    <table class="summary">
+        <tr>
+            <td><div class="label">{_html(t("audit_pdf_total_records"))}</div><div class="value">{len(rows)}</div></td>
+            <td><div class="label">{_html(t("audit_pdf_generated_by"))}</div><div class="value">{_html(generated_by)}</div></td>
+            <td><div class="label">{_html(t("audit_pdf_scope"))}</div><div class="value">{_html(scope)}</div></td>
+        </tr>
+    </table>
+    <h2 class="section-title">{_html(t("audit_pdf_category_summary"))}</h2>
+    <table class="data">
+        <tr><th>{_html(t("category"))}</th><th>{_html(t("events"))}</th></tr>
+        {category_rows}
+    </table>
+    <h2 class="section-title">{_html(t("audit_pdf_records"))}</h2>
+    <table class="data">
+        <tr>
+            <th style="width: 12%;">{_html(t("timestamp"))}</th>
+            <th style="width: 16%;">{_html(t("user"))}</th>
+            <th style="width: 15%;">{_html(t("action"))}</th>
+            <th style="width: 18%;">{_html(t("target"))}</th>
+            <th style="width: 12%;">{_html(t("category"))}</th>
+            <th style="width: 27%;">{_html(t("changes"))}</th>
+        </tr>
+        {record_rows}
+    </table>
+    <div class="footer">{_html(t("report_footer_note"))}</div>
+</body>
+</html>
+"""
+
+
+def _audit_pdf_row(row):
+    changes = _format_diff_for_export(row["before"], row["after"]) or row["details"] or t("not_available")
+    return (
+        "<tr>"
+        f"<td>{_html(row['timestamp'])}</td>"
+        f"<td>{_html(row['user'])}</td>"
+        f"<td>{_html(row['action'])}</td>"
+        f"<td>{_html(row['target'])}</td>"
+        f"<td>{_html(_category_label(row['category']))}</td>"
+        f"<td>{_html(changes)}</td>"
+        "</tr>"
+    )
+
+
+def _write_audit_pdf(path, html):
+    printer = QPrinter(QPrinter.HighResolution)
+    printer.setOutputFormat(QPrinter.PdfFormat)
+    printer.setOutputFileName(path)
+    printer.setPageLayout(QPageLayout(
+        QPageSize(QPageSize.A4),
+        QPageLayout.Landscape,
+        QMarginsF(10, 10, 10, 10),
+        QPageLayout.Millimeter,
+    ))
+    document = QTextDocument()
+    document.setDefaultFont(QFont("Segoe UI", 9))
+    document.setPageSize(printer.pageLayout().paintRectPoints().size())
+    document.setHtml(html)
+    document.print_(printer)
+
+
+def _html(value):
+    return escape(str(value or "-")).replace("\n", "<br>")
 
 
 class AuditDetailDialog(QDialog):
@@ -1060,6 +1346,7 @@ def _target_from_action(log):
         return t("target_yearly_report_for_year", year=year) if year else t("target_yearly_report")
     mapping = {
         "audit.export": "target_audit_log",
+        "audit.export_pdf": "target_audit_log",
         "settings.database_health_check": "target_database",
         "settings.promotion_rules": "target_promotion_policies",
         "settings.salary_ranges": "target_salary_ranges",
