@@ -2178,6 +2178,12 @@ TRANSLATIONS["en"].update({
     "export_yearly_report": "Export Yearly Report",
     "report_filters": "Report Filters",
     "report_filters_hint": "Choose the scope before exporting. Employee-entered data is exported exactly as stored.",
+    "report_preview_title": "Report Preview",
+    "report_preview_subtitle": "Review the report scope and included sections before generating the PDF.",
+    "report_preview_scope": "Selected Scope",
+    "report_preview_sections": "Sections Included",
+    "report_preview_empty_warning": "This report has no matching activity for the selected filters. You can still export it as an empty compliance record.",
+    "confirm_export_pdf": "Generate PDF",
     "report_type": "Report Type",
     "report_type_full": "Full Yearly Report",
     "report_type_executive": "Executive Summary",
@@ -2302,6 +2308,12 @@ TRANSLATIONS["hu"].update({
     "export_yearly_report": "Eves riport exportalasa",
     "report_filters": "Riport szurok",
     "report_filters_hint": "Valaszd ki az export hatokoret. A rogzitett munkavallaloi adatok valtozatlanul kerulnek exportalasra.",
+    "report_preview_title": "Riport elonezet",
+    "report_preview_subtitle": "Ellenorizd a riport hatokoret es szakaszait a PDF generalasa elott.",
+    "report_preview_scope": "Kivalasztott hatokor",
+    "report_preview_sections": "Tartalmazott szakaszok",
+    "report_preview_empty_warning": "A kivalasztott szurokkel nincs kapcsolodo tevekenyseg. A riport igy is exportalhato ures megfelelosegi rekordkent.",
+    "confirm_export_pdf": "PDF generalasa",
     "report_type": "Riport tipus",
     "report_type_full": "Teljes eves riport",
     "report_type_executive": "Vezetoi osszefoglalo",
@@ -2543,6 +2555,15 @@ TRANSLATIONS["ar"].update({
     "audit_pdf_no_records": "لا توجد سجلات تدقيق تطابق المرشحات المحددة.",
     "all_audit_records": "كل سجلات التدقيق",
     "audit_action_export_audit_pdf": "تم تصدير تقرير التدقيق PDF",
+})
+
+TRANSLATIONS["ar"].update({
+    "report_preview_title": "\u0645\u0639\u0627\u064a\u0646\u0629 \u0627\u0644\u062a\u0642\u0631\u064a\u0631",
+    "report_preview_subtitle": "\u0631\u0627\u062c\u0639 \u0646\u0637\u0627\u0642 \u0627\u0644\u062a\u0642\u0631\u064a\u0631 \u0648\u0627\u0644\u0623\u0642\u0633\u0627\u0645 \u0627\u0644\u0645\u0636\u0645\u0646\u0629 \u0642\u0628\u0644 \u0625\u0646\u0634\u0627\u0621 PDF.",
+    "report_preview_scope": "\u0627\u0644\u0646\u0637\u0627\u0642 \u0627\u0644\u0645\u062d\u062f\u062f",
+    "report_preview_sections": "\u0627\u0644\u0623\u0642\u0633\u0627\u0645 \u0627\u0644\u0645\u0636\u0645\u0646\u0629",
+    "report_preview_empty_warning": "\u0644\u0627 \u062a\u0648\u062c\u062f \u0623\u0646\u0634\u0637\u0629 \u062a\u0637\u0627\u0628\u0642 \u0627\u0644\u0645\u0631\u0634\u062d\u0627\u062a \u0627\u0644\u0645\u062d\u062f\u062f\u0629. \u064a\u0645\u0643\u0646\u0643 \u062a\u0635\u062f\u064a\u0631\u0647 \u0643\u0633\u062c\u0644 \u0627\u0645\u062a\u062b\u0627\u0644 \u0641\u0627\u0631\u063a.",
+    "confirm_export_pdf": "\u0625\u0646\u0634\u0627\u0621 PDF",
 })
 
 

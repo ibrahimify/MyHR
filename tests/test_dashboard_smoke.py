@@ -525,6 +525,25 @@ class DashboardSmokeTests(unittest.TestCase):
         finally:
             tab.close()
 
+    def test_yearly_report_preview_dialog_renders_scope_and_sections(self):
+        from PySide6.QtWidgets import QLabel
+
+        from src.services.reporting_service import build_yearly_report
+        from src.ui.pages.settings import YearlyReportPreviewDialog
+
+        report = build_yearly_report(2026)
+        dialog = YearlyReportPreviewDialog(report)
+        try:
+            dialog.resize(720, 620)
+            dialog.show()
+            self.app.processEvents()
+            labels = [label.text() for label in dialog.findChildren(QLabel)]
+            self.assertEqual(dialog.windowTitle(), "Report Preview")
+            self.assertTrue(any("Full Yearly Report" in text for text in labels))
+            self.assertTrue(any("Workforce Highlights" in text for text in labels))
+        finally:
+            dialog.close()
+
     def test_audit_log_filters_details_and_exports_current_view(self):
         from datetime import datetime, timedelta
         from pathlib import Path
@@ -718,6 +737,7 @@ class DashboardSmokeTests(unittest.TestCase):
         target = Path(name)
         try:
             with patch("src.ui.pages.settings.QFileDialog.getSaveFileName", return_value=(str(target), "PDF Files (*.pdf)")), \
+                 patch.object(tab, "_confirm_yearly_report_export", return_value=True), \
                  patch("src.ui.pages.settings._information", return_value=None):
                 tab._export_yearly_report()
             with db.SessionLocal() as session:

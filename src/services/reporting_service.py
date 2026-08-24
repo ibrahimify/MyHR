@@ -408,6 +408,11 @@ table.data tr:nth-child(even) td {{
 """
 
 
+def report_section_titles(report: YearlyReport) -> list[str]:
+    """Return the section titles that will appear in the rendered report."""
+    return [title for title, _content in _report_sections(report)]
+
+
 def _department_rows(employees: list[Employee]) -> list[list[str]]:
     grouped = defaultdict(list)
     for employee in employees:

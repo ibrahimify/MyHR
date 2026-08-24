@@ -35,6 +35,7 @@ from src.services.reporting_service import (
     available_report_years,
     build_yearly_report,
     build_yearly_report_html,
+    report_section_titles,
 )
 
 
@@ -2221,6 +2222,13 @@ class DatabaseTab(QWidget):
         if not year:
             year = datetime.utcnow().year
         filters = self._report_filters()
+        try:
+            report = build_yearly_report(int(year), filters)
+        except Exception as exc:
+            _critical(self, t("error"), str(exc))
+            return
+        if not self._confirm_yearly_report_export(report):
+            return
         type_suffix = (filters.report_type or "full").replace(" ", "_")
         path, _ = QFileDialog.getSaveFileName(
             self,
@@ -2234,7 +2242,6 @@ class DatabaseTab(QWidget):
             path += ".pdf"
         session = get_session()
         try:
-            report = build_yearly_report(int(year), filters)
             html = build_yearly_report_html(report)
             _write_pdf(path, html)
             log_action(
@@ -2261,6 +2268,9 @@ class DatabaseTab(QWidget):
             _critical(self, t("error"), str(exc))
         finally:
             session.close()
+
+    def _confirm_yearly_report_export(self, report):
+        return YearlyReportPreviewDialog(report, self).exec() == QDialog.Accepted
 
     def _health_check(self):
         session = get_session()
@@ -2296,6 +2306,118 @@ class DatabaseTab(QWidget):
             session.close()
 
 
+class YearlyReportPreviewDialog(QDialog):
+    def __init__(self, report, parent=None):
+        super().__init__(parent)
+        self.report = report
+        self.setWindowTitle(t("report_preview_title"))
+        self.setMinimumWidth(620)
+        self.setFont(QFont("Segoe UI", 10))
+        self.setStyleSheet(
+            "QDialog { background: white; color: #111827; font-family: 'Segoe UI', Arial; } "
+            "QLabel { background: transparent; border: none; font-family: 'Segoe UI', Arial; }"
+        )
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(26, 24, 26, 24)
+        layout.setSpacing(18)
+
+        header = QHBoxLayout()
+        icon = QLabel()
+        icon.setFixedSize(42, 42)
+        icon.setAlignment(Qt.AlignCenter)
+        icon.setStyleSheet("background: #fee2e2; border-radius: 8px;")
+        icon.setPixmap(qta.icon("fa5s.file-pdf", color="#dc2626").pixmap(18, 18))
+        text_col = QVBoxLayout()
+        title = QLabel(t("report_preview_title"))
+        title.setStyleSheet("font-size: 20px; font-weight: 900; color: #030213;")
+        subtitle = QLabel(t("report_preview_subtitle"))
+        subtitle.setWordWrap(True)
+        subtitle.setStyleSheet(f"font-size: 13px; color: {MUTED};")
+        text_col.addWidget(title)
+        text_col.addWidget(subtitle)
+        header.addWidget(icon)
+        header.addLayout(text_col, 1)
+        layout.addLayout(header)
+
+        scope = QFrame()
+        scope.setObjectName("Card")
+        scope.setStyleSheet(CARD_SS)
+        scope_grid = QGridLayout(scope)
+        scope_grid.setContentsMargins(18, 16, 18, 16)
+        scope_grid.setHorizontalSpacing(18)
+        scope_grid.setVerticalSpacing(12)
+        for index, (label, value) in enumerate([
+            (t("company"), report.company),
+            (t("report_type"), t(f"report_type_{report.report_type}")),
+            (t("report_period_label"), str(report.year)),
+            (t("report_preview_scope"), report.filter_summary),
+        ]):
+            row = index // 2
+            col = (index % 2) * 2
+            scope_grid.addWidget(_preview_label(label), row, col)
+            scope_grid.addWidget(_preview_value(value), row, col + 1)
+        layout.addWidget(scope)
+
+        metrics = QFrame()
+        metrics.setObjectName("Card")
+        metrics.setStyleSheet(CARD_SS)
+        metric_layout = QGridLayout(metrics)
+        metric_layout.setContentsMargins(18, 16, 18, 16)
+        metric_layout.setHorizontalSpacing(12)
+        metric_layout.setVerticalSpacing(12)
+        preview_metrics = _report_preview_metrics(report)
+        for index, metric in enumerate(preview_metrics):
+            metric_layout.addWidget(_metric_chip(metric.label, metric.value, metric.detail), index // 3, index % 3)
+        layout.addWidget(metrics)
+
+        sections_title = QLabel(t("report_preview_sections"))
+        sections_title.setStyleSheet("font-size: 13px; font-weight: 900; color: #030213;")
+        layout.addWidget(sections_title)
+
+        sections = QLabel("  |  ".join(report_section_titles(report)))
+        sections.setWordWrap(True)
+        sections.setStyleSheet(
+            "font-size: 13px; color: #374151; background: #f9fafb; border: 1px solid #e5e7eb; "
+            "border-radius: 8px; padding: 10px;"
+        )
+        layout.addWidget(sections)
+
+        if _report_has_no_activity(report):
+            warning = QLabel(t("report_preview_empty_warning"))
+            warning.setWordWrap(True)
+            warning.setStyleSheet(
+                "font-size: 13px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; "
+                "border-radius: 8px; padding: 10px;"
+            )
+            layout.addWidget(warning)
+
+        buttons = QHBoxLayout()
+        buttons.addStretch()
+        cancel = QPushButton(t("cancel"))
+        cancel.setFixedHeight(38)
+        cancel.setCursor(Qt.PointingHandCursor)
+        cancel.setStyleSheet(
+            "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db; "
+            "border-radius: 8px; padding: 0 18px; font-size: 13px; font-weight: 800; }"
+            "QPushButton:hover { background: #f9fafb; }"
+        )
+        cancel.clicked.connect(self.reject)
+        export = QPushButton(t("confirm_export_pdf"))
+        export.setFixedHeight(38)
+        export.setCursor(Qt.PointingHandCursor)
+        export.setIcon(qta.icon("fa5s.file-pdf", color="white"))
+        export.setStyleSheet(
+            "QPushButton { background: #030213; color: white; border: none; border-radius: 8px; "
+            "padding: 0 18px; font-size: 13px; font-weight: 800; }"
+            "QPushButton:hover { background: #111827; }"
+        )
+        export.clicked.connect(self.accept)
+        buttons.addWidget(cancel)
+        buttons.addWidget(export)
+        layout.addLayout(buttons)
+
+
 def _content():
     content = QWidget()
     content.setStyleSheet(f"background: {PAGE_BG};")
@@ -2309,6 +2431,67 @@ def _field_label(text):
     label = QLabel(text)
     label.setStyleSheet("font-size: 12px; font-weight: 800; color: #374151; background: transparent;")
     return label
+
+
+def _preview_label(text):
+    label = QLabel(str(text))
+    label.setStyleSheet(f"font-size: 12px; font-weight: 900; color: {MUTED};")
+    return label
+
+
+def _preview_value(text):
+    value = QLabel(str(text or "-"))
+    value.setWordWrap(True)
+    value.setStyleSheet("font-size: 13px; font-weight: 800; color: #111827;")
+    return value
+
+
+def _metric_chip(label, value, detail):
+    chip = QFrame()
+    chip.setObjectName("MetricChip")
+    chip.setMinimumHeight(92)
+    chip.setStyleSheet(
+        "QFrame#MetricChip { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; }"
+        "QFrame#MetricChip QLabel { background: transparent; border: none; }"
+    )
+    layout = QVBoxLayout(chip)
+    layout.setContentsMargins(12, 10, 12, 10)
+    layout.setSpacing(4)
+    title = QLabel(str(label))
+    title.setStyleSheet(f"font-size: 11px; font-weight: 900; color: {MUTED};")
+    number = QLabel(str(value))
+    number.setStyleSheet("font-size: 18px; font-weight: 900; color: #030213;")
+    note = QLabel(str(detail or ""))
+    note.setWordWrap(True)
+    note.setStyleSheet(f"font-size: 11px; color: {MUTED}; line-height: 14px;")
+    layout.addWidget(title)
+    layout.addWidget(number)
+    layout.addWidget(note)
+    return chip
+
+
+def _report_preview_metrics(report):
+    wanted = {
+        t("report_metric_headcount"),
+        t("report_metric_promotions"),
+        t("report_metric_increments"),
+        t("report_metric_sanctions"),
+        t("report_metric_audit_events"),
+    }
+    metrics = [metric for metric in report.metrics if metric.label in wanted]
+    if report.report_type != "audit" and report.salary_summary:
+        metrics.append(report.salary_summary[0])
+    return metrics[:6]
+
+
+def _report_has_no_activity(report):
+    values = []
+    for metric in report.metrics:
+        try:
+            values.append(int(str(metric.value).replace(",", "")))
+        except ValueError:
+            pass
+    return values and sum(values) == 0
 
 
 def _write_pdf(path, html):
