@@ -28,8 +28,9 @@ from PySide6.QtWidgets import (
 from src.core.i18n import t
 from src.core.app_settings import app_settings, company_name
 from src.database.connection import get_session, log_action, DB_PATH
-from src.database.models import Title, SystemUser, PromotionRule, Employee
+from src.database.models import Title, SystemUser, PromotionRule, Employee, OrgUnit
 from src.services.reporting_service import (
+    ReportFilters,
     available_report_years,
     build_yearly_report,
     build_yearly_report_html,
@@ -2051,15 +2052,66 @@ class DatabaseTab(QWidget):
         report_info.setWordWrap(True)
         report_info.setStyleSheet(f"font-size: 14px; color: {MUTED}; background: transparent;")
         report_layout.addWidget(report_info)
-        report_controls = QHBoxLayout()
-        report_controls.setSpacing(12)
+
+        filter_box = QFrame()
+        filter_box.setObjectName("ReportFilterBox")
+        filter_box.setStyleSheet(
+            "QFrame#ReportFilterBox { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; }"
+            "QFrame#ReportFilterBox QLabel { background: transparent; border: none; color: #374151; "
+            "font-size: 12px; font-weight: 800; }"
+        )
+        filter_layout = QGridLayout(filter_box)
+        filter_layout.setContentsMargins(14, 12, 14, 12)
+        filter_layout.setHorizontalSpacing(12)
+        filter_layout.setVerticalSpacing(8)
+
+        hint = QLabel(t("report_filters_hint"))
+        hint.setWordWrap(True)
+        hint.setStyleSheet(f"font-size: 12px; font-weight: 500; color: {MUTED}; background: transparent;")
+        filter_layout.addWidget(hint, 0, 0, 1, 3)
+
+        self.report_type = QComboBox()
+        self.report_type.setFixedHeight(40)
+        _style_combo(self.report_type)
+        self.report_type.addItem(t("report_type_full"), "full")
+        self.report_type.addItem(t("report_type_executive"), "executive")
+        self.report_type.addItem(t("report_type_audit"), "audit")
+        filter_layout.addWidget(_field_label(t("report_type")), 1, 0)
+        filter_layout.addWidget(self.report_type, 2, 0)
+
         self.report_year = QComboBox()
-        self.report_year.setFixedHeight(44)
-        self.report_year.setMinimumWidth(150)
+        self.report_year.setFixedHeight(40)
         _style_combo(self.report_year)
         for year in available_report_years():
             self.report_year.addItem(str(year), year)
-        report_controls.addWidget(self.report_year)
+        filter_layout.addWidget(_field_label(t("report_period_label")), 1, 1)
+        filter_layout.addWidget(self.report_year, 2, 1)
+
+        self.report_status = QComboBox()
+        self.report_status.setFixedHeight(40)
+        _style_combo(self.report_status)
+        self.report_status.addItem(t("all_statuses"), None)
+        for status in ["active", "inactive", "on_leave", "terminated"]:
+            self.report_status.addItem(t(status), status)
+        filter_layout.addWidget(_field_label(t("status")), 1, 2)
+        filter_layout.addWidget(self.report_status, 2, 2)
+
+        self.report_department = QComboBox()
+        self.report_department.setFixedHeight(40)
+        _style_combo(self.report_department)
+        self.report_level = QComboBox()
+        self.report_level.setFixedHeight(40)
+        _style_combo(self.report_level)
+        self._load_report_filter_options()
+        filter_layout.addWidget(_field_label(t("department")), 3, 0)
+        filter_layout.addWidget(self.report_department, 4, 0, 1, 2)
+        filter_layout.addWidget(_field_label(t("level")), 3, 2)
+        filter_layout.addWidget(self.report_level, 4, 2)
+
+        report_layout.addWidget(filter_box)
+
+        report_controls = QHBoxLayout()
+        report_controls.setSpacing(12)
         report_btn = _button(t("export_yearly_pdf"), "fa5s.file-pdf", primary=True)
         report_btn.clicked.connect(self._export_yearly_report)
         report_controls.addWidget(report_btn)
@@ -2139,14 +2191,40 @@ class DatabaseTab(QWidget):
         finally:
             session.close()
 
+    def _load_report_filter_options(self):
+        self.report_department.clear()
+        self.report_department.addItem(t("all_departments"), None)
+        self.report_level.clear()
+        self.report_level.addItem(t("all_levels"), None)
+        session = get_session()
+        try:
+            org_units = session.query(OrgUnit).order_by(OrgUnit.unit_type, OrgUnit.name).all()
+            for unit in org_units:
+                self.report_department.addItem(f"{unit.name} ({unit.unit_type})", unit.id)
+            titles = session.query(Title).order_by(Title.id).all()
+            for title in titles:
+                self.report_level.addItem(f"{title.name} - {title.label}", title.id)
+        finally:
+            session.close()
+
+    def _report_filters(self):
+        return ReportFilters(
+            report_type=self.report_type.currentData() or "full",
+            org_unit_id=self.report_department.currentData(),
+            title_id=self.report_level.currentData(),
+            status=self.report_status.currentData(),
+        )
+
     def _export_yearly_report(self):
         year = self.report_year.currentData()
         if not year:
             year = datetime.utcnow().year
+        filters = self._report_filters()
+        type_suffix = (filters.report_type or "full").replace(" ", "_")
         path, _ = QFileDialog.getSaveFileName(
             self,
             t("export_yearly_report"),
-            f"{company_name('MyHR').replace(' ', '_')}_{year}_Yearly_Report.pdf",
+            f"{company_name('MyHR').replace(' ', '_')}_{year}_{type_suffix}_Report.pdf",
             t("pdf_files_filter"),
         )
         if not path:
@@ -2155,7 +2233,7 @@ class DatabaseTab(QWidget):
             path += ".pdf"
         session = get_session()
         try:
-            report = build_yearly_report(int(year))
+            report = build_yearly_report(int(year), filters)
             html = build_yearly_report_html(report)
             _write_pdf(path, html)
             log_action(
@@ -2163,7 +2241,11 @@ class DatabaseTab(QWidget):
                 action="settings.export_yearly_report",
                 performed_by_id=self.user.id,
                 description=f"Yearly workforce report exported to PDF: {year}",
-                after_value=f'{{"year": {int(year)}, "path": "{path}"}}',
+                after_value=(
+                    f'{{"year": {int(year)}, "path": "{path}", "report_type": "{filters.report_type}", '
+                    f'"org_unit_id": {filters.org_unit_id or "null"}, "title_id": {filters.title_id or "null"}, '
+                    f'"status": "{filters.status or "all"}"}}'
+                ),
             )
             session.commit()
             _information(self, t("success"), t("yearly_report_exported_to", path=path))
@@ -2214,6 +2296,12 @@ def _content():
     layout.setContentsMargins(0, 0, 0, 0)
     layout.setSpacing(24)
     return content, layout
+
+
+def _field_label(text):
+    label = QLabel(text)
+    label.setStyleSheet("font-size: 12px; font-weight: 800; color: #374151; background: transparent;")
+    return label
 
 
 def _write_pdf(path, html):

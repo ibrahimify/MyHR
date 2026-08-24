@@ -14,7 +14,7 @@ import qtawesome as qta
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
     QFrame, QTableWidget, QTableWidgetItem, QHeaderView,
     QLineEdit, QComboBox, QScrollArea, QPushButton, QFileDialog,
     QDialog, QTextEdit, QMessageBox
@@ -246,49 +246,31 @@ class AuditLogPage(QWidget):
         filter_card = QFrame()
         filter_card.setObjectName("Card")
         filter_card.setStyleSheet(CARD_SS)
-        fl = QHBoxLayout(filter_card)
+        fl = QGridLayout(filter_card)
         fl.setContentsMargins(20, 20, 20, 20)
-        fl.setSpacing(16)
+        fl.setHorizontalSpacing(14)
+        fl.setVerticalSpacing(12)
 
         self.search = QLineEdit()
         self.search.setPlaceholderText(t("search_logs"))
         self.search.setFixedHeight(44)
+        self.search.setMinimumWidth(360)
         self.search.setStyleSheet(INPUT_SS)
         self.search.addAction(qta.icon("fa5s.search", color="#9ca3af"), QLineEdit.LeadingPosition)
         self.search.textChanged.connect(self._filter)
-        fl.addWidget(self.search, 4)
+        fl.addWidget(self.search, 0, 0, 1, 4)
 
-        self.category_filter = QComboBox()
-        self.category_filter.setFixedHeight(44)
-        self.category_filter.setStyleSheet(COMBO_SS)
-        _polish_combo(self.category_filter)
-        self.category_filter.addItem(t("all_categories"), None)
-        for key, meta in CATEGORY_META.items():
-            if key != "other":
-                self.category_filter.addItem(_category_label(key), key)
-        self.category_filter.addItem(t("other"), "other")
-        self.category_filter.currentIndexChanged.connect(self._filter)
-        fl.addWidget(self.category_filter, 1)
-
-        self.date_filter = QComboBox()
-        self.date_filter.setFixedHeight(44)
-        self.date_filter.setStyleSheet(COMBO_SS)
-        _polish_combo(self.date_filter)
-        self.date_filter.addItem(t("all_dates"), "all")
-        self.date_filter.addItem(t("today"), "today")
-        self.date_filter.addItem(t("last_7_days"), "last_7")
-        self.date_filter.addItem(t("last_30_days"), "last_30")
-        self.date_filter.addItem(t("this_year"), "this_year")
-        self.date_filter.currentIndexChanged.connect(self._filter)
-        fl.addWidget(self.date_filter, 1)
-
-        self.user_filter = QComboBox()
-        self.user_filter.setFixedHeight(44)
-        self.user_filter.setStyleSheet(COMBO_SS)
-        _polish_combo(self.user_filter)
-        self.user_filter.addItem(t("all_users"), None)
-        self.user_filter.currentIndexChanged.connect(self._filter)
-        fl.addWidget(self.user_filter, 1)
+        self.search_btn = QPushButton(t("search"))
+        self.search_btn.setFixedHeight(44)
+        self.search_btn.setCursor(Qt.PointingHandCursor)
+        self.search_btn.setIcon(qta.icon("fa5s.search", color="white"))
+        self.search_btn.setStyleSheet(
+            "QPushButton { background: #020617; color: white; border: 1px solid #020617; "
+            "border-radius: 8px; padding: 0 18px; font-size: 13px; font-weight: 800; }"
+            "QPushButton:hover { background: #111827; }"
+        )
+        self.search_btn.clicked.connect(self._filter)
+        fl.addWidget(self.search_btn, 0, 4)
 
         export_btn = QPushButton(t("export_current_view"))
         export_btn.setFixedHeight(44)
@@ -300,7 +282,54 @@ class AuditLogPage(QWidget):
             "QPushButton:hover { background: #f9fafb; }"
         )
         export_btn.clicked.connect(self._export_current_view)
-        fl.addWidget(export_btn)
+        fl.addWidget(export_btn, 0, 5)
+
+        self.category_filter = QComboBox()
+        self.category_filter.setFixedHeight(44)
+        self.category_filter.setStyleSheet(COMBO_SS)
+        _polish_combo(self.category_filter)
+        self.category_filter.addItem(t("all_categories"), None)
+        for key, meta in CATEGORY_META.items():
+            if key != "other":
+                self.category_filter.addItem(_category_label(key), key)
+        self.category_filter.addItem(t("other"), "other")
+        self.category_filter.currentIndexChanged.connect(self._filter)
+        fl.addWidget(self.category_filter, 1, 0)
+
+        self.target_filter = QComboBox()
+        self.target_filter.setFixedHeight(44)
+        self.target_filter.setStyleSheet(COMBO_SS)
+        _polish_combo(self.target_filter)
+        self.target_filter.addItem(t("all_targets"), None)
+        self.target_filter.currentIndexChanged.connect(self._filter)
+        fl.addWidget(self.target_filter, 1, 1)
+
+        self.date_filter = QComboBox()
+        self.date_filter.setFixedHeight(44)
+        self.date_filter.setStyleSheet(COMBO_SS)
+        _polish_combo(self.date_filter)
+        self.date_filter.addItem(t("all_dates"), "all")
+        self.date_filter.addItem(t("today"), "today")
+        self.date_filter.addItem(t("last_7_days"), "last_7")
+        self.date_filter.addItem(t("last_30_days"), "last_30")
+        self.date_filter.addItem(t("this_year"), "this_year")
+        self.date_filter.currentIndexChanged.connect(self._filter)
+        fl.addWidget(self.date_filter, 1, 2)
+
+        self.user_filter = QComboBox()
+        self.user_filter.setFixedHeight(44)
+        self.user_filter.setStyleSheet(COMBO_SS)
+        _polish_combo(self.user_filter)
+        self.user_filter.addItem(t("all_users"), None)
+        self.user_filter.currentIndexChanged.connect(self._filter)
+        fl.addWidget(self.user_filter, 1, 3, 1, 3)
+
+        for col in range(6):
+            fl.setColumnStretch(col, 1)
+        fl.setColumnStretch(0, 2)
+        fl.setColumnStretch(1, 2)
+        fl.setColumnStretch(2, 2)
+        fl.setColumnStretch(3, 2)
 
         layout.addWidget(filter_card)
         layout.addSpacing(26)
@@ -411,7 +440,9 @@ class AuditLogPage(QWidget):
         session = get_session()
         try:
             users = self._load_user_filter_values(session)
+            targets = self._load_target_filter_values(session)
             current_user = self.user_filter.currentData()
+            current_target = self.target_filter.currentData()
             self.user_filter.blockSignals(True)
             self.user_filter.clear()
             self.user_filter.addItem(t("all_users"), None)
@@ -420,6 +451,14 @@ class AuditLogPage(QWidget):
             if current_user in users:
                 self.user_filter.setCurrentText(current_user)
             self.user_filter.blockSignals(False)
+            self.target_filter.blockSignals(True)
+            self.target_filter.clear()
+            self.target_filter.addItem(t("all_targets"), None)
+            for value, label in targets:
+                self.target_filter.addItem(label, value)
+            if current_target in [value for value, _ in targets]:
+                self.target_filter.setCurrentIndex(self.target_filter.findData(current_target))
+            self.target_filter.blockSignals(False)
         finally:
             session.close()
 
@@ -439,6 +478,17 @@ class AuditLogPage(QWidget):
             if display != "System":
                 names.append(display)
         return sorted(set(names))
+
+    def _load_target_filter_values(self, session):
+        rows = (
+            session.query(AuditLog.target_table)
+            .filter(AuditLog.performed_at <= datetime.utcnow())
+            .filter(AuditLog.target_table.isnot(None))
+            .distinct()
+            .all()
+        )
+        values = sorted({row[0] for row in rows if row[0]})
+        return [(value, _target_table_label(value)) for value in values]
 
     def _serialize_log(self, log):
         action = log.action or "other"
@@ -529,6 +579,9 @@ class AuditLogPage(QWidget):
             query = query.filter(
                 (func.coalesce(AuditLog.performed_by_username, "") + ": " + func.coalesce(AuditLog.performed_by_name, "")) == user
             )
+        target = self.target_filter.currentData()
+        if target:
+            query = query.filter(AuditLog.target_table == target)
         return query
 
     def _load_page(self):
@@ -779,6 +832,8 @@ class AuditDetailDialog(QDialog):
             grid.addLayout(_detail_line(label, value))
         layout.addWidget(meta)
 
+        layout.addWidget(_diff_box(t("changes"), log["before"], log["after"]))
+
         changes = QHBoxLayout()
         changes.setSpacing(14)
         changes.addWidget(_snapshot_box(t("before_value"), log["before"]))
@@ -833,6 +888,42 @@ def _snapshot_box(title, value):
     layout.addWidget(label)
     layout.addWidget(text, 1)
     return box
+
+
+def _diff_box(title, before, after):
+    box = QFrame()
+    box.setObjectName("Card")
+    box.setStyleSheet(CARD_SS)
+    layout = QVBoxLayout(box)
+    layout.setContentsMargins(16, 14, 16, 16)
+    layout.setSpacing(8)
+    label = QLabel(title)
+    label.setStyleSheet("font-size: 13px; font-weight: 900; color: #030213;")
+    layout.addWidget(label)
+    text = QLabel(_format_diff(before, after))
+    text.setWordWrap(True)
+    text.setStyleSheet(
+        "font-size: 12px; color: #374151; background: #f9fafb; border: 1px solid #e5e7eb; "
+        "border-radius: 8px; padding: 10px;"
+    )
+    layout.addWidget(text)
+    return box
+
+
+def _format_diff(before, after):
+    before_payload = _json_dict(before)
+    after_payload = _json_dict(after)
+    if not before_payload and not after_payload:
+        return t("not_available")
+    keys = sorted(set(before_payload) | set(after_payload))
+    changes = []
+    for key in keys:
+        old = before_payload.get(key, "-")
+        new = after_payload.get(key, "-")
+        if old != new:
+            label = str(key).replace("_", " ").title()
+            changes.append(f"{label}: {_export_value(old)} -> {_export_value(new)}")
+    return "\n".join(changes) if changes else t("no_changes_detected")
 
 
 def _format_snapshot(value):

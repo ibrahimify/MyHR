@@ -44,6 +44,16 @@ class YearlyReport:
     monthly_rows: list[list[str]]
     audit_rows: list[list[str]]
     salary_summary: list[ReportMetric] = field(default_factory=list)
+    report_type: str = "full"
+    filter_summary: str = ""
+
+
+@dataclass(frozen=True)
+class ReportFilters:
+    report_type: str = "full"
+    org_unit_id: int | None = None
+    title_id: int | None = None
+    status: str | None = None
 
 
 def available_report_years() -> list[int]:
@@ -69,13 +79,23 @@ def available_report_years() -> list[int]:
         session.close()
 
 
-def build_yearly_report(year: int) -> YearlyReport:
+def build_yearly_report(year: int, filters: ReportFilters | None = None) -> YearlyReport:
     """Build a complete yearly report DTO from live database data."""
+    filters = filters or ReportFilters()
     start = datetime(year, 1, 1)
     end = datetime(year + 1, 1, 1)
     session = get_session()
     try:
-        employees = session.query(Employee).all()
+        employees_query = session.query(Employee)
+        if filters.org_unit_id:
+            employees_query = employees_query.filter(Employee.org_unit_id == filters.org_unit_id)
+        if filters.title_id:
+            employees_query = employees_query.filter(Employee.title_id == filters.title_id)
+        if filters.status:
+            employees_query = employees_query.filter(Employee.status == filters.status)
+
+        employees = employees_query.all()
+        employee_ids = {employee.id for employee in employees}
         active_employees = [employee for employee in employees if employee.status == "active"]
         other_employees = [
             employee for employee in employees
@@ -87,21 +107,28 @@ def build_yearly_report(year: int) -> YearlyReport:
             .filter(PromotionHistory.promoted_at >= start, PromotionHistory.promoted_at < end)
             .all()
         )
+        promotions = [item for item in promotions if item.employee_id in employee_ids]
         increments = (
             session.query(SalaryIncrementHistory)
             .filter(SalaryIncrementHistory.applied_at >= start, SalaryIncrementHistory.applied_at < end)
             .all()
         )
+        increments = [item for item in increments if item.employee_id in employee_ids]
         commendations = (
             session.query(Commendation)
             .filter(Commendation.issued_at >= start, Commendation.issued_at < end)
             .all()
         )
+        commendations = [
+            item for item in commendations
+            if any(employee.id in employee_ids for employee in item.employees)
+        ]
         sanctions = (
             session.query(Sanction)
             .filter(Sanction.issued_at >= start, Sanction.issued_at < end)
             .all()
         )
+        sanctions = [item for item in sanctions if item.employee_id in employee_ids]
         audit_logs = (
             session.query(AuditLog)
             .filter(AuditLog.performed_at >= start, AuditLog.performed_at < end)
@@ -109,7 +136,10 @@ def build_yearly_report(year: int) -> YearlyReport:
         )
 
         hires = [employee for employee in employees if employee.join_date and start <= employee.join_date < end]
-        active_sanctions = [sanction for sanction in session.query(Sanction).all() if not sanction.is_resolved]
+        active_sanctions = [
+            sanction for sanction in session.query(Sanction).all()
+            if not sanction.is_resolved and sanction.employee_id in employee_ids
+        ]
         payroll = sum(float(employee.base_salary or 0) for employee in active_employees)
         average_salary = payroll / len(active_employees) if active_employees else 0
         increment_spend = sum(
@@ -139,6 +169,7 @@ def build_yearly_report(year: int) -> YearlyReport:
         level_rows = _level_rows(session)
         monthly_rows = _monthly_activity_rows(promotions, increments, commendations, sanctions)
         audit_rows = _audit_rows(audit_logs)
+        filter_summary = _filter_summary(session, filters)
 
         summary = t(
             "yearly_report_summary_text",
@@ -161,6 +192,8 @@ def build_yearly_report(year: int) -> YearlyReport:
             level_rows=level_rows,
             monthly_rows=monthly_rows,
             audit_rows=audit_rows,
+            report_type=filters.report_type,
+            filter_summary=filter_summary,
         )
     finally:
         session.close()
@@ -169,11 +202,16 @@ def build_yearly_report(year: int) -> YearlyReport:
 def build_yearly_report_html(report: YearlyReport) -> str:
     """Render the yearly report as print-ready HTML for Qt PDF export."""
     generated = report.generated_at.strftime("%Y-%m-%d %H:%M")
-    title = t("yearly_workforce_report")
+    title = _report_title(report.report_type)
     direction = "rtl" if is_rtl() else "ltr"
     align = "right" if is_rtl() else "left"
     opposite_align = "left" if is_rtl() else "right"
-    section_count = 6
+    sections = _report_sections(report)
+    section_count = len(sections)
+    section_html = "".join(
+        _report_section(report, title, section_title, content, index, section_count)
+        for index, (section_title, content) in enumerate(sections, start=1)
+    )
     return f"""
 <!doctype html>
 <html dir="{direction}">
@@ -269,6 +307,11 @@ h2.section-title {{
     margin: 4px 0 20px;
     page-break-inside: avoid;
 }}
+.filter-note {{
+    color: #55606e;
+    font-size: 8.5pt;
+    margin: 10px 0 18px;
+}}
 table.metrics {{
     width: 100%;
     border-collapse: collapse;
@@ -356,14 +399,10 @@ table.data tr:nth-child(even) td {{
         <hr class="hr-accent">
         <h2 class="section-title">{escape(t("executive_summary"))}</h2>
         <div class="summary">{escape(report.executive_summary)}</div>
+        <div class="filter-note">{escape(report.filter_summary)}</div>
         {_report_footer(report, t("executive_summary"), 0, section_count)}
     </div>
-    {_report_section(report, t("workforce_highlights"), _metric_table(report.metrics), 1, section_count)}
-    {_report_section(report, t("salary_and_compliance"), _metric_table(report.salary_summary), 2, section_count)}
-    {_report_section(report, t("department_breakdown"), _data_table([t("department"), t("report_header_employees"), t("active"), t("report_metric_average_salary")], report.department_rows), 3, section_count)}
-    {_report_section(report, t("level_breakdown"), _data_table([t("level"), t("name"), t("report_header_employees"), t("salary_range")], report.level_rows), 4, section_count)}
-    {_report_section(report, t("monthly_activity"), _data_table([t("filter_month"), t("promotions"), t("report_metric_increments"), t("report_metric_commendations"), t("report_metric_sanctions")], report.monthly_rows), 5, section_count)}
-    {_report_section(report, t("audit_summary"), _data_table([t("category"), t("events"), t("most_recent_action")], report.audit_rows), 6, section_count)}
+    {section_html}
 </body>
 </html>
 """
@@ -454,14 +493,53 @@ def _audit_rows(audit_logs: list[AuditLog]) -> list[list[str]]:
     return rows or [[t("no_data"), "0", "-"]]
 
 
+def _filter_summary(session, filters: ReportFilters) -> str:
+    parts = [t(f"report_type_{filters.report_type}")]
+    if filters.org_unit_id:
+        unit = session.query(OrgUnit).filter_by(id=filters.org_unit_id).first()
+        parts.append(f"{t('department')}: {unit.name if unit else filters.org_unit_id}")
+    if filters.title_id:
+        title = session.query(Title).filter_by(id=filters.title_id).first()
+        parts.append(f"{t('level')}: {title.name if title else filters.title_id}")
+    if filters.status:
+        parts.append(f"{t('status')}: {t(filters.status) if filters.status in {'active', 'inactive'} else filters.status}")
+    if len(parts) == 1:
+        parts.append(t("all_employees"))
+    return " | ".join(str(part) for part in parts)
+
+
 def _report_month(month: int) -> str:
     return t(f"report_month_{month:02d}")
 
 
-def _report_section(report: YearlyReport, title: str, content: str, index: int, total: int) -> str:
+def _report_title(report_type: str) -> str:
+    if report_type == "audit":
+        return t("audit_report")
+    if report_type == "executive":
+        return t("executive_report")
+    return t("yearly_workforce_report")
+
+
+def _report_sections(report: YearlyReport) -> list[tuple[str, str]]:
+    sections = [
+        (t("workforce_highlights"), _metric_table(report.metrics)),
+        (t("salary_and_compliance"), _metric_table(report.salary_summary)),
+        (t("department_breakdown"), _data_table([t("department"), t("report_header_employees"), t("active"), t("report_metric_average_salary")], report.department_rows)),
+        (t("level_breakdown"), _data_table([t("level"), t("name"), t("report_header_employees"), t("salary_range")], report.level_rows)),
+        (t("monthly_activity"), _data_table([t("filter_month"), t("promotions"), t("report_metric_increments"), t("report_metric_commendations"), t("report_metric_sanctions")], report.monthly_rows)),
+        (t("audit_summary"), _data_table([t("category"), t("events"), t("most_recent_action")], report.audit_rows)),
+    ]
+    if report.report_type == "executive":
+        return sections[:2]
+    if report.report_type == "audit":
+        return [sections[-1]]
+    return sections
+
+
+def _report_section(report: YearlyReport, report_title: str, title: str, content: str, index: int, total: int) -> str:
     header = (
         "<table class=\"section-header\"><tr>"
-        f"<td><div class=\"masthead\">{escape(report.company)} &middot; {escape(t('yearly_workforce_report'))}</div></td>"
+        f"<td><div class=\"masthead\">{escape(report.company)} &middot; {escape(report_title)}</div></td>"
         f"<td class=\"meta\">{escape(t('report_period', year=report.year))}</td>"
         "</tr></table>"
     )

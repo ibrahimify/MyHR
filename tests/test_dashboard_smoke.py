@@ -489,12 +489,47 @@ class DashboardSmokeTests(unittest.TestCase):
         self.assertIn("Nexasoft Labs", html)
         self.assertIn("People Operations", html)
 
+    def test_yearly_report_filters_and_report_types(self):
+        from src.services.reporting_service import ReportFilters, build_yearly_report, build_yearly_report_html
+
+        with db.SessionLocal() as session:
+            title = session.query(db.Title).filter_by(name="L7").one()
+            title_id = title.id
+
+        executive = build_yearly_report(2026, ReportFilters(report_type="executive", title_id=title_id, status="active"))
+        executive_html = build_yearly_report_html(executive)
+        self.assertEqual(executive.report_type, "executive")
+        self.assertIn("Executive Workforce Report", executive_html)
+        self.assertIn("Level:", executive.filter_summary)
+        self.assertIn("Workforce Highlights", executive_html)
+        self.assertNotIn("Audit Summary", executive_html)
+
+        audit = build_yearly_report(2026, ReportFilters(report_type="audit"))
+        audit_html = build_yearly_report_html(audit)
+        self.assertIn("Yearly Audit Report", audit_html)
+        self.assertIn("Audit Summary", audit_html)
+        self.assertNotIn("Department Breakdown", audit_html)
+
+    def test_database_report_filter_controls_are_wired(self):
+        from src.ui.pages.settings import DatabaseTab
+
+        user = SimpleNamespace(id=1, username="admin", role="admin", full_name="Smoke Admin")
+        tab = DatabaseTab(user)
+        try:
+            self.assertGreaterEqual(tab.report_type.count(), 3)
+            self.assertGreaterEqual(tab.report_year.count(), 1)
+            self.assertGreaterEqual(tab.report_department.count(), 1)
+            self.assertGreaterEqual(tab.report_level.count(), 1)
+            self.assertEqual(tab._report_filters().report_type, "full")
+        finally:
+            tab.close()
+
     def test_audit_log_filters_details_and_exports_current_view(self):
         from datetime import datetime, timedelta
         from pathlib import Path
 
         from src.database.models import AuditLog
-        from src.ui.pages.audit_log import AuditLogPage, _format_snapshot
+        from src.ui.pages.audit_log import AuditLogPage, _format_diff, _format_snapshot
 
         with db.SessionLocal() as session:
             admin = session.query(db.SystemUser).filter_by(username="admin").one()
@@ -524,11 +559,18 @@ class DashboardSmokeTests(unittest.TestCase):
             user = SimpleNamespace(id=admin.id, username=admin.username, role=admin.role, full_name=admin.full_name)
 
         page = AuditLogPage(user)
+        page.refresh()
+        self.assertGreaterEqual(page.search.minimumWidth(), 360)
+        self.assertEqual(page.search_btn.text(), "Search")
         page.search.setText("Audit export")
         page.date_filter.setCurrentIndex(page.date_filter.findData("last_30"))
+        employee_target_index = page.target_filter.findData("employee")
+        self.assertGreaterEqual(employee_target_index, 0)
+        page.target_filter.setCurrentIndex(employee_target_index)
         page._filter()
         self.assertEqual(page.table.rowCount(), 1)
         self.assertIn("status", _format_snapshot('{"status": "active"}'))
+        self.assertIn("Status: inactive -> active", _format_diff('{"status": "inactive"}', '{"status": "active"}'))
 
         fd, name = tempfile.mkstemp(prefix="myhr_audit_", suffix=".csv")
         os.close(fd)
