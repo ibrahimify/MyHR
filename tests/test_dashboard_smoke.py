@@ -217,7 +217,11 @@ class DashboardSmokeTests(unittest.TestCase):
                 session.commit()
 
     def test_level_management_rejects_invalid_promotion_targets(self):
-        from src.ui.pages.settings import AddLevelDialog
+        from src.ui.pages.settings import (
+            AddLevelDialog,
+            _salary_transition_validation_key,
+            _valid_currency_code,
+        )
 
         with db.SessionLocal() as session:
             admin = session.query(db.SystemUser).filter_by(username="admin").one()
@@ -244,6 +248,47 @@ class DashboardSmokeTests(unittest.TestCase):
                 self.assertIsNone(session.query(db.Title).filter_by(name="L8").first())
         finally:
             add_dialog.close()
+
+        invalid_currency_dialog = AddLevelDialog(user)
+        try:
+            invalid_currency_dialog.level_name.setText("L9")
+            invalid_currency_dialog.level_label.setText("Temporary Track")
+            invalid_currency_dialog.currency.setText("$$$")
+            invalid_currency_dialog.salary_min.setValue(100)
+            invalid_currency_dialog.salary_max.setValue(200)
+            l7_index = invalid_currency_dialog.target_title.findData(ids["l7"])
+            self.assertGreaterEqual(l7_index, 0)
+            invalid_currency_dialog.target_title.setCurrentIndex(l7_index)
+            with patch("src.ui.pages.settings._warning", return_value=None) as warning:
+                invalid_currency_dialog._save()
+            warning.assert_called_once()
+        finally:
+            invalid_currency_dialog.close()
+
+        duplicate_label_dialog = AddLevelDialog(user)
+        try:
+            duplicate_label_dialog.level_name.setText("L9")
+            duplicate_label_dialog.level_label.setText("Entry Level")
+            duplicate_label_dialog.currency.setText("EUR")
+            duplicate_label_dialog.salary_min.setValue(100)
+            duplicate_label_dialog.salary_max.setValue(200)
+            l7_index = duplicate_label_dialog.target_title.findData(ids["l7"])
+            self.assertGreaterEqual(l7_index, 0)
+            duplicate_label_dialog.target_title.setCurrentIndex(l7_index)
+            with patch("src.ui.pages.settings._warning", return_value=None) as warning:
+                duplicate_label_dialog._save()
+            warning.assert_called_once()
+        finally:
+            duplicate_label_dialog.close()
+
+        self.assertTrue(_valid_currency_code("HUF"))
+        self.assertFalse(_valid_currency_code("$$$"))
+        with db.SessionLocal() as session:
+            target = session.query(db.Title).filter_by(id=ids["l7"]).one()
+            self.assertEqual(
+                _salary_transition_validation_key(3000, 3500, target.currency, target),
+                "promotion_salary_range_order_warning",
+            )
 
         edit_dialog = AddLevelDialog(user, title_id=ids["l6"])
         try:
@@ -318,6 +363,7 @@ class DashboardSmokeTests(unittest.TestCase):
         )
         from src.ui.pages.audit_log import AuditLogPage
         from src.ui.pages.commendations import CommendationHistoryTab
+        from src.ui.pages.promotions import EligibleTab
         from src.ui.pages.sanctions import SanctionHistoryTab
 
         with db.SessionLocal() as session:
@@ -328,6 +374,7 @@ class DashboardSmokeTests(unittest.TestCase):
             session.flush()
             employees = []
             now = datetime.utcnow()
+            old_join_date = now.replace(year=now.year - 5)
             for index in range(65):
                 employee = Employee(
                     employee_id=f"SMOKE-{index + 1:04d}",
@@ -336,7 +383,7 @@ class DashboardSmokeTests(unittest.TestCase):
                     degree="BSc",
                     work_email=f"smoke{index + 1}@example.test",
                     position="Analyst",
-                    join_date=now,
+                    join_date=old_join_date,
                     base_salary=2400,
                     status="active",
                     title_id=title.id,
@@ -380,13 +427,17 @@ class DashboardSmokeTests(unittest.TestCase):
         user = type("User", (), {"id": 1, "username": "admin", "role": "admin", "full_name": "Smoke Admin"})()
         audit = AuditLogPage(user)
         commendations = CommendationHistoryTab(user)
+        eligible_promotions = EligibleTab(user)
         sanctions = SanctionHistoryTab(user)
+        eligible_promotions.refresh()
 
         self.assertLessEqual(audit.table.rowCount(), 50)
         self.assertLessEqual(commendations.table.rowCount(), 50)
+        self.assertLessEqual(eligible_promotions.table.rowCount(), 50)
         self.assertLessEqual(sanctions.table.rowCount(), 50)
         self.assertGreaterEqual(audit.total_pages, 2)
         self.assertGreaterEqual(commendations.total_pages, 2)
+        self.assertGreaterEqual(eligible_promotions.total_pages, 2)
         self.assertGreaterEqual(sanctions.total_pages, 2)
 
     def test_issue_sanction_tab_populates_and_creates_sanction(self):
@@ -525,6 +576,29 @@ class DashboardSmokeTests(unittest.TestCase):
         finally:
             tab.close()
 
+    def test_new_reporting_audit_and_policy_text_is_translated(self):
+        from src.core.i18n import set_language, t
+
+        keys = [
+            "report_history",
+            "report_history_empty",
+            "audit_field",
+            "audit_old_value",
+            "audit_new_value",
+            "currency_code_warning",
+            "elapsed_short",
+            "promotion_target_missing",
+            "promotion_salary_range_order_warning",
+            "race_status_short",
+        ]
+        try:
+            for lang in ("en", "hu", "ar"):
+                set_language(lang)
+                for key in keys:
+                    self.assertNotEqual(t(key), key, f"{key} missing for {lang}")
+        finally:
+            set_language("en")
+
     def test_yearly_report_preview_dialog_renders_scope_and_sections(self):
         from PySide6.QtWidgets import QLabel
 
@@ -549,7 +623,7 @@ class DashboardSmokeTests(unittest.TestCase):
         from pathlib import Path
 
         from src.database.models import AuditLog
-        from src.ui.pages.audit_log import AuditLogPage, _format_diff, _format_snapshot
+        from src.ui.pages.audit_log import AuditLogPage, _diff_rows, _format_diff, _format_snapshot
 
         with db.SessionLocal() as session:
             admin = session.query(db.SystemUser).filter_by(username="admin").one()
@@ -593,6 +667,7 @@ class DashboardSmokeTests(unittest.TestCase):
         self.assertEqual(page.table.rowCount(), 1)
         self.assertIn("status", _format_snapshot('{"status": "active"}'))
         self.assertIn("Status: Inactive -> Active", _format_diff('{"status": "inactive"}', '{"status": "active"}'))
+        self.assertIn(("Status", "Inactive", "Active"), _diff_rows('{"status": "inactive"}', '{"status": "active"}'))
 
         fd, name = tempfile.mkstemp(prefix="myhr_audit_", suffix=".csv")
         os.close(fd)
@@ -730,8 +805,16 @@ class DashboardSmokeTests(unittest.TestCase):
         from src.database.models import AuditLog
         from src.ui.pages.settings import DatabaseTab
 
+        with db.SessionLocal() as session:
+            title = session.query(db.Title).filter_by(name="L6").one()
+            title_id = title.id
+            title_label = f"{title.name} - {title.label}"
+
         user = SimpleNamespace(id=1, username="admin", role="admin", full_name="Smoke Admin")
         tab = DatabaseTab(user)
+        level_index = tab.report_level.findData(title_id)
+        self.assertGreaterEqual(level_index, 0)
+        tab.report_level.setCurrentIndex(level_index)
         fd, name = tempfile.mkstemp(prefix="myhr_report_", suffix=".pdf")
         os.close(fd)
         target = Path(name)
@@ -751,6 +834,25 @@ class DashboardSmokeTests(unittest.TestCase):
                 payload = json.loads(log.after_value)
                 self.assertEqual(payload["path"], str(target))
                 self.assertIn(payload["report_type"], {"full", "executive", "audit"})
+                self.assertEqual(payload["title_id"], title_id)
+            tab._refresh_report_history()
+            self.assertGreaterEqual(tab.report_history_table.rowCount(), 1)
+            history_values = [
+                tab.report_history_table.item(row, col).text()
+                for row in range(tab.report_history_table.rowCount())
+                for col in range(tab.report_history_table.columnCount())
+                if tab.report_history_table.item(row, col)
+            ]
+            history_tooltips = [
+                tab.report_history_table.item(row, col).toolTip()
+                for row in range(tab.report_history_table.rowCount())
+                for col in range(tab.report_history_table.columnCount())
+                if tab.report_history_table.item(row, col)
+            ]
+            self.assertTrue(any(target.name in value for value in history_values))
+            self.assertTrue(any(title_label in value for value in history_values))
+            self.assertFalse(any(f"Level: #{title_id}" in value for value in history_values))
+            self.assertIn(str(target), history_tooltips)
         finally:
             tab.close()
             try:

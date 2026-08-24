@@ -11,6 +11,8 @@ from docx.shared import Pt, RGBColor
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 DOCS.mkdir(exist_ok=True)
+GUIDES = DOCS / "guides"
+GUIDES.mkdir(parents=True, exist_ok=True)
 
 AUTHOR = "Muhammad Ibrahim Shoeb"
 SUPERVISOR = "Dr. Husam Al-Maghoosi"
@@ -189,6 +191,7 @@ def build_user_guide():
         "Review total employees, pending promotions, active sanctions, commendations this month, recent activity, and upcoming promotions.",
         "Use Review in Salary Increments Due to approve one or all yearly salary increments.",
         "Approved increments update employee salary, create salary history, and write an audit log entry.",
+        "Use the Dashboard charts and priority signals to review headcount distribution, promotion trends, active sanctions, increment queues, and Other-track employees without opening every page.",
     ])
     placeholder(doc, "Dashboard and salary increment review dialog")
 
@@ -284,8 +287,12 @@ def build_user_guide():
         "Optional headers include division, unit, team, work_email, work_phone, personal_email, phone, address, status, manager_work_email, commendation_months, active_sanction_months, and sanction_type.",
         "The preview marks valid rows and rows needing review before anything is written.",
         "Admin can export employees and create a SQLite database backup from Settings > Database.",
+        "Admin can generate yearly PDF reports from Settings > Database.",
+        "Yearly reports support Full Yearly Report, Executive Summary, and Audit-Only Report types.",
+        "Before PDF generation, MyHR shows a report preview with company, year, scope, metrics, included sections, and an empty-activity warning when filters match no records.",
+        "The Report Export History table shows the most recent yearly reports with generated time, report type, scope, user, and file path.",
     ])
-    placeholder(doc, "Import preview, export dialog, and backup dialog")
+    placeholder(doc, "Import preview, report preview, export history, and backup dialog")
 
     doc.add_heading("10. User Management and Audit", level=1)
     bullets(doc, [
@@ -295,6 +302,8 @@ def build_user_guide():
         "Deactivation is a soft delete: the HR account cannot log in, but the record remains for audit history.",
         "Audit Log shows user identity as username: full name, for example admin: John Doe.",
         "Past audit entries keep their original username and full-name snapshot even if the account changes later.",
+        "Double-click an audit row to open readable field-by-field before/after changes plus raw snapshots.",
+        "Use Export CSV or Export PDF to export the currently filtered audit view for compliance review.",
     ])
     placeholder(doc, "User Management tab and Audit Log")
 
@@ -306,7 +315,7 @@ def build_user_guide():
         "If the application feels slow, check whether a very large export, import, or backup is running at the same time.",
     ])
 
-    doc.save(DOCS / "MyHR_User_Guide.docx")
+    doc.save(GUIDES / "MyHR_User_Guide.docx")
 
 
 def build_developer_guide():
@@ -341,8 +350,9 @@ MyHR/
 |-- myhr.db
 |-- assets/
 |-- docs/
-|   |-- MyHR_User_Guide.docx
-|   `-- MyHR_Developer_Guide.docx
+|   `-- guides/
+|       |-- MyHR_User_Guide.docx
+|       `-- MyHR_Developer_Guide.docx
 |-- scripts/
 |   |-- generate_docs.py
 |   `-- seed_demo_company.py
@@ -373,6 +383,7 @@ MyHR/
         ["src/core", "Internationalization and persisted company settings."],
         ["src/database/models.py", "SQLAlchemy table definitions and relationships."],
         ["src/database/connection.py", "Engine/session setup, seed defaults, auth, ID generation, race math, salary increments, audit helper, Other/Misc helpers."],
+        ["src/services/reporting_service.py", "Yearly report DTO assembly and print-ready HTML rendering."],
         ["src/ui/main_window.py", "Sidebar navigation, role checks, page cache/refresh, logout."],
         ["src/ui/pages", "Feature page implementations."],
     ])
@@ -405,7 +416,7 @@ MyHR/
     doc.add_heading("Internationalization", level=2)
     doc.add_paragraph("i18n.py stores English, Hungarian, and Arabic dictionaries. set_language changes the session language; t(key, **kwargs) resolves UI text. Arabic switches the Qt layout direction to right-to-left. Internal enum values, audit action codes, import headers, export headers, and client-entered data are not translated.")
     doc.add_heading("Audit immutability", level=2)
-    doc.add_paragraph("log_action creates audit_log rows with performed_by_id plus performed_by_username and performed_by_name snapshots. The Audit Log page displays username: full name. Renaming a user does not rewrite old audit rows.")
+    doc.add_paragraph("log_action creates audit_log rows with performed_by_id plus performed_by_username and performed_by_name snapshots. The Audit Log page displays username: full name. Renaming a user does not rewrite old audit rows. The detail dialog parses JSON snapshots into readable field-level before/after rows while keeping the raw immutable snapshots visible.")
     doc.add_heading("User management and soft delete", level=2)
     doc.add_paragraph("Admin can edit the admin account and manage HR accounts. HR deletion sets is_active=False instead of deleting the row, preserving historical audit joins and preventing unknown users in the audit UI.")
     doc.add_heading("Other/Misc employees", level=2)
@@ -414,7 +425,12 @@ MyHR/
     doc.add_heading("Hierarchy rules", level=2)
     doc.add_paragraph("The hierarchy enforces exactly one organization and parent order organization -> division -> department -> unit -> team -> position. Disabled dropdown options and save-time validation prevent invalid structures and parent cycles.")
     doc.add_heading("Performance-sensitive screens", level=2)
-    doc.add_paragraph("Dashboard and Promotion Eligibility use calculate_months_remaining_batch to preserve the same formula as calculate_months_remaining while loading rules, commendations, sanctions, titles, and promotion history once per list refresh. Employee Management uses database-side filtering and 50-row pagination. Promotion History lazy-loads only when its tab is opened and renders 25 rows per page.")
+    doc.add_paragraph("Dashboard and Promotion Eligibility use calculate_months_remaining_batch to preserve the same formula as calculate_months_remaining while loading rules, commendations, sanctions, titles, and promotion history once per list refresh. Employee Management uses database-side filtering and 50-row pagination. Eligible Promotions and Promotion History render 50 rows per page so thousands of employees do not create thousands of Qt row widgets.")
+    doc.add_heading("Reporting and exports", level=2)
+    doc.add_paragraph("reporting_service.py builds YearlyReport DTOs from live database data. Settings > Database supports Full, Executive, and Audit-only report types with year, status, department, and level filters. The UI previews the selected report before writing the PDF. Exports are written to audit_log as settings.export_yearly_report and the Database tab reads those immutable logs back as Report Export History.")
+    doc.add_paragraph("Audit Log exports can produce CSV or PDF for the current filtered view. Export actions also write audit records with count, path, and scope payloads.")
+    doc.add_heading("Policy validation", level=2)
+    doc.add_paragraph("Settings validates promotion chain edits before committing: no missing source or target titles, no self-targets, no Other/Misc promotion target, no duplicate promotion targets, no cycles, valid currency codes, duplicate level label blocking, and same-currency salary ranges that remain below their promotion target range.")
 
     doc.add_heading("6. Promotion Race Formula", level=1)
     code(doc, """
@@ -458,6 +474,8 @@ progress_pct = clamp((months_elapsed + commendation_reduction - sanction_additio
         "Export employees and back up the SQLite database.",
         "Log important actions with immutable audit identity snapshots.",
         "Paginate employee and promotion history tables so the UI remains usable with thousands of records.",
+        "Generate yearly PDF reports with preview and in-app export history.",
+        "Export filtered audit logs as CSV or PDF and inspect field-level before/after changes.",
     ])
 
     doc.add_heading("9. Non-Functional Requirements", level=1)
@@ -629,18 +647,18 @@ Increment -> SQLite: insert audit_log
     bullets(doc, [
         "Package the desktop app into a user-friendly installer.",
         "Add automated tests for race math, import validation, access control, user management, audit snapshots, and performance-sensitive list pages.",
-        "Add richer reports for yearly promotions, salary budget impact, sanctions, commendations, and departments.",
+        "Add richer analytical report variants for salary budget forecasting, department-level risk, and longer multi-year comparisons.",
         "Add scheduled backup reminders and backup health checks.",
         "Introduce Alembic or another migration tool if schema changes become frequent.",
         "Consider encrypted backups or protected local storage for sensitive HR data.",
         "Extend roles only if the organization needs more than Admin and HR Officer.",
     ])
 
-    doc.save(DOCS / "MyHR_Developer_Guide.docx")
+    doc.save(GUIDES / "MyHR_Developer_Guide.docx")
 
 
 if __name__ == "__main__":
     build_user_guide()
     build_developer_guide()
-    print(DOCS / "MyHR_User_Guide.docx")
-    print(DOCS / "MyHR_Developer_Guide.docx")
+    print(GUIDES / "MyHR_User_Guide.docx")
+    print(GUIDES / "MyHR_Developer_Guide.docx")

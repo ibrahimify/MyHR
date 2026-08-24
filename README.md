@@ -170,6 +170,7 @@ MyHR/
 - Self-referencing structure with head/in-charge assignment per node
 - Inline add, edit, and delete with dependency checks
 - Dedicated OTHERS branch for miscellaneous employees
+- Optimized hierarchy canvas with lazy expansion, zoom, pan, reset, fit, search focus, and team-member drilldown
 
 ### Promotion Race Engine
 - Each level is a race track with a configurable base duration in months
@@ -206,6 +207,9 @@ MyHR/
 - Error rows highlighted before import -  only valid rows are written
 - Downloadable CSV template with sample data
 - Employee data export to CSV
+- Yearly PDF reports with Full, Executive Summary, and Audit-Only report types
+- Report preview before PDF generation with scope, metrics, sections, and empty-result warning
+- In-app report export history sourced from immutable audit records
 - SQLite database backup to any location
 
 ### Audit Log
@@ -213,6 +217,8 @@ MyHR/
 - Stores username snapshot at time of action -  survives account renames
 - Searchable by action, description, user, and category
 - Filterable with full-text tooltips for long descriptions
+- Readable field-level before/after diff view for JSON audit snapshots
+- Filtered audit export to CSV and PDF
 
 ### User Management (Admin Only)
 - Create, edit, and deactivate HR Officer accounts
@@ -223,7 +229,8 @@ MyHR/
 
 ### Settings (Admin Only)
 - Company name and subtitle (reflected on login screen and sidebar)
-- Salary ranges per level with live currency badge
+- Dynamic level management with add, edit, delete rules, salary ranges, annual increment, and promotion target setup
+- Salary ranges per level with live currency badge and promotion-chain validation
 - Annual increment rules per level (percentage or fixed)
 - Promotion track base duration configuration
 - Password management
@@ -282,6 +289,8 @@ MyHR/
 | HR account deletion | Soft delete (is_active=False) | Preserves audit log references |
 | Page data freshness | Recreated per visit | Ensures live data without manual refresh |
 | List page performance | Batched race calculation | Same formula, fewer DB queries |
+| Report history | Reads immutable audit export logs | Avoids duplicate state while preserving traceability |
+| Audit diff view | Parses JSON snapshots into field rows | Keeps audit readable without changing stored records |
 
 ---
 
@@ -289,25 +298,22 @@ MyHR/
 
 | Document | Location |
 |---|---|
-| User Guide | `docs/MyHR_User_Guide.docx` |
-| Developer Guide | `docs/MyHR_Developer_Guide.docx` |
+| User Guide | `docs/guides/MyHR_User_Guide.docx` |
+| Developer Guide | `docs/guides/MyHR_Developer_Guide.docx` |
 | UI Mockup | `MockUI/` -  run with `cd MockUI && npm install && npm run dev` |
 | Demo Dataset | `scripts/seed_demo_company.py` -  generates 300 employees |
 
 ---
 
-## Thesis Extension (Semester 2 -  Planned)
+## Thesis Extension (Semester 2 -  In Progress)
 
-- Configurable promotion and allowance policies via dedicated UI editor
-- Audit log before/after diff view for change comparison
-- Yearly reporting summaries with PDF export
-- Improved input validation and error handling
-- Email reminders for salary increment due dates
-- Dark mode and extended multi-language support
 - Desktop app packaging as a standalone installer
-- Automated test suite for promotion math, imports, and access control
 - Encrypted backups for sensitive HR data
 - Formal database migration tooling
+- Multi-year analytical reports and richer department-level summaries
+- Email reminders for salary increment due dates
+- Dark mode and extended multi-language support
+- Automated test suite for promotion math, imports, and access control
 
 ---
 

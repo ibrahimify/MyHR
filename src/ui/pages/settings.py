@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
 from src.core.i18n import t
 from src.core.app_settings import app_settings, company_name
 from src.database.connection import get_session, log_action, DB_PATH
-from src.database.models import Title, SystemUser, PromotionRule, Employee, OrgUnit
+from src.database.models import AuditLog, Title, SystemUser, PromotionRule, Employee, OrgUnit
 from src.services.reporting_service import (
     ReportFilters,
     available_report_years,
@@ -988,6 +988,9 @@ class AddLevelDialog(QDialog):
         if not level or not label:
             _warning(self, t("warning"), t("level_name_label_required"))
             return
+        if not _valid_currency_code(currency):
+            _warning(self, t("warning"), t("currency_code_warning"))
+            return
         if self.salary_max.value() <= 0 or self.salary_min.value() > self.salary_max.value():
             _warning(self, t("warning"), t("salary_min_max_warning"))
             return
@@ -1001,6 +1004,10 @@ class AddLevelDialog(QDialog):
             if duplicate and duplicate.id != self.title_id:
                 _warning(self, t("warning"), t("level_already_exists"))
                 return
+            duplicate_label = session.query(Title).filter(func.lower(Title.label) == label.lower()).first()
+            if duplicate_label and duplicate_label.id != self.title_id:
+                _warning(self, t("warning"), t("level_label_already_exists"))
+                return
             current_title = session.query(Title).filter_by(id=self.title_id).first() if self.is_edit else None
             editing_other = bool(current_title and current_title.name == "Other")
             if level.lower() == "other" and not editing_other:
@@ -1010,6 +1017,16 @@ class AddLevelDialog(QDialog):
             if not target and not self.is_edit:
                 _warning(self, t("warning"), t("promotion_target_required"))
                 return
+            if target:
+                salary_key = _salary_transition_validation_key(
+                    self.salary_min.value(),
+                    self.salary_max.value(),
+                    currency,
+                    target,
+                )
+                if salary_key:
+                    _warning(self, t("warning"), t(salary_key))
+                    return
             proposed = {
                 rule.from_title_id: rule.to_title_id
                 for rule in session.query(PromotionRule).all()
@@ -1225,7 +1242,10 @@ class SalaryTab(QWidget):
     def _save(self):
         session = get_session()
         try:
-            currency = self.currency_input.text().strip() or "EUR"
+            currency = (self.currency_input.text().strip() or "EUR").upper()
+            if not _valid_currency_code(currency):
+                _warning(self, t("warning"), t("currency_code_warning"))
+                return
             for title_id, (min_spin, max_spin) in self.fields.items():
                 title = session.query(Title).filter_by(id=title_id).first()
                 if title:
@@ -1235,6 +1255,13 @@ class SalaryTab(QWidget):
                     title.base_salary_min = min_spin.value()
                     title.base_salary_max = max_spin.value()
                     title.currency = currency
+            validation_key = _salary_policy_validation_key(
+                {title.id: title for title in session.query(Title).all()},
+                session.query(PromotionRule).all(),
+            )
+            if validation_key:
+                _warning(self, t("warning"), t(validation_key))
+                return
             log_action(session, action="settings.salary_ranges", performed_by_id=self.user.id, description="Salary ranges updated")
             session.commit()
             _information(self, t("success"), t("salary_ranges_saved"))
@@ -1399,6 +1426,10 @@ class SettingsPromotionTab(QWidget):
             validation_key = _promotion_mapping_validation_key(session, proposed)
             if validation_key:
                 _warning(self, t("warning"), t(validation_key))
+                return
+            salary_key = _promotion_rules_salary_validation_key(titles, proposed)
+            if salary_key:
+                _warning(self, t("warning"), t(salary_key))
                 return
 
             for from_title_id, controls in self.fields.items():
@@ -2119,6 +2150,36 @@ class DatabaseTab(QWidget):
         report_controls.addWidget(report_btn)
         report_controls.addStretch()
         report_layout.addLayout(report_controls)
+
+        history_title = QLabel(t("report_history"))
+        history_title.setStyleSheet(f"font-size: 14px; font-weight: 900; color: {TEXT}; background: transparent;")
+        report_layout.addWidget(history_title)
+        self.report_history_table = QTableWidget()
+        self.report_history_table.setColumnCount(4)
+        self.report_history_table.setHorizontalHeaderLabels([
+            f"{t('generated')} / {t('user')}", t("report"), t("scope"), t("path")
+        ])
+        self.report_history_table.setStyleSheet(_summary_table_ss())
+        self.report_history_table.verticalHeader().setVisible(False)
+        self.report_history_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.report_history_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.report_history_table.setSelectionMode(QTableWidget.NoSelection)
+        self.report_history_table.setFocusPolicy(Qt.NoFocus)
+        self.report_history_table.setShowGrid(False)
+        self.report_history_table.setWordWrap(True)
+        self.report_history_table.setMouseTracking(True)
+        self.report_history_table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.report_history_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.report_history_table.horizontalHeader().setSectionResizeMode(QHeaderView.Fixed)
+        self.report_history_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
+        self.report_history_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Fixed)
+        self.report_history_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        self.report_history_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Fixed)
+        self.report_history_table.setColumnWidth(0, 220)
+        self.report_history_table.setColumnWidth(1, 120)
+        self.report_history_table.setColumnWidth(3, 180)
+        report_layout.addWidget(self.report_history_table)
+        self._refresh_report_history()
         left.addWidget(report)
         row.addLayout(left, 3)
 
@@ -2262,6 +2323,7 @@ class DatabaseTab(QWidget):
                 ),
             )
             session.commit()
+            self._refresh_report_history()
             _information(self, t("success"), t("yearly_report_exported_to", path=path))
         except Exception as exc:
             session.rollback()
@@ -2271,6 +2333,41 @@ class DatabaseTab(QWidget):
 
     def _confirm_yearly_report_export(self, report):
         return YearlyReportPreviewDialog(report, self).exec() == QDialog.Accepted
+
+    def _refresh_report_history(self):
+        if not hasattr(self, "report_history_table"):
+            return
+        session = get_session()
+        try:
+            logs = (
+                session.query(AuditLog)
+                .filter(AuditLog.action == "settings.export_yearly_report")
+                .order_by(AuditLog.performed_at.desc(), AuditLog.id.desc())
+                .limit(5)
+                .all()
+            )
+            rows = [_report_history_row(log, session) for log in logs]
+        finally:
+            session.close()
+
+        _clear_table_widgets(self.report_history_table)
+        self.report_history_table.clearContents()
+        self.report_history_table.clearSpans()
+        self.report_history_table.setRowCount(max(1, len(rows)))
+        row_height = 64
+        self.report_history_table.setFixedHeight(48 + (row_height * max(1, len(rows))) + 2)
+        if not rows:
+            self.report_history_table.setSpan(0, 0, 1, self.report_history_table.columnCount())
+            _set_tooltip_item(self.report_history_table, 0, 0, t("report_history_empty"))
+            self.report_history_table.setRowHeight(0, row_height)
+            return
+        for row_index, row in enumerate(rows):
+            self.report_history_table.setRowHeight(row_index, row_height)
+            for col_index, value in enumerate(row["values"]):
+                _set_tooltip_item(self.report_history_table, row_index, col_index, value)
+                item = self.report_history_table.item(row_index, col_index)
+                if item:
+                    item.setToolTip(row["tooltips"][col_index])
 
     def _health_check(self):
         session = get_session()
@@ -2492,6 +2589,102 @@ def _report_has_no_activity(report):
         except ValueError:
             pass
     return values and sum(values) == 0
+
+
+def _report_history_row(log, session=None):
+    payload = _json_payload(log.after_value)
+    year = payload.get("year") or "-"
+    report_type = _export_value(payload.get("report_type") or "full", "report_type")
+    scope = _report_history_scope(payload, session)
+    path = payload.get("path") or "-"
+    generated = log.performed_at.strftime("%Y-%m-%d %H:%M") if log.performed_at else "-"
+    user = _user_snapshot(log.performed_by_username, log.performed_by_name)
+    visible_user = (log.performed_by_name or log.performed_by_username or "System").strip()
+    values = [
+        f"{generated}\n{visible_user}",
+        f"{report_type}\n{year}",
+        scope,
+        _history_filename(path),
+    ]
+    return {"values": values, "tooltips": [f"{generated}\n{user}", f"{year} {report_type}", scope, path]}
+
+
+def _compact_path(path):
+    if not path or path == "-":
+        return "-"
+    parts = str(path).replace("/", "\\").split("\\")
+    parts = [part for part in parts if part]
+    if len(parts) <= 2:
+        return str(path)
+    return f"...\\{parts[-2]}\\{parts[-1]}"
+
+
+def _history_filename(path):
+    if not path or path == "-":
+        return "-"
+    parts = str(path).replace("/", "\\").split("\\")
+    parts = [part for part in parts if part]
+    return parts[-1] if parts else str(path)
+
+
+def _report_history_scope(payload, session=None):
+    parts = []
+    status = payload.get("status")
+    if status and status != "all":
+        parts.append(f"{t('status')}: {_export_value(status, 'status')}")
+    if payload.get("org_unit_id"):
+        parts.append(f"{t('department')}: {_org_unit_history_label(payload['org_unit_id'], session)}")
+    if payload.get("title_id"):
+        parts.append(f"{t('level')}: {_title_history_label(payload['title_id'], session)}")
+    return "; ".join(parts) if parts else t("all_employees")
+
+
+def _title_history_label(title_id, session=None):
+    if not title_id:
+        return "-"
+    title = None
+    if session is not None:
+        title = session.query(Title).filter_by(id=title_id).first()
+    if title:
+        label = title.label or ""
+        return f"{title.name} - {label}" if label else title.name
+    return f"#{title_id}"
+
+
+def _org_unit_history_label(org_unit_id, session=None):
+    if not org_unit_id:
+        return "-"
+    unit = None
+    if session is not None:
+        unit = session.query(OrgUnit).filter_by(id=org_unit_id).first()
+    return unit.name if unit else f"#{org_unit_id}"
+
+
+def _json_payload(value):
+    if not value:
+        return {}
+    try:
+        payload = json.loads(value)
+        return payload if isinstance(payload, dict) else {}
+    except (TypeError, ValueError):
+        return {}
+
+
+def _user_snapshot(username, full_name):
+    username = (username or "").strip()
+    full_name = (full_name or "").strip()
+    if username and full_name:
+        return f"{username}: {full_name}"
+    return username or full_name or "System"
+
+
+def _export_value(value, key=None):
+    if value is None:
+        return ""
+    text = str(value)
+    if key in {"report_type", "status"}:
+        return text.replace("_", " ").title()
+    return text
 
 
 def _write_pdf(path, html):
@@ -2851,12 +3044,20 @@ def _promotion_mapping_validation_key(session, mapping):
     titles = {title.id: title for title in session.query(Title).all()}
     used_targets = {}
     for from_title_id, target_id in mapping.items():
+        if from_title_id >= 0:
+            source = titles.get(from_title_id)
+            if not source:
+                return "promotion_source_missing"
+            if source.name == "Other" and target_id is not None:
+                return "promotion_target_other_forbidden"
         if target_id is None:
             continue
         if target_id == from_title_id:
             return "promotion_target_same_level"
         target = titles.get(target_id)
-        if not target or target.name == "Other":
+        if not target:
+            return "promotion_target_missing"
+        if target.name == "Other":
             return "promotion_target_other_forbidden"
         if target_id in used_targets:
             return "promotion_target_duplicate"
@@ -2877,6 +3078,54 @@ def _has_promotion_cycle(mapping):
             seen.add(current)
             current = mapping[current]
     return False
+
+
+def _valid_currency_code(value):
+    code = (value or "").strip()
+    return 2 <= len(code) <= 10 and code.replace("-", "").isalnum()
+
+
+def _salary_transition_validation_key(source_min, source_max, source_currency, target):
+    if not target or target.name == "Other":
+        return None
+    if (source_currency or "").upper() != (target.currency or "").upper():
+        return None
+    if float(source_max or 0) >= float(target.base_salary_max or 0):
+        return "promotion_salary_range_order_warning"
+    if float(source_min or 0) >= float(target.base_salary_max or 0):
+        return "promotion_salary_range_order_warning"
+    return None
+
+
+def _promotion_rules_salary_validation_key(titles, mapping):
+    for from_title_id, target_id in mapping.items():
+        if target_id is None:
+            continue
+        source = titles.get(from_title_id)
+        target = titles.get(target_id)
+        if not source or not target:
+            return "promotion_target_missing"
+        key = _salary_transition_validation_key(
+            source.base_salary_min,
+            source.base_salary_max,
+            source.currency,
+            target,
+        )
+        if key:
+            return key
+    return None
+
+
+def _salary_policy_validation_key(titles, rules):
+    for title in titles.values():
+        if float(title.base_salary_min or 0) > float(title.base_salary_max or 0):
+            return "salary_min_max_warning"
+        if not _valid_currency_code(title.currency):
+            return "currency_code_warning"
+    return _promotion_rules_salary_validation_key(
+        titles,
+        {rule.from_title_id: rule.to_title_id for rule in rules if rule.is_active},
+    )
 
 
 def _level_option_label(title):

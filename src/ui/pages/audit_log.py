@@ -1188,18 +1188,87 @@ def _diff_box(title, before, after):
     box.setStyleSheet(CARD_SS)
     layout = QVBoxLayout(box)
     layout.setContentsMargins(16, 14, 16, 16)
-    layout.setSpacing(8)
+    layout.setSpacing(10)
     label = QLabel(title)
     label.setStyleSheet("font-size: 13px; font-weight: 900; color: #030213;")
     layout.addWidget(label)
-    text = QLabel(_format_diff(before, after))
-    text.setWordWrap(True)
-    text.setStyleSheet(
-        "font-size: 12px; color: #374151; background: #f9fafb; border: 1px solid #e5e7eb; "
-        "border-radius: 8px; padding: 10px;"
-    )
-    layout.addWidget(text)
+
+    rows = _diff_rows(before, after)
+    if not rows:
+        empty = QLabel(t("no_changes_detected"))
+        empty.setWordWrap(True)
+        empty.setStyleSheet(
+            "font-size: 12px; color: #374151; background: #f9fafb; border: 1px solid #e5e7eb; "
+            "border-radius: 8px; padding: 10px;"
+        )
+        layout.addWidget(empty)
+        return box
+
+    header = QGridLayout()
+    header.setHorizontalSpacing(10)
+    for col, text in enumerate([t("audit_field"), t("audit_old_value"), t("audit_new_value")]):
+        head = QLabel(text)
+        head.setStyleSheet("font-size: 11px; font-weight: 900; color: #64748b;")
+        header.addWidget(head, 0, col)
+    layout.addLayout(header)
+
+    for field, old, new in rows:
+        layout.addWidget(_diff_row_widget(field, old, new))
     return box
+
+
+def _diff_row_widget(field, old, new):
+    row = QFrame()
+    row.setStyleSheet(
+        "QFrame { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; }"
+        "QLabel { background: transparent; border: none; }"
+    )
+    grid = QGridLayout(row)
+    grid.setContentsMargins(12, 8, 12, 8)
+    grid.setHorizontalSpacing(10)
+    for col, (text, color, weight) in enumerate([
+        (field, "#111827", "800"),
+        (old, "#991b1b", "700"),
+        (new, "#047857", "700"),
+    ]):
+        label = QLabel(str(text or "-"))
+        label.setWordWrap(True)
+        label.setToolTip(str(text or "-"))
+        label.setStyleSheet(f"font-size: 12px; color: {color}; font-weight: {weight};")
+        grid.addWidget(label, 0, col)
+    grid.setColumnStretch(0, 2)
+    grid.setColumnStretch(1, 3)
+    grid.setColumnStretch(2, 3)
+    return row
+
+
+def _diff_rows(before, after):
+    before_payload = _json_dict(before)
+    after_payload = _json_dict(after)
+    if not before_payload and not after_payload:
+        return []
+    rows = []
+    if not before_payload:
+        for key, value in after_payload.items():
+            if _is_blank_audit_value(value) or (str(key).endswith("_id") and key != "employee_id"):
+                continue
+            rows.append((_audit_field_label(key), "-", _export_value(value, key)))
+        return rows
+    if not after_payload:
+        for key, value in before_payload.items():
+            if _is_blank_audit_value(value) or (str(key).endswith("_id") and key != "employee_id"):
+                continue
+            rows.append((_audit_field_label(key), _export_value(value, key), "-"))
+        return rows
+    for key in sorted(set(before_payload) | set(after_payload)):
+        old = before_payload.get(key, "-")
+        new = after_payload.get(key, "-")
+        if old == new:
+            continue
+        if str(key).endswith("_id") and key != "employee_id":
+            continue
+        rows.append((_audit_field_label(key), _export_value(old, key), _export_value(new, key)))
+    return rows
 
 
 def _format_diff(before, after):

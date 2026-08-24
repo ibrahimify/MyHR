@@ -202,6 +202,10 @@ class EligibleTab(QWidget):
         super().__init__()
         self.user = user
         self.navigate_to_employee = navigate_to_employee
+        self.rows = []
+        self.page_size = 50
+        self.current_page = 1
+        self.total_pages = 1
         self.setObjectName("EligibleTab")
         self.setStyleSheet("QWidget#EligibleTab { background: #f9fafb; }")
         self._build()
@@ -268,9 +272,9 @@ class EligibleTab(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels([
-            t("employee"), t("current_level"), t("next_level"),
-            t("months_elapsed"), t("commendation"), t("sanction"),
-            t("months_left"), t("actions")
+            t("employee"), t("level"), t("target"),
+            t("elapsed_short"), t("commendation"), t("sanction"),
+            t("race_status_short"), t("actions")
         ])
         for col in range(self.table.columnCount()):
             header_item = self.table.horizontalHeaderItem(col)
@@ -285,8 +289,8 @@ class EligibleTab(QWidget):
         header.setFixedHeight(50)
         header.setStretchLastSection(False)
         for col, width in {
-            0: 190, 1: 118, 2: 118, 3: 138,
-            4: 142, 5: 108, 6: 190, 7: 150,
+            0: 180, 1: 136, 2: 124, 3: 150,
+            4: 154, 5: 104, 6: 176, 7: 156,
         }.items():
             self.table.setColumnWidth(col, width)
         for col in (0,):
@@ -299,7 +303,39 @@ class EligibleTab(QWidget):
         self.table.setShowGrid(False)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        tcl.addWidget(self.table, 1)
+        tcl.addWidget(self.table)
+
+        pager = QFrame()
+        pager.setStyleSheet("background: white; border: none; border-top: 1px solid #f3f4f6;")
+        pager_layout = QHBoxLayout(pager)
+        pager_layout.setContentsMargins(16, 10, 16, 10)
+        pager_layout.setSpacing(10)
+
+        self.page_lbl = QLabel("")
+        self.page_lbl.setStyleSheet("font-size: 13px; color: #4b5563; background: transparent;")
+        pager_btn_ss = (
+            "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db;"
+            " border-radius: 6px; font-size: 13px; font-weight: 700; padding: 0 14px; }"
+            " QPushButton:hover { background: #f9fafb; }"
+            " QPushButton:disabled { color: #9ca3af; background: #f9fafb; }"
+        )
+        self.prev_btn = QPushButton(t("previous_page"))
+        self.prev_btn.setFixedHeight(34)
+        self.prev_btn.setCursor(Qt.PointingHandCursor)
+        self.prev_btn.setStyleSheet(pager_btn_ss)
+        self.prev_btn.clicked.connect(self._previous_page)
+
+        self.next_btn = QPushButton(t("next_page"))
+        self.next_btn.setFixedHeight(34)
+        self.next_btn.setCursor(Qt.PointingHandCursor)
+        self.next_btn.setStyleSheet(pager_btn_ss)
+        self.next_btn.clicked.connect(self._next_page)
+
+        pager_layout.addStretch()
+        pager_layout.addWidget(self.page_lbl)
+        pager_layout.addWidget(self.prev_btn)
+        pager_layout.addWidget(self.next_btn)
+        tcl.addWidget(pager)
         layout.addWidget(table_card)
         layout.addStretch()
 
@@ -358,6 +394,8 @@ class EligibleTab(QWidget):
             session.close()
 
         rows.sort(key=lambda row: (0 if row["status"] == "eligible" else 1, row["mr"], row["name"]))
+        self.rows = rows
+        self.current_page = 1
 
         # Stat cards
         for label, val, color, icon_name, bg in [
@@ -392,112 +430,145 @@ class EligibleTab(QWidget):
             self.stats_row.addWidget(card)
         self.stats_row.addStretch()
 
-        # Populate table
-        self.table.setRowCount(len(rows))
-        self.table.setMinimumHeight(112 + (64 * max(1, len(rows))))
-        for ri, row in enumerate(rows):
-            self.table.setRowHeight(ri, 64)
+        self._populate_page()
 
-            # Employee name + ID
-            name_w = QWidget()
-            name_w.setStyleSheet("background: white; border: none;")
-            nl = QVBoxLayout(name_w)
-            nl.setContentsMargins(0, 4, 4, 4)
-            nl.setSpacing(1)
-            n1 = QLabel(row["name"])
-            n1.setStyleSheet("font-size: 13px; font-weight: 600; color: #111827;")
-            n2 = QLabel(row["emp_id"])
-            n2.setStyleSheet("font-size: 11px; color: #6b7280;")
-            nl.addWidget(n1)
-            nl.addWidget(n2)
-            name_w.setToolTip(f"{row['name']} ({row['emp_id']})")
-            self.table.setCellWidget(ri, 0, name_w)
+    def _populate_page(self):
+        total = len(self.rows)
+        self.total_pages = max(1, (total + self.page_size - 1) // self.page_size)
+        self.current_page = max(1, min(self.current_page, self.total_pages))
+        start = (self.current_page - 1) * self.page_size
+        page_rows = self.rows[start:start + self.page_size]
 
-            self.table.setItem(ri, 1, self._badge_item(row["current"], "#dbeafe", "#1e40af"))
-            self.table.setItem(ri, 2, self._badge_item(row["next"], "#dcfce7", "#166534"))
-            self._set_text_item(ri, 3, f"{row['elapsed']} mo")
-            self._set_text_item(ri, 4, f"-{row['comm']} mo")
-            self._set_text_item(ri, 5, f"+{row['sanction']} mo")
+        self.table.setUpdatesEnabled(False)
+        try:
+            self.table.setRowCount(0)
+            self.table.clearContents()
+            self.table.setRowCount(len(page_rows))
+            self.table.setFixedHeight(50 + (64 * max(1, len(page_rows))) + 4)
+            for ri, row in enumerate(page_rows):
+                self._set_eligible_row(ri, row)
+        finally:
+            self.table.setUpdatesEnabled(True)
 
-            # Progress cell
-            mr = row["mr"]
-            bm = max(row["base_months"], 1)
-            pct = max(0, min(100, int(100 - (mr / bm * 100))))
-            prog_w = QWidget()
-            prog_w.setStyleSheet("background: white; border: none;")
-            prog_w.setMinimumWidth(172)
-            prog_l = QVBoxLayout(prog_w)
-            prog_l.setContentsMargins(0, 8, 12, 8)
-            prog_l.setSpacing(3)
-            bar = QProgressBar()
-            bar.setRange(0, 100)
-            bar.setValue(pct)
-            bar.setFixedHeight(8)
-            bar.setTextVisible(False)
-            if mr == 0:
-                bar_color = "#10b981"
-            elif mr <= 6:
-                bar_color = "#f59e0b"
+        self.page_lbl.setText(t("page_status", page=self.current_page, pages=self.total_pages))
+        self.prev_btn.setEnabled(self.current_page > 1)
+        self.next_btn.setEnabled(self.current_page < self.total_pages)
+
+    def _set_eligible_row(self, ri, row):
+        self.table.setRowHeight(ri, 64)
+
+        # Employee name + ID
+        name_w = QWidget()
+        name_w.setStyleSheet("background: white; border: none;")
+        nl = QVBoxLayout(name_w)
+        nl.setContentsMargins(0, 4, 4, 4)
+        nl.setSpacing(1)
+        n1 = QLabel(row["name"])
+        n1.setStyleSheet("font-size: 13px; font-weight: 600; color: #111827;")
+        n2 = QLabel(row["emp_id"])
+        n2.setStyleSheet("font-size: 11px; color: #6b7280;")
+        nl.addWidget(n1)
+        nl.addWidget(n2)
+        name_w.setToolTip(f"{row['name']} ({row['emp_id']})")
+        self.table.setCellWidget(ri, 0, name_w)
+
+        self.table.setItem(ri, 1, self._badge_item(row["current"], "#dbeafe", "#1e40af"))
+        self.table.setItem(ri, 2, self._badge_item(row["next"], "#dcfce7", "#166534"))
+        self._set_text_item(ri, 3, f"{row['elapsed']} mo")
+        self._set_text_item(ri, 4, f"-{row['comm']} mo")
+        self._set_text_item(ri, 5, f"+{row['sanction']} mo")
+
+        # Progress cell
+        mr = row["mr"]
+        bm = max(row["base_months"], 1)
+        pct = max(0, min(100, int(100 - (mr / bm * 100))))
+        prog_w = QWidget()
+        prog_w.setStyleSheet("background: white; border: none;")
+        prog_w.setMinimumWidth(172)
+        prog_l = QVBoxLayout(prog_w)
+        prog_l.setContentsMargins(0, 8, 12, 8)
+        prog_l.setSpacing(3)
+        bar = QProgressBar()
+        bar.setRange(0, 100)
+        bar.setValue(pct)
+        bar.setFixedHeight(8)
+        bar.setTextVisible(False)
+        if mr == 0:
+            bar_color = "#10b981"
+        elif mr <= 6:
+            bar_color = "#f59e0b"
+        else:
+            bar_color = "#3b82f6"
+        bar.setStyleSheet(
+            f"QProgressBar {{ background: #e5e7eb; border-radius: 4px; border: none; }}"
+            f" QProgressBar::chunk {{ background: {bar_color}; border-radius: 4px; }}"
+        )
+        prog_l.addWidget(bar)
+        status_row = QHBoxLayout()
+        status_row.setContentsMargins(0, 0, 0, 0)
+        status_row.setSpacing(6)
+        status_icon = QLabel()
+        status_icon.setFixedSize(14, 14)
+        if mr == 0:
+            lbl_txt = t("eligible_now")
+            lbl_color = "#10b981"
+            status_icon.setPixmap(qta.icon("fa5s.check-circle", color=lbl_color).pixmap(13, 13))
+        elif mr <= 6:
+            lbl_txt = t("months_remaining_count", count=mr)
+            lbl_color = "#f59e0b"
+            status_icon.setPixmap(qta.icon("fa5s.clock", color=lbl_color).pixmap(13, 13))
+        else:
+            lbl_txt = t("months_remaining_count", count=mr)
+            lbl_color = "#6b7280"
+            status_icon.setPixmap(qta.icon("fa5s.chart-line", color=lbl_color).pixmap(13, 13))
+        p_lbl = QLabel(lbl_txt)
+        p_lbl.setStyleSheet(f"font-size: 12px; color: {lbl_color};")
+        p_lbl.setMinimumWidth(96)
+        status_row.addWidget(status_icon)
+        status_row.addWidget(p_lbl)
+        status_row.addStretch()
+        prog_l.addLayout(status_row)
+        prog_w.setToolTip(lbl_txt)
+        self.table.setCellWidget(ri, 6, prog_w)
+
+        # Action button
+        act_w = QWidget()
+        act_w.setStyleSheet("background: white; border: none;")
+        act_l = QHBoxLayout(act_w)
+        act_l.setContentsMargins(2, 8, 2, 8)
+        act_l.setAlignment(Qt.AlignCenter)
+        if row["status"] == "eligible":
+            btn = QPushButton(t("approve"))
+            btn.setIcon(qta.icon("fa5s.check", color="white"))
+            btn.setIconSize(QSize(13, 13))
+            btn.setFixedSize(126, 40)
+            btn.setStyleSheet(btn_primary(40))
+            btn.clicked.connect(lambda _, eid=row["id"]: self._approve_promotion(eid))
+        else:
+            btn = QPushButton(t("view"))
+            btn.setIcon(qta.icon("fa5s.eye", color="#374151"))
+            btn.setIconSize(QSize(13, 13))
+            btn.setFixedSize(88, 40)
+            btn.setStyleSheet(btn_outline(32))
+            btn.setToolTip(t("view_profile"))
+            if self.navigate_to_employee:
+                btn.clicked.connect(lambda _, eid=row["id"]: self.navigate_to_employee(eid))
             else:
-                bar_color = "#3b82f6"
-            bar.setStyleSheet(
-                f"QProgressBar {{ background: #e5e7eb; border-radius: 4px; border: none; }}"
-                f" QProgressBar::chunk {{ background: {bar_color}; border-radius: 4px; }}"
-            )
-            prog_l.addWidget(bar)
-            status_row = QHBoxLayout()
-            status_row.setContentsMargins(0, 0, 0, 0)
-            status_row.setSpacing(6)
-            status_icon = QLabel()
-            status_icon.setFixedSize(14, 14)
-            if mr == 0:
-                lbl_txt = t("eligible_now")
-                lbl_color = "#10b981"
-                status_icon.setPixmap(qta.icon("fa5s.check-circle", color=lbl_color).pixmap(13, 13))
-            elif mr <= 6:
-                lbl_txt = t("months_remaining_count", count=mr)
-                lbl_color = "#f59e0b"
-                status_icon.setPixmap(qta.icon("fa5s.clock", color=lbl_color).pixmap(13, 13))
-            else:
-                lbl_txt = t("months_remaining_count", count=mr)
-                lbl_color = "#6b7280"
-                status_icon.setPixmap(qta.icon("fa5s.chart-line", color=lbl_color).pixmap(13, 13))
-            p_lbl = QLabel(lbl_txt)
-            p_lbl.setStyleSheet(f"font-size: 12px; color: {lbl_color};")
-            p_lbl.setMinimumWidth(96)
-            status_row.addWidget(status_icon)
-            status_row.addWidget(p_lbl)
-            status_row.addStretch()
-            prog_l.addLayout(status_row)
-            prog_w.setToolTip(lbl_txt)
-            self.table.setCellWidget(ri, 6, prog_w)
+                btn.setEnabled(False)
+        act_l.addWidget(btn)
+        self.table.setCellWidget(ri, 7, act_w)
 
-            # Action button
-            act_w = QWidget()
-            act_w.setStyleSheet("background: white; border: none;")
-            act_l = QHBoxLayout(act_w)
-            act_l.setContentsMargins(2, 8, 2, 8)
-            act_l.setAlignment(Qt.AlignCenter)
-            if row["status"] == "eligible":
-                btn = QPushButton("  " + t("approve"))
-                btn.setIcon(qta.icon("fa5s.check", color="white"))
-                btn.setIconSize(QSize(13, 13))
-                btn.setFixedSize(112, 40)
-                btn.setStyleSheet(btn_primary(40))
-                btn.clicked.connect(lambda _, eid=row["id"]: self._approve_promotion(eid))
-            else:
-                btn = QPushButton("  " + t("view"))
-                btn.setIcon(qta.icon("fa5s.eye", color="#374151"))
-                btn.setIconSize(QSize(13, 13))
-                btn.setFixedSize(88, 40)
-                btn.setStyleSheet(btn_outline(32))
-                btn.setToolTip(t("view_profile"))
-                if self.navigate_to_employee:
-                    btn.clicked.connect(lambda _, eid=row["id"]: self.navigate_to_employee(eid))
-                else:
-                    btn.setEnabled(False)
-            act_l.addWidget(btn)
-            self.table.setCellWidget(ri, 7, act_w)
+    def _previous_page(self):
+        if self.current_page <= 1:
+            return
+        self.current_page -= 1
+        self._populate_page()
+
+    def _next_page(self):
+        if self.current_page >= self.total_pages:
+            return
+        self.current_page += 1
+        self._populate_page()
 
     def _badge_item(self, text, bg, fg):
         item = QTableWidgetItem(text)
