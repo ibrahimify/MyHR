@@ -22,6 +22,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
+from src.ui.styles import polish_combo_box
 from src.database.connection import (
     get_session, generate_employee_id, log_action,
     degree_to_title_name, calculate_months_remaining, calculate_sub_race,
@@ -67,6 +68,16 @@ QComboBox::drop-down {
     width: 28px;
     border: none;
     background: transparent;
+}
+QComboBox QAbstractItemView {
+    background: white;
+    color: #111827;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    selection-background-color: #eff6ff;
+    selection-color: #111827;
+    outline: none;
+    padding: 4px;
 }
 """
 INPUT_STYLE = """
@@ -1415,6 +1426,7 @@ class EditEmployeeView(QWidget):
             self.org_combo = QComboBox()
             self.org_combo.setFixedHeight(36)
             self.org_combo.setStyleSheet(COMBO_STYLE)
+            polish_combo_box(self.org_combo)
             if is_other_employee(emp):
                 others = ensure_others_org_unit(session)
                 session.flush()
@@ -1431,6 +1443,7 @@ class EditEmployeeView(QWidget):
             self.manager_combo = QComboBox()
             self.manager_combo.setFixedHeight(36)
             self.manager_combo.setStyleSheet(COMBO_STYLE)
+            polish_combo_box(self.manager_combo)
             self.manager_combo.addItem(t("none"), None)
             manager_filter = valid_other_manager_ids(session) if is_other_employee(emp) else None
             for e in session.query(Employee).filter(Employee.id != employee_db_id).all():
@@ -1445,6 +1458,7 @@ class EditEmployeeView(QWidget):
             self.title_combo = QComboBox()
             self.title_combo.setFixedHeight(36)
             self.title_combo.setStyleSheet(COMBO_STYLE)
+            polish_combo_box(self.title_combo)
             for title in session.query(Title).order_by(Title.name.desc()).all():
                 self.title_combo.addItem(f"{display_title_name(title)} - {title.label}", title.id)
                 if emp.title_id == title.id:
@@ -1463,6 +1477,7 @@ class EditEmployeeView(QWidget):
             self.status_combo = QComboBox()
             self.status_combo.setFixedHeight(36)
             self.status_combo.setStyleSheet(COMBO_STYLE)
+            polish_combo_box(self.status_combo)
             for s in STATUS_OPTIONS:
                 self.status_combo.addItem(s.replace("_"," ").title(), s)
                 if emp.status == s:

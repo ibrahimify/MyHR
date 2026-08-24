@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.core.i18n import t
+from src.ui.styles import polish_combo_box
 from src.database.connection import get_session, log_action
 from src.database.models import OrgUnit, Employee
 
@@ -80,7 +81,7 @@ QComboBox::drop-down {
 QComboBox QAbstractItemView {
     background: white;
     border: 1px solid #e5e7eb;
-    border-radius: 0px;
+    border-radius: 8px;
     color: #111827;
     selection-background-color: #eff6ff;
     selection-color: #111827;
@@ -1325,27 +1326,7 @@ def _prepare_combo(combo):
     combo.setMinimumWidth(390)
     combo.view().setMinimumWidth(390)
     combo.view().setTextElideMode(Qt.ElideNone)
-    combo.view().setStyleSheet("""
-        QListView {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 0px;
-            color: #111827;
-            outline: none;
-            padding: 4px;
-        }
-        QListView::item {
-            min-height: 30px;
-            padding: 4px 10px;
-            background: white;
-            color: #111827;
-        }
-        QListView::item:selected {
-            background: #eff6ff;
-            color: #111827;
-        }
-    """)
-    combo.setMaxVisibleItems(8)
+    polish_combo_box(combo, max_visible_items=8, popup_min_width=390)
 
 
 def _type_can_be_selected(session, unit_type, current_unit_id=None):

@@ -26,6 +26,7 @@ from sqlalchemy import String, cast, func, or_
 
 from src.core.app_settings import company_name, company_subtitle
 from src.core.i18n import is_rtl, t
+from src.ui.styles import polish_combo_box
 from src.database.connection import get_session, log_action
 from src.database.models import (
     AuditLog,
@@ -145,7 +146,7 @@ QComboBox QAbstractItemView {
     background: white;
     color: #111827;
     border: 1px solid #e5e7eb;
-    border-radius: 0;
+    border-radius: 8px;
     selection-background-color: #eff6ff;
     selection-color: #111827;
     outline: none;
@@ -1640,27 +1641,4 @@ def _category_badge(category):
 
 
 def _polish_combo(combo):
-    combo.setMaxVisibleItems(12)
-    view = combo.view()
-    view.setStyleSheet("""
-        QListView {
-            background: white;
-            color: #111827;
-            border: 1px solid #d1d5db;
-            border-radius: 0;
-            outline: none;
-            padding: 4px;
-        }
-        QListView::item {
-            min-height: 30px;
-            padding: 6px 10px;
-            background: white;
-            color: #111827;
-        }
-        QListView::item:selected,
-        QListView::item:hover {
-            background: #eff6ff;
-            color: #111827;
-        }
-    """)
-    view.window().setStyleSheet("background: white; border: none;")
+    polish_combo_box(combo)

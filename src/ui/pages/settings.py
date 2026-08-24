@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 
 from src.core.i18n import t
 from src.core.app_settings import app_settings, company_name
+from src.ui.styles import polish_combo_box
 from src.database.connection import get_session, log_action, DB_PATH
 from src.database.models import AuditLog, Title, SystemUser, PromotionRule, Employee, OrgUnit
 from src.services.reporting_service import (
@@ -141,7 +142,7 @@ QComboBox QAbstractItemView {
     background: white;
     color: #111827;
     border: 1px solid #d1d5db;
-    border-radius: 0px;
+    border-radius: 8px;
     padding: 4px;
     selection-background-color: #eff6ff;
     selection-color: #111827;
@@ -2954,11 +2955,7 @@ def _sync_increment_spin_suffix(combo, spin, currency):
 def _style_combo(combo):
     combo.setStyleSheet(COMBO_SS)
     combo.setFixedHeight(44)
-    combo.view().setStyleSheet(
-        "QListView { background: white; color: #111827; border: 1px solid #d1d5db; border-radius: 0px; padding: 4px; outline: none; }"
-        "QListView::item { min-height: 30px; padding: 6px 10px; color: #111827; background: white; }"
-        "QListView::item:hover, QListView::item:selected { background: #eff6ff; color: #111827; }"
-    )
+    polish_combo_box(combo)
 
 
 def _add_form_field(grid, row, col, label_text, widget):

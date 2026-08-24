@@ -6,10 +6,12 @@ same session language is kept when the user logs out and returns here.
 """
 
 import qtawesome as qta
-from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtCore import Qt, Signal, QSize, QRectF, QPoint, QPropertyAnimation, QEasingCurve
+from PySide6.QtGui import QPainterPath, QRegion
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
+    QGraphicsOpacityEffect,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -91,11 +93,20 @@ class CustomSelect(QWidget):
 
         main_layout.addWidget(self.trigger)
 
-        self.popup = QFrame()
+        self.popup = SelectPopupFrame()
         self.popup.hide()
         self.popup.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint)
         self.popup.setAttribute(Qt.WA_TranslucentBackground, True)
         self.popup.setAutoFillBackground(False)
+        self.popup_opacity = QGraphicsOpacityEffect(self.popup)
+        self.popup_opacity.setOpacity(1)
+        self.popup.setGraphicsEffect(self.popup_opacity)
+        self.popup_pos_animation = QPropertyAnimation(self.popup, b"pos", self)
+        self.popup_pos_animation.setDuration(140)
+        self.popup_pos_animation.setEasingCurve(QEasingCurve.OutCubic)
+        self.popup_opacity_animation = QPropertyAnimation(self.popup_opacity, b"opacity", self)
+        self.popup_opacity_animation.setDuration(120)
+        self.popup_opacity_animation.setEasingCurve(QEasingCurve.OutCubic)
 
         popup_layout = QVBoxLayout(self.popup)
         popup_layout.setContentsMargins(0, 0, 0, 0)
@@ -103,6 +114,7 @@ class CustomSelect(QWidget):
 
         self.popup_box = QFrame()
         self.popup_box.setObjectName("SelectPopupBox")
+        self.popup_box.setAttribute(Qt.WA_StyledBackground, True)
         self.popup_box.setStyleSheet("""
             QFrame#SelectPopupBox {
                 background: white;
@@ -163,9 +175,21 @@ class CustomSelect(QWidget):
             return
 
         pos = self.mapToGlobal(self.rect().bottomLeft())
-        self.popup.setFixedWidth(self.width())
-        self.popup.move(pos.x(), pos.y() + 4)
+        self.popup.setFixedSize(self.width(), self.popup.sizeHint().height())
+        end_pos = QPoint(pos.x(), pos.y() + 4)
+        start_pos = QPoint(end_pos.x(), end_pos.y() - 6)
+        self.popup.move(start_pos)
+        self.popup_opacity.setOpacity(0)
         self.popup.show()
+        self.popup.raise_()
+        self.popup_pos_animation.stop()
+        self.popup_pos_animation.setStartValue(start_pos)
+        self.popup_pos_animation.setEndValue(end_pos)
+        self.popup_opacity_animation.stop()
+        self.popup_opacity_animation.setStartValue(0)
+        self.popup_opacity_animation.setEndValue(1)
+        self.popup_pos_animation.start()
+        self.popup_opacity_animation.start()
 
     def select_item(self, item):
         self.label.setText(item.text())
@@ -182,6 +206,15 @@ class CustomSelect(QWidget):
                 self.current_value = value
                 self.list_widget.setCurrentItem(item)
                 break
+
+
+class SelectPopupFrame(QFrame):
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(self.rect()).adjusted(0, 0, -1, -1), 8, 8)
+        self.setMask(QRegion(path.toFillPolygon().toPolygon()))
 
 
 class LoginWindow(QWidget):

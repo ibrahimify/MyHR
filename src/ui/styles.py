@@ -1,5 +1,9 @@
 """Shared QSS constants matching the MockUI design system."""
 
+from PySide6.QtCore import QEvent, QObject, QRectF, Qt
+from PySide6.QtGui import QPainterPath, QRegion
+from PySide6.QtWidgets import QFrame
+
 # Colors
 CLR_BG = "#f9fafb"
 CLR_WHITE = "white"
@@ -155,6 +159,16 @@ QComboBox::drop-down {
     border: none;
     background: transparent;
 }
+QComboBox QAbstractItemView {
+    background: white;
+    color: #111827;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    selection-background-color: #eff6ff;
+    selection-color: #111827;
+    outline: none;
+    padding: 4px;
+}
 QSpinBox::up-button, QSpinBox::down-button,
 QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
     width: 0;
@@ -277,3 +291,70 @@ BADGE_GREEN = badge_ss("#dcfce7", "#166534")
 BADGE_YELLOW = badge_ss("#fef9c3", "#854d0e")
 BADGE_RED = badge_ss("#fee2e2", "#991b1b")
 BADGE_GRAY = badge_ss("#f3f4f6", "#374151")
+
+
+COMBO_POPUP_VIEW_SS = """
+QListView {
+    background: white;
+    color: #111827;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    outline: none;
+    padding: 4px;
+}
+QListView::item {
+    min-height: 30px;
+    padding: 6px 10px;
+    background: white;
+    color: #111827;
+    border-radius: 6px;
+}
+QListView::item:selected,
+QListView::item:hover {
+    background: #eff6ff;
+    color: #111827;
+}
+"""
+
+
+class _ComboPopupMask(QObject):
+    def __init__(self, combo, radius=8):
+        super().__init__(combo)
+        self.combo = combo
+        self.radius = radius
+
+    def eventFilter(self, obj, event):
+        if event.type() in (QEvent.Show, QEvent.Resize):
+            self._apply_mask()
+        return super().eventFilter(obj, event)
+
+    def _apply_mask(self):
+        view = self.combo.view()
+        popup = view.window()
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(popup.rect()).adjusted(0, 0, -1, -1), self.radius, self.radius)
+        popup.setMask(QRegion(path.toFillPolygon().toPolygon()))
+
+
+def polish_combo_box(combo, *, max_visible_items=12, popup_min_width=None):
+    """Make combo popups use the same rounded, clean dropdown treatment."""
+    combo.setMaxVisibleItems(max_visible_items)
+    view = combo.view()
+
+    if popup_min_width is not None:
+        view.setMinimumWidth(popup_min_width)
+
+    view.setFrameShape(QFrame.NoFrame)
+    view.setTextElideMode(Qt.ElideNone)
+    view.setAttribute(Qt.WA_StyledBackground, True)
+    view.setStyleSheet(COMBO_POPUP_VIEW_SS)
+
+    popup = view.window()
+    popup.setAttribute(Qt.WA_TranslucentBackground, True)
+    popup.setStyleSheet("background: transparent; border: none;")
+
+    mask = _ComboPopupMask(combo)
+    view.installEventFilter(mask)
+    popup.installEventFilter(mask)
+    combo._myhr_combo_popup_mask = mask
+    return combo
