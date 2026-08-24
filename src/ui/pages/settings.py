@@ -8,6 +8,7 @@ Settings Page
 
 from hashlib import sha256
 import csv
+import os
 import shutil
 import sqlite3
 from datetime import datetime
@@ -2226,6 +2227,90 @@ def _write_pdf(path, html):
     document.setPageSize(printer.pageLayout().paintRectPoints().size())
     document.setHtml(html)
     document.print_(printer)
+    _stamp_pdf_page_numbers(path)
+
+
+def _stamp_pdf_page_numbers(path):
+    """Add real PDF page numbers after Qt renders the document."""
+    try:
+        from pypdf import PdfReader, PdfWriter
+        from pypdf.generic import ArrayObject, DecodedStreamObject, DictionaryObject, NameObject
+    except Exception:
+        return
+
+    tmp_path = f"{path}.tmp"
+    try:
+        reader = PdfReader(path)
+        total = len(reader.pages)
+        if total <= 1:
+            return
+
+        writer = PdfWriter()
+        for index, page in enumerate(reader.pages, start=1):
+            _append_page_number_stream(
+                writer,
+                page,
+                f"{index} / {total}",
+                DecodedStreamObject,
+                DictionaryObject,
+                NameObject,
+                ArrayObject,
+            )
+            writer.add_page(page)
+
+        with open(tmp_path, "wb") as handle:
+            writer.write(handle)
+        os.replace(tmp_path, path)
+    except Exception:
+        try:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        except OSError:
+            pass
+
+
+def _append_page_number_stream(writer, page, text, stream_cls, dict_cls, name_cls, array_cls):
+    resources = page.get("/Resources")
+    resources = resources.get_object() if hasattr(resources, "get_object") else resources
+    if resources is None:
+        resources = dict_cls()
+        page[name_cls("/Resources")] = resources
+
+    fonts = resources.get("/Font")
+    fonts = fonts.get_object() if hasattr(fonts, "get_object") else fonts
+    if fonts is None:
+        fonts = dict_cls()
+        resources[name_cls("/Font")] = fonts
+    fonts[name_cls("/F_PageFooter")] = dict_cls({
+        name_cls("/Type"): name_cls("/Font"),
+        name_cls("/Subtype"): name_cls("/Type1"),
+        name_cls("/BaseFont"): name_cls("/Helvetica"),
+    })
+
+    width = float(page.mediabox.width)
+    escaped = text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+    footer_stream = stream_cls()
+    footer_stream.set_data(
+        (
+            "q\n"
+            "BT\n"
+            "/F_PageFooter 8 Tf\n"
+            "0.54 0.58 0.63 rg\n"
+            f"1 0 0 1 {width - 72:.2f} 24 Tm\n"
+            f"({escaped}) Tj\n"
+            "ET\n"
+            "Q\n"
+        ).encode("latin-1", errors="replace")
+    )
+    footer_ref = writer._add_object(footer_stream)
+
+    existing = page.get("/Contents")
+    if existing is None:
+        page[name_cls("/Contents")] = footer_ref
+    elif isinstance(existing, array_cls):
+        existing.append(footer_ref)
+    else:
+        page[name_cls("/Contents")] = array_cls([existing, footer_ref])
 
 
 def _set_page(page, content):

@@ -466,6 +466,10 @@ class DashboardSmokeTests(unittest.TestCase):
             _write_pdf(str(target), html)
             self.assertTrue(target.exists())
             self.assertGreater(target.stat().st_size, 1000)
+            from pypdf import PdfReader
+            reader = PdfReader(str(target))
+            extracted = "\n".join(page.extract_text() or "" for page in reader.pages)
+            self.assertIn(f"1 / {len(reader.pages)}", extracted)
         finally:
             try:
                 target.unlink()
