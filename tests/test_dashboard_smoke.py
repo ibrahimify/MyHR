@@ -388,6 +388,61 @@ class DashboardSmokeTests(unittest.TestCase):
         self.assertGreaterEqual(commendations.total_pages, 2)
         self.assertGreaterEqual(sanctions.total_pages, 2)
 
+    def test_issue_sanction_tab_populates_and_creates_sanction(self):
+        from datetime import datetime
+
+        from src.database.models import AuditLog, Sanction
+        from src.ui.pages.sanctions import IssueSanctionTab
+
+        issued = []
+        with db.SessionLocal() as session:
+            admin = session.query(db.SystemUser).filter_by(username="admin").one()
+            title = session.query(db.Title).filter_by(name="L7").one()
+            employee = db.Employee(
+                employee_id="SAN-SMOKE-EMP",
+                first_name="Sanction",
+                last_name="Smoke",
+                degree="BSc",
+                position="Analyst",
+                join_date=datetime.utcnow(),
+                base_salary=2400,
+                status="active",
+                title_id=title.id,
+            )
+            session.add(employee)
+            session.commit()
+            before_count = session.query(Sanction).count()
+            user = SimpleNamespace(id=admin.id, username=admin.username, role=admin.role, full_name=admin.full_name)
+
+        tab = IssueSanctionTab(user, lambda: issued.append(True))
+        try:
+            self.assertGreater(tab.emp_combo.count(), 1)
+            tab.emp_combo.setCurrentIndex(1)
+            tab.type_combo.setCurrentIndex(tab.type_combo.findData("written_warning"))
+            tab.reason_input.setPlainText("Smoke sanction reason")
+            tab.delay_combo.setCurrentIndex(tab.delay_combo.findData(2))
+
+            with patch("src.ui.pages.sanctions._information", return_value=None):
+                tab._issue()
+
+            self.assertTrue(issued)
+            with db.SessionLocal() as session:
+                self.assertEqual(session.query(Sanction).count(), before_count + 1)
+                sanction = (
+                    session.query(Sanction)
+                    .filter_by(reason="Smoke sanction reason", delay_months=2)
+                    .order_by(Sanction.id.desc())
+                    .first()
+                )
+                self.assertIsNotNone(sanction)
+                self.assertIsNotNone(
+                    session.query(AuditLog)
+                    .filter_by(action="sanction.issue", target_table="sanction", target_id=sanction.id)
+                    .first()
+                )
+        finally:
+            tab.close()
+
     def test_yearly_report_builds_pdf_without_placeholder_text(self):
         from pathlib import Path
 
@@ -467,8 +522,12 @@ class DashboardSmokeTests(unittest.TestCase):
             with target.open("r", encoding="utf-8", newline="") as handle:
                 rows = list(csv.reader(handle))
             self.assertGreaterEqual(len(rows), 2)
-            self.assertEqual(rows[0][:4], ["timestamp", "user", "action", "target"])
+            self.assertEqual(rows[0][:5], ["Timestamp", "User", "Action", "Action Code", "Target"])
+            self.assertIn("Employee Updated", rows[1])
+            self.assertIn("employee.update", rows[1])
             self.assertIn("Audit export current item", rows[1])
+            self.assertIn("Status: inactive", rows[1])
+            self.assertIn("Status: active", rows[1])
         finally:
             try:
                 target.unlink()
@@ -506,6 +565,24 @@ class DashboardSmokeTests(unittest.TestCase):
                 before_value='{"name": "S8", "label": "Interns"}',
                 performed_at=datetime.utcnow(),
             ))
+            session.add(AuditLog(
+                performed_by_id=admin.id,
+                performed_by_username="admin",
+                performed_by_name="Smoke Admin",
+                action="settings.database_health_check",
+                description="Level target smoke database check",
+                after_value='{"integrity": "ok"}',
+                performed_at=datetime.utcnow(),
+            ))
+            session.add(AuditLog(
+                performed_by_id=admin.id,
+                performed_by_username="admin",
+                performed_by_name="Smoke Admin",
+                action="settings.export_yearly_report",
+                description="Level target smoke report exported: 2026",
+                after_value='{"year": 2026}',
+                performed_at=datetime.utcnow(),
+            ))
             session.commit()
             user = SimpleNamespace(id=admin.id, username=admin.username, role=admin.role, full_name=admin.full_name)
 
@@ -523,7 +600,10 @@ class DashboardSmokeTests(unittest.TestCase):
 
         self.assertIn("L6 - Mid Level", targets)
         self.assertIn("S8 - Interns", targets)
+        self.assertIn("Database", targets)
+        self.assertIn("Yearly Report 2026", targets)
         self.assertTrue(all("Title #" not in target for target in targets))
+        self.assertTrue(all(target != "-" for target in targets))
         self.assertIn("Level Updated", actions)
         self.assertIn("Level Deleted", actions)
 

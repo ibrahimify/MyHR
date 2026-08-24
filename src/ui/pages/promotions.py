@@ -285,13 +285,13 @@ class EligibleTab(QWidget):
         header.setFixedHeight(50)
         header.setStretchLastSection(False)
         for col, width in {
-            0: 190, 1: 176, 2: 142, 3: 190,
-            4: 178, 5: 132, 6: 178, 7: 166,
+            0: 190, 1: 118, 2: 118, 3: 138,
+            4: 142, 5: 108, 6: 190, 7: 150,
         }.items():
             self.table.setColumnWidth(col, width)
-        for col in (0, 6):
+        for col in (0,):
             header.setSectionResizeMode(col, QHeaderView.Stretch)
-        for col in (1, 2, 3, 4, 5, 7):
+        for col in (1, 2, 3, 4, 5, 6, 7):
             header.setSectionResizeMode(col, QHeaderView.Fixed)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -425,6 +425,7 @@ class EligibleTab(QWidget):
             pct = max(0, min(100, int(100 - (mr / bm * 100))))
             prog_w = QWidget()
             prog_w.setStyleSheet("background: white; border: none;")
+            prog_w.setMinimumWidth(172)
             prog_l = QVBoxLayout(prog_w)
             prog_l.setContentsMargins(0, 8, 12, 8)
             prog_l.setSpacing(3)
@@ -463,6 +464,7 @@ class EligibleTab(QWidget):
                 status_icon.setPixmap(qta.icon("fa5s.chart-line", color=lbl_color).pixmap(13, 13))
             p_lbl = QLabel(lbl_txt)
             p_lbl.setStyleSheet(f"font-size: 12px; color: {lbl_color};")
+            p_lbl.setMinimumWidth(96)
             status_row.addWidget(status_icon)
             status_row.addWidget(p_lbl)
             status_row.addStretch()
@@ -474,20 +476,20 @@ class EligibleTab(QWidget):
             act_w = QWidget()
             act_w.setStyleSheet("background: white; border: none;")
             act_l = QHBoxLayout(act_w)
-            act_l.setContentsMargins(6, 8, 6, 8)
+            act_l.setContentsMargins(2, 8, 2, 8)
             act_l.setAlignment(Qt.AlignCenter)
             if row["status"] == "eligible":
                 btn = QPushButton("  " + t("approve"))
                 btn.setIcon(qta.icon("fa5s.check", color="white"))
                 btn.setIconSize(QSize(13, 13))
-                btn.setFixedSize(124, 40)
+                btn.setFixedSize(112, 40)
                 btn.setStyleSheet(btn_primary(40))
                 btn.clicked.connect(lambda _, eid=row["id"]: self._approve_promotion(eid))
             else:
                 btn = QPushButton("  " + t("view"))
                 btn.setIcon(qta.icon("fa5s.eye", color="#374151"))
                 btn.setIconSize(QSize(13, 13))
-                btn.setFixedSize(96, 40)
+                btn.setFixedSize(88, 40)
                 btn.setStyleSheet(btn_outline(32))
                 btn.setToolTip(t("view_profile"))
                 if self.navigate_to_employee:

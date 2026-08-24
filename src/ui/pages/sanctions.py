@@ -214,6 +214,8 @@ class SanctionsPage(QWidget):
         self.active_tab.refresh()
 
     def showEvent(self, event):
+        if self.tabs.currentIndex() == 0:
+            self.issue_tab.refresh_employees()
         self.active_tab.refresh()
         super().showEvent(event)
 
@@ -650,6 +652,7 @@ class IssueSanctionTab(QWidget):
         self.setObjectName("IssueSanctionTab")
         self.setStyleSheet("QWidget#IssueSanctionTab { background: #f9fafb; }")
         self._build()
+        self.refresh_employees()
 
     def _build(self):
         scroll = QScrollArea()

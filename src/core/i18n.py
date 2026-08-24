@@ -2237,6 +2237,16 @@ TRANSLATIONS["en"].update({
     "audit_action_export_yearly_report": "Yearly Report Exported",
     "audit_action_database_health_check": "Database Health Check",
     "audit_action_export_audit": "Audit Log Exported",
+    "target_audit_log": "Audit Log",
+    "target_database": "Database",
+    "target_promotion_policies": "Promotion Policies",
+    "target_salary_ranges": "Salary Ranges",
+    "target_annual_increment_rules": "Annual Increment Rules",
+    "target_organization_settings": "Organization Settings",
+    "target_employee_export": "Employee CSV Export",
+    "target_user_security": "User Security",
+    "target_yearly_report": "Yearly Report",
+    "target_yearly_report_for_year": "Yearly Report {year}",
 })
 
 TRANSLATIONS["hu"].update({
@@ -2306,6 +2316,16 @@ TRANSLATIONS["hu"].update({
     "audit_action_export_yearly_report": "Eves riport exportalva",
     "audit_action_database_health_check": "Adatbazis allapotellenorzes",
     "audit_action_export_audit": "Audit naplo exportalva",
+    "target_audit_log": "Audit naplo",
+    "target_database": "Adatbazis",
+    "target_promotion_policies": "Eloreleptetesi szabalyzatok",
+    "target_salary_ranges": "Bersavok",
+    "target_annual_increment_rules": "Eves emelesi szabalyok",
+    "target_organization_settings": "Szervezeti beallitasok",
+    "target_employee_export": "Munkavallaloi CSV export",
+    "target_user_security": "Felhasznaloi biztonsag",
+    "target_yearly_report": "Eves riport",
+    "target_yearly_report_for_year": "Eves riport {year}",
 })
 
 TRANSLATIONS["ar"].update({
@@ -2375,6 +2395,16 @@ TRANSLATIONS["ar"].update({
     "audit_action_export_yearly_report": "تم تصدير التقرير السنوي",
     "audit_action_database_health_check": "فحص صحة قاعدة البيانات",
     "audit_action_export_audit": "تم تصدير سجل التدقيق",
+    "target_audit_log": "سجل التدقيق",
+    "target_database": "قاعدة البيانات",
+    "target_promotion_policies": "سياسات الترقية",
+    "target_salary_ranges": "نطاقات الرواتب",
+    "target_annual_increment_rules": "قواعد الزيادة السنوية",
+    "target_organization_settings": "إعدادات المنظمة",
+    "target_employee_export": "تصدير CSV للموظفين",
+    "target_user_security": "أمان المستخدم",
+    "target_yearly_report": "التقرير السنوي",
+    "target_yearly_report_for_year": "التقرير السنوي {year}",
 })
 
 

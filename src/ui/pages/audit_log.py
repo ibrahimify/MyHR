@@ -652,19 +652,30 @@ class AuditLogPage(QWidget):
             )
             with open(path, "w", newline="", encoding="utf-8") as handle:
                 writer = csv.writer(handle)
-                writer.writerow(["timestamp", "user", "action", "target", "category", "details", "before", "after"])
+                writer.writerow([
+                    "Timestamp",
+                    "User",
+                    "Action",
+                    "Action Code",
+                    "Target",
+                    "Details",
+                    "Category",
+                    "Before",
+                    "After",
+                ])
                 self._target_session = session
                 for log in logs:
                     row = self._serialize_log(log)
                     writer.writerow([
                         row["timestamp"],
                         row["user"],
+                        row["action"],
                         row["raw_action"],
                         row["target"],
-                        _category_label(row["category"]),
                         row["details"],
-                        row["before"],
-                        row["after"],
+                        _category_label(row["category"]),
+                        _format_snapshot_for_export(row["before"]),
+                        _format_snapshot_for_export(row["after"]),
                     ])
                 self._target_session = None
             log_action(
@@ -833,11 +844,34 @@ def _format_snapshot(value):
         return str(value)
 
 
+def _format_snapshot_for_export(value):
+    if not value:
+        return ""
+    payload = _json_dict(value)
+    if payload:
+        return "; ".join(
+            f"{str(key).replace('_', ' ').title()}: {_export_value(val)}"
+            for key, val in payload.items()
+        )
+    return str(value)
+
+
+def _export_value(value):
+    if isinstance(value, float):
+        return f"{value:g}"
+    if isinstance(value, (list, tuple)):
+        return ", ".join(str(item) for item in value)
+    if isinstance(value, dict):
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    return str(value)
+
+
 def _resolve_target(session, log):
     table = (log.target_table or "").strip().lower()
     target_id = log.target_id
+    action_label = _target_from_action(log)
     if not table:
-        return "-"
+        return action_label or "-"
 
     snapshot_label = _target_from_snapshot(table, log)
     if table in {"title", "system_user"} and snapshot_label:
@@ -855,8 +889,31 @@ def _resolve_target(session, log):
     if description_label:
         return description_label
 
+    if action_label:
+        return action_label
+
     label = _target_table_label(table)
     return f"{label} #{target_id}" if target_id else label
+
+
+def _target_from_action(log):
+    action = log.action or ""
+    payload = _json_dict(log.after_value) or _json_dict(log.before_value)
+    if action == "settings.export_yearly_report":
+        year = payload.get("year") or _first_number(log.description)
+        return t("target_yearly_report_for_year", year=year) if year else t("target_yearly_report")
+    mapping = {
+        "audit.export": "target_audit_log",
+        "settings.database_health_check": "target_database",
+        "settings.promotion_rules": "target_promotion_policies",
+        "settings.salary_ranges": "target_salary_ranges",
+        "settings.increment_rules": "target_annual_increment_rules",
+        "settings.general": "target_organization_settings",
+        "settings.export_employees": "target_employee_export",
+        "settings.password_change": "target_user_security",
+    }
+    key = mapping.get(action)
+    return t(key) if key else ""
 
 
 def _target_from_database(session, table, target_id):
@@ -956,6 +1013,13 @@ def _json_dict(value):
     except (TypeError, ValueError):
         return {}
     return payload if isinstance(payload, dict) else {}
+
+
+def _first_number(value):
+    for part in (value or "").replace(":", " ").split():
+        if part.isdigit():
+            return part
+    return ""
 
 
 def _date_range_start(date_range):
