@@ -14,14 +14,19 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QTableWidget, QTableWidgetItem,
     QHeaderView, QTabWidget, QLineEdit, QComboBox, QTextEdit,
-    QMessageBox, QCheckBox
+    QMessageBox, QCheckBox, QListWidget, QListWidgetItem
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QColor
 from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
-from src.ui.styles import polish_combo_box
+from src.ui.styles import (
+    EMPLOYEE_PICKER_LIST_SS,
+    employee_picker_checkbox_ss,
+    employee_picker_row_ss,
+    polish_combo_box,
+)
 from src.database.connection import (
     get_session, generate_commendation_ref, log_action,
     can_receive_commendation, count_commendations_in_current_role,
@@ -224,6 +229,10 @@ class IssueCommendationTab(QWidget):
         self.user = user
         self.on_issued = on_issued
         self.selected_employees = set()
+        self.selected_single_employee_id = None
+        self.employee_options = []
+        self.bulk_rows = []
+        self.bulk_row_by_checkbox = {}
         self.mode = "single"
         self.setObjectName("IssueCommendationTab")
         self.setStyleSheet("QWidget#IssueCommendationTab { background: #f9fafb; }")
@@ -337,23 +346,46 @@ class IssueCommendationTab(QWidget):
         self.emp_card_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
         ec.addWidget(self.emp_card_title)
 
-        # Single employee combo
-        self.single_combo = QComboBox()
-        self.single_combo.setFixedHeight(44)
-        self.single_combo.setStyleSheet(COMBO_SS)
-        _polish_combo(self.single_combo)
-        ec.addWidget(self.single_combo)
+        self.single_search = QLineEdit()
+        self.single_search.setFixedHeight(42)
+        self.single_search.setPlaceholderText(t("search_employees"))
+        self.single_search.setClearButtonEnabled(True)
+        self.single_search.setStyleSheet(INPUT_SS)
+        self.single_search.textChanged.connect(self._filter_single_employees)
+        ec.addWidget(self.single_search)
+
+        self.single_list = QListWidget()
+        self.single_list.setFixedHeight(220)
+        self.single_list.setVerticalScrollMode(QListWidget.ScrollPerPixel)
+        self.single_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.single_list.itemClicked.connect(self._select_single_employee_item)
+        self.single_list.setStyleSheet(EMPLOYEE_PICKER_LIST_SS)
+        ec.addWidget(self.single_list)
+
+        self.bulk_search = QLineEdit()
+        self.bulk_search.setFixedHeight(40)
+        self.bulk_search.setPlaceholderText(t("search_employees"))
+        self.bulk_search.setStyleSheet(INPUT_SS)
+        self.bulk_search.textChanged.connect(self._filter_bulk_employees)
+        ec.addWidget(self.bulk_search)
 
         # Bulk employee checkboxes container
         self.bulk_scroll = QScrollArea()
         self.bulk_scroll.setFixedHeight(200)
         self.bulk_scroll.setWidgetResizable(True)
-        self.bulk_scroll.setStyleSheet("border: none; background: transparent;")
+        self.bulk_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.bulk_scroll.setStyleSheet(
+            "QScrollArea { background: white; border: 1px solid #e5e7eb; border-radius: 8px; }"
+            "QScrollArea > QWidget > QWidget { background: white; }"
+            "QScrollBar:vertical { background: transparent; width: 8px; margin: 2px; }"
+            "QScrollBar::handle:vertical { background: #d1d5db; border-radius: 4px; min-height: 28px; }"
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; border: none; }"
+        )
         self.bulk_container = QWidget()
         self.bulk_container.setStyleSheet("background: white;")
         self.bulk_layout = QVBoxLayout(self.bulk_container)
         self.bulk_layout.setContentsMargins(8, 8, 8, 8)
-        self.bulk_layout.setSpacing(4)
+        self.bulk_layout.setSpacing(8)
         self.bulk_scroll.setWidget(self.bulk_container)
         ec.addWidget(self.bulk_scroll)
 
@@ -489,7 +521,9 @@ class IssueCommendationTab(QWidget):
         self.single_btn.setIcon(qta.icon("fa5s.user", color="#2563eb" if mode == "single" else "#6b7280"))
         self.bulk_btn.setStyleSheet(active if mode == "bulk" else inactive)
         self.bulk_btn.setIcon(qta.icon("fa5s.users", color="#2563eb" if mode == "bulk" else "#6b7280"))
-        self.single_combo.setVisible(mode == "single")
+        self.single_search.setVisible(mode == "single")
+        self.single_list.setVisible(mode == "single")
+        self.bulk_search.setVisible(mode == "bulk")
         self.bulk_scroll.setVisible(mode == "bulk")
         self.selected_count_lbl.setVisible(mode == "bulk")
         self.emp_card_title.setText(t("select_employee") if mode == "single" else t("select_employees"))
@@ -504,21 +538,19 @@ class IssueCommendationTab(QWidget):
             emp_data = [{
                 "id": e.id,
                 "label": f"{e.employee_id} - {e.full_name} ({e.title.name if e.title else '?'})",
+                "search_text": (
+                    f"{e.employee_id} {e.full_name} {e.work_email or ''} "
+                    f"{e.personal_email or ''} {e.title.name if e.title else ''}"
+                ).lower(),
                 "can": can_receive_commendation(e, session),
                 "count": count_commendations_in_current_role(e, session),
             } for e in emps]
         finally:
             session.close()
 
-        self.single_combo.clear()
-        self.single_combo.addItem(t("choose_employee"), None)
-        for e in emp_data:
-            suffix = f"  [{e['count']}/3]" + (f"  {t('max_reached')}" if not e["can"] else "")
-            self.single_combo.addItem(e["label"] + suffix, e["id"] if e["can"] else None)
-            item = self.single_combo.model().item(self.single_combo.count() - 1)
-            if item and not e["can"]:
-                item.setEnabled(False)
-                item.setForeground(QColor("#9ca3af"))
+        self.employee_options = emp_data
+        self.selected_single_employee_id = None
+        self._filter_single_employees(self.single_search.text())
 
         # Bulk checkboxes
         while self.bulk_layout.count():
@@ -528,19 +560,36 @@ class IssueCommendationTab(QWidget):
 
         self.checkboxes = []
         self.selected_employees = set()
+        self.bulk_rows = []
+        self.bulk_row_by_checkbox = {}
 
         for e in emp_data:
+            row = QFrame()
+            row.setObjectName("EmployeePickerRow")
+            row.setProperty("search_text", f"{e['label']} {e['count']}/3".lower())
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(12, 9, 12, 9)
+            row_layout.setSpacing(8)
+
             cb = QCheckBox(e["label"] + f"  [{e['count']}/3 {t('commendations').lower()}]")
-            cb.setStyleSheet("font-size: 12px; color: #111827; padding: 4px;")
+            cb.setStyleSheet(employee_picker_checkbox_ss(e["can"]))
             if not e["can"]:
                 cb.setEnabled(False)
-                cb.setStyleSheet("font-size: 12px; color: #9ca3af; padding: 4px;")
+                cb.setToolTip(t("max_commendations_reached"))
             cb.setProperty("emp_id", e["id"])
             cb.stateChanged.connect(self._on_checkbox_change)
-            self.bulk_layout.addWidget(cb)
+            row_layout.addWidget(cb)
+            row.setStyleSheet(employee_picker_row_ss(enabled=e["can"], selected=False))
+            if e["can"]:
+                row.setCursor(Qt.PointingHandCursor)
+                row.mousePressEvent = lambda event, box=cb: self._toggle_bulk_checkbox(box)
+            self.bulk_layout.addWidget(row)
             self.checkboxes.append(cb)
+            self.bulk_rows.append(row)
+            self.bulk_row_by_checkbox[cb] = row
 
         self.bulk_layout.addStretch()
+        self._filter_bulk_employees(self.bulk_search.text())
 
     def _on_checkbox_change(self):
         self.selected_employees = {
@@ -548,12 +597,68 @@ class IssueCommendationTab(QWidget):
             if cb.isChecked() and cb.isEnabled()
         }
         self.selected_count_lbl.setText(t("selected_count", count=len(self.selected_employees)))
+        for cb, row in self.bulk_row_by_checkbox.items():
+            row.setStyleSheet(employee_picker_row_ss(enabled=cb.isEnabled(), selected=cb.isChecked()))
+
+    def _toggle_bulk_checkbox(self, checkbox):
+        if checkbox.isEnabled():
+            checkbox.setChecked(not checkbox.isChecked())
+
+    def _filter_bulk_employees(self, text):
+        needle = text.strip().lower()
+        for row in self.bulk_rows:
+            row.setVisible(not needle or needle in row.property("search_text"))
+
+    def _filter_single_employees(self, text):
+        needle = text.strip().lower()
+        self.selected_single_employee_id = None
+        self.single_list.clear()
+
+        visible = [
+            emp for emp in self.employee_options
+            if not needle or needle in emp["search_text"]
+        ]
+
+        if not visible:
+            item = QListWidgetItem(t("no_data"))
+            item.setFlags(Qt.NoItemFlags)
+            item.setForeground(QColor("#6b7280"))
+            self.single_list.addItem(item)
+            return
+
+        for emp in visible:
+            suffix = f"  [{emp['count']}/3]"
+            if not emp["can"]:
+                suffix += f"  {t('max_reached')}"
+            item = QListWidgetItem(emp["label"] + suffix)
+            item.setData(Qt.UserRole, emp["id"] if emp["can"] else None)
+            item.setToolTip(t("max_commendations_reached") if not emp["can"] else emp["label"])
+            if not emp["can"]:
+                item.setFlags(Qt.NoItemFlags)
+                item.setBackground(QColor("#fef2f2"))
+                item.setForeground(QColor("#991b1b"))
+            self.single_list.addItem(item)
+
+    def _select_single_employee_item(self, item):
+        emp_id = item.data(Qt.UserRole)
+        if not emp_id:
+            _warning(self, t("warning"), t("max_commendations_reached"))
+            return
+        self.single_search.blockSignals(True)
+        self.single_search.setText(item.text().split("  [", 1)[0])
+        self.single_search.blockSignals(False)
+        self.selected_single_employee_id = emp_id
+
+    def _selected_single_employee_id(self):
+        return self.selected_single_employee_id, False
 
     def _clear(self):
         self.title_input.clear()
         self.desc_input.clear()
         self.cat_combo.setCurrentIndex(0)
-        self.single_combo.setCurrentIndex(0)
+        self.selected_single_employee_id = None
+        self.single_search.clear()
+        self.bulk_search.clear()
         for cb in self.checkboxes:
             cb.setChecked(False)
         self.selected_employees = set()
@@ -574,7 +679,9 @@ class IssueCommendationTab(QWidget):
             return
 
         if self.mode == "single":
-            emp_id = self.single_combo.currentData()
+            emp_id, blocked_by_limit = self._selected_single_employee_id()
+            if blocked_by_limit:
+                return
             if not emp_id:
                 _warning(self, t("warning"), t("please_select_employee"))
                 return

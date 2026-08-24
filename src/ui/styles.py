@@ -314,7 +314,101 @@ QListView::item:hover {
     background: #eff6ff;
     color: #111827;
 }
+QListView::item:disabled {
+    background: #fef2f2;
+    color: #991b1b;
+}
 """
+
+
+EMPLOYEE_PICKER_LIST_SS = """
+QListWidget {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 6px;
+    outline: none;
+}
+QListWidget::item {
+    min-height: 40px;
+    padding: 8px 10px;
+    border-radius: 7px;
+    color: #111827;
+}
+QListWidget::item:hover {
+    background: #f8fafc;
+}
+QListWidget::item:selected {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+QListWidget::item:disabled {
+    background: #fef2f2;
+    color: #991b1b;
+}
+QScrollBar:vertical {
+    background: transparent;
+    width: 8px;
+    margin: 2px;
+}
+QScrollBar::handle:vertical {
+    background: #d1d5db;
+    border-radius: 4px;
+    min-height: 28px;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+    border: none;
+}
+"""
+
+
+def employee_picker_row_ss(*, enabled=True, selected=False):
+    if not enabled:
+        return (
+            "QFrame#EmployeePickerRow { background: #fef2f2; border: 1px solid #fecaca; "
+            "border-radius: 8px; }"
+            "QFrame#EmployeePickerRow:hover { background: #fee2e2; }"
+        )
+    if selected:
+        return (
+            "QFrame#EmployeePickerRow { background: #eff6ff; border: 1px solid #2563eb; "
+            "border-radius: 8px; }"
+        )
+    return (
+        "QFrame#EmployeePickerRow { background: white; border: 1px solid transparent; "
+        "border-radius: 8px; }"
+        "QFrame#EmployeePickerRow:hover { background: #f8fafc; border-color: #e5e7eb; }"
+    )
+
+
+def employee_picker_checkbox_ss(enabled=True):
+    color = "#991b1b" if not enabled else "#111827"
+    return f"""
+        QCheckBox {{
+            background: transparent;
+            color: {color};
+            font-size: 12px;
+            font-weight: 600;
+            spacing: 10px;
+        }}
+        QCheckBox::indicator {{
+            width: 16px;
+            height: 16px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            background: white;
+        }}
+        QCheckBox::indicator:checked {{
+            background: #2563eb;
+            border-color: #2563eb;
+        }}
+        QCheckBox::indicator:disabled {{
+            background: #fee2e2;
+            border-color: #fca5a5;
+        }}
+    """
 
 
 class _ComboPopupMask(QObject):

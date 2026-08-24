@@ -13,7 +13,8 @@ import qtawesome as qta
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QTableWidget, QTableWidgetItem,
-    QHeaderView, QTabWidget, QComboBox, QTextEdit,
+    QHeaderView, QTabWidget, QComboBox, QTextEdit, QLineEdit,
+    QListWidget, QListWidgetItem,
     QMessageBox, QSizePolicy
 )
 from PySide6.QtCore import Qt, QSize
@@ -21,7 +22,7 @@ from PySide6.QtGui import QColor
 from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
-from src.ui.styles import polish_combo_box
+from src.ui.styles import EMPLOYEE_PICKER_LIST_SS, polish_combo_box
 from src.database.connection import get_session, generate_sanction_ref, log_action, is_other_employee
 from src.database.models import Employee, Sanction
 from datetime import datetime
@@ -64,7 +65,7 @@ QFrame#Card QLabel {
 """
 
 FIELD_SS = """
-QTextEdit {
+QLineEdit, QTextEdit {
     border: none;
     border-radius: 8px;
     padding: 0 16px;
@@ -75,7 +76,7 @@ QTextEdit {
     outline: none;
 }
 QTextEdit { padding: 10px 16px; }
-QTextEdit:focus { background: white; border: 1px solid #2563eb; }
+QLineEdit:focus, QTextEdit:focus { background: white; border: 1px solid #2563eb; }
 """
 
 COMBO_SS = """
@@ -627,6 +628,8 @@ class IssueSanctionTab(QWidget):
         super().__init__()
         self.user = user
         self.on_issued = on_issued
+        self.employee_options = []
+        self.selected_employee_id = None
         self.setObjectName("IssueSanctionTab")
         self.setStyleSheet("QWidget#IssueSanctionTab { background: #f9fafb; }")
         self._build()
@@ -673,12 +676,22 @@ class IssueSanctionTab(QWidget):
         # Employee
         emp_lbl = QLabel(t("select_employee") + " *")
         emp_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
-        self.emp_combo = QComboBox()
-        self.emp_combo.setFixedHeight(44)
-        self.emp_combo.setStyleSheet(COMBO_SS)
-        _polish_combo(self.emp_combo)
+        self.emp_search = QLineEdit()
+        self.emp_search.setFixedHeight(42)
+        self.emp_search.setPlaceholderText(t("search_employees"))
+        self.emp_search.setClearButtonEnabled(True)
+        self.emp_search.setStyleSheet(FIELD_SS)
+        self.emp_search.textChanged.connect(self._filter_employees)
+
+        self.emp_list = QListWidget()
+        self.emp_list.setFixedHeight(180)
+        self.emp_list.setVerticalScrollMode(QListWidget.ScrollPerPixel)
+        self.emp_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.emp_list.itemClicked.connect(self._select_employee_item)
+        self.emp_list.setStyleSheet(EMPLOYEE_PICKER_LIST_SS)
         fc.addWidget(emp_lbl)
-        fc.addWidget(self.emp_combo)
+        fc.addWidget(self.emp_search)
+        fc.addWidget(self.emp_list)
 
         # Type
         type_lbl = QLabel(t("sanction_type") + " *")
@@ -871,17 +884,57 @@ class IssueSanctionTab(QWidget):
         outer.addWidget(scroll)
 
     def refresh_employees(self):
-        self.emp_combo.clear()
-        self.emp_combo.addItem(t("choose_employee"), None)
         session = get_session()
         try:
             emps = session.query(Employee).filter_by(status="active").all()
+            self.employee_options = []
             for e in emps:
                 if is_other_employee(e):
                     continue
-                self.emp_combo.addItem(f"{e.employee_id} - {e.full_name}", e.id)
+                self.employee_options.append({
+                    "id": e.id,
+                    "label": f"{e.employee_id} - {e.full_name}",
+                    "search_text": (
+                        f"{e.employee_id} {e.full_name} {e.work_email or ''} "
+                        f"{e.personal_email or ''} {e.title.name if e.title else ''}"
+                    ).lower(),
+                })
         finally:
             session.close()
+        self.selected_employee_id = None
+        self._filter_employees(self.emp_search.text())
+
+    def _filter_employees(self, text):
+        needle = text.strip().lower()
+        self.selected_employee_id = None
+        self.emp_list.clear()
+
+        visible = [
+            emp for emp in self.employee_options
+            if not needle or needle in emp["search_text"]
+        ]
+
+        if not visible:
+            item = QListWidgetItem(t("no_data"))
+            item.setFlags(Qt.NoItemFlags)
+            item.setForeground(QColor("#6b7280"))
+            self.emp_list.addItem(item)
+            return
+
+        for emp in visible:
+            item = QListWidgetItem(emp["label"])
+            item.setData(Qt.UserRole, emp["id"])
+            item.setToolTip(emp["label"])
+            self.emp_list.addItem(item)
+
+    def _select_employee_item(self, item):
+        emp_id = item.data(Qt.UserRole)
+        if not emp_id:
+            return
+        self.emp_search.blockSignals(True)
+        self.emp_search.setText(item.text())
+        self.emp_search.blockSignals(False)
+        self.selected_employee_id = emp_id
 
     def _update_delay_preview(self):
         val = self.delay_combo.currentData()
@@ -893,13 +946,14 @@ class IssueSanctionTab(QWidget):
         )
 
     def _clear(self):
-        self.emp_combo.setCurrentIndex(0)
+        self.selected_employee_id = None
+        self.emp_search.clear()
         self.type_combo.setCurrentIndex(0)
         self.reason_input.clear()
         self.delay_combo.setCurrentIndex(0)
 
     def _issue(self):
-        emp_id = self.emp_combo.currentData()
+        emp_id = self.selected_employee_id
         sanction_type = self.type_combo.currentData()
         reason = self.reason_input.toPlainText().strip()
         delay = self.delay_combo.currentData()
