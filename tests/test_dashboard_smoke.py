@@ -1,4 +1,5 @@
 import os
+import csv
 import tempfile
 import unittest
 from types import SimpleNamespace
@@ -386,6 +387,145 @@ class DashboardSmokeTests(unittest.TestCase):
         self.assertGreaterEqual(audit.total_pages, 2)
         self.assertGreaterEqual(commendations.total_pages, 2)
         self.assertGreaterEqual(sanctions.total_pages, 2)
+
+    def test_yearly_report_builds_pdf_without_placeholder_text(self):
+        from pathlib import Path
+
+        from src.services.reporting_service import build_yearly_report, build_yearly_report_html
+        from src.ui.pages.settings import _write_pdf
+
+        year = 2026
+        report = build_yearly_report(year)
+        html = build_yearly_report_html(report)
+
+        self.assertEqual(report.year, year)
+        self.assertIn("Yearly Workforce Report", html)
+        self.assertIn("Executive Summary", html)
+        self.assertNotIn("Thesis Extension", html)
+
+        fd, name = tempfile.mkstemp(prefix="myhr_report_", suffix=".pdf")
+        os.close(fd)
+        target = Path(name)
+        try:
+            _write_pdf(str(target), html)
+            self.assertTrue(target.exists())
+            self.assertGreater(target.stat().st_size, 1000)
+        finally:
+            try:
+                target.unlink()
+            except OSError:
+                pass
+
+    def test_audit_log_filters_details_and_exports_current_view(self):
+        from datetime import datetime, timedelta
+        from pathlib import Path
+
+        from src.database.models import AuditLog
+        from src.ui.pages.audit_log import AuditLogPage, _format_snapshot
+
+        with db.SessionLocal() as session:
+            admin = session.query(db.SystemUser).filter_by(username="admin").one()
+            session.add(AuditLog(
+                performed_by_id=admin.id,
+                performed_by_username="admin",
+                performed_by_name="Smoke Admin",
+                action="employee.update",
+                target_table="employee",
+                target_id=501,
+                description="Audit export current item",
+                before_value='{"status": "inactive"}',
+                after_value='{"status": "active"}',
+                performed_at=datetime.utcnow(),
+            ))
+            session.add(AuditLog(
+                performed_by_id=admin.id,
+                performed_by_username="admin",
+                performed_by_name="Smoke Admin",
+                action="employee.update",
+                target_table="employee",
+                target_id=502,
+                description="Audit export old item",
+                performed_at=datetime.utcnow() - timedelta(days=60),
+            ))
+            session.commit()
+            user = SimpleNamespace(id=admin.id, username=admin.username, role=admin.role, full_name=admin.full_name)
+
+        page = AuditLogPage(user)
+        page.search.setText("Audit export")
+        page.date_filter.setCurrentIndex(page.date_filter.findData("last_30"))
+        page._filter()
+        self.assertEqual(page.table.rowCount(), 1)
+        self.assertIn("status", _format_snapshot('{"status": "active"}'))
+
+        fd, name = tempfile.mkstemp(prefix="myhr_audit_", suffix=".csv")
+        os.close(fd)
+        target = Path(name)
+        try:
+            with patch("src.ui.pages.audit_log.QFileDialog.getSaveFileName", return_value=(str(target), "CSV Files (*.csv)")), \
+                 patch("src.ui.pages.audit_log._info", return_value=None):
+                page._export_current_view()
+            with target.open("r", encoding="utf-8", newline="") as handle:
+                rows = list(csv.reader(handle))
+            self.assertGreaterEqual(len(rows), 2)
+            self.assertEqual(rows[0][:4], ["timestamp", "user", "action", "target"])
+            self.assertIn("Audit export current item", rows[1])
+        finally:
+            try:
+                target.unlink()
+            except OSError:
+                pass
+
+    def test_audit_target_uses_readable_record_names(self):
+        from datetime import datetime
+
+        from src.database.models import AuditLog
+        from src.ui.pages.audit_log import AuditLogPage
+
+        with db.SessionLocal() as session:
+            admin = session.query(db.SystemUser).filter_by(username="admin").one()
+            title = session.query(db.Title).filter_by(name="L6").one()
+            session.add(AuditLog(
+                performed_by_id=admin.id,
+                performed_by_username="admin",
+                performed_by_name="Smoke Admin",
+                action="settings.level_update",
+                target_table="title",
+                target_id=title.id,
+                description="Level target smoke active",
+                after_value=f'{{"name": "{title.name}", "label": "{title.label}"}}',
+                performed_at=datetime.utcnow(),
+            ))
+            session.add(AuditLog(
+                performed_by_id=admin.id,
+                performed_by_username="admin",
+                performed_by_name="Smoke Admin",
+                action="settings.level_delete",
+                target_table="title",
+                target_id=99001,
+                description="Level target smoke deleted",
+                before_value='{"name": "S8", "label": "Interns"}',
+                performed_at=datetime.utcnow(),
+            ))
+            session.commit()
+            user = SimpleNamespace(id=admin.id, username=admin.username, role=admin.role, full_name=admin.full_name)
+
+        page = AuditLogPage(user)
+        page.search.setText("Level target smoke")
+        page._filter()
+        targets = [
+            page.table.item(row, 3).text()
+            for row in range(page.table.rowCount())
+        ]
+        actions = [
+            page.table.item(row, 2).text()
+            for row in range(page.table.rowCount())
+        ]
+
+        self.assertIn("L6 - Mid Level", targets)
+        self.assertIn("S8 - Interns", targets)
+        self.assertTrue(all("Title #" not in target for target in targets))
+        self.assertIn("Level Updated", actions)
+        self.assertIn("Level Deleted", actions)
 
     def test_hierarchy_canvas_lazy_expand_and_search_focus(self):
         from datetime import datetime

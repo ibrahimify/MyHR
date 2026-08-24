@@ -6,7 +6,8 @@ Audit Log Page
 """
 
 import math
-from collections import Counter
+import csv
+import json
 from datetime import datetime, timedelta
 
 import qtawesome as qta
@@ -15,13 +16,24 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QFrame, QTableWidget, QTableWidgetItem, QHeaderView,
-    QLineEdit, QComboBox, QScrollArea, QPushButton
+    QLineEdit, QComboBox, QScrollArea, QPushButton, QFileDialog,
+    QDialog, QTextEdit, QMessageBox
 )
 from sqlalchemy import String, cast, func, or_
 
 from src.core.i18n import t
-from src.database.connection import get_session
-from src.database.models import AuditLog
+from src.database.connection import get_session, log_action
+from src.database.models import (
+    AuditLog,
+    Commendation,
+    Employee,
+    OrgUnit,
+    PromotionRule,
+    SalaryIncrementHistory,
+    Sanction,
+    SystemUser,
+    Title,
+)
 
 
 ACTION_LABEL_KEYS = {
@@ -40,6 +52,12 @@ ACTION_LABEL_KEYS = {
     "settings.promotion_rules": "audit_action_settings_promotion",
     "settings.password_change": "audit_action_password_change",
     "settings.export_employees": "audit_action_export_employees",
+    "settings.export_yearly_report": "audit_action_export_yearly_report",
+    "settings.database_health_check": "audit_action_database_health_check",
+    "audit.export": "audit_action_export_audit",
+    "settings.level_create": "audit_action_level_create",
+    "settings.level_update": "audit_action_level_update",
+    "settings.level_delete": "audit_action_level_delete",
     "settings.user_create": "audit_action_user_create",
     "settings.user_update": "audit_action_user_update",
     "settings.user_deactivate": "audit_action_user_deactivate",
@@ -161,6 +179,11 @@ QHeaderView::section {
     min-height: 50px;
     text-align: left;
 }
+QTableCornerButton::section {
+    background: white;
+    border: none;
+    border-bottom: 1px solid #e5e7eb;
+}
 QToolTip {
     background-color: #111827;
     color: white;
@@ -181,6 +204,7 @@ class AuditLogPage(QWidget):
         self.page_size = 50
         self.total_pages = 1
         self.stat_values = {}
+        self._target_session = None
         self.setObjectName("AuditLogPage")
         self.setStyleSheet("QWidget#AuditLogPage { background: #f9fafb; }")
         self._build()
@@ -246,6 +270,18 @@ class AuditLogPage(QWidget):
         self.category_filter.currentIndexChanged.connect(self._filter)
         fl.addWidget(self.category_filter, 1)
 
+        self.date_filter = QComboBox()
+        self.date_filter.setFixedHeight(44)
+        self.date_filter.setStyleSheet(COMBO_SS)
+        _polish_combo(self.date_filter)
+        self.date_filter.addItem(t("all_dates"), "all")
+        self.date_filter.addItem(t("today"), "today")
+        self.date_filter.addItem(t("last_7_days"), "last_7")
+        self.date_filter.addItem(t("last_30_days"), "last_30")
+        self.date_filter.addItem(t("this_year"), "this_year")
+        self.date_filter.currentIndexChanged.connect(self._filter)
+        fl.addWidget(self.date_filter, 1)
+
         self.user_filter = QComboBox()
         self.user_filter.setFixedHeight(44)
         self.user_filter.setStyleSheet(COMBO_SS)
@@ -253,6 +289,18 @@ class AuditLogPage(QWidget):
         self.user_filter.addItem(t("all_users"), None)
         self.user_filter.currentIndexChanged.connect(self._filter)
         fl.addWidget(self.user_filter, 1)
+
+        export_btn = QPushButton(t("export_current_view"))
+        export_btn.setFixedHeight(44)
+        export_btn.setCursor(Qt.PointingHandCursor)
+        export_btn.setIcon(qta.icon("fa5s.download", color="#111827"))
+        export_btn.setStyleSheet(
+            "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db; "
+            "border-radius: 8px; padding: 0 14px; font-size: 13px; font-weight: 800; }"
+            "QPushButton:hover { background: #f9fafb; }"
+        )
+        export_btn.clicked.connect(self._export_current_view)
+        fl.addWidget(export_btn)
 
         layout.addWidget(filter_card)
         layout.addSpacing(26)
@@ -283,6 +331,7 @@ class AuditLogPage(QWidget):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setShowGrid(False)
         self.table.setMouseTracking(True)
+        self.table.cellDoubleClicked.connect(self._open_log_details)
         for col in range(self.table.columnCount()):
             header_item = self.table.horizontalHeaderItem(col)
             if header_item:
@@ -316,6 +365,7 @@ class AuditLogPage(QWidget):
             t("audit_info_immutable"),
             t("audit_info_identity"),
             t("audit_info_retained"),
+            t("audit_info_double_click"),
         ]:
             item = QLabel("&bull; " + text)
             item.setTextFormat(Qt.RichText)
@@ -393,12 +443,9 @@ class AuditLogPage(QWidget):
     def _serialize_log(self, log):
         action = log.action or "other"
         category = _category_for_action(action)
-        target = "-"
-        if log.target_table:
-            table = log.target_table.replace("_", " ").title()
-            target = f"{table} #{log.target_id}" if log.target_id else table
 
         return {
+            "id": log.id,
             "timestamp": log.performed_at.strftime("%Y-%m-%d %H:%M:%S") if log.performed_at else "-",
             "date": log.performed_at.date() if log.performed_at else None,
             "user": _user_display(log),
@@ -407,7 +454,9 @@ class AuditLogPage(QWidget):
             "raw_action": action,
             "details": log.description or "-",
             "category": category,
-            "target": target,
+            "target": _resolve_target(self._target_session, log),
+            "before": log.before_value or "",
+            "after": log.after_value or "",
         }
 
     def _update_stats(self):
@@ -470,6 +519,11 @@ class AuditLogPage(QWidget):
         if category_filter is not None:
             query = query.filter(category_filter)
 
+        date_range = self.date_filter.currentData() if hasattr(self, "date_filter") else "all"
+        start_at = _date_range_start(date_range)
+        if start_at:
+            query = query.filter(AuditLog.performed_at >= start_at)
+
         user = self.user_filter.currentData()
         if user:
             query = query.filter(
@@ -492,8 +546,10 @@ class AuditLogPage(QWidget):
                 .limit(self.page_size)
                 .all()
             )
+            self._target_session = session
             page_rows = [self._serialize_log(log) for log in logs]
         finally:
+            self._target_session = None
             session.close()
 
         start = (self.current_page - 1) * self.page_size
@@ -529,6 +585,7 @@ class AuditLogPage(QWidget):
                 timestamp = QTableWidgetItem(log["timestamp"])
                 timestamp.setForeground(QColor("#374151"))
                 timestamp.setToolTip(log["timestamp"])
+                timestamp.setData(Qt.UserRole, log["id"])
                 self.table.setItem(row_index, 0, timestamp)
 
                 user_item = QTableWidgetItem(log["user"])
@@ -560,6 +617,71 @@ class AuditLogPage(QWidget):
                 self.table.setCellWidget(row_index, 5, _category_badge(log["category"]))
         finally:
             self.table.setUpdatesEnabled(True)
+
+    def _open_log_details(self, row, _column):
+        item = self.table.item(row, 0)
+        if not item:
+            return
+        log_id = item.data(Qt.UserRole)
+        if not log_id:
+            return
+        session = get_session()
+        try:
+            log = session.query(AuditLog).filter_by(id=log_id).first()
+            if not log:
+                return
+            self._target_session = session
+            data = self._serialize_log(log)
+        finally:
+            self._target_session = None
+            session.close()
+        AuditDetailDialog(data, self).exec()
+
+    def _export_current_view(self):
+        path, _ = QFileDialog.getSaveFileName(self, t("export_audit"), "audit_log_export.csv", t("csv_files_filter"))
+        if not path:
+            return
+        if not path.lower().endswith(".csv"):
+            path += ".csv"
+        session = get_session()
+        try:
+            logs = (
+                self._filtered_query(session)
+                .order_by(AuditLog.performed_at.desc(), AuditLog.id.desc())
+                .all()
+            )
+            with open(path, "w", newline="", encoding="utf-8") as handle:
+                writer = csv.writer(handle)
+                writer.writerow(["timestamp", "user", "action", "target", "category", "details", "before", "after"])
+                self._target_session = session
+                for log in logs:
+                    row = self._serialize_log(log)
+                    writer.writerow([
+                        row["timestamp"],
+                        row["user"],
+                        row["raw_action"],
+                        row["target"],
+                        _category_label(row["category"]),
+                        row["details"],
+                        row["before"],
+                        row["after"],
+                    ])
+                self._target_session = None
+            log_action(
+                session,
+                action="audit.export",
+                performed_by_id=self.user.id,
+                description=f"Audit log exported to CSV: {len(logs)} records",
+            )
+            session.commit()
+            _info(self, t("success"), t("audit_exported_to", count=len(logs), path=path))
+            self.refresh()
+        except Exception as exc:
+            session.rollback()
+            _error(self, t("error"), str(exc))
+        finally:
+            self._target_session = None
+            session.close()
 
     def _pager(self):
         pager = QFrame()
@@ -598,6 +720,274 @@ class AuditLogPage(QWidget):
     def showEvent(self, event):
         self.refresh()
         super().showEvent(event)
+
+
+class AuditDetailDialog(QDialog):
+    def __init__(self, log, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(t("audit_detail_title"))
+        self.setMinimumSize(760, 620)
+        self.setStyleSheet("QDialog { background: white; color: #111827; } QLabel { background: transparent; }")
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(26, 24, 26, 24)
+        layout.setSpacing(16)
+
+        header = QHBoxLayout()
+        icon = QLabel()
+        icon.setFixedSize(42, 42)
+        icon.setAlignment(Qt.AlignCenter)
+        icon.setStyleSheet("background: #eff6ff; border-radius: 8px;")
+        icon.setPixmap(qta.icon("fa5s.clipboard-list", color="#2563eb").pixmap(18, 18))
+        titles = QVBoxLayout()
+        title = QLabel(t("audit_detail_title"))
+        title.setStyleSheet("font-size: 20px; font-weight: 900; color: #030213;")
+        subtitle = QLabel(t("audit_detail_subtitle"))
+        subtitle.setStyleSheet("font-size: 13px; color: #4b5563;")
+        titles.addWidget(title)
+        titles.addWidget(subtitle)
+        header.addWidget(icon)
+        header.addLayout(titles)
+        header.addStretch()
+        layout.addLayout(header)
+
+        meta = QFrame()
+        meta.setObjectName("Card")
+        meta.setStyleSheet(CARD_SS)
+        grid = QVBoxLayout(meta)
+        grid.setContentsMargins(18, 16, 18, 16)
+        grid.setSpacing(8)
+        for label, value in [
+            (t("timestamp"), log["timestamp"]),
+            (t("user"), log["user"]),
+            (t("action"), log["raw_action"]),
+            (t("target"), log["target"]),
+            (t("category"), _category_label(log["category"])),
+            (t("details"), log["details"]),
+        ]:
+            grid.addLayout(_detail_line(label, value))
+        layout.addWidget(meta)
+
+        changes = QHBoxLayout()
+        changes.setSpacing(14)
+        changes.addWidget(_snapshot_box(t("before_value"), log["before"]))
+        changes.addWidget(_snapshot_box(t("after_value"), log["after"]))
+        layout.addLayout(changes, 1)
+
+        footer = QHBoxLayout()
+        footer.addStretch()
+        close = QPushButton(t("close"))
+        close.setFixedHeight(38)
+        close.setCursor(Qt.PointingHandCursor)
+        close.setStyleSheet(
+            "QPushButton { background: #030213; color: white; border: none; border-radius: 8px; "
+            "font-size: 13px; font-weight: 800; padding: 0 18px; }"
+            "QPushButton:hover { background: #111827; }"
+        )
+        close.clicked.connect(self.accept)
+        footer.addWidget(close)
+        layout.addLayout(footer)
+
+
+def _detail_line(label, value):
+    row = QHBoxLayout()
+    row.setSpacing(10)
+    left = QLabel(label)
+    left.setFixedWidth(130)
+    left.setStyleSheet("font-size: 12px; font-weight: 900; color: #4b5563;")
+    right = QLabel(str(value or "-"))
+    right.setWordWrap(True)
+    right.setStyleSheet("font-size: 13px; color: #111827;")
+    row.addWidget(left)
+    row.addWidget(right, 1)
+    return row
+
+
+def _snapshot_box(title, value):
+    box = QFrame()
+    box.setObjectName("Card")
+    box.setStyleSheet(CARD_SS)
+    layout = QVBoxLayout(box)
+    layout.setContentsMargins(16, 14, 16, 16)
+    layout.setSpacing(10)
+    label = QLabel(title)
+    label.setStyleSheet("font-size: 13px; font-weight: 900; color: #030213;")
+    text = QTextEdit()
+    text.setReadOnly(True)
+    text.setPlainText(_format_snapshot(value))
+    text.setStyleSheet(
+        "QTextEdit { background: #f9fafb; color: #111827; border: 1px solid #e5e7eb; "
+        "border-radius: 8px; padding: 10px; font-size: 12px; }"
+    )
+    layout.addWidget(label)
+    layout.addWidget(text, 1)
+    return box
+
+
+def _format_snapshot(value):
+    if not value:
+        return t("not_available")
+    try:
+        return json.dumps(json.loads(value), indent=2, ensure_ascii=False)
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def _resolve_target(session, log):
+    table = (log.target_table or "").strip().lower()
+    target_id = log.target_id
+    if not table:
+        return "-"
+
+    snapshot_label = _target_from_snapshot(table, log)
+    if table in {"title", "system_user"} and snapshot_label:
+        return snapshot_label
+
+    if session is not None and target_id:
+        current_label = _target_from_database(session, table, target_id)
+        if current_label:
+            return current_label
+
+    if snapshot_label:
+        return snapshot_label
+
+    description_label = _target_from_description(log)
+    if description_label:
+        return description_label
+
+    label = _target_table_label(table)
+    return f"{label} #{target_id}" if target_id else label
+
+
+def _target_from_database(session, table, target_id):
+    if table == "employee":
+        employee = session.query(Employee).filter_by(id=target_id).first()
+        if employee:
+            return f"{employee.employee_id} - {employee.full_name}"
+    if table == "title":
+        title = session.query(Title).filter_by(id=target_id).first()
+        if title:
+            return _join_target_parts(title.name, title.label)
+    if table == "org_unit":
+        unit = session.query(OrgUnit).filter_by(id=target_id).first()
+        if unit:
+            unit_type = (unit.unit_type or "").replace("_", " ").title()
+            return f"{unit.name} ({unit_type})" if unit_type else unit.name
+    if table == "promotion_rule":
+        rule = session.query(PromotionRule).filter_by(id=target_id).first()
+        if rule and rule.from_title and rule.to_title:
+            return f"{rule.from_title.name} -> {rule.to_title.name} ({rule.base_months} mo)"
+    if table == "commendation":
+        commendation = session.query(Commendation).filter_by(id=target_id).first()
+        if commendation:
+            return _join_target_parts(commendation.commendation_ref, commendation.title)
+    if table == "sanction":
+        sanction = session.query(Sanction).filter_by(id=target_id).first()
+        if sanction:
+            employee_name = sanction.employee.full_name if sanction.employee else ""
+            return _join_target_parts(sanction.sanction_ref, employee_name)
+    if table == "salary_increment_history":
+        increment = session.query(SalaryIncrementHistory).filter_by(id=target_id).first()
+        if increment and increment.employee:
+            return f"{increment.employee.employee_id} - {increment.employee.full_name}"
+    if table == "system_user":
+        user = session.query(SystemUser).filter_by(id=target_id).first()
+        if user:
+            return _user_display_from_snapshot(user.username, user.full_name)
+    return ""
+
+
+def _target_from_snapshot(table, log):
+    payload = _json_dict(log.after_value) or _json_dict(log.before_value)
+    if not payload:
+        return ""
+    if table == "title":
+        return _join_target_parts(payload.get("name"), payload.get("label"))
+    if table == "system_user":
+        return _user_display_from_snapshot(payload.get("username"), payload.get("full_name"))
+    return ""
+
+
+def _target_from_description(log):
+    description = (log.description or "").strip()
+    prefixes = [
+        "Level created:",
+        "Level updated:",
+        "Level deleted:",
+        "Org unit saved:",
+        "Org unit deleted:",
+        "User account updated:",
+        "HR account created:",
+        "HR login deleted:",
+    ]
+    for prefix in prefixes:
+        if description.startswith(prefix):
+            return description[len(prefix):].strip()
+    return ""
+
+
+def _target_table_label(table):
+    labels = {
+        "employee": "Employee",
+        "title": "Level",
+        "org_unit": "Org Unit",
+        "promotion_rule": "Promotion Rule",
+        "commendation": "Commendation",
+        "sanction": "Sanction",
+        "salary_increment_history": "Salary Increment",
+        "system_user": "User",
+    }
+    return labels.get(table, table.replace("_", " ").title())
+
+
+def _join_target_parts(primary, secondary):
+    primary = str(primary or "").strip()
+    secondary = str(secondary or "").strip()
+    if primary and secondary:
+        return f"{primary} - {secondary}"
+    return primary or secondary
+
+
+def _json_dict(value):
+    if not value:
+        return {}
+    try:
+        payload = json.loads(value)
+    except (TypeError, ValueError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _date_range_start(date_range):
+    now = datetime.utcnow()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    if date_range == "today":
+        return today_start
+    if date_range == "last_7":
+        return today_start - timedelta(days=6)
+    if date_range == "last_30":
+        return today_start - timedelta(days=29)
+    if date_range == "this_year":
+        return datetime(now.year, 1, 1)
+    return None
+
+
+def _info(parent, title, text):
+    box = QMessageBox(parent)
+    box.setIcon(QMessageBox.Information)
+    box.setWindowTitle(title)
+    box.setText(text)
+    box.setStandardButtons(QMessageBox.Ok)
+    box.exec()
+
+
+def _error(parent, title, text):
+    box = QMessageBox(parent)
+    box.setIcon(QMessageBox.Critical)
+    box.setWindowTitle(title)
+    box.setText(text)
+    box.setStandardButtons(QMessageBox.Ok)
+    box.exec()
 
 
 def _category_for_action(action):

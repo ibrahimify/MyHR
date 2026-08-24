@@ -9,11 +9,14 @@ Settings Page
 from hashlib import sha256
 import csv
 import shutil
+import sqlite3
+from datetime import datetime
 
 import qtawesome as qta
 from sqlalchemy import func
-from PySide6.QtCore import Qt, QSize, QTimer
-from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt, QSize, QTimer, QMarginsF
+from PySide6.QtGui import QColor, QTextDocument, QPageLayout, QPageSize
+from PySide6.QtPrintSupport import QPrinter
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QLineEdit, QComboBox, QMessageBox, QTabWidget,
@@ -25,6 +28,11 @@ from src.core.i18n import t
 from src.core.app_settings import app_settings, company_name
 from src.database.connection import get_session, log_action, DB_PATH
 from src.database.models import Title, SystemUser, PromotionRule, Employee
+from src.services.reporting_service import (
+    available_report_years,
+    build_yearly_report,
+    build_yearly_report_html,
+)
 
 
 PAGE_BG = "#f9fafb"
@@ -2036,21 +2044,45 @@ class DatabaseTab(QWidget):
         export_btn.clicked.connect(self._export)
         export_layout.addWidget(export_btn, alignment=Qt.AlignLeft)
         left.addWidget(export)
+
+        report, report_layout = _section_card(t("yearly_reports"), t("yearly_reports_subtitle"), "fa5s.file-pdf", "#dc2626")
+        report_info = QLabel(t("yearly_reports_description"))
+        report_info.setWordWrap(True)
+        report_info.setStyleSheet(f"font-size: 14px; color: {MUTED}; background: transparent;")
+        report_layout.addWidget(report_info)
+        report_controls = QHBoxLayout()
+        report_controls.setSpacing(12)
+        self.report_year = QComboBox()
+        self.report_year.setFixedHeight(44)
+        self.report_year.setMinimumWidth(150)
+        _style_combo(self.report_year)
+        for year in available_report_years():
+            self.report_year.addItem(str(year), year)
+        report_controls.addWidget(self.report_year)
+        report_btn = _button(t("export_yearly_pdf"), "fa5s.file-pdf", primary=True)
+        report_btn.clicked.connect(self._export_yearly_report)
+        report_controls.addWidget(report_btn)
+        report_controls.addStretch()
+        report_layout.addLayout(report_controls)
+        left.addWidget(report)
         row.addLayout(left, 3)
 
-        right, right_layout = _section_card(t("database_notes"), None, "fa5s.info-circle", BLACK)
+        right, right_layout = _section_card(t("reporting_controls"), None, "fa5s.shield-alt", BLACK)
         right_layout.addWidget(_note_card(
-            t("coming_in_thesis_extension"),
+            t("reporting_controls_title"),
             [
-                t("db_note_scheduled_backups"),
-                t("db_note_yearly_reports"),
-                t("db_note_export_filters"),
+                t("db_note_manual_backups"),
+                t("db_note_pdf_reports"),
+                t("db_note_audit_exports"),
                 t("db_note_health_check"),
             ],
-            "fa5s.tools",
-            "#92400e",
-            NOTE_YELLOW_SS,
+            "fa5s.check-circle",
+            "#1e40af",
+            NOTE_BLUE_SS,
         ))
+        health = _button(t("run_health_check"), "fa5s.heartbeat", primary=False)
+        health.clicked.connect(self._health_check)
+        right_layout.addWidget(health, alignment=Qt.AlignLeft)
         right_layout.addStretch()
         row.addWidget(right, 1)
 
@@ -2106,6 +2138,73 @@ class DatabaseTab(QWidget):
         finally:
             session.close()
 
+    def _export_yearly_report(self):
+        year = self.report_year.currentData()
+        if not year:
+            year = datetime.utcnow().year
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            t("export_yearly_report"),
+            f"{company_name('MyHR').replace(' ', '_')}_{year}_Yearly_Report.pdf",
+            t("pdf_files_filter"),
+        )
+        if not path:
+            return
+        if not path.lower().endswith(".pdf"):
+            path += ".pdf"
+        session = get_session()
+        try:
+            report = build_yearly_report(int(year))
+            html = build_yearly_report_html(report)
+            _write_pdf(path, html)
+            log_action(
+                session,
+                action="settings.export_yearly_report",
+                performed_by_id=self.user.id,
+                description=f"Yearly workforce report exported to PDF: {year}",
+                after_value=f'{{"year": {int(year)}, "path": "{path}"}}',
+            )
+            session.commit()
+            _information(self, t("success"), t("yearly_report_exported_to", path=path))
+        except Exception as exc:
+            session.rollback()
+            _critical(self, t("error"), str(exc))
+        finally:
+            session.close()
+
+    def _health_check(self):
+        session = get_session()
+        try:
+            with sqlite3.connect(DB_PATH) as connection:
+                integrity = connection.execute("PRAGMA integrity_check").fetchone()[0]
+            employee_count = session.query(Employee).count()
+            user_count = session.query(SystemUser).count()
+            title_count = session.query(Title).count()
+            log_action(
+                session,
+                action="settings.database_health_check",
+                performed_by_id=self.user.id,
+                description=f"Database health check executed: {integrity}",
+                after_value=(
+                    f'{{"integrity": "{integrity}", "employees": {employee_count}, '
+                    f'"users": {user_count}, "levels": {title_count}}}'
+                ),
+            )
+            session.commit()
+            if integrity.lower() == "ok":
+                _information(
+                    self,
+                    t("success"),
+                    t("database_health_ok", employees=employee_count, users=user_count, levels=title_count),
+                )
+            else:
+                _warning(self, t("warning"), t("database_health_warning", result=integrity))
+        except Exception as exc:
+            session.rollback()
+            _critical(self, t("error"), str(exc))
+        finally:
+            session.close()
+
 
 def _content():
     content = QWidget()
@@ -2114,6 +2213,17 @@ def _content():
     layout.setContentsMargins(0, 0, 0, 0)
     layout.setSpacing(24)
     return content, layout
+
+
+def _write_pdf(path, html):
+    printer = QPrinter(QPrinter.HighResolution)
+    printer.setOutputFormat(QPrinter.PdfFormat)
+    printer.setOutputFileName(path)
+    printer.setPageSize(QPageSize(QPageSize.A4))
+    printer.setPageMargins(QMarginsF(14, 14, 14, 14), QPageLayout.Millimeter)
+    document = QTextDocument()
+    document.setHtml(html)
+    document.print_(printer)
 
 
 def _set_page(page, content):
