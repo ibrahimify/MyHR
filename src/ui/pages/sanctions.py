@@ -29,6 +29,7 @@ from src.ui.styles import (
     enable_table_row_selection,
     prepare_table_cell_widget,
     polish_combo_box,
+    table_style,
 )
 from src.database.connection import get_session, generate_sanction_ref, log_action, is_other_employee
 from src.database.models import Employee, Sanction
@@ -134,6 +135,7 @@ QToolTip {
     padding: 6px 8px;
 }
 """
+TABLE_SS = table_style(selected_bg="#fef2f2", hover_bg="#fff7f7")
 
 MESSAGE_BOX_SS = """
 QMessageBox { background: white; color: #111827; }
@@ -263,8 +265,8 @@ class ActiveSanctionsTab(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.Fixed)
         self.table.horizontalHeader().setSectionResizeMode(6, QHeaderView.Fixed)
-        self.table.setColumnWidth(5, 190)
-        self.table.setColumnWidth(6, 240)
+        self.table.setColumnWidth(5, 164)
+        self.table.setColumnWidth(6, 208)
         for col in range(self.table.columnCount()):
             header_item = self.table.horizontalHeaderItem(col)
             if header_item:

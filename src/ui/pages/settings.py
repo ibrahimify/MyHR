@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
 from src.core.i18n import t
 from src.core.app_settings import app_settings, company_name
 from src.ui.animations import install_tab_transition
-from src.ui.styles import PILL_TAB_SS, enable_table_row_selection, prepare_table_cell_widget, polish_combo_box
+from src.ui.styles import PILL_TAB_SS, enable_table_row_selection, prepare_table_cell_widget, polish_combo_box, table_style
 from src.database.connection import get_session, log_action, DB_PATH
 from src.database.models import AuditLog, Title, SystemUser, PromotionRule, Employee, OrgUnit
 from src.services.reporting_service import (
@@ -652,7 +652,7 @@ class LevelManagementTab(QWidget):
                 item = self.table.item(row_index, badge_col)
                 if item:
                     item.setText("")
-            self.table.setCellWidget(row_index, 0, _pill_cell(row["values"][0], "#1d4ed8", "#dbeafe", align=Qt.AlignCenter, min_width=76, fixed_width=True))
+            self.table.setCellWidget(row_index, 0, _pill_cell(row["values"][0], "#1d4ed8", "#dbeafe", align=Qt.AlignCenter, min_width=52))
             self.table.setCellWidget(row_index, 4, _pill_cell(row["values"][4], "#047857", "#dcfce7"))
             self.table.setCellWidget(row_index, 5, _pill_cell(row["values"][5], "#1d4ed8", "#dbeafe", align=Qt.AlignCenter))
             self.table.setCellWidget(row_index, 7, _pill_cell(row["values"][7], "#047857", "#dcfce7"))
@@ -669,21 +669,23 @@ class LevelManagementTab(QWidget):
         if not hasattr(self, "table"):
             return
         available = max(860, self.table.viewport().width() - 2)
-        compact = {
-            0: 112,
-            2: 78,
-            4: 112,
-            5: 96,
-            6: 100,
-            7: 116,
-            8: 118,
+        action_width = 118
+        remaining = max(720, available - action_width)
+        weights = {
+            0: 0.08,
+            1: 0.20,
+            2: 0.10,
+            3: 0.18,
+            4: 0.11,
+            5: 0.10,
+            6: 0.10,
+            7: 0.13,
         }
-        remaining = max(260, available - sum(compact.values()))
-        widths = dict(compact)
-        widths[1] = int(remaining * 0.44)
-        widths[3] = remaining - widths[1]
+        widths = {col: int(remaining * weight) for col, weight in weights.items()}
+        widths[8] = action_width
+        minimums = {0: 86, 1: 140, 2: 76, 3: 130, 4: 90, 5: 86, 6: 100, 7: 96, 8: 118}
         for col in range(self.table.columnCount()):
-            self.table.setColumnWidth(col, max(56, widths.get(col, 80)))
+            self.table.setColumnWidth(col, max(minimums.get(col, 56), widths.get(col, 80)))
 
     def _style_policy_row(self, row_index):
         level_item = self.table.item(row_index, 0)
@@ -3124,61 +3126,7 @@ def _format_promotion_bump(title):
 
 
 def _summary_table_ss():
-    return """
-QTableWidget {
-    background: white;
-    border: none;
-    gridline-color: #f3f4f6;
-    font-size: 13px;
-    color: #111827;
-    outline: none;
-    selection-background-color: #eff6ff;
-}
-QTableWidget::item {
-    background: white;
-    padding: 0 16px;
-    border: none;
-    border-bottom: 1px solid #f3f4f6;
-    color: #111827;
-}
-QTableWidget::item:selected { background: #eff6ff; color: #111827; }
-QHeaderView::section {
-    background: white;
-    border: none;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 0 16px;
-    font-size: 12px;
-    font-weight: 800;
-    color: #111827;
-    min-height: 42px;
-    text-align: left;
-}
-QTableCornerButton::section {
-    background: white;
-    border: none;
-    border-bottom: 1px solid #e5e7eb;
-}
-QScrollBar:vertical {
-    background: transparent;
-    width: 10px;
-    margin: 0;
-}
-QScrollBar::handle:vertical {
-    background: #d1d5db;
-    border-radius: 5px;
-    min-height: 32px;
-}
-QScrollBar::add-line:vertical,
-QScrollBar::sub-line:vertical {
-    height: 0;
-    border: none;
-    background: transparent;
-}
-QScrollBar::add-page:vertical,
-QScrollBar::sub-page:vertical {
-    background: transparent;
-}
-"""
+    return table_style(row_font_size=13, header_height=42, item_padding=14)
 
 
 def _clear_table_widgets(table):
@@ -3228,10 +3176,10 @@ def _pill_cell(text, color, background, bold=False, align=Qt.AlignLeft, min_widt
     label.setAlignment(Qt.AlignCenter)
     label.setStyleSheet(
         f"background: {background}; color: {color}; border: none; border-radius: 7px; "
-        f"font-size: 13px; font-weight: {'900' if bold else '500'}; padding: 3px 10px;"
+        f"font-size: 13px; font-weight: {'900' if bold else '500'}; padding: 2px 9px;"
     )
-    label.setMinimumHeight(26)
-    computed_width = max(44, len(str(text)) * 10 + 32)
+    label.setMinimumHeight(24)
+    computed_width = max(44, len(str(text)) * 8 + 24)
     width = max(min_width or 0, computed_width)
     label.setMinimumWidth(width)
     if fixed_width:

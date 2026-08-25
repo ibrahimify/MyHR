@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QHeaderView, QTabWidget, QDialog, QFormLayout, QGridLayout,
     QProgressBar, QMessageBox, QSpinBox, QDoubleSpinBox
 )
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, QTimer
 from PySide6.QtGui import QColor
 from sqlalchemy.orm import joinedload
 
@@ -21,61 +21,13 @@ from src.database.models import Employee, Title, PromotionRule, PromotionHistory
 from src.ui.animations import install_tab_transition
 from src.ui.styles import (
     btn_primary, btn_outline, INPUT_SS, PILL_TAB_SS,
-    enable_table_row_selection, prepare_table_cell_widget
+    PAGER_BUTTON_SS, enable_table_row_selection, prepare_table_cell_widget,
+    table_style,
 )
 
 _ICO = QSize(16, 16)
 
-PROMO_TABLE_SS = """
-QTableWidget {
-    background: white;
-    alternate-background-color: white;
-    border: none;
-    gridline-color: #f3f4f6;
-    font-size: 14px;
-    color: #111827;
-    outline: none;
-}
-QTableWidget::item {
-    background: white;
-    padding: 0 12px;
-    border: none;
-    border-bottom: 1px solid #f3f4f6;
-}
-QTableWidget::item:selected { background: #eff6ff; color: #111827; }
-QHeaderView::section {
-    background: white;
-    border: none;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 0 12px;
-    font-size: 13px;
-    font-weight: 700;
-    color: #111827;
-    min-height: 50px;
-    text-align: left;
-}
-QScrollBar:vertical {
-    background: #f9fafb;
-    width: 6px;
-    border: none;
-}
-QScrollBar::handle:vertical {
-    background: #d1d5db;
-    border-radius: 3px;
-    min-height: 32px;
-}
-QScrollBar::handle:vertical:hover { background: #9ca3af; }
-QScrollBar::add-line:vertical,
-QScrollBar::sub-line:vertical {
-    height: 0px;
-    border: none;
-    background: transparent;
-}
-QScrollBar::add-page:vertical,
-QScrollBar::sub-page:vertical {
-    background: transparent;
-}
-"""
+PROMO_TABLE_SS = table_style()
 
 PROMO_CARD_SS = """
 QFrame#PromoCard {
@@ -270,18 +222,14 @@ class EligibleTab(QWidget):
                 else:
                     header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.setStyleSheet(PROMO_TABLE_SS)
+        self.table.setWordWrap(False)
         header = self.table.horizontalHeader()
         header.setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         header.setFixedHeight(50)
         header.setStretchLastSection(False)
-        for col, width in {
-            0: 180, 1: 136, 2: 124, 3: 150,
-            4: 154, 5: 104, 6: 176, 7: 156,
-        }.items():
-            self.table.setColumnWidth(col, width)
-        for col in (0,):
+        for col in (0, 6):
             header.setSectionResizeMode(col, QHeaderView.Stretch)
-        for col in (1, 2, 3, 4, 5, 6, 7):
+        for col in (1, 2, 3, 4, 5, 7):
             header.setSectionResizeMode(col, QHeaderView.Fixed)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -299,22 +247,16 @@ class EligibleTab(QWidget):
 
         self.page_lbl = QLabel("")
         self.page_lbl.setStyleSheet("font-size: 13px; color: #4b5563; background: transparent;")
-        pager_btn_ss = (
-            "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db;"
-            " border-radius: 6px; font-size: 13px; font-weight: 700; padding: 0 14px; }"
-            " QPushButton:hover { background: #f9fafb; }"
-            " QPushButton:disabled { color: #9ca3af; background: #f9fafb; }"
-        )
         self.prev_btn = QPushButton(t("previous_page"))
         self.prev_btn.setFixedHeight(34)
         self.prev_btn.setCursor(Qt.PointingHandCursor)
-        self.prev_btn.setStyleSheet(pager_btn_ss)
+        self.prev_btn.setStyleSheet(PAGER_BUTTON_SS)
         self.prev_btn.clicked.connect(self._previous_page)
 
         self.next_btn = QPushButton(t("next_page"))
         self.next_btn.setFixedHeight(34)
         self.next_btn.setCursor(Qt.PointingHandCursor)
-        self.next_btn.setStyleSheet(pager_btn_ss)
+        self.next_btn.setStyleSheet(PAGER_BUTTON_SS)
         self.next_btn.clicked.connect(self._next_page)
 
         pager_layout.addStretch()
@@ -327,6 +269,34 @@ class EligibleTab(QWidget):
 
         scroll.setWidget(content)
         outer.addWidget(scroll)
+        QTimer.singleShot(0, self._resize_columns)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "table"):
+            self._resize_columns()
+
+    def _resize_columns(self):
+        if not hasattr(self, "table"):
+            return
+        try:
+            width = max(760, self.table.viewport().width())
+        except RuntimeError:
+            return
+        compact = width < 980
+        fixed = {
+            1: 64 if compact else 76,
+            2: 78 if compact else 88,
+            3: 90 if compact else 108,
+            4: 156 if compact else 164,
+            5: 104 if compact else 112,
+            7: 128 if compact else 138,
+        }
+        for col, col_width in fixed.items():
+            try:
+                self.table.setColumnWidth(col, col_width)
+            except RuntimeError:
+                return
 
     def refresh(self):
         while self.stats_row.count():
@@ -431,6 +401,7 @@ class EligibleTab(QWidget):
             self.table.clearContents()
             self.table.setRowCount(len(page_rows))
             self.table.setFixedHeight(50 + (64 * max(1, len(page_rows))) + 4)
+            self._resize_columns()
             for ri, row in enumerate(page_rows):
                 self._set_eligible_row(ri, row)
         finally:
@@ -524,14 +495,14 @@ class EligibleTab(QWidget):
             btn = QPushButton(t("approve"))
             btn.setIcon(qta.icon("fa5s.check", color="white"))
             btn.setIconSize(QSize(13, 13))
-            btn.setFixedSize(126, 40)
-            btn.setStyleSheet(btn_primary(40))
+            btn.setFixedSize(112, 38)
+            btn.setStyleSheet(btn_primary(38))
             btn.clicked.connect(lambda _, eid=row["id"]: self._approve_promotion(eid))
         else:
             btn = QPushButton(t("view"))
             btn.setIcon(qta.icon("fa5s.eye", color="#374151"))
             btn.setIconSize(QSize(13, 13))
-            btn.setFixedSize(88, 40)
+            btn.setFixedSize(86, 38)
             btn.setStyleSheet(btn_outline(32))
             btn.setToolTip(t("view_profile"))
             if self.navigate_to_employee:
@@ -664,7 +635,7 @@ class HistoryTab(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels([
-            t("employee"), t("promotion"), t("basis"), t("months_taken"), t("approved_by"), t("date")
+            t("employee"), t("promotion"), t("basis"), t("months"), t("approved_by"), t("date")
         ])
         for col in range(self.table.columnCount()):
             header_item = self.table.horizontalHeaderItem(col)
@@ -675,18 +646,15 @@ class HistoryTab(QWidget):
         header.setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         header.setFixedHeight(50)
         header.setStretchLastSection(False)
-        for col, width in {0: 220, 1: 260, 2: 180, 3: 190, 4: 190, 5: 140}.items():
-            self.table.setColumnWidth(col, width)
-        for col in (0, 1):
-            header.setSectionResizeMode(col, QHeaderView.Stretch)
-        for col in (2, 3, 4, 5):
+        for col in range(self.table.columnCount()):
             header.setSectionResizeMode(col, QHeaderView.Fixed)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         enable_table_row_selection(self.table)
         self.table.setShowGrid(False)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.table.setFixedHeight(50 + (58 * 10) + 18)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.table.setMinimumHeight(420)
         cl.addWidget(self.table)
 
         pager = QFrame()
@@ -697,22 +665,16 @@ class HistoryTab(QWidget):
 
         self.page_lbl = QLabel("")
         self.page_lbl.setStyleSheet("font-size: 13px; color: #4b5563; background: transparent;")
-        pager_btn_ss = (
-            "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db;"
-            " border-radius: 6px; font-size: 13px; font-weight: 700; padding: 0 14px; }"
-            " QPushButton:hover { background: #f9fafb; }"
-            " QPushButton:disabled { color: #9ca3af; background: #f9fafb; }"
-        )
         self.prev_btn = QPushButton(t("previous_page"))
         self.prev_btn.setFixedHeight(34)
         self.prev_btn.setCursor(Qt.PointingHandCursor)
-        self.prev_btn.setStyleSheet(pager_btn_ss)
+        self.prev_btn.setStyleSheet(PAGER_BUTTON_SS)
         self.prev_btn.clicked.connect(self._previous_page)
 
         self.next_btn = QPushButton(t("next_page"))
         self.next_btn.setFixedHeight(34)
         self.next_btn.setCursor(Qt.PointingHandCursor)
-        self.next_btn.setStyleSheet(pager_btn_ss)
+        self.next_btn.setStyleSheet(PAGER_BUTTON_SS)
         self.next_btn.clicked.connect(self._next_page)
 
         pager_layout.addStretch()
@@ -721,6 +683,37 @@ class HistoryTab(QWidget):
         pager_layout.addWidget(self.next_btn)
         cl.addWidget(pager)
         layout.addWidget(card)
+        QTimer.singleShot(0, self._resize_columns)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "table"):
+            self._resize_columns()
+
+    def _resize_columns(self):
+        if not hasattr(self, "table"):
+            return
+        try:
+            width = max(760, self.table.viewport().width())
+        except RuntimeError:
+            return
+        base = [205, 300, 122, 92, 150, 120]
+        available = max(760, width - 8)
+        total = sum(base)
+        widths = list(base)
+        if available > total:
+            extra = available - total
+            widths[0] += int(extra * 0.35)
+            widths[1] += extra - int(extra * 0.35)
+        elif available < total:
+            scale = available / total
+            minimums = [170, 235, 100, 76, 118, 96]
+            widths = [max(minimums[i], int(base[i] * scale)) for i in range(len(base))]
+        for col, col_width in enumerate(widths):
+            try:
+                self.table.setColumnWidth(col, col_width)
+            except RuntimeError:
+                return
 
     def refresh(self):
         self.loaded = True
@@ -728,11 +721,16 @@ class HistoryTab(QWidget):
         self._populate_page()
 
     def _promotion_row(self, h):
+        basis = h.basis.replace("_", " ").title()
+        if h.basis == "time_based":
+            basis = "Time"
+        elif h.basis == "accelerated":
+            basis = "Accelerated"
         return {
             "sort_date": h.promoted_at or datetime.min,
             "name": h.employee.full_name, "emp_id": h.employee.employee_id,
             "from": display_title_name(h.from_title), "to": display_title_name(h.to_title),
-            "basis": h.basis.replace("_", " ").title(),
+            "basis": basis,
             "months": str(h.months_taken) + " mo" if h.months_taken else "-",
             "by": h.approved_by.full_name if h.approved_by else "System",
             "date": h.promoted_at.strftime("%Y-%m-%d") if h.promoted_at else "-",
@@ -743,8 +741,8 @@ class HistoryTab(QWidget):
         return {
             "sort_date": inc.applied_at or datetime.min,
             "name": inc.employee.full_name, "emp_id": inc.employee.employee_id,
-            "from": t("annual_increment"), "to": f"EUR {inc.salary_after:,.2f}",
-            "basis": t("annual_increment"),
+            "from": t("annual_short"), "to": f"EUR {inc.salary_after:,.2f}",
+            "basis": t("annual_short"),
             "months": "-",
             "by": inc.approved_by.full_name if inc.approved_by else "System",
             "date": inc.applied_at.strftime("%Y-%m-%d") if inc.applied_at else "-",
@@ -798,8 +796,10 @@ class HistoryTab(QWidget):
         try:
             self.table.clearContents()
             self.table.setRowCount(len(page_rows))
+            self.table.setMinimumHeight(420)
             for i, row in enumerate(page_rows):
                 self._set_history_row(i, row)
+            self._resize_columns()
         finally:
             self.table.setUpdatesEnabled(True)
 
@@ -808,7 +808,7 @@ class HistoryTab(QWidget):
         self.next_btn.setEnabled(self.current_page < self.total_pages)
 
     def _set_history_row(self, i, row):
-        self.table.setRowHeight(i, 58)
+        self.table.setRowHeight(i, 52)
         # Employee cell
         ew = prepare_table_cell_widget(QWidget())
         el = QVBoxLayout(ew)
@@ -824,25 +824,30 @@ class HistoryTab(QWidget):
         self.table.setCellWidget(i, 0, ew)
 
         promo_w = prepare_table_cell_widget(QWidget())
-        pl = QHBoxLayout(promo_w)
-        pl.setContentsMargins(12, 7, 8, 7)
-        pl.setSpacing(8)
         if row["kind"] == "increment":
+            pl = QHBoxLayout(promo_w)
+            pl.setContentsMargins(8, 5, 8, 5)
+            pl.setSpacing(6)
             fl = QLabel(row["from"])
             fl.setFixedHeight(28)
-            fl.setMinimumWidth(174)
             fl.setAlignment(Qt.AlignCenter)
             fl.setStyleSheet("background: #eef4ff; color: #1e40af; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 700;")
+            arrow = QLabel()
+            arrow.setPixmap(qta.icon("fa5s.arrow-right", color="#10b981").pixmap(12, 12))
             tl = QLabel(row["to"])
             tl.setFixedHeight(28)
-            tl.setMinimumWidth(138)
+            tl.setMinimumWidth(132)
             tl.setAlignment(Qt.AlignCenter)
-            tl.setStyleSheet("background: #dcfce7; color: #166534; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 700;")
+            tl.setStyleSheet("background: #dcfce7; color: #166534; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 800;")
             promo_w.setToolTip(row.get("details") or f"{row['from']} -> {row['to']}")
             pl.addWidget(fl)
+            pl.addWidget(arrow)
             pl.addWidget(tl)
             pl.addStretch()
         else:
+            pl = QHBoxLayout(promo_w)
+            pl.setContentsMargins(8, 5, 8, 5)
+            pl.setSpacing(6)
             fl = QLabel(row["from"])
             fl.setStyleSheet("background: #eef4ff; color: #1e40af; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600;")
             arrow = QLabel()

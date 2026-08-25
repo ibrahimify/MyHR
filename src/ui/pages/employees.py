@@ -23,7 +23,17 @@ from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
 from src.ui.animations import animate_widget_entry, install_tab_transition
-from src.ui.styles import PILL_TAB_SS, enable_table_row_selection, prepare_table_cell_widget, polish_combo_box
+from src.ui.styles import (
+    PILL_TAB_SS,
+    TABLE_SS,
+    enable_table_row_selection,
+    message_critical,
+    message_information,
+    message_question,
+    message_warning,
+    prepare_table_cell_widget,
+    polish_combo_box,
+)
 from src.database.connection import (
     get_session, generate_employee_id, log_action,
     degree_to_title_name, calculate_months_remaining, calculate_sub_race,
@@ -474,77 +484,13 @@ class EmployeeListView(QWidget):
             if header_item:
                 align = Qt.AlignCenter if col in (5, 6, 7) else Qt.AlignLeft
                 header_item.setTextAlignment(align | Qt.AlignVCenter)
-        self.table.setStyleSheet("""
-            QTableWidget {
-                background: white;
-                border: none;
-                gridline-color: #f3f4f6;
-                font-size: 14px;
-                color: #111827;
-                outline: none;
-            }
-            QTableWidget::item {
-                padding: 0 12px;
-                border: none;
-                border-bottom: 1px solid #f3f4f6;
-            }
-            QTableWidget::item:selected { background: #eff6ff; color: #111827; }
-            QHeaderView {
-                background: white;
-                border: none;
-            }
-            QHeaderView::section {
-                background: white;
-                border: none;
-                border-bottom: 1px solid #e5e7eb;
-                padding: 0 12px;
-                font-size: 13px;
-                font-weight: 700;
-                color: #111827;
-                text-align: left;
-                min-height: 50px;
-            }
-            QTableCornerButton::section {
-                background: white;
-                border: none;
-                border-bottom: 1px solid #e5e7eb;
-            }
-            QScrollBar:vertical {
-                background: transparent;
-                border: none;
-                width: 7px;
-                margin: 0;
-            }
-            QScrollBar::handle:vertical {
-                background: #d1d5db;
-                border: none;
-                border-radius: 3px;
-                min-height: 32px;
-            }
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {
-                background: transparent;
-                border: none;
-                height: 0;
-                width: 0;
-            }
-            QScrollBar::up-arrow:vertical,
-            QScrollBar::down-arrow:vertical {
-                background: transparent;
-                border: none;
-                width: 0;
-                height: 0;
-            }
-            QScrollBar::add-page:vertical,
-            QScrollBar::sub-page:vertical {
-                background: transparent;
-                border: none;
-            }
-        """)
+        self.table.setStyleSheet(TABLE_SS)
         header = self.table.horizontalHeader()
         header.setStretchLastSection(False)
-        for col in range(self.table.columnCount()):
+        for col in (0, 5, 6, 7):
             header.setSectionResizeMode(col, QHeaderView.Fixed)
+        for col in (1, 2, 3, 4):
+            header.setSectionResizeMode(col, QHeaderView.Stretch)
         self.table.verticalHeader().setVisible(False)
         self.table.setCornerButtonEnabled(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -788,26 +734,16 @@ class EmployeeListView(QWidget):
     def _resize_columns(self):
         if not hasattr(self, "table"):
             return
-        available = max(900, self.table.viewport().width())
-        if available < 1180:
-            fixed = {0: 116, 5: 74, 6: 98, 7: 98}
-            weights = {1: 0.22, 2: 0.27, 3: 0.26, 4: 0.25}
-        else:
-            fixed = {0: 132, 5: 86, 6: 112, 7: 110}
-            weights = {1: 0.21, 2: 0.29, 3: 0.26, 4: 0.24}
-
-        remaining = max(520, available - sum(fixed.values()))
-        widths = dict(fixed)
-        used = sum(fixed.values())
-        dynamic_cols = list(weights.keys())
-        for col in dynamic_cols[:-1]:
-            width = int(remaining * weights[col])
-            widths[col] = width
-            used += width
-        widths[dynamic_cols[-1]] = max(120, available - used)
-
-        for col in range(self.table.columnCount()):
-            self.table.setColumnWidth(col, widths[col])
+        width = max(760, self.table.viewport().width())
+        compact = width < 980
+        fixed = {
+            0: 104 if compact else 132,
+            5: 70 if compact else 84,
+            6: 96 if compact else 112,
+            7: 96 if compact else 116,
+        }
+        for col, col_width in fixed.items():
+            self.table.setColumnWidth(col, col_width)
 
     def _badge(self, text, bg, fg, border=None):
         wrap = prepare_table_cell_widget(QWidget())
@@ -837,10 +773,10 @@ class EmployeeListView(QWidget):
             p._show_edit(emp_id)
 
     def _do_delete(self, emp_id):
-        confirm = QMessageBox.question(
+        confirm = message_question(
             self, t("delete_employee_confirm_title"),
             t("delete_employee_confirm"),
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+            QMessageBox.No
         )
         if confirm != QMessageBox.Yes:
             return
@@ -884,11 +820,11 @@ class EmployeeListView(QWidget):
 
             session.delete(emp)
             session.commit()
-            QMessageBox.information(self, t("success"), t("employee_deleted", name=emp_name, employee_id=emp_code))
+            message_information(self, t("success"), t("employee_deleted", name=emp_name, employee_id=emp_code))
             self.refresh()
         except Exception as e:
             session.rollback()
-            QMessageBox.critical(self, t("error"), str(e))
+            message_critical(self, t("error"), str(e))
         finally:
             session.close()
 
@@ -1274,14 +1210,14 @@ class AddEmployeeView(QWidget):
     def _save(self):
         for key, label in {"first_name": t("first_name"), "last_name": t("last_name"), "position": t("position")}.items():
             if not self._get(key):
-                QMessageBox.warning(self, t("warning"), f"{label} is required.")
+                message_warning(self, t("warning"), f"{label} is required.")
                 return
         session = get_session()
         try:
             degree = self.degree_combo.currentText()
             title = session.query(Title).filter_by(name=degree_to_title_name(degree)).first()
             if not title:
-                QMessageBox.critical(self, t("error"), t("title_not_found"))
+                message_critical(self, t("error"), t("title_not_found"))
                 return
             emp_id = generate_employee_id(session)
             join_dt = self._get("join_date")
@@ -1290,11 +1226,11 @@ class AddEmployeeView(QWidget):
             try:
                 salary = float(salary_raw) if salary_raw else 0.0
             except ValueError:
-                QMessageBox.warning(self, t("warning"), t("salary_number_required"))
+                message_warning(self, t("warning"), t("salary_number_required"))
                 return
             ok, salary_message = validate_salary_for_title(title, salary)
             if not ok:
-                QMessageBox.warning(self, t("warning"), salary_message)
+                message_warning(self, t("warning"), salary_message)
                 return
             org_unit_id = self.org_combo.currentData()
             reports_to_id = self.manager_combo.currentData()
@@ -1303,7 +1239,7 @@ class AddEmployeeView(QWidget):
                 org_unit_id = others.id
                 valid_managers = valid_other_manager_ids(session)
                 if reports_to_id and reports_to_id not in valid_managers:
-                    QMessageBox.warning(self, t("warning"), t("other_manager_required"))
+                    message_warning(self, t("warning"), t("other_manager_required"))
                     return
             emp = Employee(
                 employee_id=emp_id, first_name=self._get("first_name"),
@@ -1323,11 +1259,11 @@ class AddEmployeeView(QWidget):
                 target_table="employee", target_id=emp.id,
                 description=f"New employee added: {emp.full_name} ({emp_id})")
             session.commit()
-            QMessageBox.information(self, t("success"), f"Employee {emp.full_name} ({emp_id}) added successfully.")
+            message_information(self, t("success"), f"Employee {emp.full_name} ({emp_id}) added successfully.")
             self.on_back()
         except Exception as e:
             session.rollback()
-            QMessageBox.critical(self, t("error"), str(e))
+            message_critical(self, t("error"), str(e))
         finally:
             session.close()
 
@@ -1574,31 +1510,31 @@ class EditEmployeeView(QWidget):
                 try:
                     new_salary = float(salary_raw)
                 except ValueError:
-                    QMessageBox.warning(self, t("warning"), t("salary_number_required"))
+                    message_warning(self, t("warning"), t("salary_number_required"))
                     return
 
             manager_id = self.manager_combo.currentData()
             title_id = self.title_combo.currentData()
             status = self.status_combo.currentData()
             if title_id is None:
-                QMessageBox.warning(self, t("warning"), "Please select a valid current level.")
+                message_warning(self, t("warning"), "Please select a valid current level.")
                 return
             if status is None:
-                QMessageBox.warning(self, t("warning"), "Please select a valid status.")
+                message_warning(self, t("warning"), "Please select a valid status.")
                 return
             if _would_create_manager_cycle(session, emp.id, manager_id):
-                QMessageBox.warning(self, t("warning"), "This reporting line would create a manager cycle.")
+                message_warning(self, t("warning"), "This reporting line would create a manager cycle.")
                 return
             title = session.query(Title).filter_by(id=title_id).first()
             ok, salary_message = validate_salary_for_title(title, new_salary)
             if not ok:
-                QMessageBox.warning(self, t("warning"), salary_message)
+                message_warning(self, t("warning"), salary_message)
                 return
             if title and is_other_title(title):
                 others = ensure_others_org_unit(session)
                 valid_managers = valid_other_manager_ids(session)
                 if manager_id and manager_id not in valid_managers:
-                    QMessageBox.warning(self, t("warning"), t("other_manager_required"))
+                    message_warning(self, t("warning"), t("other_manager_required"))
                     return
                 emp.org_unit_id = others.id
                 emp.degree = "Other"
@@ -1623,11 +1559,11 @@ class EditEmployeeView(QWidget):
                 description=f"Employee updated: {emp.full_name} ({emp.employee_id})",
                 before_value=before, after_value=after)
             session.commit()
-            QMessageBox.information(self, t("success"), f"{emp.full_name} updated successfully.")
+            message_information(self, t("success"), f"{emp.full_name} updated successfully.")
             self.on_back()
         except Exception as e:
             session.rollback()
-            QMessageBox.critical(self, t("error"), str(e))
+            message_critical(self, t("error"), str(e))
         finally:
             session.close()
 
@@ -2180,7 +2116,7 @@ class EmployeeProfileView(QWidget):
                 return widget.text().strip() if widget else ""
 
             if not value("position"):
-                QMessageBox.warning(self, t("warning"), f"{t('position')} {t('required_field').lower()}.")
+                message_warning(self, t("warning"), f"{t('position')} {t('required_field').lower()}.")
                 return
 
             emp.position = value("position")
@@ -2190,32 +2126,32 @@ class EmployeeProfileView(QWidget):
             try:
                 new_salary = float(salary_raw) if salary_raw else 0.0
             except ValueError:
-                QMessageBox.warning(self, t("warning"), t("salary_number_required"))
+                message_warning(self, t("warning"), t("salary_number_required"))
                 return
 
             manager_id = self.inline_manager_combo.currentData()
             title_id = self.inline_title_combo.currentData()
             status = self.inline_status_combo.currentData()
             if title_id is None:
-                QMessageBox.warning(self, t("warning"), t("valid_level_required"))
+                message_warning(self, t("warning"), t("valid_level_required"))
                 return
             if status is None:
-                QMessageBox.warning(self, t("warning"), t("valid_status_required"))
+                message_warning(self, t("warning"), t("valid_status_required"))
                 return
             if _would_create_manager_cycle(session, emp.id, manager_id):
-                QMessageBox.warning(self, t("warning"), t("manager_cycle_error"))
+                message_warning(self, t("warning"), t("manager_cycle_error"))
                 return
             title = session.query(Title).filter_by(id=title_id).first()
             ok, salary_message = validate_salary_for_title(title, new_salary)
             if not ok:
-                QMessageBox.warning(self, t("warning"), salary_message)
+                message_warning(self, t("warning"), salary_message)
                 return
             if title and is_other_title(title):
                 others = ensure_others_org_unit(session)
                 emp.org_unit_id = others.id
                 valid_managers = valid_other_manager_ids(session)
                 if manager_id and manager_id not in valid_managers:
-                    QMessageBox.warning(self, t("warning"), t("other_manager_required"))
+                    message_warning(self, t("warning"), t("other_manager_required"))
                     return
                 emp.degree = "Other"
             else:
@@ -2228,7 +2164,7 @@ class EmployeeProfileView(QWidget):
 
             if self.user.role == "admin":
                 if not value("first_name") or not value("last_name"):
-                    QMessageBox.warning(self, t("warning"), t("first_last_required"))
+                    message_warning(self, t("warning"), t("first_last_required"))
                     return
                 emp.first_name = value("first_name")
                 emp.last_name = value("last_name")
@@ -2246,7 +2182,7 @@ class EmployeeProfileView(QWidget):
             self.load(emp.id)
         except Exception as exc:
             session.rollback()
-            QMessageBox.critical(self, t("error"), str(exc))
+            message_critical(self, t("error"), str(exc))
         finally:
             session.close()
 

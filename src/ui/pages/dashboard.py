@@ -1041,42 +1041,101 @@ class DashboardPage(QWidget):
             layout.addWidget(self._increment_alert())
             layout.addSpacing(24)
 
-        stats = QGridLayout()
-        stats.setHorizontalSpacing(20)
-        stats.setVerticalSpacing(20)
-        for i, card in enumerate([
+        self.stats_layout = QGridLayout()
+        self.stats_layout.setHorizontalSpacing(20)
+        self.stats_layout.setVerticalSpacing(20)
+        self.stat_cards = [
             self._stat_card(t("total_employees"), str(self.emp_count), self.employee_delta, t("new_ytd"), "#3b82f6", "fa5s.users"),
             self._stat_card(t("pending_promotions"), str(self.promotion_count), self.promotion_delta, t("eligible_now_snapshot"), "#10b981", "fa5s.chart-line"),
             self._stat_card(t("commendations"), str(self.commend_count), self.commend_delta, t("vs_previous_ytd"), "#f59e0b", "fa5s.award"),
             self._stat_card(t("active_sanctions"), str(self.sanction_count), self.sanction_delta, t("issued_vs_previous_ytd"), "#ef4444", "fa5s.exclamation-triangle"),
-        ]):
-            stats.addWidget(card, 0, i)
-        layout.addLayout(stats)
+        ]
+        layout.addLayout(self.stats_layout)
         layout.addSpacing(28)
 
-        charts = QHBoxLayout()
-        charts.setSpacing(20)
-        charts.addWidget(self._department_chart_card(), 1)
-        charts.addWidget(self._promotion_chart_card(), 1)
-        layout.addLayout(charts)
+        self.charts_layout = QGridLayout()
+        self.charts_layout.setHorizontalSpacing(20)
+        self.charts_layout.setVerticalSpacing(20)
+        self.department_card = self._department_chart_card()
+        self.promotion_card = self._promotion_chart_card()
+        layout.addLayout(self.charts_layout)
         layout.addSpacing(28)
 
-        insights = QHBoxLayout()
-        insights.setSpacing(20)
-        insights.addWidget(self._workforce_timeline_card(), 2)
-        insights.addWidget(self._priority_signals_card(), 1)
-        layout.addLayout(insights)
+        self.insights_layout = QGridLayout()
+        self.insights_layout.setHorizontalSpacing(20)
+        self.insights_layout.setVerticalSpacing(20)
+        self.timeline_card = self._workforce_timeline_card()
+        self.priority_card = self._priority_signals_card()
+        layout.addLayout(self.insights_layout)
         layout.addSpacing(28)
 
-        bottom = QHBoxLayout()
-        bottom.setSpacing(20)
-        bottom.addWidget(self._recent_card(), 1)
-        bottom.addWidget(self._upcoming_card(), 1)
-        layout.addLayout(bottom)
+        self.bottom_layout = QGridLayout()
+        self.bottom_layout.setHorizontalSpacing(20)
+        self.bottom_layout.setVerticalSpacing(20)
+        self.recent_card = self._recent_card()
+        self.upcoming_card = self._upcoming_card()
+        layout.addLayout(self.bottom_layout)
         layout.addStretch()
 
         scroll.setWidget(content)
         outer.addWidget(scroll)
+        self._dashboard_compact = None
+        self._apply_responsive_layout()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "stats_layout"):
+            self._apply_responsive_layout()
+
+    def _clear_layout(self, layout):
+        while layout.count():
+            layout.takeAt(0)
+
+    def _apply_responsive_layout(self):
+        compact = self.width() < 1280
+        if getattr(self, "_dashboard_compact", None) == compact:
+            return
+        self._dashboard_compact = compact
+
+        self._clear_layout(self.stats_layout)
+        stats_columns = 2 if compact else 4
+        for index, card in enumerate(self.stat_cards):
+            self.stats_layout.addWidget(card, index // stats_columns, index % stats_columns)
+        for column in range(4):
+            self.stats_layout.setColumnStretch(column, 1 if column < stats_columns else 0)
+
+        self._clear_layout(self.charts_layout)
+        if compact:
+            self.charts_layout.addWidget(self.department_card, 0, 0)
+            self.charts_layout.addWidget(self.promotion_card, 1, 0)
+            self.charts_layout.setColumnStretch(0, 1)
+        else:
+            self.charts_layout.addWidget(self.department_card, 0, 0)
+            self.charts_layout.addWidget(self.promotion_card, 0, 1)
+            self.charts_layout.setColumnStretch(0, 1)
+            self.charts_layout.setColumnStretch(1, 1)
+
+        self._clear_layout(self.insights_layout)
+        if compact:
+            self.insights_layout.addWidget(self.timeline_card, 0, 0)
+            self.insights_layout.addWidget(self.priority_card, 1, 0)
+            self.insights_layout.setColumnStretch(0, 1)
+        else:
+            self.insights_layout.addWidget(self.timeline_card, 0, 0)
+            self.insights_layout.addWidget(self.priority_card, 0, 1)
+            self.insights_layout.setColumnStretch(0, 2)
+            self.insights_layout.setColumnStretch(1, 1)
+
+        self._clear_layout(self.bottom_layout)
+        if compact:
+            self.bottom_layout.addWidget(self.recent_card, 0, 0)
+            self.bottom_layout.addWidget(self.upcoming_card, 1, 0)
+            self.bottom_layout.setColumnStretch(0, 1)
+        else:
+            self.bottom_layout.addWidget(self.recent_card, 0, 0)
+            self.bottom_layout.addWidget(self.upcoming_card, 0, 1)
+            self.bottom_layout.setColumnStretch(0, 1)
+            self.bottom_layout.setColumnStretch(1, 1)
 
     def _increment_alert(self):
         alert = QFrame()
@@ -1119,24 +1178,24 @@ class DashboardPage(QWidget):
         layout.setSpacing(12)
 
         text = QVBoxLayout()
-        text.setSpacing(10)
+        text.setSpacing(8)
         label_lbl = QLabel(label)
         label_lbl.setWordWrap(True)
-        label_lbl.setStyleSheet("font-size: 16px; color: #4b5563;")
+        label_lbl.setStyleSheet("font-size: 15px; color: #4b5563;")
         value_lbl = QLabel(value)
-        value_lbl.setStyleSheet("font-size: 32px; font-weight: 800; color: #111827;")
+        value_lbl.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827;")
         delta_color = "#059669" if not str(delta).startswith("-") else "#dc2626"
         change_lbl = QLabel(f"{delta} {detail}")
         change_lbl.setWordWrap(True)
-        change_lbl.setStyleSheet(f"font-size: 15px; color: {delta_color};")
+        change_lbl.setStyleSheet(f"font-size: 13px; color: {delta_color};")
+        change_lbl.setToolTip(f"{delta} {detail}")
         text.addWidget(label_lbl)
         text.addWidget(value_lbl)
         text.addWidget(change_lbl)
-        layout.addLayout(text)
-        layout.addStretch()
+        layout.addLayout(text, 1)
 
         icon_box = QLabel()
-        icon_box.setFixedSize(50, 50)
+        icon_box.setFixedSize(46, 46)
         icon_box.setAlignment(Qt.AlignCenter)
         icon_box.setStyleSheet(f"background: {color}; border: none; border-radius: 8px;")
         icon_box.setPixmap(qta.icon(icon_name, color="white").pixmap(24, 24))

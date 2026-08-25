@@ -32,7 +32,7 @@ from src.database.models import (
     Employee, Title, OrgUnit, Commendation,
     CommendationEmployee, Sanction
 )
-from src.ui.styles import enable_table_row_selection
+from src.ui.styles import enable_table_row_selection, table_style
 
 
 REQUIRED_COLUMNS = [
@@ -163,6 +163,7 @@ QToolTip {
     padding: 6px 8px;
 }
 """
+TABLE_SS = table_style()
 
 MESSAGE_BOX_SS = """
 QMessageBox { background: white; color: #111827; }

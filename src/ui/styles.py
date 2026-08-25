@@ -2,7 +2,7 @@
 
 from PySide6.QtCore import QEvent, QObject, QRectF, Qt
 from PySide6.QtGui import QPainterPath, QRegion
-from PySide6.QtWidgets import QAbstractItemView, QFrame
+from PySide6.QtWidgets import QAbstractItemView, QFrame, QMessageBox
 
 # Colors
 CLR_BG = "#f9fafb"
@@ -180,45 +180,170 @@ QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
 """
 
 # Tables
-TABLE_SS = """
-QTableWidget {
+def table_style(
+    *,
+    selected_bg=TABLE_ROW_SELECTED_BG,
+    hover_bg=TABLE_ROW_HOVER_BG,
+    header_bg="white",
+    header_color=CLR_PRIMARY,
+    header_font_size=13,
+    header_weight=800,
+    header_height=48,
+    row_font_size=14,
+    item_padding=12,
+):
+    return """
+QTableWidget {{
     background: white;
+    alternate-background-color: white;
     border: none;
     gridline-color: #f3f4f6;
-    font-size: 14px;
+    font-size: {row_font_size}px;
     color: #111827;
     outline: none;
-    selection-background-color: #eff6ff;
-}
-QTableWidget::item {
-    padding: 0 12px;
+    selection-background-color: {selected_bg};
+}}
+QTableWidget::item {{
+    background: white;
+    padding: 0 {item_padding}px;
     border: none;
     border-bottom: 1px solid #f3f4f6;
     color: #111827;
-}
-QTableWidget::item:selected {
-    background: #eff6ff;
+}}
+QTableWidget::item:selected {{
+    background: {selected_bg};
     color: #111827;
-}
-QTableWidget::item:hover {
-    background: #f8fafc;
-}
-QHeaderView::section {
-    background: #f9fafb;
+}}
+QTableWidget::item:hover {{
+    background: {hover_bg};
+}}
+QHeaderView {{
+    background: {header_bg};
+    border: none;
+}}
+QHeaderView::section {{
+    background: {header_bg};
     border: none;
     border-bottom: 1px solid #e5e7eb;
-    padding: 0 12px;
-    font-size: 12px;
+    padding: 0 {item_padding}px;
+    font-size: {header_font_size}px;
+    font-weight: {header_weight};
+    color: {header_color};
+    min-height: {header_height}px;
+}}
+QTableCornerButton::section {{
+    background: {header_bg};
+    border: none;
+    border-bottom: 1px solid #e5e7eb;
+}}
+QScrollBar:vertical {{
+    background: transparent;
+    border: none;
+    width: 7px;
+    margin: 0;
+}}
+QScrollBar::handle:vertical {{
+    background: #d1d5db;
+    border: none;
+    border-radius: 3px;
+    min-height: 32px;
+}}
+QScrollBar::handle:vertical:hover {{
+    background: #9ca3af;
+}}
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {{
+    background: transparent;
+    border: none;
+    height: 0;
+    width: 0;
+}}
+QScrollBar::up-arrow:vertical,
+QScrollBar::down-arrow:vertical {{
+    background: transparent;
+    border: none;
+    width: 0;
+    height: 0;
+}}
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {{
+    background: transparent;
+    border: none;
+}}
+""".format(
+        selected_bg=selected_bg,
+        hover_bg=hover_bg,
+        header_bg=header_bg,
+        header_color=header_color,
+        header_font_size=header_font_size,
+        header_weight=header_weight,
+        header_height=header_height,
+        row_font_size=row_font_size,
+        item_padding=item_padding,
+    )
+
+
+TABLE_SS = table_style()
+SANCTION_TABLE_SS = table_style(selected_bg="#fef2f2", hover_bg="#fff7f7")
+
+
+PAGER_BUTTON_SS = (
+    "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db;"
+    " border-radius: 6px; font-size: 13px; font-weight: 700; padding: 0 14px; }"
+    " QPushButton:hover { background: #f9fafb; }"
+    " QPushButton:disabled { color: #9ca3af; background: #f9fafb; }"
+)
+
+
+MESSAGE_BOX_SS = """
+QMessageBox { background: white; color: #111827; }
+QMessageBox QLabel { color: #111827; background: transparent; font-size: 13px; }
+QPushButton {
+    background: white;
+    color: #111827;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    min-width: 84px;
+    min-height: 30px;
     font-weight: 600;
-    color: #6b7280;
-    min-height: 40px;
 }
-QTableCornerButton::section {
-    background: #f9fafb;
-    border: none;
-    border-bottom: 1px solid #e5e7eb;
-}
+QPushButton:hover { background: #f3f4f6; }
+QPushButton:default { background: #030213; color: white; border: none; }
 """
+
+
+def show_message_box(parent, icon, title, text, buttons=QMessageBox.Ok, default_button=QMessageBox.Ok):
+    box = QMessageBox(parent)
+    box.setIcon(icon)
+    box.setWindowTitle(title)
+    box.setText(text)
+    box.setStandardButtons(buttons)
+    box.setDefaultButton(default_button)
+    box.setStyleSheet(MESSAGE_BOX_SS)
+    return box.exec()
+
+
+def message_warning(parent, title, text):
+    return show_message_box(parent, QMessageBox.Warning, title, text)
+
+
+def message_critical(parent, title, text):
+    return show_message_box(parent, QMessageBox.Critical, title, text)
+
+
+def message_information(parent, title, text):
+    return show_message_box(parent, QMessageBox.Information, title, text)
+
+
+def message_question(parent, title, text, default_button=QMessageBox.Yes):
+    return show_message_box(
+        parent,
+        QMessageBox.Question,
+        title,
+        text,
+        QMessageBox.Yes | QMessageBox.No,
+        default_button,
+    )
 
 
 def table_cell_widget_ss(background=TABLE_ROW_BG):

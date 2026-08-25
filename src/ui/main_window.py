@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt, QSize, QTimer
 from src.core.i18n import t
 from src.core.app_settings import company_name, company_subtitle
 from src.ui.animations import animate_widget_entry
-from src.ui.styles import CLR_BG, CLR_BLUE_DARK
+from src.ui.styles import CLR_BG, CLR_BLUE_DARK, message_warning
 
 
 NAV_ITEMS = [
@@ -338,8 +338,7 @@ class MainWindow(QMainWindow):
         if open_active_sanctions:
             key = "sanctions"
         if key in ADMIN_ONLY_PAGES and self.user.role != "admin":
-            from PySide6.QtWidgets import QMessageBox
-            QMessageBox.warning(self, t("access_denied"), t("admin_only_section"))
+            message_warning(self, t("access_denied"), t("admin_only_section"))
             return
         if key in ("dashboard", "employees", "promotions", "audit_log") and key in self._pages_cache:
             old = self._pages_cache.pop(key)

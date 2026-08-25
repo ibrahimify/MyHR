@@ -29,6 +29,7 @@ from src.ui.styles import (
     employee_picker_checkbox_ss,
     employee_picker_row_ss,
     polish_combo_box,
+    table_style,
 )
 from src.database.connection import (
     get_session, generate_commendation_ref, log_action,
@@ -147,6 +148,7 @@ QToolTip {
     padding: 6px 8px;
 }
 """
+TABLE_SS = table_style()
 
 MESSAGE_BOX_SS = """
 QMessageBox { background: white; color: #111827; }
