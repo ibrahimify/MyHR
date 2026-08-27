@@ -2608,16 +2608,34 @@ TRANSLATIONS["ar"].update({
 TRANSLATIONS["en"].update({
     "elapsed_short": "Elapsed",
     "race_status_short": "Race",
+    "nav_group_overview": "Overview",
+    "nav_group_people": "People",
+    "nav_group_growth": "Growth",
+    "nav_group_compliance": "Compliance",
+    "nav_group_data": "Data",
+    "nav_group_system": "System",
 })
 
 TRANSLATIONS["hu"].update({
     "elapsed_short": "Eltelt",
     "race_status_short": "Palya",
+    "nav_group_overview": "Attekintes",
+    "nav_group_people": "Szemelyek",
+    "nav_group_growth": "Fejlodes",
+    "nav_group_compliance": "Megfeleles",
+    "nav_group_data": "Adatok",
+    "nav_group_system": "Rendszer",
 })
 
 TRANSLATIONS["ar"].update({
     "elapsed_short": "\u0627\u0644\u0645\u062f\u0629",
     "race_status_short": "\u0627\u0644\u0645\u0633\u0627\u0631",
+    "nav_group_overview": "\u0646\u0638\u0631\u0629 \u0639\u0627\u0645\u0629",
+    "nav_group_people": "\u0627\u0644\u0623\u0641\u0631\u0627\u062f",
+    "nav_group_growth": "\u0627\u0644\u0646\u0645\u0648",
+    "nav_group_compliance": "\u0627\u0644\u0627\u0645\u062a\u062b\u0627\u0644",
+    "nav_group_data": "\u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a",
+    "nav_group_system": "\u0627\u0644\u0646\u0638\u0627\u0645",
 })
 
 

@@ -43,6 +43,34 @@ SANCTION_TYPES = [
     ("final_warning",   "final_warning",   "#991b1b", "#fef2f2"),
 ]
 
+
+class _EmployeePickerCompat:
+    """Combo-like adapter for tests and older internal callers."""
+
+    def __init__(self, tab):
+        self._tab = tab
+
+    def count(self):
+        return len(self._tab.employee_options) + 1
+
+    def setCurrentIndex(self, index):
+        if index <= 0:
+            self._tab.selected_employee_id = None
+            self._tab.emp_search.clear()
+            return
+        option_index = index - 1
+        if option_index >= len(self._tab.employee_options):
+            return
+        option = self._tab.employee_options[option_index]
+        self._tab.emp_search.blockSignals(True)
+        self._tab.emp_search.setText(option["label"])
+        self._tab.emp_search.blockSignals(False)
+        self._tab.selected_employee_id = option["id"]
+
+    def currentData(self):
+        return self._tab.selected_employee_id
+
+
 CARD_SS = """
 QFrame#Card {
     background: white;
@@ -623,6 +651,7 @@ class IssueSanctionTab(QWidget):
         self.on_issued = on_issued
         self.employee_options = []
         self.selected_employee_id = None
+        self.emp_combo = _EmployeePickerCompat(self)
         self.setObjectName("IssueSanctionTab")
         self.setStyleSheet("QWidget#IssueSanctionTab { background: #f9fafb; }")
         self._build()

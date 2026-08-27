@@ -7,25 +7,37 @@ from PySide6.QtCore import Qt, QSize, QTimer
 from src.core.i18n import t
 from src.core.app_settings import company_name, company_subtitle
 from src.ui.animations import animate_widget_entry
-from src.ui.styles import CLR_BG, CLR_BLUE_DARK, message_warning
+from src.ui.components.theme_toggle import ThemeToggle
+from src.ui.styles import message_warning
+from src.ui.theme import icon_color, theme_manager, tokens
 
 
-NAV_ITEMS = [
-    ("nav_dashboard",     "dashboard",      "fa5s.th-large"),
-    ("nav_employees",     "employees",      "fa5s.users"),
-    ("nav_hierarchy",     "hierarchy",      "fa5s.building"),
-    ("nav_promotions",    "promotions",     "fa5s.chart-line"),
-    ("nav_commendations", "commendations",  "fa5s.award"),
-    ("nav_sanctions",     "sanctions",      "fa5s.exclamation-triangle"),
-    ("nav_audit",         "audit_log",      "fa5s.clipboard-list"),
-    ("nav_import",        "import_data",    "fa5s.cloud-upload-alt"),
-    ("nav_settings",      "settings",       "fa5s.cog"),
+NAV_SECTIONS = [
+    ("nav_group_overview", [
+        ("nav_dashboard",     "dashboard",      "fa5s.th-large"),
+    ]),
+    ("nav_group_people", [
+        ("nav_employees",     "employees",      "fa5s.users"),
+        ("nav_hierarchy",     "hierarchy",      "fa5s.building"),
+    ]),
+    ("nav_group_growth", [
+        ("nav_promotions",    "promotions",     "fa5s.chart-line"),
+        ("nav_commendations", "commendations",  "fa5s.award"),
+    ]),
+    ("nav_group_compliance", [
+        ("nav_sanctions",     "sanctions",      "fa5s.exclamation-triangle"),
+        ("nav_audit",         "audit_log",      "fa5s.clipboard-list"),
+    ]),
+    ("nav_group_data", [
+        ("nav_import",        "import_data",    "fa5s.cloud-upload-alt"),
+    ]),
+    ("nav_group_system", [
+        ("nav_settings",      "settings",       "fa5s.cog"),
+    ]),
 ]
 
 ADMIN_ONLY_PAGES = {"settings"}
 
-_INACTIVE_CLR = "#374151"
-_ACTIVE_CLR = CLR_BLUE_DARK
 _ICON_SZ = QSize(20, 20)
 
 
@@ -36,51 +48,35 @@ class Sidebar(QWidget):
         self.on_navigate = on_navigate
         self.on_logout = on_logout
         self.nav_buttons = {}   # page key maps to (QPushButton, icon_name)
+        self.nav_section_labels = []
+        self.nav_section_lines = []
         self.active_key = "dashboard"
+        self._theme_bound_labels = []
         self._build()
+        theme_manager.theme_changed.connect(lambda _: self.apply_theme())
 
     def _build(self):
         self.setFixedWidth(256)
         self.setObjectName("Sidebar")
-        self.setStyleSheet("""
-            QWidget#Sidebar {
-                background: white;
-                border-right: 1px solid #e5e7eb;
-            }
-            QWidget#Sidebar QLabel {
-                border: none;
-                background: transparent;
-            }
-        """)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
         # Logo
-        logo_w = QWidget()
+        self.logo_w = QWidget()
+        logo_w = self.logo_w
         logo_w.setObjectName("SidebarLogo")
         logo_w.setFixedHeight(88)
-        logo_w.setStyleSheet("""
-            QWidget#SidebarLogo {
-                background: white;
-                border-bottom: 1px solid #e5e7eb;
-            }
-            QWidget#SidebarLogo QLabel {
-                border: none;
-                background: transparent;
-            }
-        """)
         ll = QHBoxLayout(logo_w)
         ll.setContentsMargins(24, 0, 24, 0)
         ll.setSpacing(8)
         ll.setAlignment(Qt.AlignVCenter)
 
-        logo_mark = QLabel()
+        self.logo_mark = QLabel()
+        logo_mark = self.logo_mark
         logo_mark.setFixedSize(40, 40)
         logo_mark.setAlignment(Qt.AlignCenter)
-        logo_mark.setStyleSheet("background: #2563eb; border: none; border-radius: 8px;")
-        logo_mark.setPixmap(qta.icon("fa5s.building", color="white").pixmap(24, 24))
 
         nc = QVBoxLayout()
         nc.setContentsMargins(0, 0, 0, 0)
@@ -88,11 +84,11 @@ class Sidebar(QWidget):
         self.brand_name_lbl = QLabel("MyHR")
         self.brand_name_lbl.setFixedHeight(24)
         self.brand_name_lbl.setAlignment(Qt.AlignLeft | Qt.AlignBottom)
-        self.brand_name_lbl.setStyleSheet("color: #111827; font-size: 20px; font-weight: 700; background: transparent; border: none;")
+        self._theme_bound_labels.append((self.brand_name_lbl, "brand_name"))
         self.brand_subtitle_lbl = QLabel("Employee Management")
         self.brand_subtitle_lbl.setFixedHeight(18)
         self.brand_subtitle_lbl.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-        self.brand_subtitle_lbl.setStyleSheet("color: #6b7280; font-size: 12px; background: transparent; border: none;")
+        self._theme_bound_labels.append((self.brand_subtitle_lbl, "brand_subtitle"))
         nc.addWidget(self.brand_name_lbl, 0, Qt.AlignLeft)
         nc.addWidget(self.brand_subtitle_lbl, 0, Qt.AlignLeft)
 
@@ -102,79 +98,85 @@ class Sidebar(QWidget):
         layout.addWidget(logo_w)
 
         # Navigation
-        nav_w = QWidget()
+        self.nav_w = QWidget()
+        nav_w = self.nav_w
         nav_w.setObjectName("SidebarNav")
-        nav_w.setStyleSheet("QWidget#SidebarNav { background: white; border: none; }")
         nav_l = QVBoxLayout(nav_w)
-        nav_l.setContentsMargins(16, 16, 16, 16)
+        nav_l.setContentsMargins(0, 14, 16, 16)
         nav_l.setSpacing(4)
 
-        for key, page_key, icon_name in NAV_ITEMS:
-            if page_key in ADMIN_ONLY_PAGES and self.user.role != "admin":
+        for section_key, items in NAV_SECTIONS:
+            visible_items = [
+                item for item in items
+                if item[1] not in ADMIN_ONLY_PAGES or self.user.role == "admin"
+            ]
+            if not visible_items:
                 continue
-            btn = QPushButton("  " + t(key))
-            btn.setIcon(qta.icon(icon_name, color=_INACTIVE_CLR))
-            btn.setIconSize(_ICON_SZ)
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.setFixedHeight(36)
-            btn.setStyleSheet(self._inactive_style())
-            btn.clicked.connect(lambda _, k=page_key: self._on_click(k))
-            self.nav_buttons[page_key] = (btn, icon_name)
-            nav_l.addWidget(btn)
+
+            section_row = QWidget()
+            section_row.setObjectName("SidebarSectionRow")
+            section_l = QHBoxLayout(section_row)
+            section_l.setContentsMargins(24, 8 if self.nav_buttons else 0, 0, 0)
+            section_l.setSpacing(8)
+
+            section_lbl = QLabel(t(section_key).upper())
+            section_lbl.setObjectName("SidebarSectionLabel")
+            section_lbl.setFixedHeight(18)
+            self.nav_section_labels.append(section_lbl)
+
+            line = QFrame()
+            line.setFixedHeight(1)
+            line.setObjectName("SidebarSectionLine")
+            self.nav_section_lines.append(line)
+
+            section_l.addWidget(section_lbl, 0, Qt.AlignVCenter)
+            section_l.addWidget(line, 1, Qt.AlignVCenter)
+            nav_l.addWidget(section_row)
+
+            for key, page_key, icon_name in visible_items:
+                btn = QPushButton("  " + t(key))
+                btn.setIcon(qta.icon(icon_name, color=icon_color(muted=True)))
+                btn.setIconSize(_ICON_SZ)
+                btn.setCursor(Qt.PointingHandCursor)
+                btn.setFixedHeight(34)
+                btn.setStyleSheet(self._inactive_style())
+                btn.clicked.connect(lambda _, k=page_key: self._on_click(k))
+                self.nav_buttons[page_key] = (btn, icon_name)
+                nav_l.addWidget(btn)
 
         nav_l.addStretch()
         layout.addWidget(nav_w, 1)
 
         # User card and logout
-        bottom = QWidget()
+        self.bottom = QWidget()
+        bottom = self.bottom
         bottom.setObjectName("SidebarBottom")
-        bottom.setStyleSheet("""
-            QWidget#SidebarBottom {
-                background: white;
-                border-top: 1px solid #e5e7eb;
-            }
-            QWidget#SidebarBottom QLabel {
-                border: none;
-                background: transparent;
-            }
-        """)
         bl = QVBoxLayout(bottom)
         bl.setContentsMargins(16, 16, 16, 16)
         bl.setSpacing(8)
 
-        user_card = QFrame()
+        self.user_card = QFrame()
+        user_card = self.user_card
         user_card.setObjectName("SidebarUserCard")
-        user_card.setStyleSheet("""
-            QFrame#SidebarUserCard {
-                background: #f9fafb;
-                border: none;
-                border-radius: 8px;
-            }
-            QFrame#SidebarUserCard QLabel {
-                border: none;
-                background: transparent;
-            }
-        """)
         ucl = QHBoxLayout(user_card)
-        ucl.setContentsMargins(12, 12, 12, 12)
-        ucl.setSpacing(12)
+        ucl.setContentsMargins(12, 10, 12, 10)
+        ucl.setSpacing(10)
 
         display_name = self.user.full_name
-        avatar = QLabel()
+        self.avatar = QLabel()
+        avatar = self.avatar
         avatar.setFixedSize(32, 32)
         avatar.setAlignment(Qt.AlignCenter)
-        avatar.setStyleSheet(
-            "background: #2563eb; color: white; border: none; border-radius: 16px;"
-        )
-        avatar.setPixmap(qta.icon("fa5s.user", color="white").pixmap(16, 16))
 
         ic = QVBoxLayout()
         ic.setSpacing(0)
-        name_lbl = QLabel(display_name)
-        name_lbl.setStyleSheet("color: #111827; font-size: 14px; font-weight: 500; background: transparent; border: none;")
+        self.name_lbl = QLabel(display_name)
+        name_lbl = self.name_lbl
+        self._theme_bound_labels.append((name_lbl, "user_name"))
         role_display = self.user.username if self.user.role == "admin" else t("role_hr")
-        role_lbl = QLabel(role_display)
-        role_lbl.setStyleSheet("color: #6b7280; font-size: 12px; background: transparent; border: none;")
+        self.role_lbl = QLabel(role_display)
+        role_lbl = self.role_lbl
+        self._theme_bound_labels.append((role_lbl, "user_role"))
         ic.addWidget(name_lbl)
         ic.addWidget(role_lbl)
 
@@ -183,26 +185,124 @@ class Sidebar(QWidget):
         ucl.addStretch()
         bl.addWidget(user_card)
 
-        logout_btn = QPushButton("  " + t("logout"))
-        logout_btn.setIcon(qta.icon("fa5s.sign-out-alt", color="#6b7280"))
+        self.theme_card = QFrame()
+        self.theme_card.setObjectName("SidebarThemeCard")
+        theme_layout = QHBoxLayout(self.theme_card)
+        theme_layout.setContentsMargins(0, 6, 0, 6)
+        theme_layout.setSpacing(0)
+        theme_layout.addStretch()
+        self.theme_toggle = ThemeToggle()
+        theme_layout.addWidget(self.theme_toggle, 0, Qt.AlignCenter)
+        theme_layout.addStretch()
+        bl.addWidget(self.theme_card)
+
+        self.logout_btn = QPushButton("  " + t("logout"))
+        logout_btn = self.logout_btn
+        logout_btn.setIcon(qta.icon("fa5s.sign-out-alt", color=icon_color(muted=True)))
         logout_btn.setIconSize(_ICON_SZ)
         logout_btn.setCursor(Qt.PointingHandCursor)
         logout_btn.setFixedHeight(32)
-        logout_btn.setStyleSheet("""
-            QPushButton {
-                background: white; color: #111827;
-                border: 1px solid #e5e7eb; border-radius: 6px;
-                font-size: 14px; font-weight: 500; text-align: left; padding-left: 12px;
-                outline: none;
-            }
-            QPushButton:hover { background: #f3f4f6; color: #111827; border-color: #e5e7eb; }
-        """)
         logout_btn.clicked.connect(self.on_logout)
         bl.addWidget(logout_btn)
         layout.addWidget(bottom)
 
+        self.apply_theme()
         self._set_active("dashboard")
         self.refresh_branding()
+
+    def apply_theme(self):
+        tkn = tokens()
+        primary_text = "#062f28" if tkn.name == "dark" else "#ffffff"
+        self.setStyleSheet(f"""
+            QWidget#Sidebar {{
+                background: {tkn.sidebar};
+                border-right: 1px solid {tkn.border};
+            }}
+            QWidget#Sidebar QLabel {{
+                border: none;
+                background: transparent;
+            }}
+        """)
+        self.logo_w.setStyleSheet(f"""
+            QWidget#SidebarLogo {{
+                background: {tkn.sidebar};
+                border: none;
+            }}
+            QWidget#SidebarLogo QLabel {{
+                border: none;
+                background: transparent;
+            }}
+        """)
+        self.nav_w.setStyleSheet(f"QWidget#SidebarNav {{ background: {tkn.sidebar}; border: none; }}")
+        self.bottom.setStyleSheet(f"""
+            QWidget#SidebarBottom {{
+                background: {tkn.sidebar};
+                border-top: 1px solid {tkn.border};
+            }}
+            QWidget#SidebarBottom QLabel {{
+                border: none;
+                background: transparent;
+            }}
+        """)
+        self.logo_mark.setStyleSheet(f"background: {tkn.brand}; border: none; border-radius: 8px;")
+        self.logo_mark.setPixmap(qta.icon("fa5s.building", color=primary_text).pixmap(24, 24))
+        self.user_card.setStyleSheet(f"""
+            QFrame#SidebarUserCard {{
+                background: {tkn.surface};
+                border: 1px solid {tkn.border};
+                border-radius: 8px;
+            }}
+            QFrame#SidebarUserCard QLabel {{
+                border: none;
+                background: transparent;
+            }}
+        """)
+        self.theme_card.setStyleSheet(f"""
+            QFrame#SidebarThemeCard {{
+                background: transparent;
+                border: none;
+                border-radius: 8px;
+            }}
+            QFrame#SidebarThemeCard QLabel {{
+                border: none;
+                background: transparent;
+            }}
+        """)
+        for label in self.nav_section_labels:
+            label.setStyleSheet(f"""
+                QLabel#SidebarSectionLabel {{
+                    color: {tkn.text_soft};
+                    font-size: 10px;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                    letter-spacing: 0px;
+                    padding: 0px;
+                    background: transparent;
+                    border: none;
+                }}
+            """)
+        for line in self.nav_section_lines:
+            line.setStyleSheet(f"QFrame#SidebarSectionLine {{ background: {tkn.border}; border: none; margin: 0px 0px 0px 0px; }}")
+        self.avatar.setStyleSheet(f"background: {tkn.brand}; color: {primary_text}; border: none; border-radius: 16px;")
+        self.avatar.setPixmap(qta.icon("fa5s.user", color=primary_text).pixmap(16, 16))
+        self.brand_name_lbl.setStyleSheet(f"color: {tkn.text}; font-size: 20px; font-weight: 700; background: transparent; border: none;")
+        self.brand_subtitle_lbl.setStyleSheet(f"color: {tkn.text_muted}; font-size: 12px; background: transparent; border: none;")
+        self.name_lbl.setStyleSheet(f"color: {tkn.text}; font-size: 14px; font-weight: 500; background: transparent; border: none;")
+        self.role_lbl.setStyleSheet(f"color: {tkn.text_muted}; font-size: 12px; background: transparent; border: none;")
+        self.logout_btn.setIcon(qta.icon("fa5s.sign-out-alt", color=tkn.text_muted))
+        self.logout_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {tkn.surface}; color: {tkn.text};
+                border: 1px solid {tkn.border}; border-radius: 6px;
+                font-size: 14px; font-weight: 500; text-align: left; padding-left: 12px;
+                outline: none;
+            }}
+            QPushButton:hover {{ background: {tkn.hover}; color: {tkn.text}; border-color: {tkn.border_strong}; }}
+        """)
+        for page_key, (btn, icon_name) in self.nav_buttons.items():
+            selected = page_key == self.active_key
+            btn.setIcon(qta.icon(icon_name, color=icon_color(selected=selected, muted=not selected)))
+            btn.setStyleSheet(self._active_style() if selected else self._inactive_style())
 
     def refresh_branding(self):
         name = company_name("MyHR")
@@ -219,20 +319,21 @@ class Sidebar(QWidget):
     def _set_active(self, key):
         if self.active_key in self.nav_buttons:
             btn, icon_name = self.nav_buttons[self.active_key]
-            btn.setIcon(qta.icon(icon_name, color=_INACTIVE_CLR))
+            btn.setIcon(qta.icon(icon_name, color=icon_color(muted=True)))
             btn.setStyleSheet(self._inactive_style())
         self.active_key = key
         if key in self.nav_buttons:
             btn, icon_name = self.nav_buttons[key]
-            btn.setIcon(qta.icon(icon_name, color=_ACTIVE_CLR))
+            btn.setIcon(qta.icon(icon_name, color=icon_color(selected=True)))
             btn.setStyleSheet(self._active_style())
 
     def _active_style(self):
         return (
-            "QPushButton {"
-            " background: #eff6ff; color: #1d4ed8;"
-            " border: none; border-radius: 8px;"
-            " text-align: left; padding-left: 12px;"
+            f"QPushButton {{"
+            f" background: {tokens().selected}; color: {tokens().brand};"
+            f" border: none; border-left: 3px solid {tokens().brand};"
+            " border-radius: 0px; border-top-right-radius: 8px; border-bottom-right-radius: 8px;"
+            " text-align: left; padding-left: 22px;"
             " font-size: 14px; font-weight: 500;"
             " outline: none;"
             "}"
@@ -240,14 +341,14 @@ class Sidebar(QWidget):
 
     def _inactive_style(self):
         return (
-            "QPushButton {"
-            " background: transparent; color: #374151;"
-            " border: none; border-radius: 8px;"
-            " text-align: left; padding-left: 12px;"
+            f"QPushButton {{"
+            f" background: transparent; color: {tokens().text_muted};"
+            " border: none; border-radius: 0px; border-top-right-radius: 8px; border-bottom-right-radius: 8px;"
+            " text-align: left; padding-left: 25px;"
             " font-size: 14px; font-weight: 500;"
             " outline: none;"
             "}"
-            " QPushButton:hover { background: #f3f4f6; color: #374151; }"
+            f" QPushButton:hover {{ background: {tokens().hover}; color: {tokens().text}; }}"
         )
 
 
@@ -257,7 +358,8 @@ class MainWindow(QMainWindow):
         self.user = user
         self.setWindowTitle(f"{company_name('MyHR')} - {t('employee_management_system')}")
         self.setMinimumSize(1024, 600)
-        self.setStyleSheet(f"QMainWindow {{ background: {CLR_BG}; }}")
+        self.setStyleSheet(f"QMainWindow {{ background: {tokens().canvas}; }}")
+        theme_manager.theme_changed.connect(lambda _: self.apply_theme())
         self._pages_cache = {}
         self._page_animation_ready = False
         self._build()
@@ -280,15 +382,23 @@ class MainWindow(QMainWindow):
 
         self.stack = QStackedWidget()
         self.stack.setObjectName("MainContent")
-        self.stack.setStyleSheet("""
-            QStackedWidget#MainContent {
-                background: #f9fafb;
-                border: none;
-            }
-        """)
+        self.apply_theme()
         layout.addWidget(self.stack)
 
         self._navigate("dashboard", animate=False)
+
+    def apply_theme(self):
+        tkn = tokens()
+        self.setStyleSheet(f"QMainWindow {{ background: {tkn.canvas}; }}")
+        if hasattr(self, "stack"):
+            self.stack.setStyleSheet(f"""
+                QStackedWidget#MainContent {{
+                    background: {tkn.canvas};
+                    border: none;
+                }}
+            """)
+        if hasattr(self, "sidebar"):
+            self.sidebar.apply_theme()
 
     def _enable_page_animations(self):
         self._page_animation_ready = True

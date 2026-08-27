@@ -7,11 +7,12 @@ same session language is kept when the user logs out and returns here.
 
 import qtawesome as qta
 from PySide6.QtCore import Qt, Signal, QSize, QRectF, QPoint, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QPainterPath, QRegion
+from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QRegion
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
     QGraphicsOpacityEffect,
+    QGraphicsDropShadowEffect,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -26,6 +27,8 @@ from PySide6.QtWidgets import (
 from src.core.app_settings import company_name, company_subtitle
 from src.core.i18n import available_languages, get_language, is_rtl, set_language, t
 from src.database.connection import verify_login
+from src.ui.components.theme_toggle import ThemeToggle
+from src.ui.theme import theme_manager, tokens
 
 
 LANGUAGES = available_languages()
@@ -47,6 +50,26 @@ QPushButton:default { background: #030213; color: white; border: none; }
 """
 
 
+def _message_box_ss():
+    tkn = tokens()
+    primary_text = "#062f28" if tkn.name == "dark" else "#ffffff"
+    return f"""
+QMessageBox {{ background: {tkn.surface}; color: {tkn.text}; }}
+QMessageBox QLabel {{ color: {tkn.text}; background: transparent; font-size: 13px; }}
+QPushButton {{
+    background: {tkn.surface};
+    color: {tkn.text};
+    border: 1px solid {tkn.border_strong};
+    border-radius: 6px;
+    min-width: 84px;
+    min-height: 30px;
+    font-weight: 600;
+}}
+QPushButton:hover {{ background: {tkn.hover}; }}
+QPushButton:default {{ background: {tkn.brand}; color: {primary_text}; border: none; }}
+"""
+
+
 class CustomSelect(QWidget):
     valueChanged = Signal(str)
 
@@ -64,29 +87,19 @@ class CustomSelect(QWidget):
         self.trigger = QFrame()
         self.trigger.setFixedHeight(40)
         self.trigger.setCursor(Qt.PointingHandCursor)
-        self.trigger.setStyleSheet("""
-            QFrame {
-                background: #f3f4f6;
-                border: 1px solid transparent;
-                border-radius: 8px;
-            }
-
-            QFrame:hover {
-                background: #eef0f3;
-            }
-        """)
+        self._apply_theme()
 
         trigger_layout = QHBoxLayout(self.trigger)
         trigger_layout.setContentsMargins(12, 0, 12, 0)
         trigger_layout.setSpacing(8)
 
         self.label = QLabel(items[0][0])
-        self.label.setStyleSheet("font-size: 14px; color: #111827;")
+        self.label.setStyleSheet(f"font-size: 14px; color: {tokens().text};")
 
         self.arrow = QLabel()
         self.arrow.setFixedSize(16, 16)
         self.arrow.setAlignment(Qt.AlignCenter)
-        self.arrow.setPixmap(qta.icon("fa5s.chevron-down", color="#6b7280").pixmap(12, 12))
+        self.arrow.setPixmap(qta.icon("fa5s.chevron-down", color=tokens().text_muted).pixmap(12, 12))
 
         trigger_layout.addWidget(self.label, 1)
         trigger_layout.addWidget(self.arrow)
@@ -115,13 +128,7 @@ class CustomSelect(QWidget):
         self.popup_box = QFrame()
         self.popup_box.setObjectName("SelectPopupBox")
         self.popup_box.setAttribute(Qt.WA_StyledBackground, True)
-        self.popup_box.setStyleSheet("""
-            QFrame#SelectPopupBox {
-                background: white;
-                border: 1px solid #e5e7eb;
-                border-radius: 8px;
-            }
-        """)
+        self._apply_theme()
 
         box_layout = QVBoxLayout(self.popup_box)
         box_layout.setContentsMargins(4, 4, 4, 4)
@@ -131,29 +138,7 @@ class CustomSelect(QWidget):
         self.list_widget.setFrameShape(QFrame.NoFrame)
         self.list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.list_widget.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.list_widget.setStyleSheet("""
-            QListWidget {
-                background: transparent;
-                border: none;
-                outline: none;
-            }
-
-            QListWidget::item {
-                padding: 8px 12px;
-                border-radius: 6px;
-                color: #111827;
-                font-size: 14px;
-            }
-
-            QListWidget::item:hover {
-                background: #f3f4f6;
-            }
-
-            QListWidget::item:selected {
-                background: #2563eb;
-                color: white;
-            }
-        """)
+        self._apply_theme()
 
         for label, value in items:
             item = QListWidgetItem(label)
@@ -168,6 +153,55 @@ class CustomSelect(QWidget):
 
         self.trigger.mousePressEvent = self.toggle_popup
         self.list_widget.itemClicked.connect(self.select_item)
+        theme_manager.theme_changed.connect(lambda _: self._apply_theme())
+
+    def _apply_theme(self):
+        tkn = tokens()
+        selected_text = "#062f28" if tkn.name == "dark" else "#ffffff"
+        if hasattr(self, "trigger"):
+            self.trigger.setStyleSheet(f"""
+                QFrame {{
+                    background: {tkn.input};
+                    border: 1px solid transparent;
+                    border-radius: 8px;
+                }}
+                QFrame:hover {{
+                    background: {tkn.hover};
+                }}
+            """)
+        if hasattr(self, "label"):
+            self.label.setStyleSheet(f"font-size: 14px; color: {tkn.text};")
+        if hasattr(self, "arrow"):
+            self.arrow.setPixmap(qta.icon("fa5s.chevron-down", color=tkn.text_muted).pixmap(12, 12))
+        if hasattr(self, "popup_box"):
+            self.popup_box.setStyleSheet(f"""
+                QFrame#SelectPopupBox {{
+                    background: {tkn.surface};
+                    border: 1px solid {tkn.border};
+                    border-radius: 8px;
+                }}
+            """)
+        if hasattr(self, "list_widget"):
+            self.list_widget.setStyleSheet(f"""
+                QListWidget {{
+                    background: transparent;
+                    border: none;
+                    outline: none;
+                }}
+                QListWidget::item {{
+                    padding: 8px 12px;
+                    border-radius: 6px;
+                    color: {tkn.text};
+                    font-size: 14px;
+                }}
+                QListWidget::item:hover {{
+                    background: {tkn.hover};
+                }}
+                QListWidget::item:selected {{
+                    background: {tkn.brand};
+                    color: {selected_text};
+                }}
+            """)
 
     def toggle_popup(self, event):
         if self.popup.isVisible():
@@ -223,49 +257,50 @@ class LoginWindow(QWidget):
         self.setWindowTitle(company_name(t("app_name")))
         self.setObjectName("LoginWindow")
         self.role_labels = {}
+        self._login_icons = []
+        self._role_dots = []
         self._build()
+        theme_manager.theme_changed.connect(lambda _: self._apply_theme())
         self.showMaximized()
 
     def _build(self):
-        self.setStyleSheet("""
-            QWidget#LoginWindow {
-                background: #eaf4ff;
-            }
-        """)
+        self._apply_theme()
 
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(24, 24, 24, 24)
+        outer.setContentsMargins(32, 28, 32, 28)
         outer.addStretch(1)
 
-        card = QFrame()
+        self.card = QFrame()
+        card = self.card
         card.setObjectName("LoginCard")
         card.setFixedWidth(450)
         card.setMinimumHeight(0)
-        card.setStyleSheet("""
-            QFrame#LoginCard {
-                background: white;
-                border: 1px solid #d8dee8;
-                border-radius: 16px;
-            }
-
-            QFrame#LoginCard QLabel {
-                background: transparent;
-                border: none;
-            }
-        """)
+        self.card_shadow = QGraphicsDropShadowEffect(card)
+        self.card_shadow.setBlurRadius(34)
+        self.card_shadow.setOffset(0, 14)
+        self.card_shadow.setColor(QColor(6, 47, 40, 30))
+        card.setGraphicsEffect(self.card_shadow)
 
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(32, 32, 32, 32)
+        card_layout.setContentsMargins(32, 24, 32, 32)
         card_layout.setSpacing(0)
+
+        card_tools = QHBoxLayout()
+        card_tools.setContentsMargins(0, 0, 0, 0)
+        card_tools.setSpacing(0)
+        card_tools.addStretch()
+        self.theme_toggle = ThemeToggle()
+        card_tools.addWidget(self.theme_toggle, 0, Qt.AlignRight)
+        card_layout.addLayout(card_tools)
+        card_layout.addSpacing(10)
 
         logo_row = QHBoxLayout()
         logo_row.setAlignment(Qt.AlignCenter)
 
-        logo_box = QLabel()
+        self.logo_box = QLabel()
+        logo_box = self.logo_box
         logo_box.setFixedSize(64, 64)
         logo_box.setAlignment(Qt.AlignCenter)
-        logo_box.setPixmap(qta.icon("fa5s.clipboard-list", color="white").pixmap(40, 40))
-        logo_box.setStyleSheet("background: #1f62f2; border-radius: 12px;")
 
         logo_row.addWidget(logo_box)
         card_layout.addLayout(logo_row)
@@ -273,12 +308,10 @@ class LoginWindow(QWidget):
 
         self.title_lbl = QLabel()
         self.title_lbl.setAlignment(Qt.AlignCenter)
-        self.title_lbl.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827;")
         card_layout.addWidget(self.title_lbl)
 
         self.subtitle_lbl = QLabel()
         self.subtitle_lbl.setAlignment(Qt.AlignCenter)
-        self.subtitle_lbl.setStyleSheet("font-size: 16px; color: #334155;")
         card_layout.addWidget(self.subtitle_lbl)
 
         card_layout.addSpacing(32)
@@ -289,10 +322,9 @@ class LoginWindow(QWidget):
         language_icon = QLabel()
         language_icon.setFixedSize(20, 20)
         language_icon.setAlignment(Qt.AlignCenter)
-        language_icon.setPixmap(qta.icon("fa5s.globe", color="#111827").pixmap(16, 16))
+        self.language_icon = language_icon
 
         self.language_lbl = QLabel()
-        self.language_lbl.setStyleSheet("font-size: 14px; font-weight: 700; color: #111827;")
 
         language_title.addWidget(language_icon)
         language_title.addWidget(self.language_lbl)
@@ -354,13 +386,12 @@ class LoginWindow(QWidget):
         separator = QFrame()
         separator.setFrameShape(QFrame.HLine)
         separator.setFixedHeight(1)
-        separator.setStyleSheet("border: none; border-top: 1px solid #e5e7eb;")
+        self.separator = separator
         card_layout.addWidget(separator)
         card_layout.addSpacing(20)
 
         self.footer_lbl = QLabel()
         self.footer_lbl.setAlignment(Qt.AlignCenter)
-        self.footer_lbl.setStyleSheet("font-size: 14px; color: #334155;")
         card_layout.addWidget(self.footer_lbl)
         card_layout.addSpacing(8)
 
@@ -368,32 +399,25 @@ class LoginWindow(QWidget):
         roles_row.setAlignment(Qt.AlignCenter)
         roles_row.setSpacing(16)
 
-        self._add_role_indicator(roles_row, "role_admin", "#2563eb")
-        self._add_role_indicator(roles_row, "role_hr", "#10b981")
+        self._add_role_indicator(roles_row, "role_admin", "#064e3b")
+        self._add_role_indicator(roles_row, "role_hr", "#9fe870")
 
         card_layout.addLayout(roles_row)
 
         outer.addWidget(card, 0, Qt.AlignHCenter)
         outer.addStretch(1)
 
+        self._apply_theme()
         self._refresh_text()
 
     def _field_label(self):
         label = QLabel()
-        label.setStyleSheet("font-size: 16px; font-weight: 700; color: #111827;")
         return label
 
     def _icon_input(self, icon_name, password=False):
         container = QFrame()
         container.setObjectName("LoginInput")
         container.setFixedHeight(40)
-        container.setStyleSheet("""
-            QFrame#LoginInput {
-                background: #f3f3f5;
-                border: none;
-                border-radius: 8px;
-            }
-        """)
 
         row = QHBoxLayout(container)
         row.setContentsMargins(16, 0, 12, 0)
@@ -402,8 +426,9 @@ class LoginWindow(QWidget):
         icon_label = QLabel()
         icon_label.setFixedSize(22, 22)
         icon_label.setAlignment(Qt.AlignCenter)
-        icon_label.setPixmap(qta.icon(icon_name, color="#94a3b8").pixmap(20, 20))
+        icon_label._myhr_icon_name = icon_name
         icon_label.setStyleSheet("background: transparent; border: none;")
+        self._login_icons.append(icon_label)
         row.addWidget(icon_label)
 
         field = QLineEdit()
@@ -412,19 +437,7 @@ class LoginWindow(QWidget):
         if password:
             field.setEchoMode(QLineEdit.Password)
 
-        field.setStyleSheet("""
-            QLineEdit {
-                background: transparent;
-                border: none;
-                color: #111827;
-                font-size: 16px;
-                padding: 0;
-            }
-
-            QLineEdit:focus {
-                border: none;
-            }
-        """)
+        field.setStyleSheet("QLineEdit { background: transparent; border: none; padding: 0; } QLineEdit:focus { border: none; }")
 
         row.addWidget(field, 1)
         return field, container
@@ -439,16 +452,117 @@ class LoginWindow(QWidget):
 
         dot = QLabel()
         dot.setFixedSize(10, 10)
-        dot.setStyleSheet(f"background: {color}; border-radius: 5px;")
+        dot._myhr_dot_color = color
+        self._role_dots.append(dot)
 
         label = QLabel()
-        label.setStyleSheet("font-size: 14px; color: #334155;")
 
         layout.addWidget(dot)
         layout.addWidget(label)
         row.addWidget(wrap)
 
         self.role_labels[role_key] = label
+
+    def paintEvent(self, event):
+        tkn = tokens()
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.fillRect(self.rect(), QColor("#fbfcf8" if tkn.name == "light" else "#050806"))
+
+        if tkn.name == "light":
+            blob = QColor("#9fe870")
+            blob.setAlpha(54)
+            line = QColor("#1f4a40")
+            line.setAlpha(18)
+            dot = QColor("#0f7a45")
+            dot.setAlpha(58)
+        else:
+            blob = QColor("#9fe870")
+            blob.setAlpha(24)
+            line = QColor("#9fe870")
+            line.setAlpha(16)
+            dot = QColor("#9fe870")
+            dot.setAlpha(46)
+
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(blob)
+        painter.drawEllipse(QRectF(-80, -70, 270, 270))
+        painter.drawEllipse(QRectF(self.width() - 220, self.height() - 220, 320, 320))
+
+        painter.setBrush(dot)
+        spacing = 14
+        start_x = int(self.width() * 0.70)
+        start_y = int(self.height() * 0.26)
+        for row in range(7):
+            for col in range(7):
+                painter.drawEllipse(QRectF(start_x + col * spacing, start_y + row * spacing, 2.2, 2.2))
+
+        painter.setPen(QPen(line, 1))
+        for i in range(13):
+            painter.drawArc(QRectF(-120 + i * 16, 35 + i * 5, 520 + i * 18, 360 + i * 12), 20 * 16, 145 * 16)
+        for i in range(10):
+            painter.drawArc(QRectF(self.width() - 430 - i * 14, self.height() - 310 - i * 8, 460 + i * 18, 340 + i * 12), 190 * 16, 130 * 16)
+
+        painter.end()
+        super().paintEvent(event)
+
+    def _apply_theme(self):
+        tkn = tokens()
+        primary_text = "#062f28" if tkn.name == "dark" else "#ffffff"
+        self.setStyleSheet("QWidget#LoginWindow { background: transparent; }")
+        if hasattr(self, "card_shadow"):
+            self.card_shadow.setColor(QColor(6, 47, 40, 30 if tkn.name == "light" else 70))
+        if hasattr(self, "card"):
+            self.card.setStyleSheet(f"""
+                QFrame#LoginCard {{
+                    background: {tkn.surface};
+                    border: 1px solid {tkn.border};
+                    border-radius: 16px;
+                }}
+                QFrame#LoginCard QLabel {{
+                    background: transparent;
+                    border: none;
+                }}
+            """)
+        if hasattr(self, "logo_box"):
+            self.logo_box.setPixmap(qta.icon("fa5s.clipboard-list", color=primary_text).pixmap(40, 40))
+            self.logo_box.setStyleSheet(f"background: {tkn.brand}; border-radius: 12px;")
+        if hasattr(self, "title_lbl"):
+            self.title_lbl.setStyleSheet(f"font-size: 30px; font-weight: 700; color: {tkn.text};")
+        if hasattr(self, "subtitle_lbl"):
+            self.subtitle_lbl.setStyleSheet(f"font-size: 16px; color: {tkn.text_muted};")
+        if hasattr(self, "language_icon"):
+            self.language_icon.setPixmap(qta.icon("fa5s.globe", color=tkn.text).pixmap(16, 16))
+        if hasattr(self, "language_lbl"):
+            self.language_lbl.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {tkn.text};")
+        for label in (getattr(self, "username_lbl", None), getattr(self, "password_lbl", None)):
+            if label is not None:
+                label.setStyleSheet(f"font-size: 15px; font-weight: 600; color: {tkn.text};")
+        for container in self.findChildren(QFrame, "LoginInput"):
+            container.setStyleSheet(f"QFrame#LoginInput {{ background: {tkn.input}; border: 1px solid transparent; border-radius: 8px; }}")
+        for icon_label in getattr(self, "_login_icons", []):
+            icon_label.setPixmap(qta.icon(icon_label._myhr_icon_name, color=tkn.text_soft).pixmap(18, 18))
+        if hasattr(self, "login_btn"):
+            self.login_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: {tkn.brand};
+                    border: none;
+                    border-radius: 8px;
+                    color: {primary_text};
+                    font-size: 15px;
+                    font-weight: 700;
+                }}
+                QPushButton:hover {{ background: {tkn.brand_hover}; }}
+                QPushButton:pressed {{ background: {tkn.brand}; }}
+            """)
+        if hasattr(self, "separator"):
+            self.separator.setStyleSheet(f"border: none; border-top: 1px solid {tkn.border};")
+        if hasattr(self, "footer_lbl"):
+            self.footer_lbl.setStyleSheet(f"font-size: 14px; color: {tkn.text_muted};")
+        for dot in getattr(self, "_role_dots", []):
+            dot.setStyleSheet(f"background: {dot._myhr_dot_color}; border-radius: 5px;")
+        for label in self.role_labels.values():
+            label.setStyleSheet(f"font-size: 14px; color: {tkn.text_muted};")
 
     def _select_current_language(self):
         self.lang_combo.set_value(get_language())
@@ -508,7 +622,7 @@ def _styled_message_box(parent, icon, title, text):
     box.setWindowTitle(title)
     box.setText(text)
     box.setStandardButtons(QMessageBox.Ok)
-    box.setStyleSheet(MESSAGE_BOX_SS)
+    box.setStyleSheet(_message_box_ss())
     return box.exec()
 
 
