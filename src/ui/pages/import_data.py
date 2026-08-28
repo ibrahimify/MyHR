@@ -32,7 +32,16 @@ from src.database.models import (
     Employee, Title, OrgUnit, Commendation,
     CommendationEmployee, Sanction
 )
-from src.ui.styles import enable_table_row_selection, table_style
+from src.ui.styles import (
+    btn_outline,
+    btn_primary,
+    card_ss,
+    enable_table_row_selection,
+    message_box_ss,
+    scroll_ss,
+    table_style,
+)
+from src.ui.theme import THEME_DARK, tokens
 
 
 REQUIRED_COLUMNS = [
@@ -109,77 +118,30 @@ COLUMN_ALIASES = {
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
-PAGE_BG = "#f9fafb"
-TEXT = "#030213"
-MUTED = "#4b5563"
-CARD_SS = """
-QFrame#Card {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-}
-QFrame#Card QLabel {
-    background: transparent;
-    border: none;
-}
-"""
+def PAGE_BG():
+    return tokens().canvas
 
-TABLE_SS = """
-QTableWidget {
-    background: white;
-    alternate-background-color: white;
-    border: none;
-    gridline-color: #f3f4f6;
-    font-size: 14px;
-    color: #111827;
-    outline: none;
-    selection-background-color: #eff6ff;
-}
-QTableWidget::item {
-    background: white;
-    padding: 0 12px;
-    border: none;
-    border-bottom: 1px solid #f3f4f6;
-    color: #111827;
-}
-QTableWidget::item:hover { background: #f9fafb; }
-QTableWidget::item:selected { background: #eff6ff; color: #111827; }
-QHeaderView::section {
-    background: white;
-    border: none;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 0 12px;
-    font-size: 13px;
-    font-weight: 800;
-    color: #030213;
-    min-height: 50px;
-    text-align: left;
-}
-QToolTip {
-    background-color: #111827;
-    color: white;
-    border: 1px solid #374151;
-    border-radius: 4px;
-    padding: 6px 8px;
-}
-"""
-TABLE_SS = table_style()
 
-MESSAGE_BOX_SS = """
-QMessageBox { background: white; color: #111827; }
-QMessageBox QLabel { color: #111827; background: transparent; font-size: 13px; }
-QPushButton {
-    background: white;
-    color: #111827;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    min-width: 84px;
-    min-height: 30px;
-    font-weight: 600;
-}
-QPushButton:hover { background: #f3f4f6; }
-QPushButton:default { background: #030213; color: white; border: none; }
-"""
+def TEXT():
+    return tokens().text
+
+
+def MUTED():
+    return tokens().text_muted
+
+
+def CARD_SS():
+    return card_ss("QFrame#Card")
+
+def TABLE_SS():
+    return table_style()
+
+def MESSAGE_BOX_SS():
+    return message_box_ss()
+
+
+def _primary_icon_color():
+    return "#062f28" if tokens().name == THEME_DARK else "#ffffff"
 
 
 class ImportDataPage(QWidget):
@@ -190,7 +152,7 @@ class ImportDataPage(QWidget):
         self.current_file = None
         self.step_widgets = []
         self.setObjectName("ImportDataPage")
-        self.setStyleSheet(f"QWidget#ImportDataPage {{ background: {PAGE_BG}; }}")
+        self.setStyleSheet(f"QWidget#ImportDataPage {{ background: {PAGE_BG()}; }}")
         self._build()
 
     def _build(self):
@@ -209,9 +171,9 @@ class ImportDataPage(QWidget):
         layout.setSpacing(0)
 
         title = QLabel(t("import_title"))
-        title.setStyleSheet(f"font-size: 30px; font-weight: 800; color: {TEXT}; background: transparent;")
+        title.setStyleSheet(f"font-size: 30px; font-weight: 800; color: {TEXT()}; background: transparent;")
         subtitle = QLabel(t("import_subtitle"))
-        subtitle.setStyleSheet(f"font-size: 16px; color: {MUTED}; background: transparent;")
+        subtitle.setStyleSheet(f"font-size: 16px; color: {MUTED()}; background: transparent;")
         layout.addWidget(title)
         layout.addSpacing(6)
         layout.addWidget(subtitle)
@@ -262,7 +224,7 @@ class ImportDataPage(QWidget):
             circle.setAlignment(Qt.AlignCenter)
 
             text = QLabel(label)
-            text.setStyleSheet("font-size: 15px; font-weight: 800; color: #9ca3af; background: transparent;")
+            text.setStyleSheet(f"font-size: 15px; font-weight: 800; color: {tokens().text_soft}; background: transparent;")
 
             item.addWidget(circle)
             item.addWidget(text)
@@ -272,7 +234,7 @@ class ImportDataPage(QWidget):
             if index < 2:
                 line = QFrame()
                 line.setFixedHeight(1)
-                line.setStyleSheet("background: #d1d5db; border: none;")
+                line.setStyleSheet(f"background: {tokens().border_strong}; border: none;")
                 layout.addWidget(line, 1)
 
         return frame
@@ -281,7 +243,7 @@ class ImportDataPage(QWidget):
         self.upload_card = QFrame()
         self.upload_card.setObjectName("Card")
         self.upload_card.setMinimumHeight(430)
-        self.upload_card.setStyleSheet(CARD_SS)
+        self.upload_card.setStyleSheet(CARD_SS())
         layout = QVBoxLayout(self.upload_card)
         layout.setContentsMargins(48, 28, 48, 28)
         layout.setSpacing(12)
@@ -290,22 +252,22 @@ class ImportDataPage(QWidget):
         icon_wrap = QLabel()
         icon_wrap.setFixedSize(76, 76)
         icon_wrap.setAlignment(Qt.AlignCenter)
-        icon_wrap.setStyleSheet("background: #dbeafe; border-radius: 38px;")
-        icon_wrap.setPixmap(qta.icon("fa5s.upload", color="#2563eb").pixmap(32, 32))
+        icon_wrap.setStyleSheet(f"background: {tokens().selected}; border-radius: 38px;")
+        icon_wrap.setPixmap(qta.icon("fa5s.upload", color=tokens().brand).pixmap(32, 32))
         layout.addWidget(icon_wrap, alignment=Qt.AlignCenter)
 
         upload_title = QLabel(t("upload_employee_file"))
         upload_title.setAlignment(Qt.AlignCenter)
-        upload_title.setStyleSheet(f"font-size: 22px; font-weight: 800; color: {TEXT}; background: transparent;")
+        upload_title.setStyleSheet(f"font-size: 22px; font-weight: 800; color: {TEXT()}; background: transparent;")
         layout.addWidget(upload_title)
 
         upload_sub = QLabel(t("supported_formats_csv_xlsx"))
         upload_sub.setAlignment(Qt.AlignCenter)
-        upload_sub.setStyleSheet(f"font-size: 16px; color: {MUTED}; background: transparent;")
+        upload_sub.setStyleSheet(f"font-size: 16px; color: {MUTED()}; background: transparent;")
         layout.addWidget(upload_sub)
 
         choose_btn = QPushButton("  " + t("choose_file"))
-        choose_btn.setIcon(qta.icon("fa5s.upload", color="white"))
+        choose_btn.setIcon(qta.icon("fa5s.upload", color=_primary_icon_color()))
         choose_btn.setIconSize(QSize(15, 15))
         choose_btn.setCursor(Qt.PointingHandCursor)
         choose_btn.setFixedSize(160, 50)
@@ -315,18 +277,18 @@ class ImportDataPage(QWidget):
 
         self.file_label = QLabel("")
         self.file_label.setAlignment(Qt.AlignCenter)
-        self.file_label.setStyleSheet("font-size: 13px; color: #2563eb; font-weight: 700; background: transparent;")
+        self.file_label.setStyleSheet(f"font-size: 13px; color: {tokens().brand}; font-weight: 700; background: transparent;")
         layout.addWidget(self.file_label)
 
         line = QFrame()
         line.setFixedHeight(1)
-        line.setStyleSheet("background: #e5e7eb; border: none;")
+        line.setStyleSheet(f"background: {tokens().border}; border: none;")
         layout.addSpacing(12)
         layout.addWidget(line)
         layout.addSpacing(14)
 
         template_btn = QPushButton("  " + t("download_template"))
-        template_btn.setIcon(qta.icon("fa5s.download", color="#111827"))
+        template_btn.setIcon(qta.icon("fa5s.download", color=tokens().text))
         template_btn.setIconSize(QSize(14, 14))
         template_btn.setCursor(Qt.PointingHandCursor)
         template_btn.setFixedSize(250, 44)
@@ -336,14 +298,14 @@ class ImportDataPage(QWidget):
 
         hint = QLabel(t("template_hint"))
         hint.setAlignment(Qt.AlignCenter)
-        hint.setStyleSheet("font-size: 14px; color: #64748b; background: transparent;")
+        hint.setStyleSheet(f"font-size: 14px; color: {tokens().text_soft}; background: transparent;")
         layout.addWidget(hint)
         return self.upload_card
 
     def _build_review_card(self):
         self.review_card = QFrame()
         self.review_card.setObjectName("Card")
-        self.review_card.setStyleSheet(CARD_SS)
+        self.review_card.setStyleSheet(CARD_SS())
         self.review_card.setVisible(False)
         layout = QVBoxLayout(self.review_card)
         layout.setContentsMargins(30, 28, 30, 30)
@@ -351,9 +313,9 @@ class ImportDataPage(QWidget):
 
         header = QHBoxLayout()
         icon = QLabel()
-        icon.setPixmap(qta.icon("fa5s.clipboard-list", color="#2563eb").pixmap(18, 18))
+        icon.setPixmap(qta.icon("fa5s.clipboard-list", color=tokens().brand).pixmap(18, 18))
         title = QLabel(t("validation_results"))
-        title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {TEXT}; background: transparent;")
+        title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {TEXT()}; background: transparent;")
         header.addWidget(icon)
         header.addWidget(title)
         header.addStretch()
@@ -369,7 +331,7 @@ class ImportDataPage(QWidget):
             t("row"), t("employee"), t("department"), t("position"), t("degree"),
             t("join_date"), t("salary"), t("history"), t("status")
         ])
-        self.preview_table.setStyleSheet(TABLE_SS)
+        self.preview_table.setStyleSheet(TABLE_SS())
         self.preview_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.preview_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
         self.preview_table.setColumnWidth(0, 64)
@@ -385,7 +347,7 @@ class ImportDataPage(QWidget):
         action_row = QHBoxLayout()
         action_row.addStretch()
         self.import_btn = QPushButton("  " + t("import_valid"))
-        self.import_btn.setIcon(qta.icon("fa5s.check-circle", color="white"))
+        self.import_btn.setIcon(qta.icon("fa5s.check-circle", color=_primary_icon_color()))
         self.import_btn.setIconSize(QSize(15, 15))
         self.import_btn.setCursor(Qt.PointingHandCursor)
         self.import_btn.setFixedSize(230, 50)
@@ -398,7 +360,7 @@ class ImportDataPage(QWidget):
     def _build_required_card(self):
         card = QFrame()
         card.setStyleSheet(
-            "QFrame { background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; } "
+            f"QFrame {{ background: {tokens().selected}; border-radius: 8px; border: 1px solid {tokens().border_strong}; }} "
             "QLabel { background: transparent; border: none; }"
         )
         layout = QVBoxLayout(card)
@@ -407,9 +369,9 @@ class ImportDataPage(QWidget):
 
         head = QHBoxLayout()
         icon = QLabel()
-        icon.setPixmap(qta.icon("fa5s.info-circle", color="#2563eb").pixmap(18, 18))
+        icon.setPixmap(qta.icon("fa5s.info-circle", color=tokens().brand).pixmap(18, 18))
         title = QLabel(t("required_columns"))
-        title.setStyleSheet("font-size: 17px; font-weight: 800; color: #1e40af; background: transparent;")
+        title.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {tokens().brand}; background: transparent;")
         head.addWidget(icon)
         head.addWidget(title)
         head.addStretch()
@@ -424,13 +386,13 @@ class ImportDataPage(QWidget):
             "Join Date",
             "Base Salary",
         ]:
-            layout.addWidget(_note_line(text, "#1d4ed8"))
+            layout.addWidget(_note_line(text, tokens().brand))
         return card
 
     def _build_cleaning_card(self):
         card = QFrame()
         card.setStyleSheet(
-            "QFrame { background: #fefce8; border-radius: 8px; border: 1px solid #fde047; } "
+            f"QFrame {{ background: {tokens().warning_soft}; border-radius: 8px; border: 1px solid {tokens().warning}; }} "
             "QLabel { background: transparent; border: none; }"
         )
         layout = QVBoxLayout(card)
@@ -439,9 +401,9 @@ class ImportDataPage(QWidget):
 
         head = QHBoxLayout()
         icon = QLabel()
-        icon.setPixmap(qta.icon("fa5s.exclamation-triangle", color="#d97706").pixmap(18, 18))
+        icon.setPixmap(qta.icon("fa5s.exclamation-triangle", color=tokens().warning).pixmap(18, 18))
         title = QLabel(t("data_cleaning_guide"))
-        title.setStyleSheet("font-size: 17px; font-weight: 800; color: #854d0e; background: transparent;")
+        title.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {tokens().warning}; background: transparent;")
         head.addWidget(icon)
         head.addWidget(title)
         head.addStretch()
@@ -455,29 +417,29 @@ class ImportDataPage(QWidget):
             "Commendation months: 0, 1, 3, or 6",
             "Sanction months: 1-12",
         ]:
-            layout.addWidget(_note_line(text, "#92400e"))
+            layout.addWidget(_note_line(text, tokens().warning))
         return card
 
     def _set_step(self, step):
         for index, (circle, text) in enumerate(self.step_widgets):
             if index == step:
                 circle.setStyleSheet(
-                    "background: #2563eb; color: white; border-radius: 20px; "
+                    f"background: {tokens().brand}; color: {'#062f28' if tokens().name == THEME_DARK else '#ffffff'}; border-radius: 20px; "
                     "font-size: 16px; font-weight: 800;"
                 )
-                text.setStyleSheet("font-size: 15px; font-weight: 800; color: #2563eb; background: transparent;")
+                text.setStyleSheet(f"font-size: 15px; font-weight: 800; color: {tokens().brand}; background: transparent;")
             elif index < step:
                 circle.setStyleSheet(
-                    "background: #dcfce7; color: #16a34a; border-radius: 20px; "
+                    f"background: {tokens().success_soft}; color: {tokens().success}; border-radius: 20px; "
                     "font-size: 16px; font-weight: 800;"
                 )
-                text.setStyleSheet("font-size: 15px; font-weight: 800; color: #16a34a; background: transparent;")
+                text.setStyleSheet(f"font-size: 15px; font-weight: 800; color: {tokens().success}; background: transparent;")
             else:
                 circle.setStyleSheet(
-                    "background: #e5e7eb; color: #9ca3af; border-radius: 20px; "
+                    f"background: {tokens().surface_muted}; color: {tokens().text_soft}; border-radius: 20px; "
                     "font-size: 16px; font-weight: 800;"
                 )
-                text.setStyleSheet("font-size: 15px; font-weight: 800; color: #9ca3af; background: transparent;")
+                text.setStyleSheet(f"font-size: 15px; font-weight: 800; color: {tokens().text_soft}; background: transparent;")
 
     def _choose_file(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -773,25 +735,25 @@ class ImportDataPage(QWidget):
                 item = QTableWidgetItem(value)
                 item.setToolTip(value)
                 if col == 0:
-                    item.setForeground(QColor("#6b7280"))
+                    item.setForeground(QColor(tokens().text_soft))
                 self.preview_table.setItem(index, col, item)
 
             if row["status"] == "valid":
                 status_text = t("valid")
                 status = QTableWidgetItem(status_text)
-                status.setIcon(qta.icon("fa5s.check-circle", color="#16a34a"))
-                status.setForeground(QColor("#16a34a"))
+                status.setIcon(qta.icon("fa5s.check-circle", color=tokens().success))
+                status.setForeground(QColor(tokens().success))
                 status.setToolTip(status_text)
             else:
                 issue_text = "; ".join(row["issues"])
                 status = QTableWidgetItem(t("fix_required"))
-                status.setIcon(qta.icon("fa5s.exclamation-triangle", color="#dc2626"))
-                status.setForeground(QColor("#dc2626"))
+                status.setIcon(qta.icon("fa5s.exclamation-triangle", color=tokens().danger))
+                status.setForeground(QColor(tokens().danger))
                 status.setToolTip(issue_text)
                 for col in range(8):
                     item = self.preview_table.item(index, col)
                     if item:
-                        item.setBackground(QColor("#fef2f2"))
+                        item.setBackground(QColor(tokens().danger_soft))
             self.preview_table.setItem(index, 8, status)
 
     def _import(self):
@@ -1139,7 +1101,7 @@ def _stat_card(label, value, color, bg, icon_name):
     card.setObjectName("Card")
     card.setFixedHeight(86)
     card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-    card.setStyleSheet(CARD_SS)
+    card.setStyleSheet(CARD_SS())
     layout = QHBoxLayout(card)
     layout.setContentsMargins(20, 0, 20, 0)
     layout.setSpacing(12)
@@ -1154,9 +1116,9 @@ def _stat_card(label, value, color, bg, icon_name):
     texts.setSpacing(0)
     texts.setAlignment(Qt.AlignVCenter)
     title = QLabel(label)
-    title.setStyleSheet("font-size: 13px; color: #374151; background: transparent;")
+    title.setStyleSheet(f"font-size: 13px; color: {MUTED()}; background: transparent;")
     number = QLabel(str(value))
-    number.setStyleSheet("font-size: 24px; font-weight: 800; color: #030213; background: transparent;")
+    number.setStyleSheet(f"font-size: 24px; font-weight: 800; color: {TEXT()}; background: transparent;")
     texts.addWidget(title)
     texts.addWidget(number)
 
@@ -1174,32 +1136,11 @@ def _note_line(text, color):
 
 
 def _primary_button_ss():
-    return """
-QPushButton {
-    background: #030213;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 800;
-}
-QPushButton:hover { background: #111827; }
-QPushButton:disabled { background: #d1d5db; color: #9ca3af; }
-"""
+    return btn_primary(42)
 
 
 def _secondary_button_ss():
-    return """
-QPushButton {
-    background: white;
-    color: #111827;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 700;
-}
-QPushButton:hover { background: #f3f4f6; }
-"""
+    return btn_outline(42)
 
 
 def _styled_message_box(parent, icon, title, text, buttons=QMessageBox.Ok, default_button=QMessageBox.Ok):
@@ -1209,7 +1150,7 @@ def _styled_message_box(parent, icon, title, text, buttons=QMessageBox.Ok, defau
     box.setText(text)
     box.setStandardButtons(buttons)
     box.setDefaultButton(default_button)
-    box.setStyleSheet(MESSAGE_BOX_SS)
+    box.setStyleSheet(MESSAGE_BOX_SS())
     return box.exec()
 
 

@@ -183,63 +183,72 @@ QPushButton:hover {{ background: {t.danger_soft}; border: 1px solid {t.danger}; 
 """
 
 
-# Inputs
-INPUT_SS = """
+def input_style(min_height=36):
+    t = tokens()
+    return f"""
 QLineEdit, QTextEdit, QPlainTextEdit, QDateEdit, QTimeEdit, QDateTimeEdit,
-QSpinBox, QDoubleSpinBox {
-    border: 1px solid #e5e7eb;
+QSpinBox, QDoubleSpinBox {{
+    border: 1px solid {t.border};
     border-radius: 8px;
     padding: 0 12px;
     font-size: 14px;
-    color: #111827;
-    background: #f3f3f5;
-    min-height: 36px;
-    selection-background-color: #2563eb;
+    color: {t.text};
+    background: {t.input};
+    min-height: {min_height}px;
+    selection-background-color: {t.selected};
+    selection-color: {t.text};
     outline: none;
-}
-QTextEdit, QPlainTextEdit {
+}}
+QTextEdit, QPlainTextEdit {{
     padding: 8px 12px;
-}
+}}
 QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QDateEdit:focus,
-QTimeEdit:focus, QDateTimeEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {
-    border-color: #2563eb;
-    background: white;
-}
-QComboBox {
-    border: 1px solid #e5e7eb;
+QTimeEdit:focus, QDateTimeEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {{
+    border-color: {t.brand};
+    background: {t.surface};
+}}
+QComboBox {{
+    border: 1px solid {t.border};
     border-radius: 8px;
     padding: 0 32px 0 12px;
     font-size: 14px;
-    color: #111827;
-    background: #f3f3f5;
-    min-height: 36px;
+    color: {t.text};
+    background: {t.input};
+    min-height: {min_height}px;
     outline: none;
-}
-QComboBox:focus {
-    border-color: #2563eb;
-    background: white;
-}
-QComboBox::drop-down {
+}}
+QComboBox:focus {{
+    border-color: {t.brand};
+    background: {t.surface};
+}}
+QComboBox::drop-down {{
     width: 28px;
     border: none;
     background: transparent;
-}
-QComboBox QAbstractItemView {
-    background: white;
-    color: #111827;
-    border: 1px solid #d1d5db;
+}}
+QComboBox QAbstractItemView {{
+    background: {t.surface};
+    color: {t.text};
+    border: 1px solid {t.border_strong};
     border-radius: 8px;
-    selection-background-color: #eff6ff;
-    selection-color: #111827;
+    selection-background-color: {t.selected};
+    selection-color: {t.text};
     outline: none;
     padding: 4px;
-}
+}}
 QSpinBox::up-button, QSpinBox::down-button,
-QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
     width: 0;
     border: none;
-}
+}}
 """
+
+
+def combo_style(min_height=36):
+    return input_style(min_height)
+
+
+INPUT_SS = input_style()
 
 # Tables
 def table_style(
@@ -372,21 +381,27 @@ def pager_button_ss():
 PAGER_BUTTON_SS = pager_button_ss()
 
 
-MESSAGE_BOX_SS = """
-QMessageBox { background: white; color: #111827; }
-QMessageBox QLabel { color: #111827; background: transparent; font-size: 13px; }
-QPushButton {
-    background: white;
-    color: #111827;
-    border: 1px solid #d1d5db;
+def message_box_ss():
+    t = tokens()
+    default_text = "#062f28" if t.name == THEME_DARK else "#ffffff"
+    return f"""
+QMessageBox {{ background: {t.surface}; color: {t.text}; }}
+QMessageBox QLabel {{ color: {t.text}; background: transparent; font-size: 13px; }}
+QPushButton {{
+    background: {t.surface};
+    color: {t.text};
+    border: 1px solid {t.border_strong};
     border-radius: 6px;
     min-width: 84px;
     min-height: 30px;
     font-weight: 600;
-}
-QPushButton:hover { background: #f3f4f6; }
-QPushButton:default { background: #030213; color: white; border: none; }
+}}
+QPushButton:hover {{ background: {t.hover}; }}
+QPushButton:default {{ background: {t.brand}; color: {default_text}; border: none; }}
 """
+
+
+MESSAGE_BOX_SS = message_box_ss()
 
 
 def show_message_box(parent, icon, title, text, buttons=QMessageBox.Ok, default_button=QMessageBox.Ok):
@@ -627,7 +642,7 @@ QListView::item {{
 }}
 QListView::item:selected,
 QListView::item:hover {{
-    background: #eff6ff;
+    background: {t.selected};
     color: {t.text};
 }}
 QListView::item:disabled {{

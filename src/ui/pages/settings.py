@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
 from src.core.i18n import t
 from src.core.app_settings import app_settings, company_name
 from src.ui.animations import install_tab_transition
-from src.ui.styles import PILL_TAB_SS, enable_table_row_selection, prepare_table_cell_widget, polish_combo_box, table_style
+from src.ui.styles import pill_tab_ss, enable_table_row_selection, prepare_table_cell_widget, polish_combo_box, table_style
 from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import get_session, log_action, DB_PATH
 from src.database.models import AuditLog, Title, SystemUser, PromotionRule, Employee, OrgUnit
@@ -169,9 +169,121 @@ QPushButton:default {{ background: {tokens().brand}; color: {"#062f28" if tokens
 """
 
 
+def _refresh_theme_constants():
+    global PAGE_BG, TEXT, MUTED, BLACK, BLUE, CARD_SS, NOTE_BLUE_SS, NOTE_YELLOW_SS, INPUT_SS, COMBO_SS, MESSAGE_BOX_SS
+    PAGE_BG = tokens().canvas
+    TEXT = tokens().text
+    MUTED = tokens().text_muted
+    BLACK = tokens().text
+    BLUE = tokens().brand
+    CARD_SS = f"""
+QFrame#Card {{
+    background: {tokens().surface};
+    border: 1px solid {tokens().border};
+    border-radius: 8px;
+}}
+QFrame#Card QLabel {{
+    background: transparent;
+    border: none;
+}}
+"""
+    NOTE_BLUE_SS = f"""
+QFrame {{
+    background: {tokens().selected};
+    border: 1px solid {tokens().brand};
+    border-radius: 8px;
+}}
+QLabel {{
+    background: transparent;
+    border: none;
+}}
+"""
+    NOTE_YELLOW_SS = f"""
+QFrame {{
+    background: {tokens().warning_soft};
+    border: 1px solid {tokens().warning};
+    border-radius: 8px;
+}}
+QLabel {{
+    background: transparent;
+    border: none;
+}}
+"""
+    INPUT_SS = f"""
+QLineEdit, QSpinBox, QDoubleSpinBox {{
+    background: {tokens().input};
+    color: {tokens().text};
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 0 12px;
+    min-height: 44px;
+    font-size: 14px;
+}}
+QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {{
+    background: {tokens().surface};
+    border: 1px solid {tokens().brand};
+}}
+QSpinBox::up-button, QSpinBox::down-button,
+QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
+    width: 0px;
+    border: none;
+}}
+"""
+    COMBO_SS = f"""
+QComboBox {{
+    background: {tokens().input};
+    color: {tokens().text};
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 0 34px 0 12px;
+    min-height: 44px;
+    font-size: 14px;
+}}
+QComboBox:focus {{
+    background: {tokens().surface};
+    border: 1px solid {tokens().brand};
+}}
+QComboBox::drop-down {{
+    width: 30px;
+    border: none;
+}}
+QComboBox::down-arrow {{
+    image: url(src/ui/assets/chevron_down.svg);
+    width: 13px;
+    height: 13px;
+}}
+QComboBox QAbstractItemView {{
+    background: {tokens().surface};
+    color: {tokens().text};
+    border: 1px solid {tokens().border_strong};
+    border-radius: 8px;
+    padding: 4px;
+    selection-background-color: {tokens().selected};
+    selection-color: {tokens().text};
+    outline: none;
+}}
+"""
+    MESSAGE_BOX_SS = f"""
+QMessageBox {{ background: {tokens().surface}; color: {tokens().text}; }}
+QMessageBox QLabel {{ color: {tokens().text}; background: transparent; font-size: 13px; }}
+QPushButton {{
+    background: {tokens().surface};
+    color: {tokens().text};
+    border: 1px solid {tokens().border_strong};
+    border-radius: 6px;
+    min-width: 84px;
+    min-height: 30px;
+    font-weight: 600;
+}}
+QPushButton:hover {{ background: {tokens().hover}; }}
+QPushButton:default {{ background: {tokens().brand}; color: {"#062f28" if tokens().name == THEME_DARK else "#ffffff"}; border: none; }}
+"""
+
+
 class SettingsPage(QWidget):
     def __init__(self, user):
         super().__init__()
+        _refresh_theme_constants()
         self.user = user
         self.setObjectName("SettingsPage")
         self.setStyleSheet(f"QWidget#SettingsPage {{ background: {PAGE_BG}; }}")
@@ -193,7 +305,7 @@ class SettingsPage(QWidget):
         layout.addSpacing(40)
 
         self.tabs = QTabWidget()
-        self.tabs.setStyleSheet(PILL_TAB_SS)
+        self.tabs.setStyleSheet(pill_tab_ss())
         self.tabs.addTab(GeneralTab(self.user), t("general"))
         self._add_policy_tabs()
         self.tabs.addTab(UserManagementTab(self.user), t("user_management"))
@@ -808,7 +920,10 @@ class AddLevelDialog(QDialog):
         self.is_edit = title_id is not None
         self.setWindowTitle(t("edit_level") if self.is_edit else t("add_level"))
         self.setFixedWidth(620)
-        self.setStyleSheet("QDialog { background: white; color: #111827; } QLabel { background: transparent; color: #111827; }")
+        self.setStyleSheet(
+            f"QDialog {{ background: {tokens().surface}; color: {tokens().text}; }} "
+            f"QLabel {{ background: transparent; color: {tokens().text}; }}"
+        )
         self._build()
         if self.is_edit:
             self._load()
@@ -1323,7 +1438,7 @@ class SettingsPromotionTab(QWidget):
     def _rule_card(self, row):
         card = QFrame()
         card.setStyleSheet(
-            "QFrame { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; }"
+            f"QFrame {{ background: {tokens().surface_muted}; border: 1px solid {tokens().border}; border-radius: 8px; }}"
             "QLabel { background: transparent; border: none; }"
         )
         layout = QVBoxLayout(card)
@@ -1602,45 +1717,7 @@ class UserManagementTab(QWidget):
         self.table.setHorizontalHeaderLabels([
             t("username"), t("full_name"), t("role"), t("status"), t("last_login"), t("actions")
         ])
-        self.table.setStyleSheet(
-            """
-QTableWidget {
-    background: white;
-    alternate-background-color: #fcfcfd;
-    border: none;
-    gridline-color: #f3f4f6;
-    font-size: 14px;
-    color: #111827;
-    outline: none;
-}
-QTableWidget::item {
-    background: white;
-    padding: 0 12px;
-    border: none;
-    border-bottom: 1px solid #f3f4f6;
-}
-QTableWidget::item:hover { background: #f9fafb; }
-QTableWidget::item:selected { background: #eff6ff; color: #111827; }
-QHeaderView::section {
-    background: white;
-    border: none;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 0 12px;
-    font-size: 13px;
-    font-weight: 800;
-    color: #030213;
-    min-height: 50px;
-    text-align: left;
-}
-QToolTip {
-    background-color: #111827;
-    color: white;
-    border: 1px solid #374151;
-    border-radius: 4px;
-    padding: 6px 8px;
-}
-"""
-        )
+        self.table.setStyleSheet(_summary_table_ss())
         header_view = self.table.horizontalHeader()
         header_view.setStretchLastSection(False)
         header_view.setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
@@ -1876,7 +1953,10 @@ class UserAccountDialog(QDialog):
         self.account_role = "hr_officer"
         self.setWindowTitle(t("edit_user_account") if user_id else t("add_hr_account"))
         self.setFixedWidth(520)
-        self.setStyleSheet("QDialog { background: white; color: #111827; } QLabel { background: transparent; color: #111827; }")
+        self.setStyleSheet(
+            f"QDialog {{ background: {tokens().surface}; color: {tokens().text}; }} "
+            f"QLabel {{ background: transparent; color: {tokens().text}; }}"
+        )
         self._build()
         if user_id:
             self._load()
@@ -1912,7 +1992,7 @@ class UserAccountDialog(QDialog):
 
         note = QLabel(t("password_optional_edit") if self.user_id else t("password_required_new_user"))
         note.setWordWrap(True)
-        note.setStyleSheet("font-size: 12px; color: #6b7280; background: transparent;")
+        note.setStyleSheet(f"font-size: 12px; color: {tokens().text_muted}; background: transparent;")
         layout.addWidget(note)
 
         buttons = QHBoxLayout()
@@ -2067,8 +2147,8 @@ class DatabaseTab(QWidget):
         filter_box = QFrame()
         filter_box.setObjectName("ReportFilterBox")
         filter_box.setStyleSheet(
-            "QFrame#ReportFilterBox { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; }"
-            "QFrame#ReportFilterBox QLabel { background: transparent; border: none; color: #374151; "
+            f"QFrame#ReportFilterBox {{ background: {tokens().surface_muted}; border: 1px solid {tokens().border}; border-radius: 8px; }}"
+            f"QFrame#ReportFilterBox QLabel {{ background: transparent; border: none; color: {tokens().text}; "
             "font-size: 12px; font-weight: 800; }"
         )
         filter_layout = QGridLayout(filter_box)
@@ -2387,7 +2467,7 @@ class YearlyReportPreviewDialog(QDialog):
         self.setMinimumWidth(620)
         self.setFont(QFont("Segoe UI", 10))
         self.setStyleSheet(
-            "QDialog { background: white; color: #111827; font-family: 'Segoe UI', Arial; } "
+            f"QDialog {{ background: {tokens().surface}; color: {tokens().text}; font-family: 'Segoe UI', Arial; }} "
             "QLabel { background: transparent; border: none; font-family: 'Segoe UI', Arial; }"
         )
 
@@ -2399,11 +2479,11 @@ class YearlyReportPreviewDialog(QDialog):
         icon = QLabel()
         icon.setFixedSize(42, 42)
         icon.setAlignment(Qt.AlignCenter)
-        icon.setStyleSheet("background: #fee2e2; border-radius: 8px;")
-        icon.setPixmap(qta.icon("fa5s.file-pdf", color="#dc2626").pixmap(18, 18))
+        icon.setStyleSheet(f"background: {tokens().danger_soft}; border-radius: 8px;")
+        icon.setPixmap(qta.icon("fa5s.file-pdf", color=tokens().danger).pixmap(18, 18))
         text_col = QVBoxLayout()
         title = QLabel(t("report_preview_title"))
-        title.setStyleSheet("font-size: 20px; font-weight: 900; color: #030213;")
+        title.setStyleSheet(f"font-size: 20px; font-weight: 900; color: {tokens().text};")
         subtitle = QLabel(t("report_preview_subtitle"))
         subtitle.setWordWrap(True)
         subtitle.setStyleSheet(f"font-size: 13px; color: {MUTED};")
@@ -2445,13 +2525,13 @@ class YearlyReportPreviewDialog(QDialog):
         layout.addWidget(metrics)
 
         sections_title = QLabel(t("report_preview_sections"))
-        sections_title.setStyleSheet("font-size: 13px; font-weight: 900; color: #030213;")
+        sections_title.setStyleSheet(f"font-size: 13px; font-weight: 900; color: {tokens().text};")
         layout.addWidget(sections_title)
 
         sections = QLabel("  |  ".join(report_section_titles(report)))
         sections.setWordWrap(True)
         sections.setStyleSheet(
-            "font-size: 13px; color: #374151; background: #f9fafb; border: 1px solid #e5e7eb; "
+            f"font-size: 13px; color: {tokens().text}; background: {tokens().surface_muted}; border: 1px solid {tokens().border}; "
             "border-radius: 8px; padding: 10px;"
         )
         layout.addWidget(sections)
@@ -2460,7 +2540,7 @@ class YearlyReportPreviewDialog(QDialog):
             warning = QLabel(t("report_preview_empty_warning"))
             warning.setWordWrap(True)
             warning.setStyleSheet(
-                "font-size: 13px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; "
+                f"font-size: 13px; color: {tokens().warning}; background: {tokens().warning_soft}; border: 1px solid {tokens().warning}; "
                 "border-radius: 8px; padding: 10px;"
             )
             layout.addWidget(warning)
@@ -2470,21 +2550,13 @@ class YearlyReportPreviewDialog(QDialog):
         cancel = QPushButton(t("cancel"))
         cancel.setFixedHeight(38)
         cancel.setCursor(Qt.PointingHandCursor)
-        cancel.setStyleSheet(
-            "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db; "
-            "border-radius: 8px; padding: 0 18px; font-size: 13px; font-weight: 800; }"
-            "QPushButton:hover { background: #f9fafb; }"
-        )
+        cancel.setStyleSheet(_secondary_button_ss())
         cancel.clicked.connect(self.reject)
         export = QPushButton(t("confirm_export_pdf"))
         export.setFixedHeight(38)
         export.setCursor(Qt.PointingHandCursor)
-        export.setIcon(qta.icon("fa5s.file-pdf", color="white"))
-        export.setStyleSheet(
-            "QPushButton { background: #030213; color: white; border: none; border-radius: 8px; "
-            "padding: 0 18px; font-size: 13px; font-weight: 800; }"
-            "QPushButton:hover { background: #111827; }"
-        )
+        export.setIcon(qta.icon("fa5s.file-pdf", color="#062f28" if tokens().name == THEME_DARK else "#ffffff"))
+        export.setStyleSheet(_primary_button_ss())
         export.clicked.connect(self.accept)
         buttons.addWidget(cancel)
         buttons.addWidget(export)
@@ -2502,7 +2574,7 @@ def _content():
 
 def _field_label(text):
     label = QLabel(text)
-    label.setStyleSheet("font-size: 12px; font-weight: 800; color: #374151; background: transparent;")
+    label.setStyleSheet(f"font-size: 12px; font-weight: 800; color: {tokens().text}; background: transparent;")
     return label
 
 
@@ -2515,7 +2587,7 @@ def _preview_label(text):
 def _preview_value(text):
     value = QLabel(str(text or "-"))
     value.setWordWrap(True)
-    value.setStyleSheet("font-size: 13px; font-weight: 800; color: #111827;")
+    value.setStyleSheet(f"font-size: 13px; font-weight: 800; color: {tokens().text};")
     return value
 
 
@@ -2524,7 +2596,7 @@ def _metric_chip(label, value, detail):
     chip.setObjectName("MetricChip")
     chip.setMinimumHeight(92)
     chip.setStyleSheet(
-        "QFrame#MetricChip { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; }"
+        f"QFrame#MetricChip {{ background: {tokens().surface_muted}; border: 1px solid {tokens().border}; border-radius: 8px; }}"
         "QFrame#MetricChip QLabel { background: transparent; border: none; }"
     )
     layout = QVBoxLayout(chip)
@@ -2533,7 +2605,7 @@ def _metric_chip(label, value, detail):
     title = QLabel(str(label))
     title.setStyleSheet(f"font-size: 11px; font-weight: 900; color: {MUTED};")
     number = QLabel(str(value))
-    number.setStyleSheet("font-size: 18px; font-weight: 900; color: #030213;")
+    number.setStyleSheet(f"font-size: 18px; font-weight: 900; color: {tokens().text};")
     note = QLabel(str(detail or ""))
     note.setWordWrap(True)
     note.setStyleSheet(f"font-size: 11px; color: {MUTED}; line-height: 14px;")
@@ -2835,6 +2907,7 @@ def _note_card(title, lines, icon_name, color, stylesheet):
 
 
 def _promotion_guide():
+    guide_color = tokens().brand if tokens().name == THEME_DARK else "#1e40af"
     return _note_card(
         t("how_promotion_race_works"),
         [
@@ -2845,15 +2918,8 @@ def _promotion_guide():
             t("race_guide_eligible"),
         ],
         "fa5s.chart-line",
-        "#1e40af",
-        """
-        QFrame {
-            background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #eff6ff,stop:1 #f5f3ff);
-            border: 1px solid #bfdbfe;
-            border-radius: 8px;
-        }
-        QLabel { background: transparent; border: none; }
-        """,
+        guide_color,
+        NOTE_BLUE_SS,
     )
 
 
@@ -2866,7 +2932,7 @@ def _label(text):
 def _hint(text):
     label = QLabel(text)
     label.setWordWrap(True)
-    label.setStyleSheet("font-size: 13px; color: #64748b; background: transparent;")
+    label.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted}; background: transparent;")
     return label
 
 
@@ -2943,7 +3009,8 @@ def _add_form_field(grid, row, col, label_text, widget):
 
 def _button(text, icon_name, primary=False):
     button = QPushButton("  " + text)
-    button.setIcon(qta.icon(icon_name, color="white" if primary else "#111827"))
+    icon_color = "#062f28" if primary and tokens().name == THEME_DARK else ("#ffffff" if primary else tokens().text)
+    button.setIcon(qta.icon(icon_name, color=icon_color))
     button.setIconSize(QSize(15, 15))
     button.setCursor(Qt.PointingHandCursor)
     button.setFixedHeight(50)
@@ -2955,7 +3022,7 @@ def _badge_icon(icon_name, color, background):
     label = QLabel()
     label.setFixedSize(44, 44)
     label.setAlignment(Qt.AlignCenter)
-    label.setStyleSheet(f"background: {background}; border-radius: 8px;")
+    label.setStyleSheet(f"background: {background}; border: none; border-radius: 8px;")
     label.setPixmap(qta.icon(icon_name, color=color).pixmap(20, 20))
     return label
 
@@ -3194,53 +3261,53 @@ def _pill_cell(text, color, background, bold=False, align=Qt.AlignLeft, min_widt
 
 
 def _primary_button_ss():
-    return """
-QPushButton {
-    background: #030213;
-    color: white;
+    text = "#062f28" if tokens().name == THEME_DARK else "#ffffff"
+    return f"""
+QPushButton {{
+    background: {tokens().brand};
+    color: {text};
     border: none;
     border-radius: 8px;
     font-size: 14px;
     font-weight: 800;
     padding: 0 18px;
-}
-QPushButton:hover { background: #111827; }
-QPushButton:disabled { background: #d1d5db; color: #9ca3af; }
+}}
+QPushButton:hover {{ background: {tokens().brand_hover}; }}
+QPushButton:disabled {{ background: {tokens().border_strong}; color: {tokens().text_soft}; }}
 """
 
 
 def _secondary_button_ss():
-    return """
-QPushButton {
-    background: white;
-    color: #111827;
-    border: 1px solid #e5e7eb;
+    return f"""
+QPushButton {{
+    background: {tokens().surface};
+    color: {tokens().text};
+    border: 1px solid {tokens().border};
     border-radius: 8px;
     font-size: 14px;
     font-weight: 800;
     padding: 0 18px;
-}
-QPushButton:hover { background: #f3f4f6; }
+}}
+QPushButton:hover {{ background: {tokens().hover}; }}
 """
 
 
 def _danger_icon_button_ss():
-    return """
-QPushButton {
-    background: white;
-    color: #dc2626;
-    border: 1px solid #fecaca;
+    return f"""
+QPushButton {{
+    background: {tokens().surface};
+    color: {tokens().danger};
+    border: 1px solid {tokens().danger};
     border-radius: 8px;
-}
-QPushButton:hover {
-    background: #fef2f2;
-    border-color: #fca5a5;
-}
-QPushButton:disabled {
-    background: #f9fafb;
-    color: #9ca3af;
-    border: 1px solid #e5e7eb;
-}
+}}
+QPushButton:hover {{
+    background: {tokens().danger_soft};
+}}
+QPushButton:disabled {{
+    background: {tokens().surface_muted};
+    color: {tokens().text_soft};
+    border: 1px solid {tokens().border};
+}}
 """
 
 

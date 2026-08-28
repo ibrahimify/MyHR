@@ -26,7 +26,18 @@ from sqlalchemy import String, cast, func, or_
 
 from src.core.app_settings import company_name, company_subtitle
 from src.core.i18n import is_rtl, t
-from src.ui.styles import enable_table_row_selection, prepare_table_cell_widget, polish_combo_box, table_style
+from src.ui.styles import (
+    btn_outline,
+    card_ss,
+    combo_style,
+    enable_table_row_selection,
+    input_style,
+    message_box_ss,
+    pager_button_ss,
+    prepare_table_cell_widget,
+    polish_combo_box,
+    table_style,
+)
 from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import get_session, log_action
 from src.database.models import (
@@ -100,62 +111,23 @@ CATEGORY_LABEL_KEYS = {
     "other": "other",
 }
 
-CARD_SS = f"""
-QFrame#Card {{
-    background: {tokens().surface};
-    border: 1px solid {tokens().border};
-    border-radius: 8px;
-}}
-QFrame#Card QLabel {{
-    background: transparent;
-    border: none;
-}}
-"""
+def CARD_SS():
+    return card_ss("QFrame#Card")
 
-INPUT_SS = f"""
-QLineEdit {{
-    border: none;
-    border-radius: 8px;
-    padding: 0 16px;
-    font-size: 14px;
-    color: {tokens().text};
-    background: {tokens().input};
-    selection-background-color: {tokens().selected};
-    outline: none;
-}}
-QLineEdit:focus {{
-    background: {tokens().surface};
-    border: 1px solid {tokens().brand};
-}}
-"""
 
-COMBO_SS = f"""
-QComboBox {{
-    border: none;
-    border-radius: 8px;
-    padding: 0 36px 0 16px;
-    font-size: 14px;
-    color: {tokens().text};
-    background: {tokens().input};
-    min-height: 40px;
-    outline: none;
-}}
-QComboBox:focus {{ border: 1px solid {tokens().brand}; background: {tokens().surface}; }}
-QComboBox::drop-down {{ width: 32px; border: none; background: transparent; }}
-QComboBox::down-arrow {{ image: url(src/ui/assets/chevron_down.svg); width: 12px; height: 12px; }}
-QComboBox QAbstractItemView {{
-    background: {tokens().surface};
-    color: {tokens().text};
-    border: 1px solid {tokens().border};
-    border-radius: 8px;
-    selection-background-color: {tokens().selected};
-    selection-color: {tokens().text};
-    outline: none;
-    padding: 4px;
-}}
-"""
+def INPUT_SS():
+    return input_style(40)
 
-TABLE_SS = table_style()
+
+def COMBO_SS():
+    return combo_style(40)
+
+def TABLE_SS():
+    return table_style()
+
+
+def MESSAGE_BOX_SS():
+    return message_box_ss()
 
 
 class AuditLogPage(QWidget):
@@ -209,7 +181,7 @@ class AuditLogPage(QWidget):
 
         filter_card = QFrame()
         filter_card.setObjectName("Card")
-        filter_card.setStyleSheet(CARD_SS)
+        filter_card.setStyleSheet(CARD_SS())
         fl = QGridLayout(filter_card)
         fl.setContentsMargins(20, 20, 20, 20)
         fl.setHorizontalSpacing(14)
@@ -219,7 +191,7 @@ class AuditLogPage(QWidget):
         self.search.setPlaceholderText(t("search_logs"))
         self.search.setFixedHeight(44)
         self.search.setMinimumWidth(360)
-        self.search.setStyleSheet(INPUT_SS)
+        self.search.setStyleSheet(INPUT_SS())
         self.search.addAction(qta.icon("fa5s.search", color=tokens().text_soft), QLineEdit.LeadingPosition)
         self.search.textChanged.connect(self._filter)
         fl.addWidget(self.search, 0, 0, 1, 4)
@@ -227,43 +199,28 @@ class AuditLogPage(QWidget):
         self.search_btn = QPushButton(t("search"))
         self.search_btn.setFixedHeight(44)
         self.search_btn.setCursor(Qt.PointingHandCursor)
-        primary_text = "#062f28" if tokens().name == THEME_DARK else "#ffffff"
-        self.search_btn.setIcon(qta.icon("fa5s.search", color=primary_text))
-        self.search_btn.setStyleSheet(
-            f"QPushButton {{ background: {tokens().brand}; color: {primary_text}; border: 1px solid {tokens().brand}; "
-            "border-radius: 8px; padding: 0 18px; font-size: 13px; font-weight: 800; }"
-            f"QPushButton:hover {{ background: {tokens().brand_hover}; }}"
-        )
         self.search_btn.clicked.connect(self._filter)
-        fl.addWidget(self.search_btn, 0, 4)
+        self.search_btn.hide()
 
         self.export_csv_btn = QPushButton(t("export_csv"))
         self.export_csv_btn.setFixedHeight(44)
         self.export_csv_btn.setCursor(Qt.PointingHandCursor)
-        self.export_csv_btn.setIcon(qta.icon("fa5s.download", color="#111827"))
-        self.export_csv_btn.setStyleSheet(
-            "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db; "
-            "border-radius: 8px; padding: 0 14px; font-size: 13px; font-weight: 800; }"
-            "QPushButton:hover { background: #f9fafb; }"
-        )
+        self.export_csv_btn.setIcon(qta.icon("fa5s.download", color=tokens().text))
+        self.export_csv_btn.setStyleSheet(btn_outline(44))
         self.export_csv_btn.clicked.connect(self._export_current_view)
-        fl.addWidget(self.export_csv_btn, 0, 5)
+        fl.addWidget(self.export_csv_btn, 0, 4)
 
         self.export_pdf_btn = QPushButton(t("export_pdf"))
         self.export_pdf_btn.setFixedHeight(44)
         self.export_pdf_btn.setCursor(Qt.PointingHandCursor)
-        self.export_pdf_btn.setIcon(qta.icon("fa5s.file-pdf", color="#111827"))
-        self.export_pdf_btn.setStyleSheet(
-            "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db; "
-            "border-radius: 8px; padding: 0 14px; font-size: 13px; font-weight: 800; }"
-            "QPushButton:hover { background: #f9fafb; }"
-        )
+        self.export_pdf_btn.setIcon(qta.icon("fa5s.file-pdf", color=tokens().text))
+        self.export_pdf_btn.setStyleSheet(btn_outline(44))
         self.export_pdf_btn.clicked.connect(self._export_pdf)
-        fl.addWidget(self.export_pdf_btn, 0, 6)
+        fl.addWidget(self.export_pdf_btn, 0, 5)
 
         self.category_filter = QComboBox()
         self.category_filter.setFixedHeight(44)
-        self.category_filter.setStyleSheet(COMBO_SS)
+        self.category_filter.setStyleSheet(COMBO_SS())
         _polish_combo(self.category_filter)
         self.category_filter.addItem(t("all_categories"), None)
         for key, meta in CATEGORY_META.items():
@@ -275,7 +232,7 @@ class AuditLogPage(QWidget):
 
         self.target_filter = QComboBox()
         self.target_filter.setFixedHeight(44)
-        self.target_filter.setStyleSheet(COMBO_SS)
+        self.target_filter.setStyleSheet(COMBO_SS())
         _polish_combo(self.target_filter)
         self.target_filter.addItem(t("all_targets"), None)
         self.target_filter.currentIndexChanged.connect(self._filter)
@@ -283,7 +240,7 @@ class AuditLogPage(QWidget):
 
         self.date_filter = QComboBox()
         self.date_filter.setFixedHeight(44)
-        self.date_filter.setStyleSheet(COMBO_SS)
+        self.date_filter.setStyleSheet(COMBO_SS())
         _polish_combo(self.date_filter)
         self.date_filter.addItem(t("all_dates"), "all")
         self.date_filter.addItem(t("today"), "today")
@@ -295,13 +252,13 @@ class AuditLogPage(QWidget):
 
         self.user_filter = QComboBox()
         self.user_filter.setFixedHeight(44)
-        self.user_filter.setStyleSheet(COMBO_SS)
+        self.user_filter.setStyleSheet(COMBO_SS())
         _polish_combo(self.user_filter)
         self.user_filter.addItem(t("all_users"), None)
         self.user_filter.currentIndexChanged.connect(self._filter)
-        fl.addWidget(self.user_filter, 1, 3, 1, 4)
+        fl.addWidget(self.user_filter, 1, 3, 1, 3)
 
-        for col in range(7):
+        for col in range(6):
             fl.setColumnStretch(col, 1)
         fl.setColumnStretch(0, 2)
         fl.setColumnStretch(1, 2)
@@ -312,13 +269,13 @@ class AuditLogPage(QWidget):
         layout.addSpacing(26)
 
         self.count_lbl = QLabel("")
-        self.count_lbl.setStyleSheet("font-size: 14px; color: #4b5563; background: transparent;")
+        self.count_lbl.setStyleSheet(f"font-size: 14px; color: {tokens().text_muted}; background: transparent;")
         layout.addWidget(self.count_lbl)
         layout.addSpacing(18)
 
         table_card = QFrame()
         table_card.setObjectName("Card")
-        table_card.setStyleSheet(CARD_SS)
+        table_card.setStyleSheet(CARD_SS())
         tl = QVBoxLayout(table_card)
         tl.setContentsMargins(0, 0, 0, 0)
         tl.setSpacing(0)
@@ -328,7 +285,7 @@ class AuditLogPage(QWidget):
         self.table.setHorizontalHeaderLabels([
             t("timestamp"), t("user"), t("action"), t("target"), t("details"), t("category")
         ])
-        self.table.setStyleSheet(TABLE_SS)
+        self.table.setStyleSheet(TABLE_SS())
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
         self.table.setColumnWidth(0, 190)
@@ -349,7 +306,7 @@ class AuditLogPage(QWidget):
 
         info_card = QFrame()
         info_card.setStyleSheet(
-            "QFrame { background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; } "
+            f"QFrame {{ background: {tokens().selected}; border-radius: 8px; border: 1px solid {tokens().brand}; }} "
             "QLabel { background: transparent; border: none; }"
         )
         il = QVBoxLayout(info_card)
@@ -358,9 +315,9 @@ class AuditLogPage(QWidget):
 
         info_head = QHBoxLayout()
         info_icon = QLabel()
-        info_icon.setPixmap(qta.icon("fa5s.clipboard-list", color="#2563eb").pixmap(18, 18))
+        info_icon.setPixmap(qta.icon("fa5s.clipboard-list", color=tokens().brand).pixmap(18, 18))
         info_title = QLabel(t("audit_log_information"))
-        info_title.setStyleSheet("font-size: 17px; font-weight: 800; color: #1e40af; background: transparent;")
+        info_title.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {tokens().brand}; background: transparent;")
         info_head.addWidget(info_icon)
         info_head.addWidget(info_title)
         info_head.addStretch()
@@ -375,7 +332,7 @@ class AuditLogPage(QWidget):
         ]:
             item = QLabel("&bull; " + text)
             item.setTextFormat(Qt.RichText)
-            item.setStyleSheet("font-size: 14px; color: #1d4ed8; background: transparent;")
+            item.setStyleSheet(f"font-size: 14px; color: {tokens().text_muted}; background: transparent;")
             il.addWidget(item)
         layout.addWidget(info_card)
 
@@ -386,7 +343,7 @@ class AuditLogPage(QWidget):
         card = QFrame()
         card.setObjectName("Card")
         card.setFixedHeight(96)
-        card.setStyleSheet(CARD_SS)
+        card.setStyleSheet(CARD_SS())
         cl = QHBoxLayout(card)
         cl.setContentsMargins(30, 0, 30, 0)
         cl.setSpacing(14)
@@ -401,9 +358,9 @@ class AuditLogPage(QWidget):
         col.setSpacing(0)
         col.setAlignment(Qt.AlignVCenter)
         title = QLabel(label)
-        title.setStyleSheet("font-size: 14px; color: #374151; background: transparent;")
+        title.setStyleSheet(f"font-size: 14px; color: {tokens().text_muted}; background: transparent;")
         value = QLabel("0")
-        value.setStyleSheet("font-size: 24px; font-weight: 800; color: #030213; background: transparent;")
+        value.setStyleSheet(f"font-size: 24px; font-weight: 800; color: {tokens().text}; background: transparent;")
         col.addWidget(title)
         col.addWidget(value)
 
@@ -516,7 +473,7 @@ class AuditLogPage(QWidget):
         self.stat_values["week"].setText(str(week_count))
         self.stat_values["active_user"].setText(most_active)
         self.stat_values["active_user"].setStyleSheet(
-            "font-size: 18px; font-weight: 800; color: #030213; background: transparent;"
+            f"font-size: 18px; font-weight: 800; color: {tokens().text}; background: transparent;"
         )
 
     def _filter(self):
@@ -615,13 +572,13 @@ class AuditLogPage(QWidget):
                 self.table.setRowHeight(row_index, row_height)
 
                 timestamp = QTableWidgetItem(log["timestamp"])
-                timestamp.setForeground(QColor("#374151"))
+                timestamp.setForeground(QColor(tokens().text_muted))
                 timestamp.setToolTip(log["timestamp"])
                 timestamp.setData(Qt.UserRole, log["id"])
                 self.table.setItem(row_index, 0, timestamp)
 
                 user_item = QTableWidgetItem(log["user"])
-                user_item.setIcon(qta.icon("fa5s.user", color="#2563eb"))
+                user_item.setIcon(qta.icon("fa5s.user", color=tokens().brand))
                 user_font = user_item.font()
                 user_font.setBold(True)
                 user_item.setFont(user_font)
@@ -636,13 +593,13 @@ class AuditLogPage(QWidget):
                 self.table.setItem(row_index, 2, action_item)
 
                 target_item = QTableWidgetItem(log["target"])
-                target_item.setForeground(QColor("#374151"))
+                target_item.setForeground(QColor(tokens().text_muted))
                 target_item.setToolTip(log["target"])
                 self.table.setItem(row_index, 3, target_item)
 
                 details = log["details"]
                 details_item = QTableWidgetItem(details[:90] + "..." if len(details) > 90 else details)
-                details_item.setForeground(QColor("#374151"))
+                details_item.setForeground(QColor(tokens().text_muted))
                 details_item.setToolTip(details)
                 self.table.setItem(row_index, 4, details_item)
 
@@ -789,20 +746,15 @@ class AuditLogPage(QWidget):
 
     def _pager(self):
         pager = QFrame()
-        pager.setStyleSheet("background: white; border: none; border-top: 1px solid #f3f4f6;")
+        pager.setStyleSheet(f"background: {tokens().surface}; border: none; border-top: 1px solid {tokens().border};")
         layout = QHBoxLayout(pager)
         layout.setContentsMargins(16, 10, 16, 10)
         layout.setSpacing(10)
 
         self.page_lbl = QLabel("")
-        self.page_lbl.setStyleSheet("font-size: 13px; color: #4b5563; background: transparent;")
+        self.page_lbl.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted}; background: transparent;")
 
-        btn_ss = (
-            "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db;"
-            " border-radius: 6px; font-size: 13px; font-weight: 700; padding: 0 14px; }"
-            " QPushButton:hover { background: #f9fafb; }"
-            " QPushButton:disabled { color: #9ca3af; background: #f9fafb; }"
-        )
+        btn_ss = pager_button_ss()
         self.prev_btn = QPushButton(t("previous_page"))
         self.prev_btn.setFixedHeight(34)
         self.prev_btn.setCursor(Qt.PointingHandCursor)
@@ -1041,7 +993,10 @@ class AuditDetailDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(t("audit_detail_title"))
         self.setMinimumSize(760, 620)
-        self.setStyleSheet("QDialog { background: white; color: #111827; } QLabel { background: transparent; }")
+        self.setStyleSheet(
+            f"QDialog {{ background: {tokens().surface}; color: {tokens().text}; }} "
+            "QLabel { background: transparent; }"
+        )
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(26, 24, 26, 24)
@@ -1051,13 +1006,13 @@ class AuditDetailDialog(QDialog):
         icon = QLabel()
         icon.setFixedSize(42, 42)
         icon.setAlignment(Qt.AlignCenter)
-        icon.setStyleSheet("background: #eff6ff; border-radius: 8px;")
-        icon.setPixmap(qta.icon("fa5s.clipboard-list", color="#2563eb").pixmap(18, 18))
+        icon.setStyleSheet(f"background: {tokens().selected}; border-radius: 8px;")
+        icon.setPixmap(qta.icon("fa5s.clipboard-list", color=tokens().brand).pixmap(18, 18))
         titles = QVBoxLayout()
         title = QLabel(t("audit_detail_title"))
-        title.setStyleSheet("font-size: 20px; font-weight: 900; color: #030213;")
+        title.setStyleSheet(f"font-size: 20px; font-weight: 900; color: {tokens().text};")
         subtitle = QLabel(t("audit_detail_subtitle"))
-        subtitle.setStyleSheet("font-size: 13px; color: #4b5563;")
+        subtitle.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted};")
         titles.addWidget(title)
         titles.addWidget(subtitle)
         header.addWidget(icon)
@@ -1067,7 +1022,7 @@ class AuditDetailDialog(QDialog):
 
         meta = QFrame()
         meta.setObjectName("Card")
-        meta.setStyleSheet(CARD_SS)
+        meta.setStyleSheet(CARD_SS())
         grid = QVBoxLayout(meta)
         grid.setContentsMargins(18, 16, 18, 16)
         grid.setSpacing(8)
@@ -1095,11 +1050,7 @@ class AuditDetailDialog(QDialog):
         close = QPushButton(t("close"))
         close.setFixedHeight(38)
         close.setCursor(Qt.PointingHandCursor)
-        close.setStyleSheet(
-            "QPushButton { background: #030213; color: white; border: none; border-radius: 8px; "
-            "font-size: 13px; font-weight: 800; padding: 0 18px; }"
-            "QPushButton:hover { background: #111827; }"
-        )
+        close.setStyleSheet(btn_outline(38))
         close.clicked.connect(self.accept)
         footer.addWidget(close)
         layout.addLayout(footer)
@@ -1110,10 +1061,10 @@ def _detail_line(label, value):
     row.setSpacing(10)
     left = QLabel(label)
     left.setFixedWidth(130)
-    left.setStyleSheet("font-size: 12px; font-weight: 900; color: #4b5563;")
+    left.setStyleSheet(f"font-size: 12px; font-weight: 900; color: {tokens().text_muted};")
     right = QLabel(str(value or "-"))
     right.setWordWrap(True)
-    right.setStyleSheet("font-size: 13px; color: #111827;")
+    right.setStyleSheet(f"font-size: 13px; color: {tokens().text};")
     row.addWidget(left)
     row.addWidget(right, 1)
     return row
@@ -1122,17 +1073,17 @@ def _detail_line(label, value):
 def _snapshot_box(title, value):
     box = QFrame()
     box.setObjectName("Card")
-    box.setStyleSheet(CARD_SS)
+    box.setStyleSheet(CARD_SS())
     layout = QVBoxLayout(box)
     layout.setContentsMargins(16, 14, 16, 16)
     layout.setSpacing(10)
     label = QLabel(title)
-    label.setStyleSheet("font-size: 13px; font-weight: 900; color: #030213;")
+    label.setStyleSheet(f"font-size: 13px; font-weight: 900; color: {tokens().text};")
     text = QTextEdit()
     text.setReadOnly(True)
     text.setPlainText(_format_snapshot(value))
     text.setStyleSheet(
-        "QTextEdit { background: #f9fafb; color: #111827; border: 1px solid #e5e7eb; "
+        f"QTextEdit {{ background: {tokens().surface_muted}; color: {tokens().text}; border: 1px solid {tokens().border}; "
         "border-radius: 8px; padding: 10px; font-size: 12px; }"
     )
     layout.addWidget(label)
@@ -1143,12 +1094,12 @@ def _snapshot_box(title, value):
 def _diff_box(title, before, after):
     box = QFrame()
     box.setObjectName("Card")
-    box.setStyleSheet(CARD_SS)
+    box.setStyleSheet(CARD_SS())
     layout = QVBoxLayout(box)
     layout.setContentsMargins(16, 14, 16, 16)
     layout.setSpacing(10)
     label = QLabel(title)
-    label.setStyleSheet("font-size: 13px; font-weight: 900; color: #030213;")
+    label.setStyleSheet(f"font-size: 13px; font-weight: 900; color: {tokens().text};")
     layout.addWidget(label)
 
     rows = _diff_rows(before, after)
@@ -1156,8 +1107,8 @@ def _diff_box(title, before, after):
         empty = QLabel(t("no_changes_detected"))
         empty.setWordWrap(True)
         empty.setStyleSheet(
-            "font-size: 12px; color: #374151; background: #f9fafb; border: 1px solid #e5e7eb; "
-            "border-radius: 8px; padding: 10px;"
+            f"font-size: 12px; color: {tokens().text_muted}; background: {tokens().surface_muted}; "
+            f"border: 1px solid {tokens().border}; border-radius: 8px; padding: 10px;"
         )
         layout.addWidget(empty)
         return box
@@ -1166,7 +1117,7 @@ def _diff_box(title, before, after):
     header.setHorizontalSpacing(10)
     for col, text in enumerate([t("audit_field"), t("audit_old_value"), t("audit_new_value")]):
         head = QLabel(text)
-        head.setStyleSheet("font-size: 11px; font-weight: 900; color: #64748b;")
+        head.setStyleSheet(f"font-size: 11px; font-weight: 900; color: {tokens().text_soft};")
         header.addWidget(head, 0, col)
     layout.addLayout(header)
 
@@ -1178,16 +1129,16 @@ def _diff_box(title, before, after):
 def _diff_row_widget(field, old, new):
     row = QFrame()
     row.setStyleSheet(
-        "QFrame { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; }"
+        f"QFrame {{ background: {tokens().surface_muted}; border: 1px solid {tokens().border}; border-radius: 8px; }}"
         "QLabel { background: transparent; border: none; }"
     )
     grid = QGridLayout(row)
     grid.setContentsMargins(12, 8, 12, 8)
     grid.setHorizontalSpacing(10)
     for col, (text, color, weight) in enumerate([
-        (field, "#111827", "800"),
-        (old, "#991b1b", "700"),
-        (new, "#047857", "700"),
+        (field, tokens().text, "800"),
+        (old, tokens().danger, "700"),
+        (new, tokens().success, "700"),
     ]):
         label = QLabel(str(text or "-"))
         label.setWordWrap(True)
@@ -1580,6 +1531,21 @@ def _category_label(category):
 
 def _category_badge(category):
     meta = CATEGORY_META.get(category, CATEGORY_META["other"])
+    bg = meta["bg"]
+    fg = meta["fg"]
+    if tokens().name == THEME_DARK:
+        dark_map = {
+            "employee": (tokens().selected, tokens().brand),
+            "promotion": (tokens().success_soft, tokens().success),
+            "commendation": (tokens().warning_soft, tokens().warning),
+            "sanction": (tokens().danger_soft, tokens().danger),
+            "import": (tokens().surface_muted, tokens().brand),
+            "settings": (tokens().surface_muted, tokens().text_muted),
+            "hierarchy": (tokens().surface_muted, tokens().brand),
+            "salary": (tokens().surface_muted, tokens().brand),
+            "other": (tokens().surface_muted, tokens().text_muted),
+        }
+        bg, fg = dark_map.get(category, dark_map["other"])
     cell = prepare_table_cell_widget(QWidget())
     layout = QHBoxLayout(cell)
     layout.setContentsMargins(12, 8, 12, 8)
@@ -1588,7 +1554,7 @@ def _category_badge(category):
     label = _category_label(category)
     badge = QLabel(label)
     badge.setStyleSheet(
-        f"background: {meta['bg']}; color: {meta['fg']}; border: none; "
+        f"background: {bg}; color: {fg}; border: none; "
         "border-radius: 7px; padding: 4px 10px; font-size: 12px; font-weight: 800;"
     )
     badge.setToolTip(label)

@@ -11,7 +11,17 @@ from PySide6.QtWidgets import (
 )
 
 from src.core.i18n import t
-from src.ui.styles import TABLE_SS, enable_table_row_selection, polish_combo_box
+from src.ui.styles import (
+    btn_outline,
+    btn_primary,
+    card_ss,
+    input_style,
+    message_box_ss,
+    table_style,
+    enable_table_row_selection,
+    polish_combo_box,
+)
+from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import get_session, log_action
 from src.database.models import OrgUnit, Employee
 
@@ -44,72 +54,34 @@ TYPE_COLORS = {
     "employee": ("#f8fafc", "#475569", "#e2e8f0", "fa5s.user-tie"),
 }
 
-INPUT_SS = """
-QLineEdit {
-    border: none;
-    border-radius: 8px;
-    padding: 0 14px;
-    font-size: 14px;
-    background: #f3f4f6;
-    color: #111827;
-}
-QLineEdit:focus {
-    border: 1px solid #2563eb;
-    background: white;
-}
-"""
 
-COMBO_SS = """
-QComboBox {
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 0 32px 0 12px;
-    font-size: 14px;
-    background: #f3f4f6;
-    color: #111827;
-    min-height: 40px;
-}
-QComboBox:focus {
-    border-color: #2563eb;
-    background: white;
-}
-QComboBox::drop-down {
-    width: 28px;
-    border: none;
-    background: transparent;
-}
-QComboBox QAbstractItemView {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    color: #111827;
-    selection-background-color: #eff6ff;
-    selection-color: #111827;
-    outline: none;
-    padding: 6px;
-    font-size: 14px;
-}
-"""
+def _type_colors(unit_type):
+    if tokens().name != THEME_DARK:
+        return TYPE_COLORS.get(unit_type, TYPE_COLORS["employee"])
+    return {
+        "organization": ("#21142f", "#d8b4fe", "#6b21a8", "fa5s.building"),
+        "division": ("#261707", "#fed7aa", "#9a3412", "fa5s.layer-group"),
+        "department": ("#0b1b32", "#bfdbfe", "#1e40af", "fa5s.sitemap"),
+        "unit": ("#102416", "#bbf7d0", "#166534", "fa5s.briefcase"),
+        "team": ("#171717", "#d1d5db", "#303030", "fa5s.users"),
+        "position": ("#171717", "#cbd5e1", "#303030", "fa5s.user-tie"),
+        "employee": ("#171717", "#cbd5e1", "#303030", "fa5s.user-tie"),
+    }.get(unit_type, ("#171717", "#cbd5e1", "#303030", "fa5s.circle"))
 
-MESSAGE_BOX_SS = """
-QMessageBox { background: white; color: #111827; }
-QMessageBox QLabel { color: #111827; background: transparent; font-size: 13px; }
-QPushButton {
-    background: white;
-    color: #111827;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    min-width: 84px;
-    min-height: 30px;
-    font-weight: 600;
-}
-QPushButton:hover { background: #f3f4f6; }
-QPushButton:default {
-    background: #030213;
-    color: white;
-    border: none;
-}
-"""
+def INPUT_SS():
+    return input_style(40)
+
+
+def COMBO_SS():
+    return input_style(40)
+
+
+def MESSAGE_BOX_SS():
+    return message_box_ss()
+
+
+def TABLE_SS():
+    return table_style()
 
 
 NODE_W = 350
@@ -127,17 +99,17 @@ class HierarchyCanvasView(QGraphicsView):
         self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.setStyleSheet("""
-            QGraphicsView {
-                background: #f3f4f6;
-                border: 1px solid #e5e7eb;
+        self.setStyleSheet(f"""
+            QGraphicsView {{
+                background: {tokens().surface_muted};
+                border: 1px solid {tokens().border};
                 border-radius: 8px;
-            }
+            }}
         """)
 
     def drawBackground(self, painter, rect):
-        painter.fillRect(rect, QColor("#f3f4f6"))
-        painter.setPen(QPen(QColor("#cbd5e1"), 1))
+        painter.fillRect(rect, QColor(tokens().surface_muted))
+        painter.setPen(QPen(QColor(tokens().border_strong), 1))
         spacing = 22
         left = int(rect.left()) - (int(rect.left()) % spacing)
         top = int(rect.top()) - (int(rect.top()) % spacing)
@@ -170,11 +142,8 @@ class HierarchyNodeItem(QGraphicsItem):
         return QRectF(0, 0, NODE_W, NODE_H)
 
     def paint(self, painter, option, widget=None):
-        bg, fg, border, _ = TYPE_COLORS.get(
-            self.data.get("type", "team"),
-            ("#f9fafb", "#374151", "#e5e7eb", "fa5s.circle"),
-        )
-        painter.setPen(QPen(QColor("#2563eb" if self.selected else border), 2 if self.selected else 1))
+        bg, fg, border, _ = _type_colors(self.data.get("type", "team"))
+        painter.setPen(QPen(QColor(tokens().brand if self.selected else border), 2 if self.selected else 1))
         painter.setBrush(QBrush(QColor(bg)))
         painter.drawRoundedRect(self.boundingRect().adjusted(1, 1, -1, -1), 8, 8)
 
@@ -184,14 +153,14 @@ class HierarchyNodeItem(QGraphicsItem):
         icon = qta.icon(self._icon_name(), color=fg)
         painter.drawPixmap(QRectF(21, 25, 20, 20).toRect(), icon.pixmap(20, 20))
 
-        painter.setPen(QColor("#111827"))
+        painter.setPen(QColor(fg if tokens().name == THEME_DARK else tokens().text))
         title_font = QFont()
         title_font.setPointSize(10)
         title_font.setBold(True)
         painter.setFont(title_font)
         painter.drawText(QRectF(58, 15, 245, 24), Qt.AlignLeft | Qt.AlignVCenter, self._elide(painter, self.data.get("name", "-"), 245))
 
-        painter.setPen(QColor("#4b5563"))
+        painter.setPen(QColor(tokens().text_muted if tokens().name == THEME_DARK else "#4b5563"))
         meta_font = QFont()
         meta_font.setPointSize(8)
         painter.setFont(meta_font)
@@ -207,11 +176,11 @@ class HierarchyNodeItem(QGraphicsItem):
             painter.drawText(QRectF(58, 66, 132, 18), Qt.AlignCenter, count_text)
 
         if self.data.get("has_children"):
-            painter.setPen(QPen(QColor("#cbd5e1"), 1))
-            painter.setBrush(QBrush(QColor("#ffffff")))
+            painter.setPen(QPen(QColor(tokens().border_strong), 1))
+            painter.setBrush(QBrush(QColor(tokens().surface)))
             self.toggle_rect = QRectF(NODE_W - 38, 37, 24, 24)
             painter.drawRoundedRect(self.toggle_rect, 12, 12)
-            painter.setPen(QPen(QColor("#374151"), 1.6, Qt.SolidLine, Qt.RoundCap))
+            painter.setPen(QPen(QColor(tokens().text_muted), 1.6, Qt.SolidLine, Qt.RoundCap))
             center = self.toggle_rect.center()
             painter.drawLine(QPointF(center.x() - 5, center.y()), QPointF(center.x() + 5, center.y()))
             if not self.expanded:
@@ -259,7 +228,7 @@ class HierarchyPage(QWidget):
         self.edge_items = []
         self._did_initial_expand = False
         self.setObjectName("HierarchyPage")
-        self.setStyleSheet("QWidget#HierarchyPage { background: #f9fafb; }")
+        self.setStyleSheet(f"QWidget#HierarchyPage {{ background: {tokens().canvas}; }}")
         self._build()
         self.refresh()
 
@@ -272,9 +241,9 @@ class HierarchyPage(QWidget):
         title_col = QVBoxLayout()
         title_col.setSpacing(6)
         title = QLabel(t("hierarchy_title"))
-        title.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827; background: transparent;")
+        title.setStyleSheet(f"font-size: 30px; font-weight: 800; color: {tokens().text}; background: transparent;")
         subtitle = QLabel(t("hierarchy_subtitle"))
-        subtitle.setStyleSheet("font-size: 16px; color: #4b5563; background: transparent;")
+        subtitle.setStyleSheet(f"font-size: 16px; color: {tokens().text_muted}; background: transparent;")
         title_col.addWidget(title)
         title_col.addWidget(subtitle)
         header.addLayout(title_col, 1)
@@ -291,7 +260,7 @@ class HierarchyPage(QWidget):
 
         toolbar = QFrame()
         toolbar.setObjectName("HierarchyToolbar")
-        toolbar.setStyleSheet("QFrame#HierarchyToolbar { background: white; border: 1px solid #e5e7eb; border-radius: 8px; }")
+        toolbar.setStyleSheet(f"QFrame#HierarchyToolbar {{ background: {tokens().surface}; border: 1px solid {tokens().border}; border-radius: 8px; }}")
         tools = QHBoxLayout(toolbar)
         tools.setContentsMargins(16, 14, 16, 14)
         tools.setSpacing(10)
@@ -299,14 +268,14 @@ class HierarchyPage(QWidget):
         self.search = QLineEdit()
         self.search.setPlaceholderText(t("search_hierarchy"))
         self.search.setFixedHeight(40)
-        self.search.setStyleSheet(INPUT_SS)
-        self.search.addAction(qta.icon("fa5s.search", color="#9ca3af"), QLineEdit.LeadingPosition)
+        self.search.setStyleSheet(INPUT_SS())
+        self.search.addAction(qta.icon("fa5s.search", color=tokens().text_soft), QLineEdit.LeadingPosition)
         self.search.returnPressed.connect(self._run_search)
         self.search.textChanged.connect(self._on_search_text_changed)
         tools.addWidget(self.search, 1)
 
         search_btn = QPushButton(t("search"))
-        search_btn.setIcon(qta.icon("fa5s.search", color="#111827"))
+        search_btn.setIcon(qta.icon("fa5s.search", color=tokens().text))
         search_btn.setIconSize(QSize(13, 13))
         search_btn.setFixedHeight(40)
         search_btn.setCursor(Qt.PointingHandCursor)
@@ -325,7 +294,7 @@ class HierarchyPage(QWidget):
             structure_row.addWidget(_hierarchy_step(unit_type))
             if index < len(TYPE_ORDER_HINT) - 1:
                 arrow = QLabel()
-                arrow.setPixmap(qta.icon("fa5s.chevron-right", color="#9ca3af").pixmap(9, 9))
+                arrow.setPixmap(qta.icon("fa5s.chevron-right", color=tokens().text_soft).pixmap(9, 9))
                 arrow.setStyleSheet("background: transparent; border: none;")
                 structure_row.addWidget(arrow)
         structure_row.addStretch()
@@ -345,14 +314,14 @@ class HierarchyPage(QWidget):
         canvas_grid.addWidget(self.view, 0, 0)
         canvas_controls = QFrame()
         canvas_controls.setObjectName("CanvasControls")
-        canvas_controls.setStyleSheet("""
-            QFrame#CanvasControls {
-                background: rgba(255,255,255,235);
-                border: 1px solid #e5e7eb;
+        canvas_controls.setStyleSheet(f"""
+            QFrame#CanvasControls {{
+                background: {tokens().surface};
+                border: 1px solid {tokens().border};
                 border-radius: 8px;
                 margin-top: 10px;
                 margin-right: 10px;
-            }
+            }}
         """)
         controls_row = QHBoxLayout(canvas_controls)
         controls_row.setContentsMargins(8, 8, 8, 8)
@@ -365,7 +334,7 @@ class HierarchyPage(QWidget):
         ]:
             btn = QPushButton(label)
             if icon:
-                btn.setIcon(qta.icon(icon, color="#111827"))
+                btn.setIcon(qta.icon(icon, color=tokens().text))
                 btn.setIconSize(QSize(12, 12))
             btn.setFixedHeight(32)
             btn.setCursor(Qt.PointingHandCursor)
@@ -383,9 +352,9 @@ class HierarchyPage(QWidget):
         card = QFrame()
         card.setFixedWidth(320)
         card.setObjectName("HierarchyInspector")
-        card.setStyleSheet("""
-            QFrame#HierarchyInspector { background: white; border: 1px solid #e5e7eb; border-radius: 8px; }
-            QFrame#HierarchyInspector QLabel { background: transparent; border: none; }
+        card.setStyleSheet(f"""
+            QFrame#HierarchyInspector {{ background: {tokens().surface}; border: 1px solid {tokens().border}; border-radius: 8px; }}
+            QFrame#HierarchyInspector QLabel {{ background: transparent; border: none; }}
         """)
         layout = QVBoxLayout(card)
         layout.setContentsMargins(22, 22, 22, 22)
@@ -393,10 +362,10 @@ class HierarchyPage(QWidget):
 
         self.inspector_title = QLabel("Selected Node")
         self.inspector_title.setWordWrap(True)
-        self.inspector_title.setStyleSheet("font-size: 18px; font-weight: 800; color: #111827;")
+        self.inspector_title.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {tokens().text};")
         self.inspector_subtitle = QLabel("Select a unit or employee on the canvas.")
         self.inspector_subtitle.setWordWrap(True)
-        self.inspector_subtitle.setStyleSheet("font-size: 13px; color: #6b7280;")
+        self.inspector_subtitle.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted};")
         layout.addWidget(self.inspector_title)
         layout.addWidget(self.inspector_subtitle)
 
@@ -409,15 +378,15 @@ class HierarchyPage(QWidget):
         self.action_add.setStyleSheet(_primary_btn())
         self.action_add.clicked.connect(self._add_child_from_selection)
         self.action_edit = QPushButton("  Edit Unit")
-        self.action_edit.setIcon(qta.icon("fa5s.edit", color="#111827"))
+        self.action_edit.setIcon(qta.icon("fa5s.edit", color=tokens().text))
         self.action_edit.setStyleSheet(_outline_btn())
         self.action_edit.clicked.connect(self._edit_selected_unit)
         self.action_view = QPushButton("  View Employees")
-        self.action_view.setIcon(qta.icon("fa5s.user-friends", color="#111827"))
+        self.action_view.setIcon(qta.icon("fa5s.user-friends", color=tokens().text))
         self.action_view.setStyleSheet(_outline_btn())
         self.action_view.clicked.connect(self._view_selected_unit_employees)
         self.action_delete = QPushButton("  Delete Unit")
-        self.action_delete.setIcon(qta.icon("fa5s.trash-alt", color="#dc2626"))
+        self.action_delete.setIcon(qta.icon("fa5s.trash-alt", color=tokens().danger))
         self.action_delete.setStyleSheet(_danger_outline_btn())
         self.action_delete.clicked.connect(self._delete_selected_unit)
         for btn in [self.action_add, self.action_edit, self.action_view, self.action_delete]:
@@ -840,7 +809,7 @@ class HierarchyPage(QWidget):
     def _render_empty(self, text):
         self.scene.clear()
         label = self.scene.addText(text)
-        label.setDefaultTextColor(QColor("#6b7280"))
+        label.setDefaultTextColor(QColor(tokens().text_muted))
         label.setPos(40, 40)
         self.scene.setSceneRect(QRectF(0, 0, 600, 320))
 
@@ -916,7 +885,7 @@ class UnitEmployeesDialog(QDialog):
         self.unit_id = unit_id
         self.setWindowTitle(t("employees_in_unit"))
         self.resize(860, 520)
-        self.setStyleSheet("QDialog { background: white; color: #111827; } QLabel { color: #111827; background: transparent; border: none; }")
+        self.setStyleSheet(f"QDialog {{ background: {tokens().surface}; color: {tokens().text}; }} QLabel {{ color: {tokens().text}; background: transparent; border: none; }}")
         self._build()
         self._load()
 
@@ -934,9 +903,9 @@ class UnitEmployeesDialog(QDialog):
         text = QVBoxLayout()
         text.setSpacing(4)
         self.title_lbl = QLabel("Employees")
-        self.title_lbl.setStyleSheet("font-size: 22px; font-weight: 800; color: #030213;")
+        self.title_lbl.setStyleSheet(f"font-size: 22px; font-weight: 800; color: {tokens().text};")
         self.subtitle_lbl = QLabel("")
-        self.subtitle_lbl.setStyleSheet("font-size: 14px; color: #4b5563;")
+        self.subtitle_lbl.setStyleSheet(f"font-size: 14px; color: {tokens().text_muted};")
         text.addWidget(self.title_lbl)
         text.addWidget(self.subtitle_lbl)
         header.addWidget(icon)
@@ -945,7 +914,7 @@ class UnitEmployeesDialog(QDialog):
         layout.addLayout(header)
 
         self.table = QTableWidget()
-        self.table.setStyleSheet(TABLE_SS)
+        self.table.setStyleSheet(TABLE_SS())
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels([
             t("employee_id"), t("name"), t("position"), t("level"), t("status"), t("email")
@@ -1015,9 +984,9 @@ class OrgUnitDialog(QDialog):
         self.default_parent_id = parent_id
         self.setWindowTitle(t("edit_unit") if unit_id else t("add_org_unit"))
         self.setFixedWidth(580)
-        self.setStyleSheet("""
-            QDialog { background: white; color: #111827; }
-            QLabel { color: #111827; background: transparent; }
+        self.setStyleSheet(f"""
+            QDialog {{ background: {tokens().surface}; color: {tokens().text}; }}
+            QLabel {{ color: {tokens().text}; background: transparent; }}
         """)
         self._build()
         if unit_id:
@@ -1028,7 +997,7 @@ class OrgUnitDialog(QDialog):
         layout.setContentsMargins(28, 24, 28, 24)
         layout.setSpacing(14)
         title = QLabel(t("edit_organization_unit") if self.unit_id else t("add_organization_unit"))
-        title.setStyleSheet("font-size: 18px; font-weight: 800; color: #111827;")
+        title.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {tokens().text};")
         layout.addWidget(title)
         form = QFormLayout()
         form.setHorizontalSpacing(22)
@@ -1039,23 +1008,23 @@ class OrgUnitDialog(QDialog):
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("e.g. Technology Division")
         self.name_input.setFixedHeight(42)
-        self.name_input.setStyleSheet(INPUT_SS)
+        self.name_input.setStyleSheet(INPUT_SS())
         form.addRow(_form_label(t("name") + " *"), self.name_input)
         self.type_combo = QComboBox()
         self.type_combo.setFixedHeight(42)
-        self.type_combo.setStyleSheet(COMBO_SS)
+        self.type_combo.setStyleSheet(COMBO_SS())
         self._load_types()
         _prepare_combo(self.type_combo)
         form.addRow(_form_label(t("type") + " *"), self.type_combo)
         self.parent_combo = QComboBox()
         self.parent_combo.setFixedHeight(42)
-        self.parent_combo.setStyleSheet(COMBO_SS)
+        self.parent_combo.setStyleSheet(COMBO_SS())
         self._load_parents()
         _prepare_combo(self.parent_combo)
         form.addRow(_form_label("Parent Unit"), self.parent_combo)
         self.head_combo = QComboBox()
         self.head_combo.setFixedHeight(42)
-        self.head_combo.setStyleSheet(COMBO_SS)
+        self.head_combo.setStyleSheet(COMBO_SS())
         self.head_combo.addItem(t("none"), None)
         self._load_employees()
         _prepare_combo(self.head_combo)
@@ -1192,7 +1161,7 @@ def _legend(text, bg, fg, icon):
     swatch.setFixedSize(18, 18)
     swatch.setStyleSheet(f"background: {bg}; border: 1px solid {fg}; border-radius: 4px;")
     text_lbl = QLabel(text)
-    text_lbl.setStyleSheet("background: transparent; color: #374151; font-size: 14px;")
+    text_lbl.setStyleSheet(f"background: transparent; color: {tokens().text_muted}; font-size: 14px;")
     row.addWidget(swatch)
     row.addWidget(text_lbl)
     return wrap
@@ -1226,7 +1195,7 @@ def _hint_pill(text, bg, fg, border, icon):
 
 
 def _hierarchy_step(unit_type):
-    bg, fg, border, icon = TYPE_COLORS.get(unit_type, TYPE_COLORS["employee"])
+    bg, fg, border, icon = _type_colors(unit_type)
     label = "Employee" if unit_type == "employee" else unit_type.title()
     pill = QFrame()
     pill.setObjectName("HierarchyStep")
@@ -1271,15 +1240,15 @@ def _display_position(position):
 
 def _meta_row(label, value):
     row = QFrame()
-    row.setStyleSheet("QFrame { background: #f9fafb; border: 1px solid #eef2f7; border-radius: 8px; }")
+    row.setStyleSheet(f"QFrame {{ background: {tokens().surface_muted}; border: 1px solid {tokens().border}; border-radius: 8px; }}")
     layout = QHBoxLayout(row)
     layout.setContentsMargins(12, 8, 12, 8)
     layout.setSpacing(10)
     label_widget = QLabel(label)
-    label_widget.setStyleSheet("font-size: 12px; color: #6b7280; background: transparent; border: none;")
+    label_widget.setStyleSheet(f"font-size: 12px; color: {tokens().text_muted}; background: transparent; border: none;")
     value_widget = QLabel(str(value))
     value_widget.setWordWrap(True)
-    value_widget.setStyleSheet("font-size: 13px; color: #111827; font-weight: 700; background: transparent; border: none;")
+    value_widget.setStyleSheet(f"font-size: 13px; color: {tokens().text}; font-weight: 700; background: transparent; border: none;")
     layout.addWidget(label_widget)
     layout.addStretch()
     layout.addWidget(value_widget)
@@ -1289,7 +1258,7 @@ def _meta_row(label, value):
 def _form_label(text):
     label = QLabel(text)
     label.setMinimumWidth(122)
-    label.setStyleSheet("font-size: 14px; color: #111827; background: transparent; border: none;")
+    label.setStyleSheet(f"font-size: 14px; color: {tokens().text}; background: transparent; border: none;")
     return label
 
 
@@ -1373,7 +1342,7 @@ def _styled_message_box(parent, icon, title, text, buttons=QMessageBox.Ok, defau
     box.setText(text)
     box.setStandardButtons(buttons)
     box.setDefaultButton(default_button)
-    box.setStyleSheet(MESSAGE_BOX_SS)
+    box.setStyleSheet(MESSAGE_BOX_SS())
     return box.exec()
 
 
@@ -1390,16 +1359,17 @@ def _question(parent, title, text):
 
 
 def _primary_btn():
-    return "QPushButton { background: #030213; color: white; border: none; border-radius: 8px; padding: 0 14px; font-size: 13px; font-weight: 700; min-height: 36px; } QPushButton:hover { background: #111827; }"
+    return btn_primary(36)
 
 
 def _outline_btn():
-    return "QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 14px; font-size: 13px; font-weight: 700; min-height: 36px; } QPushButton:hover { background: #f9fafb; }"
+    return btn_outline(36)
 
 
 def _canvas_control_btn():
-    return "QPushButton { background: white; color: #111827; border: 1px solid #e5e7eb; border-radius: 7px; padding: 0 10px; font-size: 12px; font-weight: 800; min-width: 32px; } QPushButton:hover { background: #f3f4f6; border-color: #cbd5e1; }"
+    return btn_outline(32)
 
 
 def _danger_outline_btn():
-    return "QPushButton { background: white; color: #dc2626; border: 1px solid #fecaca; border-radius: 8px; padding: 0 14px; font-size: 13px; font-weight: 700; min-height: 36px; } QPushButton:hover { background: #fef2f2; }"
+    tkn = tokens()
+    return f"QPushButton {{ background: {tkn.surface}; color: {tkn.danger}; border: 1px solid {tkn.danger}; border-radius: 8px; padding: 0 14px; font-size: 13px; font-weight: 700; min-height: 36px; }} QPushButton:hover {{ background: {tkn.danger_soft}; }}"

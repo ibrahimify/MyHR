@@ -33,23 +33,6 @@ from src.ui.theme import theme_manager, tokens
 
 LANGUAGES = available_languages()
 
-MESSAGE_BOX_SS = """
-QMessageBox { background: white; color: #111827; }
-QMessageBox QLabel { color: #111827; background: transparent; font-size: 13px; }
-QPushButton {
-    background: white;
-    color: #111827;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    min-width: 84px;
-    min-height: 30px;
-    font-weight: 600;
-}
-QPushButton:hover { background: #f3f4f6; }
-QPushButton:default { background: #030213; color: white; border: none; }
-"""
-
-
 def _message_box_ss():
     tkn = tokens()
     primary_text = "#062f28" if tkn.name == "dark" else "#ffffff"
@@ -171,6 +154,7 @@ class CustomSelect(QWidget):
             """)
         if hasattr(self, "label"):
             self.label.setStyleSheet(f"font-size: 14px; color: {tkn.text};")
+            self.label.setAlignment((Qt.AlignRight if is_rtl() else Qt.AlignLeft) | Qt.AlignVCenter)
         if hasattr(self, "arrow"):
             self.arrow.setPixmap(qta.icon("fa5s.chevron-down", color=tkn.text_muted).pixmap(12, 12))
         if hasattr(self, "popup_box"):
@@ -259,6 +243,8 @@ class LoginWindow(QWidget):
         self.role_labels = {}
         self._login_icons = []
         self._role_dots = []
+        self._password_visible = False
+        self.password_toggle_btn = None
         self._build()
         theme_manager.theme_changed.connect(lambda _: self._apply_theme())
         self.showMaximized()
@@ -440,6 +426,17 @@ class LoginWindow(QWidget):
         field.setStyleSheet("QLineEdit { background: transparent; border: none; padding: 0; } QLineEdit:focus { border: none; }")
 
         row.addWidget(field, 1)
+
+        if password:
+            toggle_btn = QPushButton()
+            toggle_btn.setFixedSize(28, 28)
+            toggle_btn.setCursor(Qt.PointingHandCursor)
+            toggle_btn.setFocusPolicy(Qt.NoFocus)
+            toggle_btn.clicked.connect(self._toggle_password_visibility)
+            self.password_toggle_btn = toggle_btn
+            row.addWidget(toggle_btn)
+            self._update_password_toggle_icon()
+
         return field, container
 
     def _add_role_indicator(self, row, role_key, color):
@@ -563,6 +560,36 @@ class LoginWindow(QWidget):
             dot.setStyleSheet(f"background: {dot._myhr_dot_color}; border-radius: 5px;")
         for label in self.role_labels.values():
             label.setStyleSheet(f"font-size: 14px; color: {tkn.text_muted};")
+        self._update_password_toggle_icon()
+
+    def _toggle_password_visibility(self):
+        if not hasattr(self, "password_input"):
+            return
+
+        self._password_visible = not self._password_visible
+        self.password_input.setEchoMode(QLineEdit.Normal if self._password_visible else QLineEdit.Password)
+        self._update_password_toggle_icon()
+
+    def _update_password_toggle_icon(self):
+        if not getattr(self, "password_toggle_btn", None):
+            return
+
+        tkn = tokens()
+        icon_name = "fa5s.eye-slash" if self._password_visible else "fa5s.eye"
+        tooltip_key = "hide_password" if self._password_visible else "show_password"
+        self.password_toggle_btn.setIcon(qta.icon(icon_name, color=tkn.text_soft))
+        self.password_toggle_btn.setIconSize(QSize(15, 15))
+        self.password_toggle_btn.setToolTip(t(tooltip_key))
+        self.password_toggle_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                border: none;
+                border-radius: 6px;
+            }}
+            QPushButton:hover {{
+                background: {tkn.hover};
+            }}
+        """)
 
     def _select_current_language(self):
         self.lang_combo.set_value(get_language())
@@ -570,6 +597,14 @@ class LoginWindow(QWidget):
 
     def _apply_layout_direction(self):
         QApplication.instance().setLayoutDirection(Qt.RightToLeft if is_rtl() else Qt.LeftToRight)
+        self._apply_text_direction()
+
+    def _apply_text_direction(self):
+        align = (Qt.AlignRight if is_rtl() else Qt.AlignLeft) | Qt.AlignVCenter
+        for widget_name in ("username_lbl", "password_lbl", "username_input", "password_input"):
+            widget = getattr(self, widget_name, None)
+            if widget is not None:
+                widget.setAlignment(align)
 
     def _language_caption(self):
         return t("language")
@@ -590,6 +625,8 @@ class LoginWindow(QWidget):
         self.password_input.setPlaceholderText(t("password_placeholder"))
         self.login_btn.setText(t("login_button"))
         self.footer_lbl.setText(t("authorized_only"))
+        self._update_password_toggle_icon()
+        self._apply_text_direction()
 
         for role_key, label in self.role_labels.items():
             label.setText(t(role_key))

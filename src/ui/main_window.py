@@ -359,7 +359,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(f"{company_name('MyHR')} - {t('employee_management_system')}")
         self.setMinimumSize(1024, 600)
         self.setStyleSheet(f"QMainWindow {{ background: {tokens().canvas}; }}")
-        theme_manager.theme_changed.connect(lambda _: self.apply_theme())
+        self.current_key = "dashboard"
+        theme_manager.theme_changed.connect(self._handle_theme_changed)
         self._pages_cache = {}
         self._page_animation_ready = False
         self._build()
@@ -400,6 +401,17 @@ class MainWindow(QMainWindow):
         if hasattr(self, "sidebar"):
             self.sidebar.apply_theme()
 
+    def _handle_theme_changed(self, _theme):
+        self.apply_theme()
+        if not hasattr(self, "stack"):
+            return
+        key = getattr(self, "current_key", "dashboard")
+        page = self._pages_cache.pop(key, None)
+        if page is not None:
+            self.stack.removeWidget(page)
+            page.deleteLater()
+        self._navigate(key, animate=False)
+
     def _enable_page_animations(self):
         self._page_animation_ready = True
 
@@ -408,31 +420,31 @@ class MainWindow(QMainWindow):
             return self._pages_cache[key]
         try:
             if key == "dashboard":
-                from src.ui.pages.dashboard import DashboardPage
+                DashboardPage = self._page_class("dashboard", "DashboardPage")
                 page = DashboardPage(self.user, self._navigate)
             elif key == "employees":
-                from src.ui.pages.employees import EmployeesPage
+                EmployeesPage = self._page_class("employees", "EmployeesPage")
                 page = EmployeesPage(self.user)
             elif key == "hierarchy":
-                from src.ui.pages.hierarchy import HierarchyPage
+                HierarchyPage = self._page_class("hierarchy", "HierarchyPage")
                 page = HierarchyPage(self.user)
             elif key == "promotions":
-                from src.ui.pages.promotions import PromotionsPage
+                PromotionsPage = self._page_class("promotions", "PromotionsPage")
                 page = PromotionsPage(self.user, navigate_to_employee=self._navigate_to_employee)
             elif key == "commendations":
-                from src.ui.pages.commendations import CommendationsPage
+                CommendationsPage = self._page_class("commendations", "CommendationsPage")
                 page = CommendationsPage(self.user)
             elif key == "sanctions":
-                from src.ui.pages.sanctions import SanctionsPage
+                SanctionsPage = self._page_class("sanctions", "SanctionsPage")
                 page = SanctionsPage(self.user)
             elif key == "audit_log":
-                from src.ui.pages.audit_log import AuditLogPage
+                AuditLogPage = self._page_class("audit_log", "AuditLogPage")
                 page = AuditLogPage(self.user)
             elif key == "import_data":
-                from src.ui.pages.import_data import ImportDataPage
+                ImportDataPage = self._page_class("import_data", "ImportDataPage")
                 page = ImportDataPage(self.user)
             elif key == "settings":
-                from src.ui.pages.settings import SettingsPage
+                SettingsPage = self._page_class("settings", "SettingsPage")
                 page = SettingsPage(self.user)
             else:
                 page = _PlaceholderPage(key)
@@ -442,6 +454,36 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(page)
         self._pages_cache[key] = page
         return page
+
+    def _page_class(self, module_name, class_name):
+        if module_name == "dashboard":
+            from src.ui.pages.dashboard import DashboardPage
+            return DashboardPage
+        if module_name == "employees":
+            from src.ui.pages.employees import EmployeesPage
+            return EmployeesPage
+        if module_name == "hierarchy":
+            from src.ui.pages.hierarchy import HierarchyPage
+            return HierarchyPage
+        if module_name == "promotions":
+            from src.ui.pages.promotions import PromotionsPage
+            return PromotionsPage
+        if module_name == "commendations":
+            from src.ui.pages.commendations import CommendationsPage
+            return CommendationsPage
+        if module_name == "sanctions":
+            from src.ui.pages.sanctions import SanctionsPage
+            return SanctionsPage
+        if module_name == "audit_log":
+            from src.ui.pages.audit_log import AuditLogPage
+            return AuditLogPage
+        if module_name == "import_data":
+            from src.ui.pages.import_data import ImportDataPage
+            return ImportDataPage
+        if module_name == "settings":
+            from src.ui.pages.settings import SettingsPage
+            return SettingsPage
+        raise KeyError(module_name)
 
     def _navigate(self, key, animate=True):
         open_active_sanctions = key == "sanctions_active"
@@ -455,6 +497,7 @@ class MainWindow(QMainWindow):
             self.stack.removeWidget(old)
             old.deleteLater()
         page = self._get_page(key)
+        self.current_key = key
         self.stack.setCurrentWidget(page)
         self.sidebar._set_active(key)
         if hasattr(page, "refresh"):

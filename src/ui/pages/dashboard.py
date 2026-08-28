@@ -22,7 +22,7 @@ from src.database.models import (
     PromotionHistory, SalaryIncrementHistory
 )
 from src.ui.styles import (
-    btn_primary, btn_outline, btn_ghost, TABLE_SS, SCROLL_SS,
+    btn_primary, btn_outline, btn_ghost, table_style, scroll_ss, message_box_ss,
     enable_table_row_selection, prepare_table_cell_widget,
 )
 from src.ui.theme import THEME_DARK, tokens
@@ -567,7 +567,7 @@ class SalaryIncrementReviewDialog(QDialog):
             t("increment"),
             t("action"),
         ])
-        self.table.setStyleSheet(TABLE_SS)
+        self.table.setStyleSheet(table_style())
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Fixed)
         self.table.setColumnWidth(4, 172)
@@ -1007,7 +1007,7 @@ class DashboardPage(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setStyleSheet(SCROLL_SS)
+        scroll.setStyleSheet(scroll_ss())
 
         content = QWidget()
         content.setStyleSheet(f"background: {tokens().canvas};")
@@ -1195,7 +1195,7 @@ class DashboardPage(QWidget):
         label_lbl.setStyleSheet(f"font-size: 15px; color: {tokens().text_muted};")
         value_lbl = QLabel(value)
         value_lbl.setStyleSheet(f"font-size: 30px; font-weight: 800; color: {tokens().text};")
-        delta_color = "#059669" if not str(delta).startswith("-") else "#dc2626"
+        delta_color = tokens().success if not str(delta).startswith("-") else tokens().danger
         change_lbl = QLabel(f"{delta} {detail}")
         change_lbl.setWordWrap(True)
         change_lbl.setStyleSheet(f"font-size: 13px; color: {delta_color};")
@@ -1348,7 +1348,7 @@ class DashboardPage(QWidget):
         layout.setSpacing(12)
 
         title = QLabel(t("custom_date_range"))
-        title.setStyleSheet("font-size: 17px; font-weight: 700; color: #111827;")
+        title.setStyleSheet(f"font-size: 17px; font-weight: 700; color: {tokens().text};")
         layout.addWidget(title)
 
         start_edit = QDateEdit()
@@ -1406,7 +1406,7 @@ class DashboardPage(QWidget):
 
         header = QHBoxLayout()
         title = QLabel(t("workforce_timeline"))
-        title.setStyleSheet("font-size: 20px; font-weight: 700; color: #111827;")
+        title.setStyleSheet(f"font-size: 20px; font-weight: 700; color: {tokens().text};")
         header.addWidget(title)
         header.addStretch()
         header.addLayout(self._workforce_filter_pills())
@@ -1653,7 +1653,7 @@ class DashboardPage(QWidget):
 
         header = QHBoxLayout()
         title = QLabel(t("recent_activity"))
-        title.setStyleSheet("font-size: 20px; font-weight: 700; color: #111827;")
+        title.setStyleSheet(f"font-size: 20px; font-weight: 700; color: {tokens().text};")
         view = QPushButton(t("view_all"))
         view.setCursor(Qt.PointingHandCursor)
         view.setStyleSheet(btn_ghost(32))
@@ -1670,7 +1670,10 @@ class DashboardPage(QWidget):
         else:
             empty = QLabel(t("no_recent_activity"))
             empty.setAlignment(Qt.AlignCenter)
-            empty.setStyleSheet("font-size: 15px; color: #6b7280; background: #f9fafb; border: none; border-radius: 8px; padding: 28px;")
+            empty.setStyleSheet(
+                f"font-size: 15px; color: {tokens().text_soft}; background: {tokens().surface_muted}; "
+                "border: none; border-radius: 8px; padding: 28px;"
+            )
             layout.addWidget(empty)
         layout.addStretch()
         return card
@@ -1679,7 +1682,7 @@ class DashboardPage(QWidget):
         row = QFrame()
         row.setObjectName("ActivityRow")
         row.setMinimumHeight(94)
-        border = "none" if is_last else "1px solid #f3f4f6"
+        border = "none" if is_last else f"1px solid {tokens().border}"
         row.setStyleSheet(
             f"QFrame#ActivityRow {{ background: transparent; border: none; border-bottom: {border}; border-radius: 0; }}"
             "QFrame#ActivityRow QLabel { border: none; background: transparent; }"
@@ -1690,25 +1693,25 @@ class DashboardPage(QWidget):
 
         dot = QLabel()
         dot.setFixedSize(10, 10)
-        dot.setStyleSheet("background: #2563eb; border: none; border-radius: 5px;")
+        dot.setStyleSheet(f"background: {tokens().brand}; border: none; border-radius: 5px;")
         layout.addWidget(dot, 0, Qt.AlignTop)
 
         text = QVBoxLayout()
         text.setSpacing(4)
         action = QLabel(item["action"])
-        action.setStyleSheet("font-size: 18px; font-weight: 700; color: #111827;")
+        action.setStyleSheet(f"font-size: 18px; font-weight: 700; color: {tokens().text};")
         target = QLabel(item["target"])
         target.setWordWrap(True)
-        target.setStyleSheet("font-size: 16px; color: #4b5563;")
+        target.setStyleSheet(f"font-size: 16px; color: {tokens().text_muted};")
         byline = QLabel(t("by_user", user=item["user"]))
-        byline.setStyleSheet("font-size: 14px; color: #6b7280;")
+        byline.setStyleSheet(f"font-size: 14px; color: {tokens().text_soft};")
         text.addWidget(action)
         text.addWidget(target)
         text.addWidget(byline)
         layout.addLayout(text, 1)
 
         time = QLabel(item["time"])
-        time.setStyleSheet("font-size: 14px; color: #6b7280;")
+        time.setStyleSheet(f"font-size: 14px; color: {tokens().text_soft};")
         layout.addWidget(time, 0, Qt.AlignTop)
         return row
 
@@ -1722,7 +1725,7 @@ class DashboardPage(QWidget):
         header = QHBoxLayout()
         title = QLabel(t("upcoming_promotions"))
         title.setWordWrap(True)
-        title.setStyleSheet("font-size: 20px; font-weight: 700; color: #111827;")
+        title.setStyleSheet(f"font-size: 20px; font-weight: 700; color: {tokens().text};")
         view = QPushButton(t("view_all"))
         view.setCursor(Qt.PointingHandCursor)
         view.setStyleSheet(btn_ghost(32))
@@ -1742,7 +1745,10 @@ class DashboardPage(QWidget):
             empty = QLabel(t("no_upcoming_promotions"))
             empty.setWordWrap(True)
             empty.setAlignment(Qt.AlignCenter)
-            empty.setStyleSheet("font-size: 15px; color: #6b7280; background: #f9fafb; border: none; border-radius: 8px; padding: 28px;")
+            empty.setStyleSheet(
+                f"font-size: 15px; color: {tokens().text_soft}; background: {tokens().surface_muted}; "
+                "border: none; border-radius: 8px; padding: 28px;"
+            )
             layout.addWidget(empty)
         layout.addStretch()
         return card
@@ -1752,7 +1758,7 @@ class DashboardPage(QWidget):
         row.setObjectName("PromoRow")
         row.setMinimumHeight(142)
         row.setStyleSheet(
-            "QFrame#PromoRow { background: #f9fafb; border: none; border-radius: 8px; }"
+            f"QFrame#PromoRow {{ background: {tokens().surface_muted}; border: none; border-radius: 8px; }}"
             "QFrame#PromoRow QLabel { border: none; background: transparent; }"
         )
         layout = QVBoxLayout(row)
@@ -1763,9 +1769,9 @@ class DashboardPage(QWidget):
         text = QVBoxLayout()
         text.setSpacing(6)
         name = QLabel(item["name"])
-        name.setStyleSheet("font-size: 18px; font-weight: 700; color: #111827;")
+        name.setStyleSheet(f"font-size: 18px; font-weight: 700; color: {tokens().text};")
         level = QLabel(f"{item['current']} to {item['next']}")
-        level.setStyleSheet("font-size: 16px; color: #4b5563;")
+        level.setStyleSheet(f"font-size: 16px; color: {tokens().text_muted};")
         text.addWidget(name)
         text.addWidget(level)
         top.addLayout(text)
@@ -1776,7 +1782,10 @@ class DashboardPage(QWidget):
             badge_text = "Eligible" if item["eligible"] else f"{item['months_remaining']} mo"
         badge = QLabel(badge_text)
         badge.setAlignment(Qt.AlignCenter)
-        badge.setStyleSheet("background: #dbeafe; color: #2563eb; border: none; border-radius: 14px; padding: 4px 10px; font-size: 14px;")
+        badge.setStyleSheet(
+            f"background: {tokens().selected}; color: {tokens().brand}; border: none; "
+            "border-radius: 14px; padding: 4px 10px; font-size: 14px;"
+        )
         top.addWidget(badge, 0, Qt.AlignTop)
         layout.addLayout(top)
 
@@ -1786,13 +1795,13 @@ class DashboardPage(QWidget):
         progress.setFixedHeight(10)
         progress.setTextVisible(False)
         progress.setStyleSheet(
-            "QProgressBar { background: #e5e7eb; border: none; border-radius: 5px; }"
-            "QProgressBar::chunk { background: #2563eb; border-radius: 5px; }"
+            f"QProgressBar {{ background: {tokens().border}; border: none; border-radius: 5px; }}"
+            f"QProgressBar::chunk {{ background: {tokens().brand}; border-radius: 5px; }}"
         )
         layout.addWidget(progress)
 
         complete = QLabel(f"{item['progress_pct']}% complete")
-        complete.setStyleSheet("font-size: 14px; color: #6b7280;")
+        complete.setStyleSheet(f"font-size: 14px; color: {tokens().text_soft};")
         layout.addWidget(complete)
         return row
 
@@ -1803,21 +1812,7 @@ def _styled_message_box(parent, icon, title, text):
     box.setWindowTitle(title)
     box.setText(text)
     box.setStandardButtons(QMessageBox.Ok)
-    box.setStyleSheet("""
-        QMessageBox { background: white; color: #111827; }
-        QMessageBox QLabel { color: #111827; background: transparent; font-size: 13px; }
-        QPushButton {
-            background: white;
-            color: #111827;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            min-width: 84px;
-            min-height: 30px;
-            font-weight: 600;
-        }
-        QPushButton:hover { background: #f3f4f6; }
-        QPushButton:default { background: #030213; color: white; border: none; }
-    """)
+    box.setStyleSheet(message_box_ss())
     return box.exec()
 
 
