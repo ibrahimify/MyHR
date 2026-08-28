@@ -25,21 +25,27 @@ from src.ui.styles import (
     btn_primary, btn_outline, btn_ghost, TABLE_SS, SCROLL_SS,
     enable_table_row_selection, prepare_table_cell_widget,
 )
+from src.ui.theme import THEME_DARK, tokens
 
 
 _ICO = QSize(16, 16)
 
-DASH_CARD_SS = """
-QFrame#DashboardCard {
-    background: white;
-    border: 1px solid #e5e7eb;
+def dashboard_card_ss():
+    tkn = tokens()
+    return f"""
+QFrame#DashboardCard {{
+    background: {tkn.surface};
+    border: 1px solid {tkn.border};
     border-radius: 8px;
-}
-QFrame#DashboardCard QLabel {
+}}
+QFrame#DashboardCard QLabel {{
     border: none;
     background: transparent;
-}
+}}
 """
+
+
+DASH_CARD_SS = dashboard_card_ss()
 
 FILTERS = ("week", "month", "year", "ytd", "custom")
 ORG_LEVELS = ("division", "department", "unit", "team")
@@ -194,7 +200,8 @@ class BarChartWidget(QWidget):
         bar_h = max(11, min(24, (chart.height() - gap * (count - 1)) / max(count, 1)))
         self._hit_boxes = []
 
-        painter.setPen(QPen(QColor("#e5e7eb"), 1, Qt.DashLine))
+        tkn = tokens()
+        painter.setPen(QPen(QColor(tkn.border), 1, Qt.DashLine))
         for i in range(1, 4):
             x = chart.left() + chart.width() * i / 4
             painter.drawLine(QPointF(x, chart.top()), QPointF(x, chart.bottom()))
@@ -214,24 +221,24 @@ class BarChartWidget(QWidget):
             painter.drawRoundedRect(bar, 6, 6)
             self._hit_boxes.append((bar.toRect(), label, value))
 
-            painter.setPen(QColor("#4b5563"))
+            painter.setPen(QColor(tkn.text_muted))
             short = painter.fontMetrics().elidedText(label, Qt.ElideRight, 156)
             painter.drawText(QRectF(rect.left(), y - 1, 156, bar_h + 2), Qt.AlignVCenter | Qt.AlignRight, short)
-            painter.setPen(QColor("#6b7280"))
+            painter.setPen(QColor(tkn.text_soft))
             painter.drawText(QRectF(chart.left() + bar_w + 8, y - 1, 34, bar_h + 2), Qt.AlignVCenter | Qt.AlignLeft, str(value))
 
-        painter.setPen(QColor("#6b7280"))
+        painter.setPen(QColor(tkn.text_soft))
         painter.drawText(QRectF(chart.left(), chart.bottom() + 2, 40, 18), Qt.AlignLeft, "0")
         painter.drawText(QRectF(chart.right() - 40, chart.bottom() + 2, 40, 18), Qt.AlignRight, str(max_value))
 
     def _draw_grid(self, painter, chart):
-        painter.setPen(QPen(QColor("#e5e7eb"), 1, Qt.DashLine))
+        painter.setPen(QPen(QColor(tokens().border), 1, Qt.DashLine))
         for i in range(1, 4):
             y = chart.top() + chart.height() * i / 4
             painter.drawLine(QPointF(chart.left(), y), QPointF(chart.right(), y))
 
     def _draw_empty(self, painter, rect):
-        painter.setPen(QColor("#6b7280"))
+        painter.setPen(QColor(tokens().text_soft))
         painter.drawText(rect, Qt.AlignCenter, t("no_data"))
 
 
@@ -259,17 +266,18 @@ class LineChartWidget(QWidget):
         painter.setRenderHint(QPainter.Antialiasing)
         rect = self.rect().adjusted(10, 14, -10, -18)
         chart = rect.adjusted(42, 10, -12, -34)
-        painter.setPen(QPen(QColor("#e5e7eb"), 1, Qt.DashLine))
+        tkn = tokens()
+        painter.setPen(QPen(QColor(tkn.border), 1, Qt.DashLine))
         for i in range(1, 4):
             y = chart.top() + chart.height() * i / 4
             painter.drawLine(QPointF(chart.left(), y), QPointF(chart.right(), y))
 
-        painter.setPen(QPen(QColor("#9ca3af"), 1))
+        painter.setPen(QPen(QColor(tkn.border_strong), 1))
         painter.drawLine(chart.bottomLeft(), chart.bottomRight())
         painter.drawLine(chart.bottomLeft(), chart.topLeft())
 
         if not self.data:
-            painter.setPen(QColor("#6b7280"))
+            painter.setPen(QColor(tkn.text_soft))
             painter.drawText(rect, Qt.AlignCenter, t("no_data"))
             return
 
@@ -296,12 +304,12 @@ class LineChartWidget(QWidget):
             painter.setPen(QPen(self.color, 3))
             painter.drawPath(path)
 
-        painter.setBrush(QBrush(QColor("white")))
+        painter.setBrush(QBrush(QColor(tkn.surface)))
         painter.setPen(QPen(self.color, 3))
         for point in points:
             painter.drawEllipse(point, 5, 5)
 
-        painter.setPen(QColor("#4b5563"))
+        painter.setPen(QColor(tkn.text_muted))
         font = QFont()
         font.setPointSize(8)
         painter.setFont(font)
@@ -314,7 +322,7 @@ class LineChartWidget(QWidget):
         self._draw_y_axis_labels(painter, rect, chart, max_value)
 
     def _draw_y_axis_labels(self, painter, rect, chart, max_value):
-        painter.setPen(QColor("#6b7280"))
+        painter.setPen(QColor(tokens().text_soft))
         for value in sorted(set([0, max_value // 2, max_value])):
             y = chart.bottom() - (chart.height() * value / max_value if max_value else 0)
             painter.drawText(QRectF(rect.left(), y - 9, 38, 18), Qt.AlignRight | Qt.AlignVCenter, str(value))
@@ -346,7 +354,7 @@ class WorkforceTimelineWidget(QWidget):
         rect = self.rect().adjusted(12, 12, -12, -12)
 
         if not self.labels or not self.series:
-            painter.setPen(QColor("#6b7280"))
+            painter.setPen(QColor(tokens().text_soft))
             painter.drawText(rect, Qt.AlignCenter, t("no_data"))
             return
 
@@ -359,11 +367,12 @@ class WorkforceTimelineWidget(QWidget):
         step = chart.width() / max(len(self.labels) - 1, 1)
         self._hit_points = []
 
-        painter.setPen(QPen(QColor("#e5e7eb"), 1, Qt.DashLine))
+        tkn = tokens()
+        painter.setPen(QPen(QColor(tkn.border), 1, Qt.DashLine))
         for i in range(1, 4):
             y = chart.top() + chart.height() * i / 4
             painter.drawLine(QPointF(chart.left(), y), QPointF(chart.right(), y))
-        painter.setPen(QPen(QColor("#9ca3af"), 1))
+        painter.setPen(QPen(QColor(tkn.border_strong), 1))
         painter.drawLine(chart.bottomLeft(), chart.bottomRight())
         painter.drawLine(chart.bottomLeft(), chart.topLeft())
 
@@ -383,12 +392,12 @@ class WorkforceTimelineWidget(QWidget):
             if len(points) > 1:
                 painter.setPen(QPen(QColor(color), 3))
                 painter.drawPolyline(QPolygonF(self._smooth_points(points)))
-            painter.setBrush(QBrush(QColor("white")))
+            painter.setBrush(QBrush(QColor(tkn.surface)))
             painter.setPen(QPen(QColor(color), 2))
             for point in points:
                 painter.drawEllipse(point, 4, 4)
 
-        painter.setPen(QColor("#4b5563"))
+        painter.setPen(QColor(tkn.text_muted))
         font = QFont()
         font.setPointSize(8)
         painter.setFont(font)
@@ -407,11 +416,11 @@ class WorkforceTimelineWidget(QWidget):
             painter.setPen(Qt.NoPen)
             painter.setBrush(QBrush(QColor(color)))
             painter.drawRoundedRect(QRectF(legend_x, legend_y, 10, 10), 3, 3)
-            painter.setPen(QColor("#4b5563"))
+            painter.setPen(QColor(tokens().text_muted))
             painter.drawText(QRectF(legend_x + 16, legend_y - 4, width - 18, 20), Qt.AlignLeft | Qt.AlignVCenter, name)
             legend_x += width
 
-        painter.setPen(QColor("#6b7280"))
+        painter.setPen(QColor(tokens().text_soft))
         for value in sorted(set([0, max_value // 2, max_value])):
             y = chart.bottom() - (chart.height() * value / max_value if max_value else 0)
             painter.drawText(QRectF(rect.left(), y - 9, 42, 18), Qt.AlignRight | Qt.AlignVCenter, str(value))
@@ -425,15 +434,16 @@ class WorkforceTimelineWidget(QWidget):
         font.setPointSize(8)
         painter.setFont(font)
 
-        painter.setPen(QPen(QColor("#e5e7eb"), 1, Qt.DashLine))
+        tkn = tokens()
+        painter.setPen(QPen(QColor(tkn.border), 1, Qt.DashLine))
         for i in range(1, 4):
             y = chart.top() + chart.height() * i / 4
             painter.drawLine(QPointF(chart.left(), y), QPointF(chart.right(), y))
-        painter.setPen(QPen(QColor("#9ca3af"), 1))
+        painter.setPen(QPen(QColor(tkn.border_strong), 1))
         painter.drawLine(chart.bottomLeft(), chart.bottomRight())
         painter.drawLine(chart.bottomLeft(), chart.topLeft())
 
-        painter.setPen(QColor("#6b7280"))
+        painter.setPen(QColor(tkn.text_soft))
         for value in (0, 50, 100):
             y = chart.bottom() - (chart.height() * value / 100)
             painter.drawText(QRectF(rect.left(), y - 9, 42, 18), Qt.AlignRight | Qt.AlignVCenter, str(value))
@@ -457,12 +467,12 @@ class WorkforceTimelineWidget(QWidget):
                 painter.setPen(QPen(QColor(color), 2.5))
                 painter.drawPoint(points[0])
 
-            painter.setBrush(QBrush(QColor("white")))
+            painter.setBrush(QBrush(QColor(tkn.surface)))
             painter.setPen(QPen(QColor(color), 2))
             for point in points:
                 painter.drawEllipse(point, 3.5, 3.5)
 
-        painter.setPen(QColor("#4b5563"))
+        painter.setPen(QColor(tkn.text_muted))
         for idx, label in enumerate(self.labels):
             if len(self.labels) > 10 and idx % 2:
                 continue
@@ -520,7 +530,7 @@ class WorkforceTimelineWidget(QWidget):
             painter.setPen(Qt.NoPen)
             painter.setBrush(QBrush(QColor(color)))
             painter.drawRoundedRect(QRectF(legend_x, legend_y, 10, 10), 3, 3)
-            painter.setPen(QColor("#4b5563"))
+            painter.setPen(QColor(tokens().text_muted))
             painter.drawText(QRectF(legend_x + 16, legend_y - 5, width - 18, 22), Qt.AlignLeft | Qt.AlignVCenter, name)
             legend_x += width
 
@@ -533,7 +543,7 @@ class SalaryIncrementReviewDialog(QDialog):
         self.approved_ids = set()
         self.setWindowTitle(t("review_salary_increments"))
         self.setMinimumSize(700, 460)
-        self.setStyleSheet("background: white; color: #111827;")
+        self.setStyleSheet(f"background: {tokens().surface}; color: {tokens().text};")
         self._build()
 
     def _build(self):
@@ -542,9 +552,9 @@ class SalaryIncrementReviewDialog(QDialog):
         layout.setSpacing(16)
 
         title = QLabel(t("annual_salary_increment_review"))
-        title.setStyleSheet("font-size: 18px; font-weight: 700; color: #111827;")
+        title.setStyleSheet(f"font-size: 18px; font-weight: 700; color: {tokens().text};")
         sub = QLabel(t("salary_increment_review_subtitle", count=len(self.increment_data)))
-        sub.setStyleSheet("font-size: 13px; color: #6b7280;")
+        sub.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted};")
         layout.addWidget(title)
         layout.addWidget(sub)
 
@@ -573,7 +583,7 @@ class SalaryIncrementReviewDialog(QDialog):
             self.table.setItem(i, 1, QTableWidgetItem(f"${row['salary_before']:,.2f}"))
             self.table.setItem(i, 2, QTableWidgetItem(f"${row['salary_after']:,.2f}"))
             inc_item = QTableWidgetItem(row["increment_str"])
-            inc_item.setForeground(QColor("#10b981"))
+            inc_item.setForeground(QColor(tokens().success))
             self.table.setItem(i, 3, inc_item)
             self._set_row_btn(i, row["id"])
 
@@ -581,7 +591,8 @@ class SalaryIncrementReviewDialog(QDialog):
 
         btn_row = QHBoxLayout()
         approve_all = QPushButton("  " + t("approve_all"))
-        approve_all.setIcon(qta.icon("fa5s.check-double", color="white"))
+        approve_text = "#062f28" if tokens().name == THEME_DARK else "#ffffff"
+        approve_all.setIcon(qta.icon("fa5s.check-double", color=approve_text))
         approve_all.setIconSize(_ICO)
         approve_all.setFixedHeight(36)
         approve_all.setCursor(Qt.PointingHandCursor)
@@ -609,7 +620,7 @@ class SalaryIncrementReviewDialog(QDialog):
             lbl.setAlignment(Qt.AlignCenter)
             lbl.setFixedSize(120, 32)
             lbl.setStyleSheet(
-                "background: #dcfce7; color: #047857; border: 1px solid #bbf7d0; border-radius: 8px; "
+                f"background: {tokens().success_soft}; color: {tokens().success}; border: 1px solid {tokens().success}; border-radius: 8px; "
                 "font-size: 12px; font-weight: 800;"
             )
             layout.addWidget(lbl)
@@ -617,17 +628,17 @@ class SalaryIncrementReviewDialog(QDialog):
             return
 
         btn = QPushButton("  " + t("approve"))
-        btn.setIcon(qta.icon("fa5s.check", color="white"))
+        btn.setIcon(qta.icon("fa5s.check", color=tokens().success))
         btn.setIconSize(QSize(13, 13))
         btn.setFixedSize(120, 34)
         btn.setCursor(Qt.PointingHandCursor)
         btn.setStyleSheet(
-            "QPushButton { background: white; color: #047857; border: 1px solid #bbf7d0; "
+            f"QPushButton {{ background: {tokens().surface}; color: {tokens().success}; border: 1px solid {tokens().success}; "
             "border-radius: 8px; font-size: 12px; font-weight: 800; padding: 0 12px; } "
-            "QPushButton:hover { background: #ecfdf5; border-color: #86efac; } "
-            "QPushButton:pressed { background: #d1fae5; }"
+            f"QPushButton:hover {{ background: {tokens().success_soft}; }} "
+            f"QPushButton:pressed {{ background: {tokens().success_soft}; }}"
         )
-        btn.setIcon(qta.icon("fa5s.check", color="#047857"))
+        btn.setIcon(qta.icon("fa5s.check", color=tokens().success))
         btn.clicked.connect(lambda _, eid=emp_id, ridx=idx: self._approve_one(eid, ridx))
         layout.addWidget(btn)
         self.table.setCellWidget(idx, 4, cell)
@@ -692,7 +703,7 @@ class DashboardPage(QWidget):
         self.workforce_metric_buttons = {}
         self.setObjectName("DashboardPage")
         self.setStyleSheet(
-            "QWidget#DashboardPage { background: #f9fafb; } "
+            f"QWidget#DashboardPage {{ background: {tokens().canvas}; }} "
             "QWidget#DashboardPage QLabel { border: none; }"
         )
         self._load_data()
@@ -999,15 +1010,15 @@ class DashboardPage(QWidget):
         scroll.setStyleSheet(SCROLL_SS)
 
         content = QWidget()
-        content.setStyleSheet("background: #f9fafb;")
+        content.setStyleSheet(f"background: {tokens().canvas};")
         layout = QVBoxLayout(content)
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(0)
 
         title = QLabel(t("dashboard_title"))
-        title.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827; background: transparent;")
+        title.setStyleSheet(f"font-size: 30px; font-weight: 800; color: {tokens().text}; background: transparent;")
         subtitle = QLabel(t("dashboard_subtitle"))
-        subtitle.setStyleSheet("font-size: 16px; color: #4b5563; background: transparent;")
+        subtitle.setStyleSheet(f"font-size: 16px; color: {tokens().text_muted}; background: transparent;")
         layout.addWidget(title)
         layout.addSpacing(6)
         layout.addWidget(subtitle)
@@ -1024,7 +1035,7 @@ class DashboardPage(QWidget):
         add_btn.clicked.connect(lambda: self.navigate("employees"))
 
         imp_btn = QPushButton("  " + t("nav_import"))
-        imp_btn.setIcon(qta.icon("fa5s.calendar", color="#111827"))
+        imp_btn.setIcon(qta.icon("fa5s.calendar", color=tokens().text))
         imp_btn.setIconSize(_ICO)
         imp_btn.setFixedHeight(44)
         imp_btn.setCursor(Qt.PointingHandCursor)
@@ -1141,22 +1152,22 @@ class DashboardPage(QWidget):
         alert = QFrame()
         alert.setObjectName("IncrementAlert")
         alert.setStyleSheet(
-            "QFrame#IncrementAlert { background: #fefce8; border: 1px solid #fde047; border-radius: 8px; }"
+            f"QFrame#IncrementAlert {{ background: {tokens().warning_soft}; border: 1px solid {tokens().warning}; border-radius: 8px; }}"
             "QFrame#IncrementAlert QLabel { border: none; background: transparent; }"
         )
         row = QHBoxLayout(alert)
         row.setContentsMargins(16, 14, 16, 14)
         row.setSpacing(12)
         icon = QLabel()
-        icon.setPixmap(qta.icon("fa5s.coins", color="#ca8a04").pixmap(22, 22))
+        icon.setPixmap(qta.icon("fa5s.coins", color=tokens().warning).pixmap(22, 22))
         row.addWidget(icon)
         txt = QLabel(t("salary_increment_prompt", count=self.increment_count))
-        txt.setStyleSheet("font-size: 13px; color: #854d0e;")
+        txt.setStyleSheet(f"font-size: 13px; color: {tokens().warning};")
         row.addWidget(txt, 1)
         btn = QPushButton(t("review"))
         btn.setFixedHeight(34)
         btn.setCursor(Qt.PointingHandCursor)
-        btn.setStyleSheet("QPushButton { background: #ca8a04; color: white; border: none; border-radius: 6px; padding: 0 14px; font-weight: 600; }")
+        btn.setStyleSheet(f"QPushButton {{ background: {tokens().warning}; color: #ffffff; border: none; border-radius: 6px; padding: 0 14px; font-weight: 600; }}")
         btn.clicked.connect(self._open_increment_dialog)
         row.addWidget(btn)
         return alert
@@ -1167,7 +1178,7 @@ class DashboardPage(QWidget):
     def _card(self):
         card = QFrame()
         card.setObjectName("DashboardCard")
-        card.setStyleSheet(DASH_CARD_SS)
+        card.setStyleSheet(dashboard_card_ss())
         return card
 
     def _stat_card(self, label, value, delta, detail, color, icon_name):
@@ -1181,9 +1192,9 @@ class DashboardPage(QWidget):
         text.setSpacing(8)
         label_lbl = QLabel(label)
         label_lbl.setWordWrap(True)
-        label_lbl.setStyleSheet("font-size: 15px; color: #4b5563;")
+        label_lbl.setStyleSheet(f"font-size: 15px; color: {tokens().text_muted};")
         value_lbl = QLabel(value)
-        value_lbl.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827;")
+        value_lbl.setStyleSheet(f"font-size: 30px; font-weight: 800; color: {tokens().text};")
         delta_color = "#059669" if not str(delta).startswith("-") else "#dc2626"
         change_lbl = QLabel(f"{delta} {detail}")
         change_lbl.setWordWrap(True)
@@ -1211,7 +1222,7 @@ class DashboardPage(QWidget):
 
         header = QHBoxLayout()
         self.org_chart_title = QLabel(t("employees_by_division"))
-        self.org_chart_title.setStyleSheet("font-size: 20px; font-weight: 700; color: #111827;")
+        self.org_chart_title.setStyleSheet(f"font-size: 20px; font-weight: 700; color: {tokens().text};")
         header.addWidget(self.org_chart_title)
         header.addStretch()
         header.addLayout(self._org_filter_pills())
@@ -1265,7 +1276,7 @@ class DashboardPage(QWidget):
 
         header = QHBoxLayout()
         title = QLabel(t("promotion_trend"))
-        title.setStyleSheet("font-size: 20px; font-weight: 700; color: #111827;")
+        title.setStyleSheet(f"font-size: 20px; font-weight: 700; color: {tokens().text};")
         header.addWidget(title)
         header.addStretch()
         header.addLayout(self._filter_pills())
@@ -1297,15 +1308,17 @@ class DashboardPage(QWidget):
         return row
 
     def _filter_button_ss(self, active):
+        tkn = tokens()
+        active_text = "#062f28" if tkn.name == THEME_DARK else "#ffffff"
         if active:
             return (
-                "QPushButton { background: #030213; color: white; border: none; "
+                f"QPushButton {{ background: {tkn.brand}; color: {active_text}; border: none; "
                 "border-radius: 15px; padding: 0 12px; font-size: 12px; font-weight: 700; }"
             )
         return (
-            "QPushButton { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; "
+            f"QPushButton {{ background: {tkn.surface_muted}; color: {tkn.text_muted}; border: 1px solid {tkn.border}; "
             "border-radius: 15px; padding: 0 12px; font-size: 12px; font-weight: 600; }"
-            "QPushButton:hover { background: #e5e7eb; }"
+            f"QPushButton:hover {{ background: {tkn.hover}; color: {tkn.text}; }}"
         )
 
     def _sync_filter_buttons(self):
@@ -1328,7 +1341,7 @@ class DashboardPage(QWidget):
     def _choose_custom_range(self):
         dialog = QDialog(self)
         dialog.setWindowTitle(t("custom_date_range"))
-        dialog.setStyleSheet("background: white; color: #111827;")
+        dialog.setStyleSheet(f"background: {tokens().surface}; color: {tokens().text};")
         dialog.setMinimumWidth(360)
         layout = QVBoxLayout(dialog)
         layout.setContentsMargins(24, 20, 24, 20)
@@ -1485,13 +1498,13 @@ class DashboardPage(QWidget):
         layout.setSpacing(16)
 
         title = QLabel(t("priority_signals"))
-        title.setStyleSheet("font-size: 20px; font-weight: 700; color: #111827;")
+        title.setStyleSheet(f"font-size: 20px; font-weight: 700; color: {tokens().text};")
         layout.addWidget(title)
 
         pipeline = QFrame()
         pipeline.setObjectName("SignalBlock")
         pipeline.setStyleSheet(
-            "QFrame#SignalBlock { background: #f9fafb; border: none; border-radius: 8px; }"
+            f"QFrame#SignalBlock {{ background: {tokens().surface_muted}; border: none; border-radius: 8px; }}"
             "QFrame#SignalBlock QLabel { background: transparent; border: none; }"
         )
         pl = QVBoxLayout(pipeline)
@@ -1529,7 +1542,7 @@ class DashboardPage(QWidget):
 
     def _section_label(self, text):
         label = QLabel(text)
-        label.setStyleSheet("font-size: 13px; color: #4b5563; font-weight: 800;")
+        label.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted}; font-weight: 800;")
         return label
 
     def _metric_strip(self, metrics):
@@ -1539,7 +1552,7 @@ class DashboardPage(QWidget):
             box = QFrame()
             box.setObjectName("MetricBox")
             box.setStyleSheet(
-                "QFrame#MetricBox { background: white; border: 1px solid #e5e7eb; border-radius: 8px; }"
+                f"QFrame#MetricBox {{ background: {tokens().surface}; border: 1px solid {tokens().border}; border-radius: 8px; }}"
                 "QFrame#MetricBox QLabel { background: transparent; border: none; }"
             )
             box_l = QVBoxLayout(box)
@@ -1551,7 +1564,7 @@ class DashboardPage(QWidget):
             label_lbl = QLabel(label)
             label_lbl.setAlignment(Qt.AlignCenter)
             label_lbl.setWordWrap(True)
-            label_lbl.setStyleSheet("font-size: 11px; color: #6b7280;")
+            label_lbl.setStyleSheet(f"font-size: 11px; color: {tokens().text_soft};")
             box_l.addWidget(value_lbl)
             box_l.addWidget(label_lbl)
             row.addWidget(box)
@@ -1566,7 +1579,7 @@ class DashboardPage(QWidget):
 
         name = QLabel(label)
         name.setFixedWidth(84)
-        name.setStyleSheet("font-size: 12px; color: #4b5563;")
+        name.setStyleSheet(f"font-size: 12px; color: {tokens().text_muted};")
         layout.addWidget(name)
 
         progress = QProgressBar()
@@ -1575,7 +1588,7 @@ class DashboardPage(QWidget):
         progress.setFixedHeight(8)
         progress.setTextVisible(False)
         progress.setStyleSheet(
-            "QProgressBar { background: #e5e7eb; border: none; border-radius: 4px; }"
+            f"QProgressBar {{ background: {tokens().border}; border: none; border-radius: 4px; }}"
             "QProgressBar::chunk { background: #f59e0b; border-radius: 4px; }"
         )
         layout.addWidget(progress, 1)
@@ -1583,7 +1596,7 @@ class DashboardPage(QWidget):
         value_lbl = QLabel(str(value))
         value_lbl.setFixedWidth(28)
         value_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        value_lbl.setStyleSheet("font-size: 12px; color: #111827; font-weight: 700;")
+        value_lbl.setStyleSheet(f"font-size: 12px; color: {tokens().text}; font-weight: 700;")
         layout.addWidget(value_lbl)
         return row
 
@@ -1591,7 +1604,7 @@ class DashboardPage(QWidget):
         row = QFrame()
         row.setObjectName("AttentionRow")
         row.setStyleSheet(
-            "QFrame#AttentionRow { background: white; border: 1px solid #e5e7eb; border-radius: 8px; }"
+            f"QFrame#AttentionRow {{ background: {tokens().surface}; border: 1px solid {tokens().border}; border-radius: 8px; }}"
             "QFrame#AttentionRow QLabel { background: transparent; border: none; }"
         )
         layout = QHBoxLayout(row)
@@ -1606,10 +1619,10 @@ class DashboardPage(QWidget):
         text = QVBoxLayout()
         text.setSpacing(3)
         label = QLabel(signal["label"])
-        label.setStyleSheet("font-size: 13px; color: #111827; font-weight: 800;")
+        label.setStyleSheet(f"font-size: 13px; color: {tokens().text}; font-weight: 800;")
         detail = QLabel(signal["detail"])
         detail.setWordWrap(True)
-        detail.setStyleSheet("font-size: 12px; color: #6b7280;")
+        detail.setStyleSheet(f"font-size: 12px; color: {tokens().text_soft};")
         text.addWidget(label)
         text.addWidget(detail)
         layout.addLayout(text, 1)

@@ -4,6 +4,8 @@ from PySide6.QtCore import QEvent, QObject, QRectF, Qt
 from PySide6.QtGui import QPainterPath, QRegion
 from PySide6.QtWidgets import QAbstractItemView, QFrame, QMessageBox
 
+from src.ui.theme import THEME_DARK, tokens
+
 # Colors
 CLR_BG = "#f9fafb"
 CLR_WHITE = "white"
@@ -102,23 +104,83 @@ QPushButton:hover {{ background: #fecaca; }}
 
 
 def btn_primary(h=36):
-    return BTN_PRIMARY.format(h=h)
+    t = tokens()
+    text = "#062f28" if t.name == THEME_DARK else "#ffffff"
+    return f"""
+QPushButton {{
+    background: {t.brand};
+    color: {text};
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 0 16px;
+    min-height: {h}px;
+    outline: none;
+}}
+QPushButton:hover {{ background: {t.brand_hover}; }}
+QPushButton:pressed {{ background: {t.brand}; }}
+QPushButton:disabled {{ background: {t.border_strong}; color: {t.text_soft}; }}
+"""
 
 
 def btn_blue(h=36):
-    return BTN_BLUE.format(h=h)
+    return btn_primary(h)
 
 
 def btn_outline(h=36):
-    return BTN_OUTLINE.format(h=h)
+    t = tokens()
+    return f"""
+QPushButton {{
+    background: {t.surface};
+    color: {t.text};
+    border: 1px solid {t.border};
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 0 12px;
+    min-height: {h}px;
+    outline: none;
+}}
+QPushButton:hover {{ background: {t.hover}; color: {t.text}; border-color: {t.border_strong}; }}
+QPushButton:pressed {{ background: {t.surface_muted}; }}
+"""
 
 
 def btn_ghost(h=36):
-    return BTN_GHOST.format(h=h)
+    t = tokens()
+    return f"""
+QPushButton {{
+    background: {t.surface_muted};
+    color: {t.text_muted};
+    border: 1px solid {t.border};
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 0 12px;
+    min-height: {h}px;
+    outline: none;
+}}
+QPushButton:hover {{ background: {t.hover}; color: {t.text}; border-color: {t.border_strong}; }}
+"""
 
 
 def btn_danger(h=36):
-    return BTN_DANGER.format(h=h)
+    t = tokens()
+    return f"""
+QPushButton {{
+    background: {t.danger_soft};
+    color: {t.danger};
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 0 16px;
+    min-height: {h}px;
+    outline: none;
+}}
+QPushButton:hover {{ background: {t.danger_soft}; border: 1px solid {t.danger}; }}
+"""
 
 
 # Inputs
@@ -192,27 +254,32 @@ def table_style(
     row_font_size=14,
     item_padding=12,
 ):
+    t = tokens()
+    selected_bg = selected_bg if t.name != THEME_DARK else t.selected
+    hover_bg = hover_bg if t.name != THEME_DARK else t.hover
+    header_bg = header_bg if header_bg != "white" or t.name != THEME_DARK else t.surface
+    header_color = header_color if t.name != THEME_DARK else t.text
     return """
 QTableWidget {{
-    background: white;
-    alternate-background-color: white;
+    background: {surface};
+    alternate-background-color: {surface};
     border: none;
-    gridline-color: #f3f4f6;
+    gridline-color: {border};
     font-size: {row_font_size}px;
-    color: #111827;
+    color: {text};
     outline: none;
     selection-background-color: {selected_bg};
 }}
 QTableWidget::item {{
-    background: white;
+    background: {surface};
     padding: 0 {item_padding}px;
     border: none;
-    border-bottom: 1px solid #f3f4f6;
-    color: #111827;
+    border-bottom: 1px solid {border};
+    color: {text};
 }}
 QTableWidget::item:selected {{
     background: {selected_bg};
-    color: #111827;
+    color: {text};
 }}
 QTableWidget::item:hover {{
     background: {hover_bg};
@@ -224,7 +291,7 @@ QHeaderView {{
 QHeaderView::section {{
     background: {header_bg};
     border: none;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid {border};
     padding: 0 {item_padding}px;
     font-size: {header_font_size}px;
     font-weight: {header_weight};
@@ -234,7 +301,7 @@ QHeaderView::section {{
 QTableCornerButton::section {{
     background: {header_bg};
     border: none;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid {border};
 }}
 QScrollBar:vertical {{
     background: transparent;
@@ -243,13 +310,13 @@ QScrollBar:vertical {{
     margin: 0;
 }}
 QScrollBar::handle:vertical {{
-    background: #d1d5db;
+    background: {border_strong};
     border: none;
     border-radius: 3px;
     min-height: 32px;
 }}
 QScrollBar::handle:vertical:hover {{
-    background: #9ca3af;
+    background: {text_soft};
 }}
 QScrollBar::add-line:vertical,
 QScrollBar::sub-line:vertical {{
@@ -271,6 +338,11 @@ QScrollBar::sub-page:vertical {{
     border: none;
 }}
 """.format(
+        surface=t.surface,
+        border=t.border,
+        border_strong=t.border_strong,
+        text=t.text,
+        text_soft=t.text_soft,
         selected_bg=selected_bg,
         hover_bg=hover_bg,
         header_bg=header_bg,
@@ -287,12 +359,17 @@ TABLE_SS = table_style()
 SANCTION_TABLE_SS = table_style(selected_bg="#fef2f2", hover_bg="#fff7f7")
 
 
-PAGER_BUTTON_SS = (
-    "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db;"
-    " border-radius: 6px; font-size: 13px; font-weight: 700; padding: 0 14px; }"
-    " QPushButton:hover { background: #f9fafb; }"
-    " QPushButton:disabled { color: #9ca3af; background: #f9fafb; }"
-)
+def pager_button_ss():
+    t = tokens()
+    return (
+        f"QPushButton {{ background: {t.surface}; color: {t.text}; border: 1px solid {t.border_strong};"
+        " border-radius: 6px; font-size: 13px; font-weight: 700; padding: 0 14px; }"
+        f" QPushButton:hover {{ background: {t.hover}; }}"
+        f" QPushButton:disabled {{ color: {t.text_soft}; background: {t.surface_muted}; }}"
+    )
+
+
+PAGER_BUTTON_SS = pager_button_ss()
 
 
 MESSAGE_BOX_SS = """
@@ -319,7 +396,23 @@ def show_message_box(parent, icon, title, text, buttons=QMessageBox.Ok, default_
     box.setText(text)
     box.setStandardButtons(buttons)
     box.setDefaultButton(default_button)
-    box.setStyleSheet(MESSAGE_BOX_SS)
+    t = tokens()
+    default_text = "#062f28" if t.name == THEME_DARK else "#ffffff"
+    box.setStyleSheet(f"""
+QMessageBox {{ background: {t.surface}; color: {t.text}; }}
+QMessageBox QLabel {{ color: {t.text}; background: transparent; font-size: 13px; }}
+QPushButton {{
+    background: {t.surface};
+    color: {t.text};
+    border: 1px solid {t.border_strong};
+    border-radius: 6px;
+    min-width: 84px;
+    min-height: 30px;
+    font-weight: 600;
+}}
+QPushButton:hover {{ background: {t.hover}; }}
+QPushButton:default {{ background: {t.brand}; color: {default_text}; border: none; }}
+""")
     return box.exec()
 
 
@@ -347,6 +440,8 @@ def message_question(parent, title, text, default_button=QMessageBox.Yes):
 
 
 def table_cell_widget_ss(background=TABLE_ROW_BG):
+    if background == TABLE_ROW_BG:
+        background = tokens().surface
     return (
         f"QWidget#TableCellWidget {{ background: {background}; border: none; }}"
         "QWidget#TableCellWidget QLabel { background: transparent; border: none; }"
@@ -363,7 +458,7 @@ def prepare_table_cell_widget(widget, background=TABLE_ROW_BG):
 def sync_table_widget_cells(table, selected_bg=TABLE_ROW_SELECTED_BG):
     for row in range(table.rowCount()):
         selected = table.selectionModel().isRowSelected(row, table.rootIndex())
-        bg = selected_bg if selected else TABLE_ROW_BG
+        bg = selected_bg if selected else tokens().surface
         for col in range(table.columnCount()):
             widget = table.cellWidget(row, col)
             if widget and widget.objectName() == "TableCellWidget":
@@ -380,85 +475,103 @@ def enable_table_row_selection(table, selected_bg=TABLE_ROW_SELECTED_BG):
     table._myhr_selection_sync_installed = True
 
 # Cards. The QLabel rule prevents frame borders from appearing around text.
-CARD_SS = """
-QFrame {
-    background: white;
-    border: 1px solid #e5e7eb;
+def card_ss(object_name: str = "QFrame"):
+    t = tokens()
+    return f"""
+{object_name} {{
+    background: {t.surface};
+    border: 1px solid {t.border};
     border-radius: 8px;
-}
-QFrame QLabel {
+}}
+{object_name} QLabel {{
     border: none;
     background: transparent;
-}
+}}
 """
 
+CARD_SS = card_ss()
+
 # Page scroll area
-SCROLL_SS = """
-QScrollArea {
+def scroll_ss(background: str | None = None):
+    t = tokens()
+    bg = background or "transparent"
+    return f"""
+QScrollArea {{
     border: none;
+    background: {bg};
+}}
+QScrollArea > QWidget > QWidget {{
+    background: {bg};
+}}
+QScrollBar:vertical {{
     background: transparent;
-}
-QScrollArea > QWidget > QWidget {
-    background: transparent;
-}
-QScrollBar:vertical {
-    background: transparent;
-    width: 10px;
+    width: 7px;
     margin: 0;
-}
-QScrollBar::handle:vertical {
-    background: #d1d5db;
-    border-radius: 5px;
+}}
+QScrollBar::handle:vertical {{
+    background: {t.border_strong};
+    border-radius: 3px;
     min-height: 32px;
-}
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+}}
+QScrollBar::handle:vertical:hover {{
+    background: {t.text_soft};
+}}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
     height: 0;
     border: none;
     background: transparent;
-}
+}}
 """
 
+SCROLL_SS = scroll_ss()
+
 # Tabs
-TAB_SS = """
-QTabWidget::pane {
+def tab_ss():
+    t = tokens()
+    return f"""
+QTabWidget::pane {{
     border: none;
-    background: #f9fafb;
-}
-QTabBar::tab {
+    background: {t.canvas};
+}}
+QTabBar::tab {{
     background: transparent;
-    color: #6b7280;
+    color: {t.text_muted};
     padding: 10px 20px;
     border: none;
     border-bottom: 2px solid transparent;
     font-size: 14px;
     font-weight: 500;
-}
-QTabBar::tab:selected {
-    color: #030213;
-    border-bottom: 2px solid #030213;
+}}
+QTabBar::tab:selected {{
+    color: {t.brand};
+    border-bottom: 2px solid {t.brand};
     font-weight: 600;
-}
-QTabBar::tab:hover {
-    color: #111827;
-}
+}}
+QTabBar::tab:hover {{
+    color: {t.text};
+}}
 """
 
+TAB_SS = tab_ss()
 
-PILL_TAB_SS = """
-QTabWidget::pane {
+def pill_tab_ss():
+    t = tokens()
+    selected_text = "#062f28" if t.name == THEME_DARK else t.text
+    return f"""
+QTabWidget::pane {{
     border: none;
-    background: #f9fafb;
+    background: {t.canvas};
     margin-top: 26px;
-}
-QTabBar {
-    background: #e8ebf0;
-    border: 1px solid #e5e7eb;
+}}
+QTabBar {{
+    background: {t.surface_muted};
+    border: 1px solid {t.border};
     border-radius: 18px;
     padding: 5px;
-}
-QTabBar::tab {
+}}
+QTabBar::tab {{
     background: transparent;
-    color: #030213;
+    color: {t.text};
     border: none;
     border-radius: 13px;
     padding: 7px 16px;
@@ -466,16 +579,18 @@ QTabBar::tab {
     min-height: 24px;
     font-size: 14px;
     font-weight: 800;
-}
-QTabBar::tab:selected {
-    background: white;
-    border: 1px solid #f8fafc;
-    color: #030213;
-}
-QTabBar::tab:hover {
-    background: #f3f4f6;
-}
+}}
+QTabBar::tab:selected {{
+    background: {t.surface};
+    border: 1px solid {t.border};
+    color: {selected_text};
+}}
+QTabBar::tab:hover {{
+    background: {t.hover};
+}}
 """
+
+PILL_TAB_SS = pill_tab_ss()
 
 
 def badge_ss(bg, fg):
@@ -492,98 +607,107 @@ BADGE_RED = badge_ss("#fee2e2", "#991b1b")
 BADGE_GRAY = badge_ss("#f3f4f6", "#374151")
 
 
-COMBO_POPUP_VIEW_SS = """
-QListView {
-    background: white;
-    color: #111827;
-    border: 1px solid #d1d5db;
+def combo_popup_view_ss():
+    t = tokens()
+    return f"""
+QListView {{
+    background: {t.surface};
+    color: {t.text};
+    border: 1px solid {t.border_strong};
     border-radius: 8px;
     outline: none;
     padding: 4px;
-}
-QListView::item {
+}}
+QListView::item {{
     min-height: 30px;
     padding: 6px 10px;
-    background: white;
-    color: #111827;
+    background: {t.surface};
+    color: {t.text};
     border-radius: 6px;
-}
+}}
 QListView::item:selected,
-QListView::item:hover {
+QListView::item:hover {{
     background: #eff6ff;
-    color: #111827;
-}
-QListView::item:disabled {
-    background: #fef2f2;
-    color: #991b1b;
-}
+    color: {t.text};
+}}
+QListView::item:disabled {{
+    background: {t.danger_soft};
+    color: {t.danger};
+}}
 """
 
+COMBO_POPUP_VIEW_SS = combo_popup_view_ss()
 
-EMPLOYEE_PICKER_LIST_SS = """
-QListWidget {
-    background: white;
-    border: 1px solid #e5e7eb;
+def employee_picker_list_ss():
+    t = tokens()
+    return f"""
+QListWidget {{
+    background: {t.surface};
+    border: 1px solid {t.border};
     border-radius: 8px;
     padding: 6px;
     outline: none;
-}
-QListWidget::item {
+}}
+QListWidget::item {{
     min-height: 40px;
     padding: 8px 10px;
     border-radius: 7px;
-    color: #111827;
-}
-QListWidget::item:hover {
-    background: #f8fafc;
-}
-QListWidget::item:selected {
-    background: #eff6ff;
-    color: #1d4ed8;
-    border: 1px solid #bfdbfe;
-}
-QListWidget::item:disabled {
-    background: #fef2f2;
-    color: #991b1b;
-}
-QScrollBar:vertical {
+    color: {t.text};
+}}
+QListWidget::item:hover {{
+    background: {t.hover};
+}}
+QListWidget::item:selected {{
+    background: {t.selected};
+    color: {t.brand};
+    border: 1px solid {t.brand};
+}}
+QListWidget::item:disabled {{
+    background: {t.danger_soft};
+    color: {t.danger};
+}}
+QScrollBar:vertical {{
     background: transparent;
     width: 8px;
     margin: 2px;
-}
-QScrollBar::handle:vertical {
-    background: #d1d5db;
+}}
+QScrollBar::handle:vertical {{
+    background: {t.border_strong};
     border-radius: 4px;
     min-height: 28px;
-}
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+}}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
     height: 0;
     border: none;
-}
+}}
 """
+
+EMPLOYEE_PICKER_LIST_SS = employee_picker_list_ss()
 
 
 def employee_picker_row_ss(*, enabled=True, selected=False):
+    t = tokens()
     if not enabled:
         return (
-            "QFrame#EmployeePickerRow { background: #fef2f2; border: 1px solid #fecaca; "
+            f"QFrame#EmployeePickerRow {{ background: {t.danger_soft}; border: 1px solid {t.danger}; "
             "border-radius: 8px; }"
-            "QFrame#EmployeePickerRow:hover { background: #fee2e2; }"
+            f"QFrame#EmployeePickerRow:hover {{ background: {t.danger_soft}; }}"
         )
     if selected:
         return (
-            "QFrame#EmployeePickerRow { background: #eff6ff; border: 1px solid #2563eb; "
+            f"QFrame#EmployeePickerRow {{ background: {t.selected}; border: 1px solid {t.brand}; "
             "border-radius: 8px; }"
         )
     return (
-        "QFrame#EmployeePickerRow { background: white; border: 1px solid transparent; "
+        f"QFrame#EmployeePickerRow {{ background: {t.surface}; border: 1px solid transparent; "
         "border-radius: 8px; }"
-        "QFrame#EmployeePickerRow:hover { background: #f8fafc; border-color: #e5e7eb; }"
+        f"QFrame#EmployeePickerRow:hover {{ background: {t.hover}; border-color: {t.border}; }}"
     )
 
 
 def employee_picker_checkbox_ss(enabled=True):
-    color = "#991b1b" if not enabled else "#111827"
+    t = tokens()
+    color = t.danger if not enabled else t.text
     return f"""
         QCheckBox {{
             background: transparent;
@@ -595,17 +719,17 @@ def employee_picker_checkbox_ss(enabled=True):
         QCheckBox::indicator {{
             width: 16px;
             height: 16px;
-            border: 1px solid #cbd5e1;
+            border: 1px solid {t.border_strong};
             border-radius: 4px;
-            background: white;
+            background: {t.surface};
         }}
         QCheckBox::indicator:checked {{
-            background: #2563eb;
-            border-color: #2563eb;
+            background: {t.brand};
+            border-color: {t.brand};
         }}
         QCheckBox::indicator:disabled {{
-            background: #fee2e2;
-            border-color: #fca5a5;
+            background: {t.danger_soft};
+            border-color: {t.danger};
         }}
     """
 
@@ -640,7 +764,7 @@ def polish_combo_box(combo, *, max_visible_items=12, popup_min_width=None):
     view.setFrameShape(QFrame.NoFrame)
     view.setTextElideMode(Qt.ElideNone)
     view.setAttribute(Qt.WA_StyledBackground, True)
-    view.setStyleSheet(COMBO_POPUP_VIEW_SS)
+    view.setStyleSheet(combo_popup_view_ss())
 
     popup = view.window()
     popup.setAttribute(Qt.WA_TranslucentBackground, True)

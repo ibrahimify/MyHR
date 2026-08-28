@@ -30,6 +30,7 @@ from src.core.i18n import t
 from src.core.app_settings import app_settings, company_name
 from src.ui.animations import install_tab_transition
 from src.ui.styles import PILL_TAB_SS, enable_table_row_selection, prepare_table_cell_widget, polish_combo_box, table_style
+from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import get_session, log_action, DB_PATH
 from src.database.models import AuditLog, Title, SystemUser, PromotionRule, Employee, OrgUnit
 from src.services.reporting_service import (
@@ -41,11 +42,11 @@ from src.services.reporting_service import (
 )
 
 
-PAGE_BG = "#f9fafb"
-TEXT = "#030213"
-MUTED = "#4b5563"
-BLACK = "#030213"
-BLUE = "#2563eb"
+PAGE_BG = tokens().canvas
+TEXT = tokens().text
+MUTED = tokens().text_muted
+BLACK = tokens().text
+BLUE = tokens().brand
 
 LEVEL_META = {
     "L7": ("level_l7_label", "#2563eb", "#dbeafe"),
@@ -59,112 +60,112 @@ LEVEL_META = {
 }
 LEVEL_ORDER = {level: index for index, level in enumerate(["L7", "L6", "L5", "L4", "L3", "L2", "L1", "Other"])}
 
-CARD_SS = """
-QFrame#Card {
-    background: white;
-    border: 1px solid #e5e7eb;
+CARD_SS = f"""
+QFrame#Card {{
+    background: {tokens().surface};
+    border: 1px solid {tokens().border};
     border-radius: 8px;
-}
-QFrame#Card QLabel {
+}}
+QFrame#Card QLabel {{
     background: transparent;
     border: none;
-}
+}}
 """
 
-NOTE_BLUE_SS = """
-QFrame {
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
+NOTE_BLUE_SS = f"""
+QFrame {{
+    background: {tokens().selected};
+    border: 1px solid {tokens().brand};
     border-radius: 8px;
-}
-QLabel {
+}}
+QLabel {{
     background: transparent;
     border: none;
-}
+}}
 """
 
-NOTE_YELLOW_SS = """
-QFrame {
-    background: #fefce8;
-    border: 1px solid #fde047;
+NOTE_YELLOW_SS = f"""
+QFrame {{
+    background: {tokens().warning_soft};
+    border: 1px solid {tokens().warning};
     border-radius: 8px;
-}
-QLabel {
+}}
+QLabel {{
     background: transparent;
     border: none;
-}
+}}
 """
 
-INPUT_SS = """
-QLineEdit, QSpinBox, QDoubleSpinBox {
-    background: #f3f3f5;
-    color: #111827;
+INPUT_SS = f"""
+QLineEdit, QSpinBox, QDoubleSpinBox {{
+    background: {tokens().input};
+    color: {tokens().text};
     border: 1px solid transparent;
     border-radius: 8px;
     padding: 0 12px;
     min-height: 44px;
     font-size: 14px;
-}
-QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {
-    background: white;
-    border: 1px solid #2563eb;
-}
+}}
+QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {{
+    background: {tokens().surface};
+    border: 1px solid {tokens().brand};
+}}
 QSpinBox::up-button, QSpinBox::down-button,
-QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
     width: 0px;
     border: none;
-}
+}}
 """
 
-COMBO_SS = """
-QComboBox {
-    background: #f3f3f5;
-    color: #111827;
+COMBO_SS = f"""
+QComboBox {{
+    background: {tokens().input};
+    color: {tokens().text};
     border: 1px solid transparent;
     border-radius: 8px;
     padding: 0 34px 0 12px;
     min-height: 44px;
     font-size: 14px;
-}
-QComboBox:focus {
-    background: white;
-    border: 1px solid #2563eb;
-}
-QComboBox::drop-down {
+}}
+QComboBox:focus {{
+    background: {tokens().surface};
+    border: 1px solid {tokens().brand};
+}}
+QComboBox::drop-down {{
     width: 30px;
     border: none;
-}
-QComboBox::down-arrow {
+}}
+QComboBox::down-arrow {{
     image: url(src/ui/assets/chevron_down.svg);
     width: 13px;
     height: 13px;
-}
-QComboBox QAbstractItemView {
-    background: white;
-    color: #111827;
-    border: 1px solid #d1d5db;
+}}
+QComboBox QAbstractItemView {{
+    background: {tokens().surface};
+    color: {tokens().text};
+    border: 1px solid {tokens().border_strong};
     border-radius: 8px;
     padding: 4px;
-    selection-background-color: #eff6ff;
-    selection-color: #111827;
+    selection-background-color: {tokens().selected};
+    selection-color: {tokens().text};
     outline: none;
-}
+}}
 """
 
-MESSAGE_BOX_SS = """
-QMessageBox { background: white; color: #111827; }
-QMessageBox QLabel { color: #111827; background: transparent; font-size: 13px; }
-QPushButton {
-    background: white;
-    color: #111827;
-    border: 1px solid #d1d5db;
+MESSAGE_BOX_SS = f"""
+QMessageBox {{ background: {tokens().surface}; color: {tokens().text}; }}
+QMessageBox QLabel {{ color: {tokens().text}; background: transparent; font-size: 13px; }}
+QPushButton {{
+    background: {tokens().surface};
+    color: {tokens().text};
+    border: 1px solid {tokens().border_strong};
     border-radius: 6px;
     min-width: 84px;
     min-height: 30px;
     font-weight: 600;
-}
-QPushButton:hover { background: #f3f4f6; }
-QPushButton:default { background: #030213; color: white; border: none; }
+}}
+QPushButton:hover {{ background: {tokens().hover}; }}
+QPushButton:default {{ background: {tokens().brand}; color: {"#062f28" if tokens().name == THEME_DARK else "#ffffff"}; border: none; }}
 """
 
 

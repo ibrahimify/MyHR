@@ -31,6 +31,7 @@ from src.ui.styles import (
     polish_combo_box,
     table_style,
 )
+from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import (
     get_session, generate_commendation_ref, log_action,
     can_receive_commendation, count_commendations_in_current_role,
@@ -46,67 +47,67 @@ CATEGORIES = {
     3: {"label_key": "category_3", "months": -6, "desc_key": "category_3_desc", "color": "#8b5cf6", "bg": "#f3e8ff"},
 }
 
-PAGE_BG = "#f9fafb"
-TEXT = "#030213"
-MUTED = "#4b5563"
-BORDER = "#e5e7eb"
+PAGE_BG = tokens().canvas
+TEXT = tokens().text
+MUTED = tokens().text_muted
+BORDER = tokens().border
 
-CARD_SS = """
-QFrame#Card {
-    background: white;
-    border: 1px solid #e5e7eb;
+CARD_SS = f"""
+QFrame#Card {{
+    background: {tokens().surface};
+    border: 1px solid {tokens().border};
     border-radius: 8px;
-}
-QFrame#Card QLabel {
+}}
+QFrame#Card QLabel {{
     background: transparent;
     border: none;
-}
+}}
 """
 
-INPUT_SS = """
-QLineEdit, QTextEdit {
+INPUT_SS = f"""
+QLineEdit, QTextEdit {{
     border: none;
     border-radius: 8px;
     padding: 0 16px;
     font-size: 14px;
-    color: #111827;
-    background: #f3f3f5;
-    selection-background-color: #2563eb;
+    color: {tokens().text};
+    background: {tokens().input};
+    selection-background-color: {tokens().selected};
     outline: none;
-}
-QTextEdit {
+}}
+QTextEdit {{
     padding: 10px 16px;
-}
-QLineEdit:focus, QTextEdit:focus {
-    background: white;
-    border: 1px solid #2563eb;
-}
+}}
+QLineEdit:focus, QTextEdit:focus {{
+    background: {tokens().surface};
+    border: 1px solid {tokens().brand};
+}}
 """
 
-COMBO_SS = """
-QComboBox {
+COMBO_SS = f"""
+QComboBox {{
     border: none;
     border-radius: 8px;
     padding: 0 36px 0 16px;
     font-size: 14px;
-    color: #111827;
-    background: #f3f3f5;
+    color: {tokens().text};
+    background: {tokens().input};
     min-height: 40px;
     outline: none;
-}
-QComboBox:focus { border: 1px solid #2563eb; background: white; }
-QComboBox::drop-down { width: 32px; border: none; background: transparent; }
-QComboBox::down-arrow { image: url(src/ui/assets/chevron_down.svg); width: 12px; height: 12px; }
-QComboBox QAbstractItemView {
-    background: white;
-    color: #111827;
-    border: 1px solid #e5e7eb;
+}}
+QComboBox:focus {{ border: 1px solid {tokens().brand}; background: {tokens().surface}; }}
+QComboBox::drop-down {{ width: 32px; border: none; background: transparent; }}
+QComboBox::down-arrow {{ image: url(src/ui/assets/chevron_down.svg); width: 12px; height: 12px; }}
+QComboBox QAbstractItemView {{
+    background: {tokens().surface};
+    color: {tokens().text};
+    border: 1px solid {tokens().border};
     border-radius: 8px;
-    selection-background-color: #eff6ff;
-    selection-color: #111827;
+    selection-background-color: {tokens().selected};
+    selection-color: {tokens().text};
     outline: none;
     padding: 4px;
-}
+}}
 """
 
 TABLE_SS = """
@@ -150,20 +151,20 @@ QToolTip {
 """
 TABLE_SS = table_style()
 
-MESSAGE_BOX_SS = """
-QMessageBox { background: white; color: #111827; }
-QMessageBox QLabel { color: #111827; background: transparent; font-size: 13px; }
-QPushButton {
-    background: white;
-    color: #111827;
-    border: 1px solid #d1d5db;
+MESSAGE_BOX_SS = f"""
+QMessageBox {{ background: {tokens().surface}; color: {tokens().text}; }}
+QMessageBox QLabel {{ color: {tokens().text}; background: transparent; font-size: 13px; }}
+QPushButton {{
+    background: {tokens().surface};
+    color: {tokens().text};
+    border: 1px solid {tokens().border_strong};
     border-radius: 6px;
     min-width: 84px;
     min-height: 30px;
     font-weight: 600;
-}
-QPushButton:hover { background: #f3f4f6; }
-QPushButton:default { background: #030213; color: white; border: none; }
+}}
+QPushButton:hover {{ background: {tokens().hover}; }}
+QPushButton:default {{ background: {tokens().brand}; color: {"#062f28" if tokens().name == THEME_DARK else "#ffffff"}; border: none; }}
 """
 
 
@@ -172,7 +173,7 @@ class CommendationsPage(QWidget):
         super().__init__()
         self.user = user
         self.setObjectName("CommendationsPage")
-        self.setStyleSheet("QWidget#CommendationsPage { background: #f9fafb; }")
+        self.setStyleSheet(f"QWidget#CommendationsPage {{ background: {tokens().canvas}; }}")
         self._build()
 
     def _build(self):
@@ -181,9 +182,9 @@ class CommendationsPage(QWidget):
         layout.setSpacing(0)
 
         title = QLabel(t("commendations_title"))
-        title.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827; background: transparent;")
+        title.setStyleSheet(f"font-size: 30px; font-weight: 800; color: {tokens().text}; background: transparent;")
         subtitle = QLabel(t("commendations_subtitle"))
-        subtitle.setStyleSheet("font-size: 16px; color: #4b5563; background: transparent;")
+        subtitle.setStyleSheet(f"font-size: 16px; color: {tokens().text_muted}; background: transparent;")
         layout.addWidget(title)
         layout.addSpacing(6)
         layout.addWidget(subtitle)
@@ -224,7 +225,7 @@ class IssueCommendationTab(QWidget):
         self.bulk_row_by_checkbox = {}
         self.mode = "single"
         self.setObjectName("IssueCommendationTab")
-        self.setStyleSheet("QWidget#IssueCommendationTab { background: #f9fafb; }")
+        self.setStyleSheet(f"QWidget#IssueCommendationTab {{ background: {tokens().canvas}; }}")
         self._build()
 
     def _build(self):
@@ -252,14 +253,14 @@ class IssueCommendationTab(QWidget):
         mc.setContentsMargins(30, 28, 30, 28)
         mc.setSpacing(24)
         mc_title = QLabel(t("commendation_type"))
-        mc_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
+        mc_title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text}; background: transparent;")
         mc.addWidget(mc_title)
 
         mode_row = QHBoxLayout()
         mode_row.setSpacing(10)
 
         self.single_btn = QPushButton(t("single_employee"))
-        self.single_btn.setIcon(qta.icon("fa5s.user", color="#2563eb"))
+        self.single_btn.setIcon(qta.icon("fa5s.user", color=tokens().brand))
         self.single_btn.setIconSize(QSize(28, 28))
         self.single_btn.setFixedHeight(150)
         self.single_btn.setCursor(Qt.PointingHandCursor)
@@ -286,11 +287,11 @@ class IssueCommendationTab(QWidget):
         dc.setSpacing(16)
 
         dc_title = QLabel(t("commendation_details"))
-        dc_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
+        dc_title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text}; background: transparent;")
         dc.addWidget(dc_title)
 
         title_lbl = QLabel(t("award_title") + " *")
-        title_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
+        title_lbl.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {tokens().text}; background: transparent;")
         self.title_input = QLineEdit()
         self.title_input.setPlaceholderText(t("award_title_placeholder"))
         self.title_input.setFixedHeight(44)
@@ -299,7 +300,7 @@ class IssueCommendationTab(QWidget):
         dc.addWidget(self.title_input)
 
         cat_lbl = QLabel(t("commendation_category") + " *")
-        cat_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
+        cat_lbl.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {tokens().text}; background: transparent;")
         self.cat_combo = QComboBox()
         self.cat_combo.setFixedHeight(44)
         self.cat_combo.setStyleSheet(COMBO_SS)
@@ -314,7 +315,7 @@ class IssueCommendationTab(QWidget):
         dc.addWidget(cat_hint)
 
         desc_lbl = QLabel(t("description") + " *")
-        desc_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
+        desc_lbl.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {tokens().text}; background: transparent;")
         self.desc_input = QTextEdit()
         self.desc_input.setFixedHeight(80)
         self.desc_input.setPlaceholderText(t("commendation_description_placeholder"))
@@ -332,7 +333,7 @@ class IssueCommendationTab(QWidget):
         ec.setSpacing(14)
 
         self.emp_card_title = QLabel(t("select_employee"))
-        self.emp_card_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
+        self.emp_card_title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text}; background: transparent;")
         ec.addWidget(self.emp_card_title)
 
         self.single_search = QLineEdit()
@@ -364,14 +365,14 @@ class IssueCommendationTab(QWidget):
         self.bulk_scroll.setWidgetResizable(True)
         self.bulk_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.bulk_scroll.setStyleSheet(
-            "QScrollArea { background: white; border: 1px solid #e5e7eb; border-radius: 8px; }"
-            "QScrollArea > QWidget > QWidget { background: white; }"
+            f"QScrollArea {{ background: {tokens().surface}; border: 1px solid {tokens().border}; border-radius: 8px; }}"
+            f"QScrollArea > QWidget > QWidget {{ background: {tokens().surface}; }}"
             "QScrollBar:vertical { background: transparent; width: 8px; margin: 2px; }"
             "QScrollBar::handle:vertical { background: #d1d5db; border-radius: 4px; min-height: 28px; }"
             "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; border: none; }"
         )
         self.bulk_container = QWidget()
-        self.bulk_container.setStyleSheet("background: white;")
+        self.bulk_container.setStyleSheet(f"background: {tokens().surface};")
         self.bulk_layout = QVBoxLayout(self.bulk_container)
         self.bulk_layout.setContentsMargins(8, 8, 8, 8)
         self.bulk_layout.setSpacing(8)
@@ -439,7 +440,7 @@ class IssueCommendationTab(QWidget):
         ac.setContentsMargins(30, 28, 30, 28)
         ac.setSpacing(16)
         actions_title = QLabel(t("actions"))
-        actions_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
+        actions_title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text}; background: transparent;")
         ac.addWidget(actions_title)
         ac.addSpacing(24)
         issue_btn = QPushButton("  " + t("issue_commendation"))
@@ -765,7 +766,7 @@ class CommendationHistoryTab(QWidget):
         self.page_size = 50
         self.total_pages = 1
         self.setObjectName("CommendationHistoryTab")
-        self.setStyleSheet("QWidget#CommendationHistoryTab { background: #f9fafb; }")
+        self.setStyleSheet(f"QWidget#CommendationHistoryTab {{ background: {tokens().canvas}; }}")
         self._build()
         self.refresh()
 
@@ -788,7 +789,7 @@ class CommendationHistoryTab(QWidget):
         icon = QLabel()
         icon.setPixmap(qta.icon("fa5s.award", color="#d97706").pixmap(18, 18))
         title = QLabel(t("recent_commendations"))
-        title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
+        title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text}; background: transparent;")
         hl.addWidget(icon)
         hl.addWidget(title)
         hl.addStretch()
@@ -898,12 +899,12 @@ class CommendationHistoryTab(QWidget):
 
     def _pager(self):
         pager = QFrame()
-        pager.setStyleSheet("background: white; border: none; border-top: 1px solid #f3f4f6;")
+        pager.setStyleSheet(f"background: {tokens().surface}; border: none; border-top: 1px solid {tokens().border};")
         layout = QHBoxLayout(pager)
         layout.setContentsMargins(16, 10, 16, 10)
         layout.setSpacing(10)
         self.page_lbl = QLabel("")
-        self.page_lbl.setStyleSheet("font-size: 13px; color: #4b5563; background: transparent;")
+        self.page_lbl.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted}; background: transparent;")
         btn_ss = (
             "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db;"
             " border-radius: 6px; font-size: 13px; font-weight: 700; padding: 0 14px; }"

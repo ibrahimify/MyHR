@@ -26,7 +26,8 @@ from sqlalchemy import String, cast, func, or_
 
 from src.core.app_settings import company_name, company_subtitle
 from src.core.i18n import is_rtl, t
-from src.ui.styles import enable_table_row_selection, prepare_table_cell_widget, polish_combo_box
+from src.ui.styles import enable_table_row_selection, prepare_table_cell_widget, polish_combo_box, table_style
+from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import get_session, log_action
 from src.database.models import (
     AuditLog,
@@ -99,105 +100,62 @@ CATEGORY_LABEL_KEYS = {
     "other": "other",
 }
 
-CARD_SS = """
-QFrame#Card {
-    background: white;
-    border: 1px solid #e5e7eb;
+CARD_SS = f"""
+QFrame#Card {{
+    background: {tokens().surface};
+    border: 1px solid {tokens().border};
     border-radius: 8px;
-}
-QFrame#Card QLabel {
+}}
+QFrame#Card QLabel {{
     background: transparent;
     border: none;
-}
+}}
 """
 
-INPUT_SS = """
-QLineEdit {
+INPUT_SS = f"""
+QLineEdit {{
     border: none;
     border-radius: 8px;
     padding: 0 16px;
     font-size: 14px;
-    color: #111827;
-    background: #f3f3f5;
-    selection-background-color: #2563eb;
+    color: {tokens().text};
+    background: {tokens().input};
+    selection-background-color: {tokens().selected};
     outline: none;
-}
-QLineEdit:focus {
-    background: white;
-    border: 1px solid #2563eb;
-}
+}}
+QLineEdit:focus {{
+    background: {tokens().surface};
+    border: 1px solid {tokens().brand};
+}}
 """
 
-COMBO_SS = """
-QComboBox {
+COMBO_SS = f"""
+QComboBox {{
     border: none;
     border-radius: 8px;
     padding: 0 36px 0 16px;
     font-size: 14px;
-    color: #111827;
-    background: #f3f3f5;
+    color: {tokens().text};
+    background: {tokens().input};
     min-height: 40px;
     outline: none;
-}
-QComboBox:focus { border: 1px solid #2563eb; background: white; }
-QComboBox::drop-down { width: 32px; border: none; background: transparent; }
-QComboBox::down-arrow { image: url(src/ui/assets/chevron_down.svg); width: 12px; height: 12px; }
-QComboBox QAbstractItemView {
-    background: white;
-    color: #111827;
-    border: 1px solid #e5e7eb;
+}}
+QComboBox:focus {{ border: 1px solid {tokens().brand}; background: {tokens().surface}; }}
+QComboBox::drop-down {{ width: 32px; border: none; background: transparent; }}
+QComboBox::down-arrow {{ image: url(src/ui/assets/chevron_down.svg); width: 12px; height: 12px; }}
+QComboBox QAbstractItemView {{
+    background: {tokens().surface};
+    color: {tokens().text};
+    border: 1px solid {tokens().border};
     border-radius: 8px;
-    selection-background-color: #eff6ff;
-    selection-color: #111827;
+    selection-background-color: {tokens().selected};
+    selection-color: {tokens().text};
     outline: none;
     padding: 4px;
-}
+}}
 """
 
-TABLE_SS = """
-QTableWidget {
-    background: white;
-    alternate-background-color: white;
-    border: none;
-    gridline-color: #f3f4f6;
-    font-size: 14px;
-    color: #111827;
-    outline: none;
-    selection-background-color: #eff6ff;
-}
-QTableWidget::item {
-    background: white;
-    padding: 0 12px;
-    border: none;
-    border-bottom: 1px solid #f3f4f6;
-    color: #111827;
-}
-QTableWidget::item:hover { background: #f9fafb; }
-QTableWidget::item:selected { background: #eff6ff; color: #111827; }
-QHeaderView::section {
-    background: white;
-    border: none;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 0 12px;
-    font-size: 13px;
-    font-weight: 800;
-    color: #030213;
-    min-height: 50px;
-    text-align: left;
-}
-QTableCornerButton::section {
-    background: white;
-    border: none;
-    border-bottom: 1px solid #e5e7eb;
-}
-QToolTip {
-    background-color: #111827;
-    color: white;
-    border: 1px solid #374151;
-    border-radius: 4px;
-    padding: 6px 8px;
-}
-"""
+TABLE_SS = table_style()
 
 
 class AuditLogPage(QWidget):
@@ -212,7 +170,7 @@ class AuditLogPage(QWidget):
         self.stat_values = {}
         self._target_session = None
         self.setObjectName("AuditLogPage")
-        self.setStyleSheet("QWidget#AuditLogPage { background: #f9fafb; }")
+        self.setStyleSheet(f"QWidget#AuditLogPage {{ background: {tokens().canvas}; }}")
         self._build()
         self.refresh()
 
@@ -232,9 +190,9 @@ class AuditLogPage(QWidget):
         layout.setSpacing(0)
 
         title = QLabel(t("audit_title"))
-        title.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827; background: transparent;")
+        title.setStyleSheet(f"font-size: 30px; font-weight: 800; color: {tokens().text}; background: transparent;")
         subtitle = QLabel(t("audit_subtitle"))
-        subtitle.setStyleSheet("font-size: 16px; color: #4b5563; background: transparent;")
+        subtitle.setStyleSheet(f"font-size: 16px; color: {tokens().text_muted}; background: transparent;")
         layout.addWidget(title)
         layout.addSpacing(6)
         layout.addWidget(subtitle)
@@ -262,18 +220,19 @@ class AuditLogPage(QWidget):
         self.search.setFixedHeight(44)
         self.search.setMinimumWidth(360)
         self.search.setStyleSheet(INPUT_SS)
-        self.search.addAction(qta.icon("fa5s.search", color="#9ca3af"), QLineEdit.LeadingPosition)
+        self.search.addAction(qta.icon("fa5s.search", color=tokens().text_soft), QLineEdit.LeadingPosition)
         self.search.textChanged.connect(self._filter)
         fl.addWidget(self.search, 0, 0, 1, 4)
 
         self.search_btn = QPushButton(t("search"))
         self.search_btn.setFixedHeight(44)
         self.search_btn.setCursor(Qt.PointingHandCursor)
-        self.search_btn.setIcon(qta.icon("fa5s.search", color="white"))
+        primary_text = "#062f28" if tokens().name == THEME_DARK else "#ffffff"
+        self.search_btn.setIcon(qta.icon("fa5s.search", color=primary_text))
         self.search_btn.setStyleSheet(
-            "QPushButton { background: #020617; color: white; border: 1px solid #020617; "
+            f"QPushButton {{ background: {tokens().brand}; color: {primary_text}; border: 1px solid {tokens().brand}; "
             "border-radius: 8px; padding: 0 18px; font-size: 13px; font-weight: 800; }"
-            "QPushButton:hover { background: #111827; }"
+            f"QPushButton:hover {{ background: {tokens().brand_hover}; }}"
         )
         self.search_btn.clicked.connect(self._filter)
         fl.addWidget(self.search_btn, 0, 4)

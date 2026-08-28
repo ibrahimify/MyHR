@@ -31,6 +31,7 @@ from src.ui.styles import (
     polish_combo_box,
     table_style,
 )
+from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import get_session, generate_sanction_ref, log_action, is_other_employee
 from src.database.models import Employee, Sanction
 from datetime import datetime
@@ -71,57 +72,57 @@ class _EmployeePickerCompat:
         return self._tab.selected_employee_id
 
 
-CARD_SS = """
-QFrame#Card {
-    background: white;
-    border: 1px solid #e5e7eb;
+CARD_SS = f"""
+QFrame#Card {{
+    background: {tokens().surface};
+    border: 1px solid {tokens().border};
     border-radius: 8px;
-}
-QFrame#Card QLabel {
+}}
+QFrame#Card QLabel {{
     background: transparent;
     border: none;
-}
+}}
 """
 
-FIELD_SS = """
-QLineEdit, QTextEdit {
+FIELD_SS = f"""
+QLineEdit, QTextEdit {{
     border: none;
     border-radius: 8px;
     padding: 0 16px;
     font-size: 14px;
-    color: #111827;
-    background: #f3f3f5;
-    selection-background-color: #2563eb;
+    color: {tokens().text};
+    background: {tokens().input};
+    selection-background-color: {tokens().selected};
     outline: none;
-}
-QTextEdit { padding: 10px 16px; }
-QLineEdit:focus, QTextEdit:focus { background: white; border: 1px solid #2563eb; }
+}}
+QTextEdit {{ padding: 10px 16px; }}
+QLineEdit:focus, QTextEdit:focus {{ background: {tokens().surface}; border: 1px solid {tokens().brand}; }}
 """
 
-COMBO_SS = """
-QComboBox {
+COMBO_SS = f"""
+QComboBox {{
     border: none;
     border-radius: 8px;
     padding: 0 36px 0 16px;
     font-size: 14px;
-    color: #111827;
-    background: #f3f3f5;
+    color: {tokens().text};
+    background: {tokens().input};
     min-height: 40px;
     outline: none;
-}
-QComboBox:focus { border: 1px solid #2563eb; background: white; }
-QComboBox::drop-down { width: 32px; border: none; background: transparent; }
-QComboBox::down-arrow { image: url(src/ui/assets/chevron_down.svg); width: 12px; height: 12px; }
-QComboBox QAbstractItemView {
-    background: white;
-    color: #111827;
-    border: 1px solid #e5e7eb;
+}}
+QComboBox:focus {{ border: 1px solid {tokens().brand}; background: {tokens().surface}; }}
+QComboBox::drop-down {{ width: 32px; border: none; background: transparent; }}
+QComboBox::down-arrow {{ image: url(src/ui/assets/chevron_down.svg); width: 12px; height: 12px; }}
+QComboBox QAbstractItemView {{
+    background: {tokens().surface};
+    color: {tokens().text};
+    border: 1px solid {tokens().border};
     border-radius: 8px;
-    selection-background-color: #eff6ff;
-    selection-color: #111827;
+    selection-background-color: {tokens().selected};
+    selection-color: {tokens().text};
     outline: none;
     padding: 4px;
-}
+}}
 """
 
 TABLE_SS = """
@@ -165,20 +166,20 @@ QToolTip {
 """
 TABLE_SS = table_style(selected_bg="#fef2f2", hover_bg="#fff7f7")
 
-MESSAGE_BOX_SS = """
-QMessageBox { background: white; color: #111827; }
-QMessageBox QLabel { color: #111827; background: transparent; font-size: 13px; }
-QPushButton {
-    background: white;
-    color: #111827;
-    border: 1px solid #d1d5db;
+MESSAGE_BOX_SS = f"""
+QMessageBox {{ background: {tokens().surface}; color: {tokens().text}; }}
+QMessageBox QLabel {{ color: {tokens().text}; background: transparent; font-size: 13px; }}
+QPushButton {{
+    background: {tokens().surface};
+    color: {tokens().text};
+    border: 1px solid {tokens().border_strong};
     border-radius: 6px;
     min-width: 84px;
     min-height: 30px;
     font-weight: 600;
-}
-QPushButton:hover { background: #f3f4f6; }
-QPushButton:default { background: #030213; color: white; border: none; }
+}}
+QPushButton:hover {{ background: {tokens().hover}; }}
+QPushButton:default {{ background: {tokens().brand}; color: {"#062f28" if tokens().name == THEME_DARK else "#ffffff"}; border: none; }}
 """
 
 
@@ -187,7 +188,7 @@ class SanctionsPage(QWidget):
         super().__init__()
         self.user = user
         self.setObjectName("SanctionsPage")
-        self.setStyleSheet("QWidget#SanctionsPage { background: #f9fafb; }")
+        self.setStyleSheet(f"QWidget#SanctionsPage {{ background: {tokens().canvas}; }}")
         self._build()
 
     def _build(self):
@@ -196,9 +197,9 @@ class SanctionsPage(QWidget):
         layout.setSpacing(0)
 
         title = QLabel(t("sanctions_title"))
-        title.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827; background: transparent;")
+        title.setStyleSheet(f"font-size: 30px; font-weight: 800; color: {tokens().text}; background: transparent;")
         subtitle = QLabel(t("sanctions_subtitle"))
-        subtitle.setStyleSheet("font-size: 16px; color: #4b5563; background: transparent;")
+        subtitle.setStyleSheet(f"font-size: 16px; color: {tokens().text_muted}; background: transparent;")
         layout.addWidget(title)
         layout.addSpacing(6)
         layout.addWidget(subtitle)
@@ -249,7 +250,7 @@ class ActiveSanctionsTab(QWidget):
         super().__init__()
         self.user = user
         self.setObjectName("ActiveSanctionsTab")
-        self.setStyleSheet("QWidget#ActiveSanctionsTab { background: #f9fafb; }")
+        self.setStyleSheet(f"QWidget#ActiveSanctionsTab {{ background: {tokens().canvas}; }}")
         self._build()
 
     def _build(self):
@@ -277,7 +278,7 @@ class ActiveSanctionsTab(QWidget):
         ch_icon = QLabel()
         ch_icon.setPixmap(qta.icon("fa5s.exclamation-triangle", color="#ef4444").pixmap(18, 18))
         ch_title = QLabel(t("current_active_sanctions"))
-        ch_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
+        ch_title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text}; background: transparent;")
         chl.addWidget(ch_icon)
         chl.addWidget(ch_title)
         chl.addStretch()
@@ -354,7 +355,7 @@ class ActiveSanctionsTab(QWidget):
             l = QLabel(label)
             l.setStyleSheet("font-size: 14px; color: #374151; background: transparent;")
             v = QLabel(str(val))
-            v.setStyleSheet("font-size: 24px; font-weight: 800; color: #030213; background: transparent;")
+            v.setStyleSheet(f"font-size: 24px; font-weight: 800; color: {tokens().text}; background: transparent;")
             col.addWidget(l)
             col.addWidget(v)
             cl.addWidget(icon)
@@ -494,7 +495,7 @@ class SanctionHistoryTab(QWidget):
         self.page_size = 50
         self.total_pages = 1
         self.setObjectName("SanctionHistoryTab")
-        self.setStyleSheet("QWidget#SanctionHistoryTab { background: #f9fafb; }")
+        self.setStyleSheet(f"QWidget#SanctionHistoryTab {{ background: {tokens().canvas}; }}")
         self._build()
         self.refresh()
 
@@ -517,7 +518,7 @@ class SanctionHistoryTab(QWidget):
         icon = QLabel()
         icon.setPixmap(qta.icon("fa5s.check-circle", color="#10b981").pixmap(18, 18))
         title = QLabel(t("resolved_sanctions"))
-        title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
+        title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text}; background: transparent;")
         hl.addWidget(icon)
         hl.addWidget(title)
         hl.addStretch()
@@ -614,12 +615,12 @@ class SanctionHistoryTab(QWidget):
 
     def _pager(self):
         pager = QFrame()
-        pager.setStyleSheet("background: white; border: none; border-top: 1px solid #f3f4f6;")
+        pager.setStyleSheet(f"background: {tokens().surface}; border: none; border-top: 1px solid {tokens().border};")
         layout = QHBoxLayout(pager)
         layout.setContentsMargins(16, 10, 16, 10)
         layout.setSpacing(10)
         self.page_lbl = QLabel("")
-        self.page_lbl.setStyleSheet("font-size: 13px; color: #4b5563; background: transparent;")
+        self.page_lbl.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted}; background: transparent;")
         btn_ss = (
             "QPushButton { background: white; color: #111827; border: 1px solid #d1d5db;"
             " border-radius: 6px; font-size: 13px; font-weight: 700; padding: 0 14px; }"
@@ -653,7 +654,7 @@ class IssueSanctionTab(QWidget):
         self.selected_employee_id = None
         self.emp_combo = _EmployeePickerCompat(self)
         self.setObjectName("IssueSanctionTab")
-        self.setStyleSheet("QWidget#IssueSanctionTab { background: #f9fafb; }")
+        self.setStyleSheet(f"QWidget#IssueSanctionTab {{ background: {tokens().canvas}; }}")
         self._build()
         self.refresh_employees()
 
@@ -688,7 +689,7 @@ class IssueSanctionTab(QWidget):
         title_icon = QLabel()
         title_icon.setPixmap(qta.icon("fa5s.exclamation-triangle", color="#ef4444").pixmap(18, 18))
         fc_title = QLabel(t("issue_new_sanction"))
-        fc_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
+        fc_title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text}; background: transparent;")
         title_row.addWidget(title_icon)
         title_row.addWidget(fc_title)
         title_row.addStretch()
@@ -697,7 +698,7 @@ class IssueSanctionTab(QWidget):
 
         # Employee
         emp_lbl = QLabel(t("select_employee") + " *")
-        emp_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
+        emp_lbl.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {tokens().text}; background: transparent;")
         self.emp_search = QLineEdit()
         self.emp_search.setFixedHeight(42)
         self.emp_search.setPlaceholderText(t("search_employees"))
@@ -717,7 +718,7 @@ class IssueSanctionTab(QWidget):
 
         # Type
         type_lbl = QLabel(t("sanction_type") + " *")
-        type_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
+        type_lbl.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {tokens().text}; background: transparent;")
         self.type_combo = QComboBox()
         self.type_combo.setFixedHeight(44)
         self.type_combo.setStyleSheet(COMBO_SS)
@@ -730,7 +731,7 @@ class IssueSanctionTab(QWidget):
 
         # Reason
         reason_lbl = QLabel(t("reason_description") + " *")
-        reason_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
+        reason_lbl.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {tokens().text}; background: transparent;")
         self.reason_input = QTextEdit()
         self.reason_input.setFixedHeight(80)
         self.reason_input.setPlaceholderText(t("sanction_reason_placeholder"))
@@ -744,7 +745,7 @@ class IssueSanctionTab(QWidget):
         date_col = QVBoxLayout()
         date_col.setSpacing(6)
         date_lbl = QLabel(t("issue_date") + " *")
-        date_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
+        date_lbl.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {tokens().text}; background: transparent;")
         self.issue_date_field = QFrame()
         self.issue_date_field.setFixedHeight(44)
         self.issue_date_field.setStyleSheet("QFrame { background: #f3f3f5; border: none; border-radius: 8px; } QLabel { background: transparent; border: none; }")
@@ -754,7 +755,7 @@ class IssueSanctionTab(QWidget):
         date_icon = QLabel()
         date_icon.setPixmap(qta.icon("fa5s.calendar-alt", color="#9ca3af").pixmap(14, 14))
         date_text = QLabel(datetime.utcnow().strftime("%m/%d/%Y"))
-        date_text.setStyleSheet("font-size: 14px; color: #111827; background: transparent;")
+        date_text.setStyleSheet(f"font-size: 14px; color: {tokens().text}; background: transparent;")
         date_field_layout.addWidget(date_icon)
         date_field_layout.addWidget(date_text)
         date_field_layout.addStretch()
@@ -764,7 +765,7 @@ class IssueSanctionTab(QWidget):
         delay_col = QVBoxLayout()
         delay_col.setSpacing(6)
         delay_lbl = QLabel(t("promotion_delay_months") + " *")
-        delay_lbl.setStyleSheet("font-size: 14px; font-weight: 800; color: #030213; background: transparent;")
+        delay_lbl.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {tokens().text}; background: transparent;")
         self.delay_combo = QComboBox()
         self.delay_combo.setFixedHeight(44)
         self.delay_combo.setStyleSheet(COMBO_SS)
@@ -801,7 +802,7 @@ class IssueSanctionTab(QWidget):
         ac.setContentsMargins(30, 28, 30, 28)
         ac.setSpacing(16)
         actions_title = QLabel(t("actions"))
-        actions_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827; background: transparent;")
+        actions_title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text}; background: transparent;")
         ac.addWidget(actions_title)
         ac.addSpacing(24)
         self.issue_btn = QPushButton("  " + t("issue_sanction"))
@@ -872,13 +873,13 @@ class IssueSanctionTab(QWidget):
 
         # Guidelines
         guide_card = QFrame()
-        guide_card.setStyleSheet("QFrame { background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; } QLabel { background: transparent; border: none; }")
+        guide_card.setStyleSheet(f"QFrame {{ background: {tokens().selected}; border-radius: 8px; border: 1px solid {tokens().brand}; }} QLabel {{ background: transparent; border: none; }}")
         gc = QVBoxLayout(guide_card)
         gc.setContentsMargins(30, 28, 30, 28)
         gc.setSpacing(12)
         guide_head = QHBoxLayout()
         guide_icon = QLabel()
-        guide_icon.setPixmap(qta.icon("fa5s.user", color="#2563eb").pixmap(18, 18))
+        guide_icon.setPixmap(qta.icon("fa5s.user", color=tokens().brand).pixmap(18, 18))
         gc_title = QLabel(t("sanction_guidelines"))
         gc_title.setStyleSheet("font-size: 17px; font-weight: 800; color: #1e40af; background: transparent;")
         guide_head.addWidget(guide_icon)

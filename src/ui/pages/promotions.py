@@ -22,71 +22,46 @@ from src.ui.animations import install_tab_transition
 from src.ui.styles import (
     btn_primary, btn_outline, INPUT_SS, PILL_TAB_SS,
     PAGER_BUTTON_SS, enable_table_row_selection, prepare_table_cell_widget,
-    table_style,
+    scroll_ss, table_style,
 )
+from src.ui.theme import THEME_DARK, tokens
 
 _ICO = QSize(16, 16)
 
 PROMO_TABLE_SS = table_style()
 
-PROMO_CARD_SS = """
-QFrame#PromoCard {
-    background: white;
-    border: 1px solid #e5e7eb;
+PROMO_CARD_SS = f"""
+QFrame#PromoCard {{
+    background: {tokens().surface};
+    border: 1px solid {tokens().border};
     border-radius: 8px;
-}
-QFrame#PromoCard QLabel {
+}}
+QFrame#PromoCard QLabel {{
     border: none;
     background: transparent;
-}
+}}
 """
 
-PROMO_SCROLL_SS = """
-QScrollArea {
-    border: none;
-    background: #f9fafb;
-}
-QScrollBar:vertical {
-    background: #f9fafb;
-    width: 6px;
-    border: none;
-}
-QScrollBar::handle:vertical {
-    background: #d1d5db;
-    border-radius: 3px;
-    min-height: 32px;
-}
-QScrollBar::handle:vertical:hover { background: #9ca3af; }
-QScrollBar::add-line:vertical,
-QScrollBar::sub-line:vertical {
-    height: 0px;
-    border: none;
-    background: transparent;
-}
-QScrollBar::add-page:vertical,
-QScrollBar::sub-page:vertical {
-    background: transparent;
-}
-"""
+PROMO_SCROLL_SS = scroll_ss(tokens().canvas)
 
-MESSAGE_BOX_SS = """
-QMessageBox { background: white; color: #111827; }
-QMessageBox QLabel { color: #111827; background: transparent; font-size: 13px; }
-QPushButton {
-    background: white;
-    color: #111827;
-    border: 1px solid #d1d5db;
+MESSAGE_BOX_SS = f"""
+QMessageBox {{ background: {tokens().surface}; color: {tokens().text}; }}
+QMessageBox QLabel {{ color: {tokens().text}; background: transparent; font-size: 13px; }}
+QPushButton {{
+    background: {tokens().surface};
+    color: {tokens().text};
+    border: 1px solid {tokens().border_strong};
     border-radius: 6px;
     min-width: 84px;
     min-height: 30px;
     font-weight: 600;
-}
-QPushButton:hover { background: #f3f4f6; }
-QPushButton:default {
-    background: #030213;
-    color: white;
+}}
+QPushButton:hover {{ background: {tokens().hover}; }}
+QPushButton:default {{
+    background: {tokens().brand};
+    color: {"#062f28" if tokens().name == THEME_DARK else "#ffffff"};
     border: none;
-}
+}}
 """
 
 
@@ -96,7 +71,7 @@ class PromotionsPage(QWidget):
         self.user = user
         self.navigate_to_employee = navigate_to_employee
         self.setObjectName("PromotionsPage")
-        self.setStyleSheet("QWidget#PromotionsPage { background: #f9fafb; }")
+        self.setStyleSheet(f"QWidget#PromotionsPage {{ background: {tokens().canvas}; }}")
         self._build()
 
     def _build(self):
@@ -105,9 +80,9 @@ class PromotionsPage(QWidget):
         layout.setSpacing(0)
 
         title = QLabel(t("promotions_title"))
-        title.setStyleSheet("font-size: 30px; font-weight: 800; color: #111827; background: transparent;")
+        title.setStyleSheet(f"font-size: 30px; font-weight: 800; color: {tokens().text}; background: transparent;")
         subtitle = QLabel(t("promotions_subtitle"))
-        subtitle.setStyleSheet("font-size: 16px; color: #4b5563; background: transparent;")
+        subtitle.setStyleSheet(f"font-size: 16px; color: {tokens().text_muted}; background: transparent;")
         layout.addWidget(title)
         layout.addSpacing(6)
         layout.addWidget(subtitle)
@@ -145,7 +120,7 @@ class EligibleTab(QWidget):
         self.current_page = 1
         self.total_pages = 1
         self.setObjectName("EligibleTab")
-        self.setStyleSheet("QWidget#EligibleTab { background: #f9fafb; }")
+        self.setStyleSheet(f"QWidget#EligibleTab {{ background: {tokens().canvas}; }}")
         self._build()
 
     def _build(self):
@@ -159,7 +134,7 @@ class EligibleTab(QWidget):
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroll.setStyleSheet(PROMO_SCROLL_SS)
         content = QWidget()
-        content.setStyleSheet("background: #f9fafb;")
+        content.setStyleSheet(f"background: {tokens().canvas};")
 
         layout = QVBoxLayout(content)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -202,7 +177,7 @@ class EligibleTab(QWidget):
         chl = QHBoxLayout(card_hdr)
         chl.setContentsMargins(32, 28, 32, 28)
         ch_title = QLabel(t("promotion_tracker"))
-        ch_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #111827;")
+        ch_title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text};")
         chl.addWidget(ch_title)
         chl.addStretch()
         tcl.addWidget(card_hdr)
@@ -240,13 +215,13 @@ class EligibleTab(QWidget):
         tcl.addWidget(self.table)
 
         pager = QFrame()
-        pager.setStyleSheet("background: white; border: none; border-top: 1px solid #f3f4f6;")
+        pager.setStyleSheet(f"background: {tokens().surface}; border: none; border-top: 1px solid {tokens().border};")
         pager_layout = QHBoxLayout(pager)
         pager_layout.setContentsMargins(16, 10, 16, 10)
         pager_layout.setSpacing(10)
 
         self.page_lbl = QLabel("")
-        self.page_lbl.setStyleSheet("font-size: 13px; color: #4b5563; background: transparent;")
+        self.page_lbl.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted}; background: transparent;")
         self.prev_btn = QPushButton(t("previous_page"))
         self.prev_btn.setFixedHeight(34)
         self.prev_btn.setCursor(Qt.PointingHandCursor)
@@ -377,7 +352,7 @@ class EligibleTab(QWidget):
             ll = QLabel(label)
             ll.setStyleSheet("font-size: 14px; color: #374151; background: transparent;")
             vl = QLabel(str(val))
-            vl.setStyleSheet("font-size: 24px; font-weight: 800; color: #030213; background: transparent;")
+            vl.setStyleSheet(f"font-size: 24px; font-weight: 800; color: {tokens().text}; background: transparent;")
             txt.addWidget(ll)
             txt.addWidget(vl)
             cl.addWidget(ico_box)
@@ -420,7 +395,7 @@ class EligibleTab(QWidget):
         nl.setContentsMargins(0, 4, 4, 4)
         nl.setSpacing(1)
         n1 = QLabel(row["name"])
-        n1.setStyleSheet("font-size: 13px; font-weight: 600; color: #111827;")
+        n1.setStyleSheet(f"font-size: 13px; font-weight: 600; color: {tokens().text};")
         n2 = QLabel(row["emp_id"])
         n2.setStyleSheet("font-size: 11px; color: #6b7280;")
         nl.addWidget(n1)
@@ -611,7 +586,7 @@ class HistoryTab(QWidget):
         self.current_page = 1
         self.total_pages = 1
         self.setObjectName("HistoryTab")
-        self.setStyleSheet("QWidget#HistoryTab { background: #f9fafb; }")
+        self.setStyleSheet(f"QWidget#HistoryTab {{ background: {tokens().canvas}; }}")
         self._build()
 
     def _build(self):
@@ -658,13 +633,13 @@ class HistoryTab(QWidget):
         cl.addWidget(self.table)
 
         pager = QFrame()
-        pager.setStyleSheet("background: white; border: none; border-top: 1px solid #f3f4f6;")
+        pager.setStyleSheet(f"background: {tokens().surface}; border: none; border-top: 1px solid {tokens().border};")
         pager_layout = QHBoxLayout(pager)
         pager_layout.setContentsMargins(16, 10, 16, 10)
         pager_layout.setSpacing(10)
 
         self.page_lbl = QLabel("")
-        self.page_lbl.setStyleSheet("font-size: 13px; color: #4b5563; background: transparent;")
+        self.page_lbl.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted}; background: transparent;")
         self.prev_btn = QPushButton(t("previous_page"))
         self.prev_btn.setFixedHeight(34)
         self.prev_btn.setCursor(Qt.PointingHandCursor)
@@ -815,7 +790,7 @@ class HistoryTab(QWidget):
         el.setContentsMargins(0, 4, 4, 4)
         el.setSpacing(1)
         e1 = QLabel(row["name"])
-        e1.setStyleSheet("font-size: 13px; font-weight: 600; color: #111827;")
+        e1.setStyleSheet(f"font-size: 13px; font-weight: 600; color: {tokens().text};")
         e2 = QLabel(row["emp_id"])
         e2.setStyleSheet("font-size: 11px; color: #6b7280;")
         el.addWidget(e1)
@@ -885,7 +860,7 @@ class RulesTab(QWidget):
         super().__init__()
         self.user = user
         self.setObjectName("RulesTab")
-        self.setStyleSheet("QWidget#RulesTab { background: #f9fafb; }")
+        self.setStyleSheet(f"QWidget#RulesTab {{ background: {tokens().canvas}; }}")
         self._build()
         self.refresh()
 
@@ -897,9 +872,9 @@ class RulesTab(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setStyleSheet("border: none; background: #f9fafb;")
+        scroll.setStyleSheet(f"border: none; background: {tokens().canvas};")
         content = QWidget()
-        content.setStyleSheet("background: #f9fafb;")
+        content.setStyleSheet(f"background: {tokens().canvas};")
 
         layout = QVBoxLayout(content)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -919,7 +894,7 @@ class RulesTab(QWidget):
         header_text.setSpacing(6)
         header_text.addWidget(_bold_label("Promotion Track Configuration", size=20, weight=800))
         sub = QLabel("Configure the promotion race timeline for each level")
-        sub.setStyleSheet("font-size: 14px; color: #4b5563; background: transparent;")
+        sub.setStyleSheet(f"font-size: 14px; color: {tokens().text_muted}; background: transparent;")
         header_text.addWidget(sub)
         chl.addLayout(header_text)
         chl.addStretch()
@@ -998,7 +973,7 @@ class RulesTab(QWidget):
         icon = QLabel()
         icon.setPixmap(qta.icon("fa5s.chart-line", color="#2563eb").pixmap(17, 17))
         title = QLabel(f"{row['from']} to {row['to']}")
-        title.setStyleSheet("font-size: 16px; font-weight: 800; color: #030213;")
+        title.setStyleSheet(f"font-size: 16px; font-weight: 800; color: {tokens().text};")
         edit_btn = QPushButton("Edit")
         edit_btn.setFixedSize(92, 34)
         edit_btn.setCursor(Qt.PointingHandCursor)
@@ -1082,7 +1057,7 @@ class RuleEditDialog(QDialog):
         self.rule_id = rule_id
         self.setWindowTitle("Edit Promotion Rule")
         self.setFixedWidth(520)
-        self.setStyleSheet("QDialog { background: white; color: #111827; } QLabel { background: transparent; color: #111827; }")
+        self.setStyleSheet(f"QDialog {{ background: {tokens().surface}; color: {tokens().text}; }} QLabel {{ background: transparent; color: {tokens().text}; }}")
         self._build()
         self._load()
 
@@ -1210,7 +1185,7 @@ def _guide_line(text):
 
 def _field_label(text):
     lbl = QLabel(text)
-    lbl.setStyleSheet("font-size: 13px; font-weight: 800; color: #030213; background: transparent;")
+    lbl.setStyleSheet(f"font-size: 13px; font-weight: 800; color: {tokens().text}; background: transparent;")
     return lbl
 
 
@@ -1285,5 +1260,5 @@ def _question(parent, title, text):
 
 def _bold_label(text, size=15, weight=600):
     lbl = QLabel(text)
-    lbl.setStyleSheet(f"font-size: {size}px; font-weight: {weight}; color: #111827; background: transparent;")
+    lbl.setStyleSheet(f"font-size: {size}px; font-weight: {weight}; color: {tokens().text}; background: transparent;")
     return lbl
