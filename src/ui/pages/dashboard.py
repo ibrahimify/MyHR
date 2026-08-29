@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize, QRectF, QPointF, QDate
 from PySide6.QtGui import QColor, QPainter, QPen, QBrush, QFont, QPainterPath, QPolygonF
 
-from src.core.i18n import t
+from src.core.i18n import is_rtl, t
 from src.database.connection import (
     get_session, get_increment_due_employees, apply_salary_increment,
     calculate_months_remaining_batch
@@ -23,7 +23,7 @@ from src.database.models import (
 )
 from src.ui.styles import (
     btn_primary, btn_outline, btn_ghost, table_style, scroll_ss, message_box_ss,
-    enable_table_row_selection, prepare_table_cell_widget,
+    enable_table_row_selection, prepare_table_cell_widget, primary_button_fg,
 )
 from src.ui.theme import THEME_DARK, tokens
 
@@ -591,8 +591,7 @@ class SalaryIncrementReviewDialog(QDialog):
 
         btn_row = QHBoxLayout()
         approve_all = QPushButton("  " + t("approve_all"))
-        approve_text = "#062f28" if tokens().name == THEME_DARK else "#ffffff"
-        approve_all.setIcon(qta.icon("fa5s.check-double", color=approve_text))
+        approve_all.setIcon(qta.icon("fa5s.check-double", color=primary_button_fg()))
         approve_all.setIconSize(_ICO)
         approve_all.setFixedHeight(36)
         approve_all.setCursor(Qt.PointingHandCursor)
@@ -1027,7 +1026,7 @@ class DashboardPage(QWidget):
         actions = QHBoxLayout()
         actions.setSpacing(12)
         add_btn = QPushButton("  " + t("add_employee"))
-        add_btn.setIcon(qta.icon("fa5s.user-plus", color="white"))
+        add_btn.setIcon(qta.icon("fa5s.user-plus", color=primary_button_fg()))
         add_btn.setIconSize(_ICO)
         add_btn.setFixedHeight(44)
         add_btn.setCursor(Qt.PointingHandCursor)
@@ -1042,9 +1041,14 @@ class DashboardPage(QWidget):
         imp_btn.setStyleSheet(btn_outline(44))
         imp_btn.clicked.connect(lambda: self.navigate("import_data"))
 
-        actions.addWidget(add_btn)
-        actions.addWidget(imp_btn)
-        actions.addStretch()
+        if is_rtl():
+            actions.addStretch()
+            actions.addWidget(imp_btn)
+            actions.addWidget(add_btn)
+        else:
+            actions.addWidget(add_btn)
+            actions.addWidget(imp_btn)
+            actions.addStretch()
         layout.addLayout(actions)
         layout.addSpacing(32)
 
@@ -1313,11 +1317,11 @@ class DashboardPage(QWidget):
         if active:
             return (
                 f"QPushButton {{ background: {tkn.brand}; color: {active_text}; border: none; "
-                "border-radius: 15px; padding: 0 12px; font-size: 12px; font-weight: 700; }"
+                "border-radius: 15px; padding: 0 14px; font-size: 12px; font-weight: 700; }"
             )
         return (
             f"QPushButton {{ background: {tkn.surface_muted}; color: {tkn.text_muted}; border: 1px solid {tkn.border}; "
-            "border-radius: 15px; padding: 0 12px; font-size: 12px; font-weight: 600; }"
+            "border-radius: 15px; padding: 0 14px; font-size: 12px; font-weight: 600; }"
             f"QPushButton:hover {{ background: {tkn.hover}; color: {tkn.text}; }}"
         )
 
@@ -1455,7 +1459,8 @@ class DashboardPage(QWidget):
         for key in WORKFORCE_METRICS:
             btn = QPushButton(labels[key])
             btn.setCursor(Qt.PointingHandCursor)
-            btn.setFixedHeight(28)
+            btn.setFixedHeight(30)
+            btn.setMinimumWidth(70)
             btn.clicked.connect(lambda _, value=key: self._set_workforce_metric(value))
             self.workforce_metric_buttons[key] = btn
             row.addWidget(btn)

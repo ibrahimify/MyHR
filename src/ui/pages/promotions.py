@@ -22,7 +22,7 @@ from src.ui.animations import install_tab_transition
 from src.ui.styles import (
     btn_primary, btn_outline, input_style, message_box_ss, pager_button_ss,
     pill_tab_ss, card_ss, enable_table_row_selection, prepare_table_cell_widget,
-    scroll_ss, table_style,
+    scroll_ss, table_style, primary_button_fg,
 )
 from src.ui.theme import THEME_DARK, tokens
 
@@ -466,7 +466,7 @@ class EligibleTab(QWidget):
         act_l.setAlignment(Qt.AlignCenter)
         if row["status"] == "eligible":
             btn = QPushButton(t("approve"))
-            btn.setIcon(qta.icon("fa5s.check", color="white"))
+            btn.setIcon(qta.icon("fa5s.check", color=primary_button_fg()))
             btn.setIconSize(QSize(13, 13))
             btn.setFixedSize(112, 38)
             btn.setStyleSheet(btn_primary(38))

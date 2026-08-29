@@ -105,7 +105,7 @@ QPushButton:hover {{ background: #fecaca; }}
 
 def btn_primary(h=36):
     t = tokens()
-    text = "#062f28" if t.name == THEME_DARK else "#ffffff"
+    text = primary_button_fg()
     return f"""
 QPushButton {{
     background: {t.brand};
@@ -122,6 +122,10 @@ QPushButton:hover {{ background: {t.brand_hover}; }}
 QPushButton:pressed {{ background: {t.brand}; }}
 QPushButton:disabled {{ background: {t.border_strong}; color: {t.text_soft}; }}
 """
+
+
+def primary_button_fg():
+    return "#062f28" if tokens().name == THEME_DARK else "#ffffff"
 
 
 def btn_blue(h=36):
@@ -264,7 +268,7 @@ def table_style(
     item_padding=12,
 ):
     t = tokens()
-    selected_bg = selected_bg if t.name != THEME_DARK else t.selected
+    selected_bg = selected_bg if t.name != THEME_DARK else "#142616"
     hover_bg = hover_bg if t.name != THEME_DARK else t.hover
     header_bg = header_bg if header_bg != "white" or t.name != THEME_DARK else t.surface
     header_color = header_color if t.name != THEME_DARK else t.text
@@ -459,7 +463,7 @@ def table_cell_widget_ss(background=TABLE_ROW_BG):
         background = tokens().surface
     return (
         f"QWidget#TableCellWidget {{ background: {background}; border: none; }}"
-        "QWidget#TableCellWidget QLabel { background: transparent; border: none; }"
+        "QWidget#TableCellWidget QLabel { border: none; }"
     )
 
 
@@ -471,6 +475,7 @@ def prepare_table_cell_widget(widget, background=TABLE_ROW_BG):
 
 
 def sync_table_widget_cells(table, selected_bg=TABLE_ROW_SELECTED_BG):
+    selected_bg = selected_bg if tokens().name != THEME_DARK else "#142616"
     for row in range(table.rowCount()):
         selected = table.selectionModel().isRowSelected(row, table.rootIndex())
         bg = selected_bg if selected else tokens().surface
@@ -571,7 +576,7 @@ TAB_SS = tab_ss()
 
 def pill_tab_ss():
     t = tokens()
-    selected_text = "#062f28" if t.name == THEME_DARK else t.text
+    selected_text = t.text
     return f"""
 QTabWidget::pane {{
     border: none;

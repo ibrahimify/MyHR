@@ -29,7 +29,10 @@ from PySide6.QtWidgets import (
 from src.core.i18n import t
 from src.core.app_settings import app_settings, company_name
 from src.ui.animations import install_tab_transition
-from src.ui.styles import pill_tab_ss, enable_table_row_selection, prepare_table_cell_widget, polish_combo_box, table_style
+from src.ui.styles import (
+    pill_tab_ss, enable_table_row_selection, prepare_table_cell_widget,
+    polish_combo_box, table_style, primary_button_fg,
+)
 from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import get_session, log_action, DB_PATH
 from src.database.models import AuditLog, Title, SystemUser, PromotionRule, Employee, OrgUnit
@@ -829,7 +832,7 @@ class LevelManagementTab(QWidget):
         layout.setAlignment(Qt.AlignCenter)
 
         edit = QPushButton()
-        edit.setIcon(qta.icon("fa5s.edit", color="white"))
+        edit.setIcon(qta.icon("fa5s.edit", color=primary_button_fg()))
         edit.setIconSize(QSize(13, 13))
         edit.setFixedSize(36, 34)
         edit.setCursor(Qt.PointingHandCursor)
@@ -1808,7 +1811,7 @@ class UserManagementTab(QWidget):
         layout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         edit = QPushButton("  " + t("edit"))
-        edit.setIcon(qta.icon("fa5s.edit", color="white"))
+        edit.setIcon(qta.icon("fa5s.edit", color=primary_button_fg()))
         edit.setIconSize(QSize(13, 13))
         edit.setFixedSize(96, 38)
         edit.setCursor(Qt.PointingHandCursor)
@@ -3009,7 +3012,7 @@ def _add_form_field(grid, row, col, label_text, widget):
 
 def _button(text, icon_name, primary=False):
     button = QPushButton("  " + text)
-    icon_color = "#062f28" if primary and tokens().name == THEME_DARK else ("#ffffff" if primary else tokens().text)
+    icon_color = primary_button_fg() if primary else tokens().text
     button.setIcon(qta.icon(icon_name, color=icon_color))
     button.setIconSize(QSize(15, 15))
     button.setCursor(Qt.PointingHandCursor)
@@ -3261,7 +3264,7 @@ def _pill_cell(text, color, background, bold=False, align=Qt.AlignLeft, min_widt
 
 
 def _primary_button_ss():
-    text = "#062f28" if tokens().name == THEME_DARK else "#ffffff"
+    text = primary_button_fg()
     return f"""
 QPushButton {{
     background: {tokens().brand};

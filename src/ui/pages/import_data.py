@@ -40,6 +40,7 @@ from src.ui.styles import (
     message_box_ss,
     scroll_ss,
     table_style,
+    primary_button_fg,
 )
 from src.ui.theme import THEME_DARK, tokens
 
@@ -141,7 +142,7 @@ def MESSAGE_BOX_SS():
 
 
 def _primary_icon_color():
-    return "#062f28" if tokens().name == THEME_DARK else "#ffffff"
+    return primary_button_fg()
 
 
 class ImportDataPage(QWidget):

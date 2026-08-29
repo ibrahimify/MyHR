@@ -38,6 +38,7 @@ from src.ui.styles import (
     scroll_ss,
     polish_combo_box,
     table_style,
+    primary_button_fg,
 )
 from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import (
@@ -382,8 +383,7 @@ class IssueCommendationTab(QWidget):
         ac.addWidget(actions_title)
         ac.addSpacing(24)
         issue_btn = QPushButton("  " + t("issue_commendation"))
-        primary_text = "#062f28" if tokens().name == THEME_DARK else "#ffffff"
-        issue_btn.setIcon(qta.icon("fa5s.award", color=primary_text))
+        issue_btn.setIcon(qta.icon("fa5s.award", color=primary_button_fg()))
         issue_btn.setIconSize(QSize(14, 14))
         issue_btn.setCursor(Qt.PointingHandCursor)
         issue_btn.setFixedHeight(50)

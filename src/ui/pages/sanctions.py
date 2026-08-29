@@ -38,6 +38,7 @@ from src.ui.styles import (
     pager_button_ss,
     polish_combo_box,
     table_style,
+    primary_button_fg,
 )
 from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import get_session, generate_sanction_ref, log_action, is_other_employee
@@ -721,8 +722,7 @@ class IssueSanctionTab(QWidget):
         ac.addWidget(actions_title)
         ac.addSpacing(24)
         self.issue_btn = QPushButton("  " + t("issue_sanction"))
-        primary_text = "#062f28" if tokens().name == THEME_DARK else "#ffffff"
-        self.issue_btn.setIcon(qta.icon("fa5s.exclamation-triangle", color=primary_text))
+        self.issue_btn.setIcon(qta.icon("fa5s.exclamation-triangle", color=primary_button_fg()))
         self.issue_btn.setIconSize(QSize(14, 14))
         self.issue_btn.setCursor(Qt.PointingHandCursor)
         self.issue_btn.setFixedHeight(50)

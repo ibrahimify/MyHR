@@ -20,6 +20,7 @@ from src.ui.styles import (
     table_style,
     enable_table_row_selection,
     polish_combo_box,
+    primary_button_fg,
 )
 from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import get_session, log_action
@@ -45,13 +46,13 @@ PARENT_BY_TYPE = {
     "position": "team",
 }
 TYPE_COLORS = {
-    "organization": ("#f3e8ff", "#6b21a8", "#e9d5ff", "fa5s.building"),
-    "division": ("#fff7ed", "#9a3412", "#fed7aa", "fa5s.layer-group"),
-    "department": ("#eff6ff", "#1e40af", "#bfdbfe", "fa5s.sitemap"),
-    "unit": ("#f0fdf4", "#166534", "#bbf7d0", "fa5s.briefcase"),
-    "team": ("#f9fafb", "#374151", "#e5e7eb", "fa5s.users"),
-    "position": ("#f9fafb", "#6b7280", "#e5e7eb", "fa5s.user-tie"),
-    "employee": ("#f8fafc", "#475569", "#e2e8f0", "fa5s.user-tie"),
+    "organization": ("#f3fbea", "#064e3b", "#b7e99d", "fa5s.building"),
+    "division": ("#eefaf6", "#047857", "#9de8ca", "fa5s.layer-group"),
+    "department": ("#f3f8ff", "#1d4ed8", "#bdd7ff", "fa5s.sitemap"),
+    "unit": ("#fff8eb", "#a16207", "#f3d58b", "fa5s.briefcase"),
+    "team": ("#f8fafc", "#334155", "#dbe3ec", "fa5s.users"),
+    "position": ("#ffffff", "#475569", "#e2e8f0", "fa5s.user-tie"),
+    "employee": ("#ffffff", "#475569", "#e2e8f0", "fa5s.user-tie"),
 }
 
 
@@ -59,14 +60,22 @@ def _type_colors(unit_type):
     if tokens().name != THEME_DARK:
         return TYPE_COLORS.get(unit_type, TYPE_COLORS["employee"])
     return {
-        "organization": ("#21142f", "#d8b4fe", "#6b21a8", "fa5s.building"),
-        "division": ("#261707", "#fed7aa", "#9a3412", "fa5s.layer-group"),
-        "department": ("#0b1b32", "#bfdbfe", "#1e40af", "fa5s.sitemap"),
-        "unit": ("#102416", "#bbf7d0", "#166534", "fa5s.briefcase"),
-        "team": ("#171717", "#d1d5db", "#303030", "fa5s.users"),
+        "organization": ("#121b12", "#9fe870", "#3b5f2a", "fa5s.building"),
+        "division": ("#101a17", "#86efac", "#2c6046", "fa5s.layer-group"),
+        "department": ("#101820", "#93c5fd", "#2b4c6f", "fa5s.sitemap"),
+        "unit": ("#1b1710", "#f5d06f", "#654f1d", "fa5s.briefcase"),
+        "team": ("#171717", "#cbd5e1", "#343a44", "fa5s.users"),
         "position": ("#171717", "#cbd5e1", "#303030", "fa5s.user-tie"),
         "employee": ("#171717", "#cbd5e1", "#303030", "fa5s.user-tie"),
     }.get(unit_type, ("#171717", "#cbd5e1", "#303030", "fa5s.circle"))
+
+
+def _node_chip_bg():
+    return tokens().surface if tokens().name == THEME_DARK else "#ffffff"
+
+
+def _edge_color():
+    return tokens().border_strong if tokens().name == THEME_DARK else "#94a3b8"
 
 def INPUT_SS():
     return input_style(40)
@@ -148,7 +157,7 @@ class HierarchyNodeItem(QGraphicsItem):
         painter.drawRoundedRect(self.boundingRect().adjusted(1, 1, -1, -1), 8, 8)
 
         painter.setPen(Qt.NoPen)
-        painter.setBrush(QBrush(QColor("#ffffff")))
+        painter.setBrush(QBrush(QColor(_node_chip_bg())))
         painter.drawRoundedRect(QRectF(14, 18, 34, 34), 8, 8)
         icon = qta.icon(self._icon_name(), color=fg)
         painter.drawPixmap(QRectF(21, 25, 20, 20).toRect(), icon.pixmap(20, 20))
@@ -170,7 +179,7 @@ class HierarchyNodeItem(QGraphicsItem):
         count_text = self.data.get("count_text", "")
         if count_text:
             painter.setPen(Qt.NoPen)
-            painter.setBrush(QBrush(QColor("#ffffff")))
+            painter.setBrush(QBrush(QColor(_node_chip_bg())))
             painter.drawRoundedRect(QRectF(58, 66, 132, 18), 6, 6)
             painter.setPen(QColor(fg))
             painter.drawText(QRectF(58, 66, 132, 18), Qt.AlignCenter, count_text)
@@ -249,7 +258,7 @@ class HierarchyPage(QWidget):
         header.addLayout(title_col, 1)
 
         add_root = QPushButton("  " + t("add_unit"))
-        add_root.setIcon(qta.icon("fa5s.plus", color="white"))
+        add_root.setIcon(qta.icon("fa5s.plus", color=primary_button_fg()))
         add_root.setIconSize(QSize(14, 14))
         add_root.setCursor(Qt.PointingHandCursor)
         add_root.setFixedHeight(42)
@@ -374,7 +383,7 @@ class HierarchyPage(QWidget):
         layout.addLayout(self.inspector_meta)
 
         self.action_add = QPushButton("  Add Child Unit")
-        self.action_add.setIcon(qta.icon("fa5s.plus", color="white"))
+        self.action_add.setIcon(qta.icon("fa5s.plus", color=primary_button_fg()))
         self.action_add.setStyleSheet(_primary_btn())
         self.action_add.clicked.connect(self._add_child_from_selection)
         self.action_edit = QPushButton("  Edit Unit")
@@ -424,8 +433,7 @@ class HierarchyPage(QWidget):
         if view_state:
             self._restore_view_state(view_state)
         else:
-            self.view.resetTransform()
-            self.view.centerOn(self.scene.itemsBoundingRect().center())
+            self._focus_canvas()
         self._sync_inspector()
 
     def _layout_tree(self, roots):
@@ -504,7 +512,7 @@ class HierarchyPage(QWidget):
             path.moveTo(QPointF(child_center.x(), trunk_y))
             path.lineTo(child_center)
         edge = QGraphicsPathItem(path)
-        edge.setPen(QPen(QColor("#94a3b8"), 1.35))
+        edge.setPen(QPen(QColor(_edge_color()), 1.35))
         edge.setZValue(-1)
         self.scene.addItem(edge)
         self.edge_items.append(edge)
@@ -518,7 +526,7 @@ class HierarchyPage(QWidget):
         path.lineTo(QPointF(end.x(), mid_y))
         path.lineTo(end)
         edge = QGraphicsPathItem(path)
-        edge.setPen(QPen(QColor("#94a3b8"), 1.5))
+        edge.setPen(QPen(QColor(_edge_color()), 1.5))
         edge.setZValue(-1)
         self.scene.addItem(edge)
         self.edge_items.append(edge)
@@ -709,8 +717,7 @@ class HierarchyPage(QWidget):
             if parent and child:
                 self._draw_edge(parent.pos(), child.pos())
         self.scene.setSceneRect(self.scene.itemsBoundingRect().adjusted(-80, -80, 80, 80))
-        self.view.resetTransform()
-        self.view.centerOn(self.scene.itemsBoundingRect().center())
+        self._focus_canvas()
         self._sync_inspector()
 
     def _search_context(self, query):
@@ -817,10 +824,18 @@ class HierarchyPage(QWidget):
         if self.scene.items():
             self.view.fitInView(self.scene.itemsBoundingRect().adjusted(-80, -80, 80, 80), Qt.KeepAspectRatio)
 
-    def _reset_canvas(self):
+    def _focus_canvas(self):
+        if not self.scene.items():
+            return
+        bounds = self.scene.itemsBoundingRect()
         self.view.resetTransform()
-        if self.scene.items():
-            self.view.centerOn(self.scene.sceneRect().center())
+        view_width = max(1, self.view.viewport().width())
+        if bounds.width() > view_width * 1.35:
+            self.view.scale(0.75, 0.75)
+        self.view.centerOn(bounds.center())
+
+    def _reset_canvas(self):
+        self._focus_canvas()
 
     def _zoom(self, factor):
         current = self.view.transform().m11()
