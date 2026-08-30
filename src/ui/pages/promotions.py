@@ -1,7 +1,6 @@
 """Promotions Page - eligible tracker, history, configurable rules."""
 
 from datetime import datetime
-import qtawesome as qta
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QTableWidget, QTableWidgetItem,
@@ -19,6 +18,7 @@ from src.database.connection import (
 )
 from src.database.models import Employee, Title, PromotionRule, PromotionHistory, SalaryIncrementHistory
 from src.ui.animations import install_tab_transition
+from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
     btn_primary, btn_outline, input_style, message_box_ss, pager_button_ss,
     pill_tab_ss, card_ss, enable_table_row_selection, prepare_table_cell_widget,
@@ -176,7 +176,7 @@ class EligibleTab(QWidget):
         bl.setContentsMargins(16, 12, 16, 12)
         bl.setSpacing(12)
         bico = QLabel()
-        bico.setPixmap(qta.icon("fa5s.info-circle", color=tokens().brand).pixmap(18, 18))
+        bico.setPixmap(app_pixmap("fa5s.info-circle", color=tokens().brand, size=18))
         btxt = QLabel(t("promotion_tracker_filter_hint"))
         btxt.setStyleSheet(f"font-size: 14px; color: {tokens().brand}; background: transparent;")
         btxt.setWordWrap(True)
@@ -371,7 +371,7 @@ class EligibleTab(QWidget):
             else:
                 bg, color = race_soft_color("progress"), race_color("progress")
             ico_box.setStyleSheet(f"background: {bg}; border-radius: 8px;")
-            ico_box.setPixmap(qta.icon(icon_name, color=color).pixmap(22, 22))
+            ico_box.setPixmap(app_pixmap(icon_name, color=color, size=22))
             txt = QVBoxLayout()
             txt.setSpacing(0)
             txt.setAlignment(Qt.AlignVCenter)
@@ -463,15 +463,15 @@ class EligibleTab(QWidget):
         if mr == 0:
             lbl_txt = t("eligible_now")
             lbl_color = _status_color("eligible")
-            status_icon.setPixmap(qta.icon("fa5s.check-circle", color=lbl_color).pixmap(13, 13))
+            status_icon.setPixmap(app_pixmap("fa5s.check-circle", color=lbl_color, size=13))
         elif mr <= 6:
             lbl_txt = t("months_remaining_count", count=mr)
             lbl_color = _status_color("soon")
-            status_icon.setPixmap(qta.icon("fa5s.clock", color=lbl_color).pixmap(13, 13))
+            status_icon.setPixmap(app_pixmap("fa5s.clock", color=lbl_color, size=13))
         else:
             lbl_txt = t("months_remaining_count", count=mr)
             lbl_color = _status_color("progress")
-            status_icon.setPixmap(qta.icon("fa5s.chart-line", color=lbl_color).pixmap(13, 13))
+            status_icon.setPixmap(app_pixmap("fa5s.chart-line", color=lbl_color, size=13))
         p_lbl = QLabel(lbl_txt)
         p_lbl.setStyleSheet(f"font-size: 12px; color: {lbl_color};")
         p_lbl.setMinimumWidth(96)
@@ -489,14 +489,14 @@ class EligibleTab(QWidget):
         act_l.setAlignment(Qt.AlignCenter)
         if row["status"] == "eligible":
             btn = QPushButton(t("approve"))
-            btn.setIcon(qta.icon("fa5s.check", color=primary_button_fg()))
+            btn.setIcon(app_icon("fa5s.check", color=primary_button_fg(), size=13))
             btn.setIconSize(QSize(13, 13))
             btn.setFixedSize(112, 38)
             btn.setStyleSheet(btn_primary(38))
             btn.clicked.connect(lambda _, eid=row["id"]: self._approve_promotion(eid))
         else:
             btn = QPushButton(t("view"))
-            btn.setIcon(qta.icon("fa5s.eye", color=tokens().text_muted))
+            btn.setIcon(app_icon("fa5s.eye", color=tokens().text_muted, size=13))
             btn.setIconSize(QSize(13, 13))
             btn.setFixedSize(86, 38)
             btn.setStyleSheet(btn_outline(32))
@@ -834,7 +834,7 @@ class HistoryTab(QWidget):
             level_bg, level_fg = _level_badge_colors()
             fl.setStyleSheet(f"background: {level_bg}; color: {level_fg}; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 700;")
             arrow = QLabel()
-            arrow.setPixmap(qta.icon("fa5s.arrow-right", color=tokens().success).pixmap(12, 12))
+            arrow.setPixmap(app_pixmap("fa5s.arrow-right", color=tokens().success, size=12))
             tl = QLabel(row["to"])
             tl.setFixedHeight(28)
             tl.setMinimumWidth(120)
@@ -856,7 +856,7 @@ class HistoryTab(QWidget):
             level_bg, level_fg = _level_badge_colors()
             fl.setStyleSheet(f"background: {level_bg}; color: {level_fg}; border-radius: 6px; padding: 3px 9px; font-size: 12px; font-weight: 700;")
             arrow = QLabel()
-            arrow.setPixmap(qta.icon("fa5s.arrow-right", color=tokens().success).pixmap(12, 12))
+            arrow.setPixmap(app_pixmap("fa5s.arrow-right", color=tokens().success, size=12))
             tl = QLabel(row["to"])
             tl.setMinimumWidth(44)
             tl.setAlignment(Qt.AlignCenter)
@@ -942,7 +942,7 @@ class RulesTab(QWidget):
         ih = QHBoxLayout()
         ih.setSpacing(10)
         ico = QLabel()
-        ico.setPixmap(qta.icon("fa5s.chart-line", color=tokens().brand).pixmap(18, 18))
+        ico.setPixmap(app_pixmap("fa5s.chart-line", color=tokens().brand, size=18))
         it = QLabel("How the Promotion Race Works")
         it.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {tokens().brand};")
         ih.addWidget(ico); ih.addWidget(it); ih.addStretch()
@@ -1000,7 +1000,7 @@ class RulesTab(QWidget):
         title_row = QHBoxLayout()
         title_row.setSpacing(8)
         icon = QLabel()
-        icon.setPixmap(qta.icon("fa5s.chart-line", color=tokens().brand).pixmap(17, 17))
+        icon.setPixmap(app_pixmap("fa5s.chart-line", color=tokens().brand, size=17))
         title = QLabel(f"{row['from']} to {row['to']}")
         title.setStyleSheet(f"font-size: 16px; font-weight: 800; color: {tokens().text};")
         edit_btn = QPushButton("Edit")
@@ -1035,7 +1035,7 @@ class RulesTab(QWidget):
         layout.setContentsMargins(24, 22, 24, 22)
         layout.setSpacing(16)
         icon = QLabel()
-        icon.setPixmap(qta.icon("fa5s.clock", color=tokens().warning).pixmap(20, 20))
+        icon.setPixmap(app_pixmap("fa5s.clock", color=tokens().warning, size=20))
         layout.addWidget(icon, alignment=Qt.AlignTop)
         text = QVBoxLayout()
         text.setSpacing(8)
@@ -1056,7 +1056,7 @@ class RulesTab(QWidget):
         layout.setSpacing(16)
         icon = QLabel()
         reset_color = "#c4b5fd" if tokens().name == THEME_DARK else "#5b21b6"
-        icon.setPixmap(qta.icon("fa5s.chart-line", color=reset_color).pixmap(20, 20))
+        icon.setPixmap(app_pixmap("fa5s.chart-line", color=reset_color, size=20))
         layout.addWidget(icon, alignment=Qt.AlignTop)
         text = QVBoxLayout()
         text.setSpacing(8)
@@ -1248,7 +1248,7 @@ def _mini_line(icon_name, text, color):
     layout.setSpacing(8)
     icon = QLabel()
     icon.setFixedSize(16, 16)
-    icon.setPixmap(qta.icon(icon_name, color=color).pixmap(14, 14))
+    icon.setPixmap(app_pixmap(icon_name, color=color, size=14))
     label = QLabel(text)
     label.setWordWrap(True)
     label.setStyleSheet(f"font-size: 14px; color: {color};")

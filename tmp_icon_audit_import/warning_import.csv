@@ -1,0 +1,4 @@
+first_name,last_name,department,degree,position,join_date,base_salary,work_email,status,commendation_months,active_sanction_months,sanction_type
+Broken,Email,Engineering,BSc,Junior Engineer,2024-02-12,2500,bad-email,active,1,0,
+Future,Join,Sales,MSc,Analyst,2999-01-01,3000,future.join.audit@example.com,active,0,15,wrong type
+Good,Row,QA,BSc,Tester,2022-05-15,2400,good.row.audit@example.com,active,0,0,

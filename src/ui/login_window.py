@@ -5,7 +5,6 @@ The language selector controls the current session language before login. The
 same session language is kept when the user logs out and returns here.
 """
 
-import qtawesome as qta
 from PySide6.QtCore import Qt, Signal, QSize, QRectF, QPoint, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QRegion
 from PySide6.QtWidgets import (
@@ -28,6 +27,7 @@ from src.core.app_settings import company_name, company_subtitle
 from src.core.i18n import available_languages, get_language, is_rtl, set_language, t
 from src.database.connection import verify_login
 from src.ui.components.theme_toggle import ThemeToggle
+from src.ui.icons import app_icon, app_pixmap
 from src.ui.theme import theme_manager, tokens
 
 
@@ -82,7 +82,7 @@ class CustomSelect(QWidget):
         self.arrow = QLabel()
         self.arrow.setFixedSize(16, 16)
         self.arrow.setAlignment(Qt.AlignCenter)
-        self.arrow.setPixmap(qta.icon("fa5s.chevron-down", color=tokens().text_muted).pixmap(12, 12))
+        self.arrow.setPixmap(app_pixmap("chevron-down", color=tokens().text_muted, size=12))
 
         trigger_layout.addWidget(self.label, 1)
         trigger_layout.addWidget(self.arrow)
@@ -156,7 +156,7 @@ class CustomSelect(QWidget):
             self.label.setStyleSheet(f"font-size: 14px; color: {tkn.text};")
             self.label.setAlignment((Qt.AlignRight if is_rtl() else Qt.AlignLeft) | Qt.AlignVCenter)
         if hasattr(self, "arrow"):
-            self.arrow.setPixmap(qta.icon("fa5s.chevron-down", color=tkn.text_muted).pixmap(12, 12))
+            self.arrow.setPixmap(app_pixmap("chevron-down", color=tkn.text_muted, size=12))
         if hasattr(self, "popup_box"):
             self.popup_box.setStyleSheet(f"""
                 QFrame#SelectPopupBox {{
@@ -522,14 +522,14 @@ class LoginWindow(QWidget):
                 }}
             """)
         if hasattr(self, "logo_box"):
-            self.logo_box.setPixmap(qta.icon("fa5s.clipboard-list", color=primary_text).pixmap(40, 40))
+            self.logo_box.setPixmap(app_pixmap("clipboard-list", color=primary_text, size=40))
             self.logo_box.setStyleSheet(f"background: {tkn.brand}; border-radius: 12px;")
         if hasattr(self, "title_lbl"):
             self.title_lbl.setStyleSheet(f"font-size: 30px; font-weight: 700; color: {tkn.text};")
         if hasattr(self, "subtitle_lbl"):
             self.subtitle_lbl.setStyleSheet(f"font-size: 16px; color: {tkn.text_muted};")
         if hasattr(self, "language_icon"):
-            self.language_icon.setPixmap(qta.icon("fa5s.globe", color=tkn.text).pixmap(16, 16))
+            self.language_icon.setPixmap(app_pixmap("language", color=tkn.text, size=16))
         if hasattr(self, "language_lbl"):
             self.language_lbl.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {tkn.text};")
         for label in (getattr(self, "username_lbl", None), getattr(self, "password_lbl", None)):
@@ -538,7 +538,7 @@ class LoginWindow(QWidget):
         for container in self.findChildren(QFrame, "LoginInput"):
             container.setStyleSheet(f"QFrame#LoginInput {{ background: {tkn.input}; border: 1px solid transparent; border-radius: 8px; }}")
         for icon_label in getattr(self, "_login_icons", []):
-            icon_label.setPixmap(qta.icon(icon_label._myhr_icon_name, color=tkn.text_soft).pixmap(18, 18))
+            icon_label.setPixmap(app_pixmap(icon_label._myhr_icon_name, color=tkn.text_soft, size=18))
         if hasattr(self, "login_btn"):
             self.login_btn.setStyleSheet(f"""
                 QPushButton {{
@@ -577,7 +577,7 @@ class LoginWindow(QWidget):
         tkn = tokens()
         icon_name = "fa5s.eye-slash" if self._password_visible else "fa5s.eye"
         tooltip_key = "hide_password" if self._password_visible else "show_password"
-        self.password_toggle_btn.setIcon(qta.icon(icon_name, color=tkn.text_soft))
+        self.password_toggle_btn.setIcon(app_icon(icon_name, color=tkn.text_soft, size=15))
         self.password_toggle_btn.setIconSize(QSize(15, 15))
         self.password_toggle_btn.setToolTip(t(tooltip_key))
         self.password_toggle_btn.setStyleSheet(f"""

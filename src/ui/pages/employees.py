@@ -7,7 +7,6 @@ Fixes:
 - Edit button wired up properly
 """
 
-import qtawesome as qta
 import math
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -23,6 +22,7 @@ from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
 from src.ui.animations import animate_widget_entry, install_tab_transition
+from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
     pill_tab_ss,
     btn_outline,
@@ -256,7 +256,7 @@ class CleanSelect(QWidget):
             QFrame:hover {{ background: {tkn.hover}; }}
         """)
         self.label.setStyleSheet(f"font-size: 14px; color: {tkn.text}; background: transparent; border: none;")
-        self.arrow.setPixmap(qta.icon("fa5s.chevron-down", color=tkn.text_muted).pixmap(12, 12))
+        self.arrow.setPixmap(app_pixmap("fa5s.chevron-down", color=tkn.text_muted, size=12))
         self.popup_box.setStyleSheet(f"""
             QFrame {{
                 background: {tkn.surface};
@@ -350,7 +350,7 @@ class ChevronDateEdit(QDateEdit):
         self._arrow.setFixedSize(16, 16)
         self._arrow.setAlignment(Qt.AlignCenter)
         self._arrow.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-        self._arrow.setPixmap(qta.icon("fa5s.chevron-down", color=tokens().text_muted).pixmap(12, 12))
+        self._arrow.setPixmap(app_pixmap("fa5s.chevron-down", color=tokens().text_muted, size=12))
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -448,7 +448,7 @@ class EmployeeListView(QWidget):
         self.search_input.setPlaceholderText(t("search_employees"))
         self.search_input.setFixedHeight(44)
         self.search_input.setStyleSheet(INPUT_STYLE())
-        self.search_input.addAction(qta.icon("fa5s.search", color="#9ca3af"), QLineEdit.LeadingPosition)
+        self.search_input.addAction(app_icon("fa5s.search", color="#9ca3af", size=16), QLineEdit.LeadingPosition)
         self.search_input.textChanged.connect(self._on_filter_changed)
         bl.addWidget(self.search_input, 1)
 
@@ -469,7 +469,7 @@ class EmployeeListView(QWidget):
         bl.addWidget(self.status_filter)
 
         add_btn = QPushButton("  " + t("add_employee"))
-        add_btn.setIcon(qta.icon("fa5s.user-plus", color=_primary_button_fg()))
+        add_btn.setIcon(app_icon("fa5s.user-plus", color=_primary_button_fg(), size=16))
         add_btn.setIconSize(QSize(16, 16))
         add_btn.setCursor(Qt.PointingHandCursor)
         add_btn.setFixedHeight(44)
@@ -712,7 +712,7 @@ class EmployeeListView(QWidget):
                 )
 
                 view_btn = QPushButton()
-                view_btn.setIcon(qta.icon("fa5s.eye", color="#2563eb"))
+                view_btn.setIcon(app_icon("fa5s.eye", color="#2563eb", size=16))
                 view_btn.setIconSize(_ico)
                 view_btn.setToolTip(t("view_profile"))
                 view_btn.setCursor(Qt.PointingHandCursor)
@@ -720,7 +720,7 @@ class EmployeeListView(QWidget):
                 view_btn.clicked.connect(lambda _, eid=emp["id"]: self.on_profile(eid))
 
                 edit_btn = QPushButton()
-                edit_btn.setIcon(qta.icon("fa5s.edit", color=tokens().text_muted))
+                edit_btn.setIcon(app_icon("fa5s.edit", color=tokens().text_muted, size=16))
                 edit_btn.setIconSize(_ico)
                 edit_btn.setToolTip(t("edit_employee"))
                 edit_btn.setCursor(Qt.PointingHandCursor)
@@ -728,7 +728,7 @@ class EmployeeListView(QWidget):
                 edit_btn.clicked.connect(lambda _, eid=emp["id"]: self._do_edit(eid))
 
                 del_btn = QPushButton()
-                del_btn.setIcon(qta.icon("fa5s.trash-alt", color="#dc2626"))
+                del_btn.setIcon(app_icon("fa5s.trash-alt", color="#dc2626", size=16))
                 del_btn.setIconSize(_ico)
                 del_btn.setToolTip(t("delete_employee"))
                 del_btn.setCursor(Qt.PointingHandCursor)
@@ -869,7 +869,7 @@ class AddEmployeeView(QWidget):
         h.setContentsMargins(40, 28, 40, 12)
         h.setSpacing(0)
         back_btn = QPushButton("  " + t("back_to_employees"))
-        back_btn.setIcon(qta.icon("fa5s.arrow-left", color="#2563eb"))
+        back_btn.setIcon(app_icon("fa5s.arrow-left", color=tokens().brand, size=12))
         back_btn.setIconSize(QSize(12, 12))
         back_btn.setCursor(Qt.PointingHandCursor)
         back_btn.setStyleSheet(f"QPushButton {{ background: transparent; color: {tokens().brand}; border: none; font-size: 13px; font-weight: 600; }} QPushButton:hover {{ text-decoration: underline; }}")
@@ -967,7 +967,7 @@ class AddEmployeeView(QWidget):
         save_btn = QPushButton("  " + t("save"))
         save_btn.setCursor(Qt.PointingHandCursor)
         save_btn.setFixedHeight(44)
-        save_btn.setIcon(qta.icon("fa5s.save", color=_primary_button_fg()))
+        save_btn.setIcon(app_icon("fa5s.save", color=_primary_button_fg(), size=16))
         save_btn.setIconSize(QSize(16, 16))
         save_btn.setStyleSheet(btn_primary(44))
         save_btn.clicked.connect(self._save)
@@ -995,7 +995,7 @@ class AddEmployeeView(QWidget):
             row = QHBoxLayout()
             icon = QLabel()
             icon.setFixedSize(14, 14)
-            icon.setPixmap(qta.icon("fa5s.check-circle", color=tokens().brand).pixmap(12, 12))
+            icon.setPixmap(app_pixmap("fa5s.check-circle", color=tokens().brand, size=12))
             l = QLabel(line)
             l.setStyleSheet(f"font-size: 14px; color: {tokens().brand}; background: transparent;")
             row.addWidget(icon)
@@ -1313,7 +1313,7 @@ class EditEmployeeView(QWidget):
         h = QHBoxLayout(header)
         h.setContentsMargins(28, 0, 28, 0)
         back_btn = QPushButton("  " + t("back_to_employees"))
-        back_btn.setIcon(qta.icon("fa5s.arrow-left", color="#2563eb"))
+        back_btn.setIcon(app_icon("fa5s.arrow-left", color=tokens().brand, size=12))
         back_btn.setIconSize(QSize(12, 12))
         back_btn.setCursor(Qt.PointingHandCursor)
         back_btn.setStyleSheet(f"QPushButton {{ background: transparent; color: {tokens().brand}; border: none; font-size: 13px; font-weight: 600; }} QPushButton:hover {{ text-decoration: underline; }}")
@@ -1613,7 +1613,7 @@ class EmployeeProfileView(QWidget):
         h = QHBoxLayout(self.header)
         h.setContentsMargins(28, 0, 28, 0)
         back_btn = QPushButton("  " + t("back_to_employees"))
-        back_btn.setIcon(qta.icon("fa5s.arrow-left", color="#2563eb"))
+        back_btn.setIcon(app_icon("fa5s.arrow-left", color=tokens().brand, size=12))
         back_btn.setIconSize(QSize(12, 12))
         back_btn.setCursor(Qt.PointingHandCursor)
         back_btn.setStyleSheet(f"QPushButton {{ background: transparent; color: {tokens().brand}; border: none; font-size: 13px; font-weight: 600; }} QPushButton:hover {{ text-decoration: underline; }}")
@@ -1703,7 +1703,7 @@ class EmployeeProfileView(QWidget):
                 row.setSpacing(6)
                 icon_lbl = QLabel()
                 icon_lbl.setFixedSize(14, 14)
-                icon_lbl.setPixmap(qta.icon(icon_name, color=tokens().text_soft).pixmap(13, 13))
+                icon_lbl.setPixmap(app_pixmap(icon_name, color=tokens().text_soft, size=13))
                 l = QLabel(str(val))
                 l.setStyleSheet(f"font-size: 12px; color: {tokens().text_soft}; background: transparent;")
                 row.addWidget(icon_lbl)
@@ -1846,7 +1846,7 @@ class EmployeeProfileView(QWidget):
             page.setSpacing(18)
 
             back = QPushButton("  " + t("back_to_employees"))
-            back.setIcon(qta.icon("fa5s.arrow-left", color=tokens().text))
+            back.setIcon(app_icon("fa5s.arrow-left", color=tokens().text, size=12))
             back.setIconSize(QSize(12, 12))
             back.setCursor(Qt.PointingHandCursor)
             back.setFixedWidth(170)
@@ -1906,7 +1906,7 @@ class EmployeeProfileView(QWidget):
             row = QHBoxLayout()
             row.setSpacing(5)
             ico = QLabel()
-            ico.setPixmap(qta.icon(icon_name, color=tokens().text_muted).pixmap(13, 13))
+            ico.setPixmap(app_pixmap(icon_name, color=tokens().text_muted, size=13))
             lbl = QLabel(str(value))
             lbl.setStyleSheet(f"font-size: 12px; color: {_muted()}; background: transparent;")
             row.addWidget(ico)
@@ -1917,7 +1917,7 @@ class EmployeeProfileView(QWidget):
         info.addLayout(meta)
         layout.addLayout(info, 1)
         edit = QPushButton("  " + (t("editing") if self.editing else t("edit_profile")))
-        edit.setIcon(qta.icon("fa5s.edit", color=_primary_button_fg()))
+        edit.setIcon(app_icon("fa5s.edit", color=_primary_button_fg(), size=13))
         edit.setIconSize(QSize(13, 13))
         edit.setCursor(Qt.PointingHandCursor)
         edit.setFixedHeight(36)
@@ -2463,7 +2463,7 @@ class EmployeeProfileView(QWidget):
         icon.setFixedSize(36, 36)
         icon.setAlignment(Qt.AlignCenter)
         icon.setStyleSheet(f"background: {soft_bg}; border-radius: 8px;")
-        icon.setPixmap(qta.icon(icon_name, color=color).pixmap(15, 15))
+        icon.setPixmap(app_pixmap(icon_name, color=color, size=15))
         text_col = QVBoxLayout()
         text_col.setSpacing(2)
         title_lbl = QLabel(title)

@@ -9,7 +9,6 @@ Sanctions Page
 
 import math
 
-import qtawesome as qta
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QTableWidget, QTableWidgetItem,
@@ -23,6 +22,7 @@ from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
 from src.ui.animations import install_tab_transition
+from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
     employee_picker_list_ss,
     pill_tab_ss,
@@ -262,7 +262,7 @@ class ActiveSanctionsTab(QWidget):
         chl = QHBoxLayout(card_header)
         chl.setContentsMargins(30, 28, 30, 28)
         ch_icon = QLabel()
-        ch_icon.setPixmap(qta.icon("fa5s.exclamation-triangle", color="#ef4444").pixmap(18, 18))
+        ch_icon.setPixmap(app_pixmap("fa5s.exclamation-triangle", color="#ef4444", size=18))
         ch_title = QLabel(t("current_active_sanctions"))
         ch_title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text}; background: transparent;")
         chl.addWidget(ch_icon)
@@ -354,7 +354,7 @@ class ActiveSanctionsTab(QWidget):
             icon.setFixedSize(48, 48)
             icon.setAlignment(Qt.AlignCenter)
             icon.setStyleSheet(f"background: {bg}; border-radius: 8px;")
-            icon.setPixmap(qta.icon(icon_name, color=color).pixmap(22, 22))
+            icon.setPixmap(app_pixmap(icon_name, color=color, size=22))
             col = QVBoxLayout()
             col.setSpacing(0)
             col.setAlignment(Qt.AlignVCenter)
@@ -407,7 +407,7 @@ class ActiveSanctionsTab(QWidget):
 
             resolve_btn = QPushButton(t("resolve_action"))
             resolve_btn.setToolTip(t("mark_resolved"))
-            resolve_btn.setIcon(qta.icon("fa5s.check-circle", color=tokens().success))
+            resolve_btn.setIcon(app_icon("fa5s.check-circle", color=tokens().success, size=15))
             resolve_btn.setIconSize(QSize(15, 15))
             resolve_btn.setFixedSize(116, 34)
             resolve_btn.setCursor(Qt.PointingHandCursor)
@@ -523,7 +523,7 @@ class SanctionHistoryTab(QWidget):
         hl = QHBoxLayout(header)
         hl.setContentsMargins(30, 28, 30, 28)
         icon = QLabel()
-        icon.setPixmap(qta.icon("fa5s.check-circle", color=tokens().success).pixmap(18, 18))
+        icon.setPixmap(app_pixmap("fa5s.check-circle", color=tokens().success, size=18))
         title = QLabel(t("sanction_history"))
         title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text}; background: transparent;")
         hl.addWidget(icon)
@@ -724,7 +724,7 @@ class IssueSanctionTab(QWidget):
 
         title_row = QHBoxLayout()
         title_icon = QLabel()
-        title_icon.setPixmap(qta.icon("fa5s.exclamation-triangle", color="#ef4444").pixmap(18, 18))
+        title_icon.setPixmap(app_pixmap("fa5s.exclamation-triangle", color="#ef4444", size=18))
         fc_title = QLabel(t("issue_new_sanction"))
         fc_title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text}; background: transparent;")
         title_row.addWidget(title_icon)
@@ -741,7 +741,7 @@ class IssueSanctionTab(QWidget):
         self.emp_search.setPlaceholderText(t("search_employees"))
         self.emp_search.setClearButtonEnabled(True)
         self.emp_search.setStyleSheet(FIELD_SS())
-        self.emp_search.addAction(qta.icon("fa5s.search", color=tokens().text_soft), QLineEdit.LeadingPosition)
+        self.emp_search.addAction(app_icon("fa5s.search", color=tokens().text_soft, size=16), QLineEdit.LeadingPosition)
         self.emp_search.textChanged.connect(self._filter_employees)
 
         self.emp_list = QListWidget()
@@ -794,7 +794,7 @@ class IssueSanctionTab(QWidget):
         date_field_layout.setContentsMargins(16, 0, 16, 0)
         date_field_layout.setSpacing(10)
         date_icon = QLabel()
-        date_icon.setPixmap(qta.icon("fa5s.calendar-alt", color="#9ca3af").pixmap(14, 14))
+        date_icon.setPixmap(app_pixmap("fa5s.calendar-alt", color="#9ca3af", size=14))
         date_text = QLabel(datetime.utcnow().strftime("%m/%d/%Y"))
         date_text.setStyleSheet(f"font-size: 14px; color: {tokens().text}; background: transparent;")
         date_field_layout.addWidget(date_icon)
@@ -847,7 +847,7 @@ class IssueSanctionTab(QWidget):
         ac.addWidget(actions_title)
         ac.addSpacing(24)
         self.issue_btn = QPushButton("  " + t("issue_sanction"))
-        self.issue_btn.setIcon(qta.icon("fa5s.exclamation-triangle", color=primary_button_fg()))
+        self.issue_btn.setIcon(app_icon("fa5s.exclamation-triangle", color=primary_button_fg(), size=14))
         self.issue_btn.setIconSize(QSize(14, 14))
         self.issue_btn.setCursor(Qt.PointingHandCursor)
         self.issue_btn.setFixedHeight(50)
@@ -873,7 +873,7 @@ class IssueSanctionTab(QWidget):
         gc.setSpacing(12)
         guide_head = QHBoxLayout()
         guide_icon = QLabel()
-        guide_icon.setPixmap(qta.icon("fa5s.clipboard-list", color=tokens().brand).pixmap(18, 18))
+        guide_icon.setPixmap(app_pixmap("fa5s.clipboard-list", color=tokens().brand, size=18))
         gc_title = QLabel(t("sanction_guidelines"))
         gc_title.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {tokens().text}; background: transparent;")
         guide_head.addWidget(guide_icon)
@@ -904,7 +904,7 @@ class IssueSanctionTab(QWidget):
         ic.setSpacing(12)
         impact_head = QHBoxLayout()
         impact_icon = QLabel()
-        impact_icon.setPixmap(qta.icon("fa5s.stopwatch", color=tokens().danger).pixmap(18, 18))
+        impact_icon.setPixmap(app_pixmap("fa5s.stopwatch", color=tokens().danger, size=18))
         ic_title = QLabel(t("sanction_race_impact"))
         ic_title.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {tokens().text}; background: transparent;")
         impact_head.addWidget(impact_icon)
@@ -934,7 +934,7 @@ class IssueSanctionTab(QWidget):
         nc.setSpacing(12)
         notes_head = QHBoxLayout()
         notes_icon = QLabel()
-        notes_icon.setPixmap(qta.icon("fa5s.exclamation-triangle", color=tokens().danger).pixmap(18, 18))
+        notes_icon.setPixmap(app_pixmap("fa5s.exclamation-triangle", color=tokens().danger, size=18))
         notes_title = QLabel(t("important_notes"))
         notes_title.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {tokens().danger}; background: transparent;")
         notes_head.addWidget(notes_icon)

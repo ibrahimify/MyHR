@@ -13,7 +13,6 @@ import re
 import zipfile
 from xml.etree import ElementTree as ET
 
-import qtawesome as qta
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
@@ -32,6 +31,7 @@ from src.database.models import (
     Employee, Title, OrgUnit, Commendation,
     CommendationEmployee, Sanction
 )
+from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
     btn_outline,
     btn_primary,
@@ -255,7 +255,7 @@ class ImportDataPage(QWidget):
         icon_wrap.setFixedSize(76, 76)
         icon_wrap.setAlignment(Qt.AlignCenter)
         icon_wrap.setStyleSheet(f"background: {tokens().selected}; border-radius: 38px;")
-        icon_wrap.setPixmap(qta.icon("fa5s.upload", color=tokens().brand).pixmap(32, 32))
+        icon_wrap.setPixmap(app_pixmap("fa5s.upload", color=tokens().brand, size=32))
         layout.addWidget(icon_wrap, alignment=Qt.AlignCenter)
 
         upload_title = QLabel(t("upload_employee_file"))
@@ -269,7 +269,7 @@ class ImportDataPage(QWidget):
         layout.addWidget(upload_sub)
 
         choose_btn = QPushButton("  " + t("choose_file"))
-        choose_btn.setIcon(qta.icon("fa5s.upload", color=_primary_icon_color()))
+        choose_btn.setIcon(app_icon("fa5s.upload", color=_primary_icon_color(), size=15))
         choose_btn.setIconSize(QSize(15, 15))
         choose_btn.setCursor(Qt.PointingHandCursor)
         choose_btn.setFixedSize(160, 50)
@@ -292,7 +292,7 @@ class ImportDataPage(QWidget):
         layout.addSpacing(14)
 
         template_btn = QPushButton("  " + t("download_template"))
-        template_btn.setIcon(qta.icon("fa5s.download", color=tokens().text))
+        template_btn.setIcon(app_icon("fa5s.download", color=tokens().text, size=14))
         template_btn.setIconSize(QSize(14, 14))
         template_btn.setCursor(Qt.PointingHandCursor)
         template_btn.setFixedSize(280, 44)
@@ -317,7 +317,7 @@ class ImportDataPage(QWidget):
 
         header = QHBoxLayout()
         icon = QLabel()
-        icon.setPixmap(qta.icon("fa5s.clipboard-list", color=tokens().brand).pixmap(18, 18))
+        icon.setPixmap(app_pixmap("fa5s.clipboard-list", color=tokens().brand, size=18))
         title = QLabel(t("validation_results"))
         title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {TEXT()}; background: transparent;")
         header.addWidget(icon)
@@ -361,7 +361,7 @@ class ImportDataPage(QWidget):
         action_row = QHBoxLayout()
         action_row.addStretch()
         self.import_btn = QPushButton("  " + t("import_valid"))
-        self.import_btn.setIcon(qta.icon("fa5s.check-circle", color=_primary_icon_color()))
+        self.import_btn.setIcon(app_icon("fa5s.check-circle", color=_primary_icon_color(), size=15))
         self.import_btn.setIconSize(QSize(15, 15))
         self.import_btn.setCursor(Qt.PointingHandCursor)
         self.import_btn.setFixedSize(230, 50)
@@ -384,7 +384,7 @@ class ImportDataPage(QWidget):
 
         head = QHBoxLayout()
         icon = QLabel()
-        icon.setPixmap(qta.icon("fa5s.info-circle", color=tokens().brand).pixmap(18, 18))
+        icon.setPixmap(app_pixmap("fa5s.info-circle", color=tokens().brand, size=18))
         title = QLabel(t("required_columns"))
         title.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {tokens().brand}; background: transparent;")
         head.addWidget(icon)
@@ -417,7 +417,7 @@ class ImportDataPage(QWidget):
 
         head = QHBoxLayout()
         icon = QLabel()
-        icon.setPixmap(qta.icon("fa5s.exclamation-triangle", color=tokens().warning).pixmap(18, 18))
+        icon.setPixmap(app_pixmap("fa5s.exclamation-triangle", color=tokens().warning, size=18))
         title = QLabel(t("data_cleaning_guide"))
         title.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {tokens().warning}; background: transparent;")
         head.addWidget(icon)
@@ -784,13 +784,13 @@ class ImportDataPage(QWidget):
             if row["status"] == "valid":
                 status_text = t("valid")
                 status = QTableWidgetItem(status_text)
-                status.setIcon(qta.icon("fa5s.check-circle", color=tokens().success))
+                status.setIcon(app_icon("fa5s.check-circle", color=tokens().success, size=14))
                 status.setForeground(QColor(tokens().success))
                 status.setToolTip(status_text)
             else:
                 issue_text = "; ".join(row["issues"])
                 status = QTableWidgetItem(t("fix_required"))
-                status.setIcon(qta.icon("fa5s.exclamation-triangle", color=tokens().danger))
+                status.setIcon(app_icon("fa5s.exclamation-triangle", color=tokens().danger, size=14))
                 status.setForeground(QColor(tokens().danger))
                 status.setToolTip(issue_text)
                 for col in range(8):
@@ -1153,7 +1153,7 @@ def _stat_card(label, value, color, bg, icon_name):
     icon.setFixedSize(44, 44)
     icon.setAlignment(Qt.AlignCenter)
     icon.setStyleSheet(f"background: {bg}; border-radius: 8px;")
-    icon.setPixmap(qta.icon(icon_name, color=color).pixmap(20, 20))
+    icon.setPixmap(app_pixmap(icon_name, color=color, size=20))
 
     texts = QVBoxLayout()
     texts.setSpacing(0)

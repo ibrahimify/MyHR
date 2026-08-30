@@ -1,21 +1,21 @@
 """Dashboard page matching the MockUI React dashboard layout."""
 
 from datetime import datetime, timedelta
+from html import escape
 
-import qtawesome as qta
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QGridLayout,
     QDialog, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
-    QProgressBar, QDateEdit
+    QProgressBar, QDateEdit, QSizePolicy
 )
 from PySide6.QtCore import Qt, QSize, QRectF, QPointF, QDate
-from PySide6.QtGui import QColor, QPainter, QPen, QBrush, QFont, QPainterPath, QPolygonF
+from PySide6.QtGui import QColor, QPainter, QPen, QBrush, QFont, QPainterPath, QLinearGradient
 
 from src.core.i18n import is_rtl, t
 from src.database.connection import (
     get_session, get_increment_due_employees, apply_salary_increment,
-    calculate_months_remaining_batch
+    calculate_months_remaining_batch, OTHER_ORG_UNIT_NAME
 )
 from src.database.models import (
     Employee, Sanction, Commendation, AuditLog, Title, OrgUnit,
@@ -26,10 +26,132 @@ from src.ui.styles import (
     enable_table_row_selection, prepare_table_cell_widget, primary_button_fg,
     race_color, race_soft_color, race_progress_bar_ss,
 )
+from src.ui.chart_theme import chart_axis_color, chart_color, chart_grid_color, chart_soft_color
+from src.ui.icons import app_icon, app_pixmap
 from src.ui.theme import THEME_DARK, tokens
 
 
 _ICO = QSize(16, 16)
+
+
+def _alpha(color, value):
+    tinted = QColor(color)
+    tinted.setAlpha(value)
+    return tinted
+
+
+def _series_color(color_key):
+    return QColor(chart_color(color_key))
+
+
+def _line_path(points):
+    if not points:
+        return QPainterPath()
+    path = QPainterPath(points[0])
+    for index in range(1, len(points)):
+        previous = points[index - 1]
+        current = points[index]
+        dx = (current.x() - previous.x()) * 0.45
+        path.cubicTo(
+            QPointF(previous.x() + dx, previous.y()),
+            QPointF(current.x() - dx, current.y()),
+            current,
+        )
+    return path
+
+
+def _chart_tooltip_ss(accent):
+    tkn = tokens()
+    return (
+        f"background: {tkn.surface_raised}; color: {tkn.text}; "
+        f"border: 1px solid {tkn.border_strong}; border-radius: 8px; "
+        "padding: 8px 10px; font-size: 12px;"
+    )
+
+
+def _hide_chart_tooltip(widget):
+    tooltip = getattr(widget, "_chart_tooltip", None)
+    if tooltip is not None:
+        tooltip.hide()
+
+
+def _show_chart_tooltip(widget, pos, title, rows, accent_key="promotion"):
+    accent = chart_color(accent_key)
+    tooltip = getattr(widget, "_chart_tooltip", None)
+    if tooltip is None:
+        tooltip = QLabel(widget)
+        tooltip.setObjectName("ChartTooltip")
+        tooltip.setAttribute(Qt.WA_TransparentForMouseEvents)
+        tooltip.setTextFormat(Qt.RichText)
+        widget._chart_tooltip = tooltip
+
+    row_html = "".join(
+        f"<div style='white-space:nowrap; color:{tokens().text_muted};'>"
+        f"<span style='color:{chart_color(color_key)};'>{escape(str(name))}</span>: "
+        f"<b style='color:{tokens().text};'>{escape(str(value))}</b></div>"
+        for name, value, color_key in rows
+    )
+    tooltip.setStyleSheet(_chart_tooltip_ss(accent))
+    tooltip.setText(
+        f"<div style='white-space:nowrap; font-weight:600; color:{tokens().text}; margin-bottom:4px;'>{escape(str(title))}</div>"
+        f"{row_html}"
+    )
+    tooltip.adjustSize()
+    x = int(pos.x() + 14)
+    y = int(pos.y() - tooltip.height() - 12)
+    if y < 8:
+        y = int(pos.y() + 14)
+    x = min(max(8, x), max(8, widget.width() - tooltip.width() - 8))
+    y = min(max(8, y), max(8, widget.height() - tooltip.height() - 8))
+    tooltip.move(x, y)
+    tooltip.raise_()
+    tooltip.show()
+
+
+def _draw_hover_rule(painter, chart, x, color_key):
+    if x is None or x < chart.left() or x > chart.right():
+        return
+    color = _alpha(_series_color(color_key), 70 if tokens().name == THEME_DARK else 58)
+    painter.setPen(QPen(color, 1, Qt.DashLine))
+    painter.drawLine(QPointF(x, chart.top()), QPointF(x, chart.bottom()))
+
+
+def _draw_hollow_marker(painter, point, color, *, radius=4.0, width=2.0, active=False):
+    tkn = tokens()
+    marker_radius = radius + (0.8 if active else 0)
+    marker_width = width + (0.25 if active else 0)
+    painter.setBrush(QBrush(QColor(tkn.surface)))
+    painter.setPen(QPen(color, marker_width, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+    painter.drawEllipse(point, marker_radius, marker_radius)
+
+
+def _same_point(first, second):
+    return (
+        second is not None and
+        abs(first.x() - second.x()) < 0.5 and
+        abs(first.y() - second.y()) < 0.5
+    )
+
+
+def _mini_progress_ss(color_key="increment", radius=4):
+    tkn = tokens()
+    return (
+        f"QProgressBar {{ background: {tkn.border}; border: none; border-radius: {radius}px; }}"
+        f"QProgressBar::chunk {{ background: {chart_color(color_key)}; border-radius: {radius}px; }}"
+    )
+
+
+def _increment_review_button_ss(height=34):
+    tkn = tokens()
+    accent = chart_color("increment")
+    soft = chart_soft_color("increment")
+    return (
+        f"QPushButton {{ background-color: {tkn.surface}; color: {accent}; border: 1px solid {accent}; "
+        "border-radius: 7px; padding-left: 14px; padding-right: 14px; "
+        "font-size: 13px; font-weight: 700; }}"
+        f"QPushButton:hover {{ background-color: {soft}; }}"
+    )
+
 
 def dashboard_card_ss():
     tkn = tokens()
@@ -166,10 +288,10 @@ def _timeline_buckets(filter_key):
 
 
 class BarChartWidget(QWidget):
-    def __init__(self, data=None, color="#3b82f6", parent=None):
+    def __init__(self, data=None, color="dimension", parent=None):
         super().__init__(parent)
         self.data = data or []
-        self.color = QColor(color)
+        self.color = color
         self.setMinimumHeight(320)
         self.setMouseTracking(True)
 
@@ -181,9 +303,19 @@ class BarChartWidget(QWidget):
         hit = getattr(self, "_hit_boxes", [])
         for rect, label, value in hit:
             if rect.contains(event.position().toPoint()):
-                self.setToolTip(f"{label}: {value}")
+                _show_chart_tooltip(
+                    self,
+                    event.position(),
+                    label,
+                    [(t("employees"), value, self.color)],
+                    self.color,
+                )
                 return
-        self.setToolTip("")
+        _hide_chart_tooltip(self)
+
+    def leaveEvent(self, event):
+        _hide_chart_tooltip(self)
+        super().leaveEvent(event)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -202,7 +334,7 @@ class BarChartWidget(QWidget):
         self._hit_boxes = []
 
         tkn = tokens()
-        painter.setPen(QPen(QColor(tkn.border), 1, Qt.DashLine))
+        painter.setPen(QPen(QColor(chart_grid_color()), 1, Qt.DashLine))
         for i in range(1, 4):
             x = chart.left() + chart.width() * i / 4
             painter.drawLine(QPointF(x, chart.top()), QPointF(x, chart.bottom()))
@@ -218,8 +350,9 @@ class BarChartWidget(QWidget):
             y = chart.top() + idx * (bar_h + gap)
             bar = QRectF(x, y, bar_w, bar_h)
             painter.setPen(Qt.NoPen)
-            painter.setBrush(QBrush(self.color))
-            painter.drawRoundedRect(bar, 6, 6)
+            radius = min(7, bar_h / 2)
+            painter.setBrush(QBrush(_series_color(self.color)))
+            painter.drawRoundedRect(bar, radius, radius)
             self._hit_boxes.append((bar.toRect(), label, value))
 
             painter.setPen(QColor(tkn.text_muted))
@@ -230,10 +363,9 @@ class BarChartWidget(QWidget):
 
         painter.setPen(QColor(tkn.text_soft))
         painter.drawText(QRectF(chart.left(), chart.bottom() + 2, 40, 18), Qt.AlignLeft, "0")
-        painter.drawText(QRectF(chart.right() - 40, chart.bottom() + 2, 40, 18), Qt.AlignRight, str(max_value))
 
     def _draw_grid(self, painter, chart):
-        painter.setPen(QPen(QColor(tokens().border), 1, Qt.DashLine))
+        painter.setPen(QPen(QColor(chart_grid_color()), 1, Qt.DashLine))
         for i in range(1, 4):
             y = chart.top() + chart.height() * i / 4
             painter.drawLine(QPointF(chart.left(), y), QPointF(chart.right(), y))
@@ -244,10 +376,10 @@ class BarChartWidget(QWidget):
 
 
 class LineChartWidget(QWidget):
-    def __init__(self, data=None, color="#10b981", parent=None):
+    def __init__(self, data=None, color="promotion", parent=None):
         super().__init__(parent)
         self.data = data or []
-        self.color = QColor(color)
+        self.color = color
         self.setMinimumHeight(260)
         self.setMouseTracking(True)
 
@@ -258,9 +390,27 @@ class LineChartWidget(QWidget):
     def mouseMoveEvent(self, event):
         for point, label, value in getattr(self, "_hit_points", []):
             if (point - event.position()).manhattanLength() <= 10:
-                self.setToolTip(f"{label}: {value}")
+                self._hover_point = point
+                self._hover_color = self.color
+                self.update()
+                _show_chart_tooltip(
+                    self,
+                    event.position(),
+                    label,
+                    [(t("promotions"), value, self.color)],
+                    self.color,
+                )
                 return
-        self.setToolTip("")
+        if getattr(self, "_hover_point", None) is not None:
+            self._hover_point = None
+            self.update()
+        _hide_chart_tooltip(self)
+
+    def leaveEvent(self, event):
+        self._hover_point = None
+        self.update()
+        _hide_chart_tooltip(self)
+        super().leaveEvent(event)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -268,14 +418,16 @@ class LineChartWidget(QWidget):
         rect = self.rect().adjusted(10, 14, -10, -18)
         chart = rect.adjusted(42, 10, -12, -34)
         tkn = tokens()
-        painter.setPen(QPen(QColor(tkn.border), 1, Qt.DashLine))
+        line_color = _series_color(self.color)
+        painter.setPen(QPen(QColor(chart_grid_color()), 1, Qt.DashLine))
         for i in range(1, 4):
             y = chart.top() + chart.height() * i / 4
             painter.drawLine(QPointF(chart.left(), y), QPointF(chart.right(), y))
 
-        painter.setPen(QPen(QColor(tkn.border_strong), 1))
+        painter.setPen(QPen(QColor(chart_axis_color()), 1))
         painter.drawLine(chart.bottomLeft(), chart.bottomRight())
         painter.drawLine(chart.bottomLeft(), chart.topLeft())
+        _draw_hover_rule(painter, chart, getattr(self, "_hover_point", None).x() if getattr(self, "_hover_point", None) else None, getattr(self, "_hover_color", self.color))
 
         if not self.data:
             painter.setPen(QColor(tkn.text_soft))
@@ -294,21 +446,31 @@ class LineChartWidget(QWidget):
             self._hit_points.append((point, label, value))
 
         if len(points) > 1:
-            path = QPainterPath(points[0])
-            for index in range(1, len(points)):
-                previous = points[index - 1]
-                current = points[index]
-                dx = (current.x() - previous.x()) * 0.45
-                c1 = QPointF(previous.x() + dx, previous.y())
-                c2 = QPointF(current.x() - dx, current.y())
-                path.cubicTo(c1, c2, current)
-            painter.setPen(QPen(self.color, 3))
+            path = _line_path(points)
+            area = QPainterPath(path)
+            area.lineTo(points[-1].x(), chart.bottom())
+            area.lineTo(points[0].x(), chart.bottom())
+            area.closeSubpath()
+            fill = QLinearGradient(0, chart.top(), 0, chart.bottom())
+            fill.setColorAt(0.0, _alpha(line_color, 24 if tkn.name == THEME_DARK else 18))
+            fill.setColorAt(1.0, _alpha(line_color, 0))
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(fill))
+            painter.drawPath(area)
+
+            painter.setBrush(Qt.NoBrush)
+            painter.setPen(QPen(line_color, 2.3, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
             painter.drawPath(path)
 
-        painter.setBrush(QBrush(QColor(tkn.surface)))
-        painter.setPen(QPen(self.color, 3))
         for point in points:
-            painter.drawEllipse(point, 5, 5)
+            _draw_hollow_marker(
+                painter,
+                point,
+                line_color,
+                radius=4.4,
+                width=2.1,
+                active=_same_point(point, getattr(self, "_hover_point", None)),
+            )
 
         painter.setPen(QColor(tkn.text_muted))
         font = QFont()
@@ -343,11 +505,23 @@ class WorkforceTimelineWidget(QWidget):
         self.update()
 
     def mouseMoveEvent(self, event):
-        for point, tooltip in getattr(self, "_hit_points", []):
+        for point, title, rows, accent_key in getattr(self, "_hit_points", []):
             if (point - event.position()).manhattanLength() <= 12:
-                self.setToolTip(tooltip)
+                self._hover_point = point
+                self._hover_color = accent_key
+                self.update()
+                _show_chart_tooltip(self, event.position(), title, rows, accent_key)
                 return
-        self.setToolTip("")
+        if getattr(self, "_hover_point", None) is not None:
+            self._hover_point = None
+            self.update()
+        _hide_chart_tooltip(self)
+
+    def leaveEvent(self, event):
+        self._hover_point = None
+        self.update()
+        _hide_chart_tooltip(self)
+        super().leaveEvent(event)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -369,34 +543,55 @@ class WorkforceTimelineWidget(QWidget):
         self._hit_points = []
 
         tkn = tokens()
-        painter.setPen(QPen(QColor(tkn.border), 1, Qt.DashLine))
+        painter.setPen(QPen(QColor(chart_grid_color()), 1, Qt.DashLine))
         for i in range(1, 4):
             y = chart.top() + chart.height() * i / 4
             painter.drawLine(QPointF(chart.left(), y), QPointF(chart.right(), y))
-        painter.setPen(QPen(QColor(tkn.border_strong), 1))
+        painter.setPen(QPen(QColor(chart_axis_color()), 1))
         painter.drawLine(chart.bottomLeft(), chart.bottomRight())
         painter.drawLine(chart.bottomLeft(), chart.topLeft())
+        _draw_hover_rule(painter, chart, getattr(self, "_hover_point", None).x() if getattr(self, "_hover_point", None) else None, getattr(self, "_hover_color", "promotion"))
 
         max_value = max([value for _, values, _ in self.series for value in values] + [1])
         for name, values, color in self.series:
+            line_color = _series_color(color)
             points = []
             for idx, value in enumerate(values):
                 x = chart.left() + idx * step
                 y = chart.bottom() - (chart.height() * value / max_value if max_value else 0)
                 point = QPointF(x, y)
                 points.append(point)
-                tooltip_parts = [self.labels[idx]]
-                for series_name, series_values, _ in self.series:
-                    tooltip_parts.append(f"{series_name}: {series_values[idx] if idx < len(series_values) else 0}")
-                self._hit_points.append((point, "\n".join(tooltip_parts)))
+                rows = [
+                    (series_name, series_values[idx] if idx < len(series_values) else 0, series_color)
+                    for series_name, series_values, series_color in self.series
+                ]
+                self._hit_points.append((point, self.labels[idx], rows, color))
 
             if len(points) > 1:
-                painter.setPen(QPen(QColor(color), 3))
-                painter.drawPolyline(QPolygonF(self._smooth_points(points)))
-            painter.setBrush(QBrush(QColor(tkn.surface)))
-            painter.setPen(QPen(QColor(color), 2))
+                path = _line_path(points)
+                area = QPainterPath(path)
+                area.lineTo(points[-1].x(), chart.bottom())
+                area.lineTo(points[0].x(), chart.bottom())
+                area.closeSubpath()
+                fill = QLinearGradient(0, chart.top(), 0, chart.bottom())
+                fill.setColorAt(0.0, _alpha(line_color, 22 if tkn.name == THEME_DARK else 16))
+                fill.setColorAt(1.0, _alpha(line_color, 0))
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(fill))
+                painter.drawPath(area)
+
+                painter.setBrush(Qt.NoBrush)
+                painter.setPen(QPen(line_color, 2.25, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+                painter.drawPath(path)
             for point in points:
-                painter.drawEllipse(point, 4, 4)
+                _draw_hollow_marker(
+                    painter,
+                    point,
+                    line_color,
+                    radius=3.8,
+                    width=1.9,
+                    active=_same_point(point, getattr(self, "_hover_point", None)),
+                )
 
         painter.setPen(QColor(tkn.text_muted))
         font = QFont()
@@ -415,8 +610,8 @@ class WorkforceTimelineWidget(QWidget):
         legend_y = rect.bottom() - 20
         for name, color, width in legend_items:
             painter.setPen(Qt.NoPen)
-            painter.setBrush(QBrush(QColor(color)))
-            painter.drawRoundedRect(QRectF(legend_x, legend_y, 10, 10), 3, 3)
+            painter.setBrush(QBrush(_series_color(color)))
+            painter.drawEllipse(QPointF(legend_x + 5, legend_y + 5), 4, 4)
             painter.setPen(QColor(tokens().text_muted))
             painter.drawText(QRectF(legend_x + 16, legend_y - 4, width - 18, 20), Qt.AlignLeft | Qt.AlignVCenter, name)
             legend_x += width
@@ -436,20 +631,22 @@ class WorkforceTimelineWidget(QWidget):
         painter.setFont(font)
 
         tkn = tokens()
-        painter.setPen(QPen(QColor(tkn.border), 1, Qt.DashLine))
+        painter.setPen(QPen(QColor(chart_grid_color()), 1, Qt.DashLine))
         for i in range(1, 4):
             y = chart.top() + chart.height() * i / 4
             painter.drawLine(QPointF(chart.left(), y), QPointF(chart.right(), y))
-        painter.setPen(QPen(QColor(tkn.border_strong), 1))
+        painter.setPen(QPen(QColor(chart_axis_color()), 1))
         painter.drawLine(chart.bottomLeft(), chart.bottomRight())
         painter.drawLine(chart.bottomLeft(), chart.topLeft())
+        _draw_hover_rule(painter, chart, getattr(self, "_hover_point", None).x() if getattr(self, "_hover_point", None) else None, getattr(self, "_hover_color", "promotion"))
 
         painter.setPen(QColor(tkn.text_soft))
         for value in (0, 50, 100):
             y = chart.bottom() - (chart.height() * value / 100)
-            painter.drawText(QRectF(rect.left(), y - 9, 42, 18), Qt.AlignRight | Qt.AlignVCenter, str(value))
+            painter.drawText(QRectF(rect.left(), y - 9, 42, 18), Qt.AlignRight | Qt.AlignVCenter, f"{value}%")
 
         for name, values, color in self.series:
+            line_color = _series_color(color)
             normalized_values = self._aligned_series_values(values)
             max_value = max(normalized_values + [1])
             indexed_values = [(value / max_value) * 100 if max_value else 0 for value in normalized_values]
@@ -459,19 +656,49 @@ class WorkforceTimelineWidget(QWidget):
                 y = chart.bottom() - (chart.height() * indexed_value / 100)
                 point = QPointF(x, y)
                 points.append(point)
-                self._hit_points.append((point, f"{self.labels[idx]}\n{name}: {normalized_values[idx]}"))
+                rows = [
+                    (
+                        series_name,
+                        self._aligned_series_values(series_values)[idx] if idx < len(self.labels) else 0,
+                        series_color,
+                    )
+                    for series_name, series_values, series_color in self.series
+                ]
+                self._hit_points.append((point, self.labels[idx], rows, color))
 
             if len(points) > 1:
-                painter.setPen(QPen(QColor(color), 2.5))
-                painter.drawPolyline(QPolygonF(self._smooth_points(points)))
+                path = _line_path(points)
+                fill_alpha = 0
+                if str(color) == "promotion":
+                    fill_alpha = 26 if tkn.name == THEME_DARK else 18
+                if fill_alpha:
+                    area = QPainterPath(path)
+                    area.lineTo(points[-1].x(), chart.bottom())
+                    area.lineTo(points[0].x(), chart.bottom())
+                    area.closeSubpath()
+                    fill = QLinearGradient(0, chart.top(), 0, chart.bottom())
+                    fill.setColorAt(0.0, _alpha(line_color, fill_alpha))
+                    fill.setColorAt(1.0, _alpha(line_color, 0))
+                    painter.setPen(Qt.NoPen)
+                    painter.setBrush(QBrush(fill))
+                    painter.drawPath(area)
+
+                painter.setBrush(Qt.NoBrush)
+                painter.setPen(QPen(line_color, 2.15, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+                painter.drawPath(path)
             elif points:
-                painter.setPen(QPen(QColor(color), 2.5))
+                painter.setPen(QPen(line_color, 2.15))
                 painter.drawPoint(points[0])
 
-            painter.setBrush(QBrush(QColor(tkn.surface)))
-            painter.setPen(QPen(QColor(color), 2))
             for point in points:
-                painter.drawEllipse(point, 3.5, 3.5)
+                _draw_hollow_marker(
+                    painter,
+                    point,
+                    line_color,
+                    radius=3.4,
+                    width=1.8,
+                    active=_same_point(point, getattr(self, "_hover_point", None)),
+                )
 
         painter.setPen(QColor(tkn.text_muted))
         for idx, label in enumerate(self.labels):
@@ -529,8 +756,8 @@ class WorkforceTimelineWidget(QWidget):
         legend_y = rect.bottom() - 22
         for name, color, width in legend_items:
             painter.setPen(Qt.NoPen)
-            painter.setBrush(QBrush(QColor(color)))
-            painter.drawRoundedRect(QRectF(legend_x, legend_y, 10, 10), 3, 3)
+            painter.setBrush(QBrush(_series_color(color)))
+            painter.drawEllipse(QPointF(legend_x + 5, legend_y + 5), 4, 4)
             painter.setPen(QColor(tokens().text_muted))
             painter.drawText(QRectF(legend_x + 16, legend_y - 5, width - 18, 22), Qt.AlignLeft | Qt.AlignVCenter, name)
             legend_x += width
@@ -592,7 +819,7 @@ class SalaryIncrementReviewDialog(QDialog):
 
         btn_row = QHBoxLayout()
         approve_all = QPushButton("  " + t("approve_all"))
-        approve_all.setIcon(qta.icon("fa5s.check-double", color=primary_button_fg()))
+        approve_all.setIcon(app_icon("fa5s.check-double", color=primary_button_fg(), size=16))
         approve_all.setIconSize(_ICO)
         approve_all.setFixedHeight(36)
         approve_all.setCursor(Qt.PointingHandCursor)
@@ -628,7 +855,7 @@ class SalaryIncrementReviewDialog(QDialog):
             return
 
         btn = QPushButton("  " + t("approve"))
-        btn.setIcon(qta.icon("fa5s.check", color=tokens().success))
+        btn.setIcon(app_icon("fa5s.check", color=tokens().success, size=13))
         btn.setIconSize(QSize(13, 13))
         btn.setFixedSize(120, 34)
         btn.setCursor(Qt.PointingHandCursor)
@@ -638,7 +865,7 @@ class SalaryIncrementReviewDialog(QDialog):
             f"QPushButton:hover {{ background: {tokens().success_soft}; }} "
             f"QPushButton:pressed {{ background: {tokens().success_soft}; }}"
         )
-        btn.setIcon(qta.icon("fa5s.check", color=tokens().success))
+        btn.setIcon(app_icon("fa5s.check", color=tokens().success, size=13))
         btn.clicked.connect(lambda _, eid=emp_id, ridx=idx: self._approve_one(eid, ridx))
         layout.addWidget(btn)
         self.table.setCellWidget(idx, 4, cell)
@@ -693,8 +920,8 @@ class DashboardPage(QWidget):
         self.navigate = navigate_fn
         self.chart_filter = "ytd"
         self.org_chart_level = "division"
-        self.workforce_filter = "year"
-        self.workforce_metric = "headcount"
+        self.workforce_filter = "ytd"
+        self.workforce_metric = "all"
         self.custom_start = None
         self.custom_end = None
         self.filter_buttons = {}
@@ -841,21 +1068,21 @@ class DashboardPage(QWidget):
                     "label": t("active_sanctions"),
                     "value": len(active_sanctions),
                     "detail": t("open_disciplinary_actions"),
-                    "color": "#ef4444",
+                    "color": chart_color("sanction"),
                     "target": "sanctions_active",
                 },
                 {
                     "label": t("sanction_delay_months"),
                     "value": sum(s.delay_months for s in active_sanctions),
                     "detail": t("total_months_added_to_races"),
-                    "color": race_color("delay"),
+                    "color": chart_color("sanction"),
                     "target": "sanctions_active",
                 },
                 {
                     "label": t("other_track"),
                     "value": other_track_count,
                     "detail": t("misc_employees_dashboard_note"),
-                    "color": "#8b5cf6",
+                    "color": chart_color("neutral"),
                     "target": "employees",
                 },
             ]
@@ -865,12 +1092,15 @@ class DashboardPage(QWidget):
     def _org_distribution(self, session, level):
         units = {unit.id: unit for unit in session.query(OrgUnit).all()}
 
+        def display_label(label):
+            return t("other_track") if label == OTHER_ORG_UNIT_NAME else label
+
         def level_label(org_unit_id):
             unit = units.get(org_unit_id)
-            fallback = unit.name if unit else t("not_available")
+            fallback = display_label(unit.name) if unit else t("not_available")
             while unit is not None:
                 if unit.unit_type == level:
-                    return unit.name
+                    return display_label(unit.name)
                 unit = units.get(unit.parent_id) if unit.parent_id else None
             return fallback
 
@@ -922,9 +1152,9 @@ class DashboardPage(QWidget):
             )
 
         options = {
-            "headcount": (t("headcount"), headcount_values, "#3b82f6"),
-            "promotions": (t("promotions"), promotion_values, race_color("eligible")),
-            "increments": (t("increments"), increment_values, race_color("increment")),
+            "headcount": (t("headcount"), headcount_values, "headcount"),
+            "promotions": (t("promotions"), promotion_values, "promotion"),
+            "increments": (t("increments"), increment_values, "increment"),
         }
         if metric == "all":
             return labels, list(options.values())
@@ -1010,6 +1240,7 @@ class DashboardPage(QWidget):
         scroll.setStyleSheet(scroll_ss())
 
         content = QWidget()
+        content.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         content.setStyleSheet(f"background: {tokens().canvas};")
         layout = QVBoxLayout(content)
         layout.setContentsMargins(40, 40, 40, 40)
@@ -1027,7 +1258,7 @@ class DashboardPage(QWidget):
         actions = QHBoxLayout()
         actions.setSpacing(12)
         add_btn = QPushButton("  " + t("add_employee"))
-        add_btn.setIcon(qta.icon("fa5s.user-plus", color=primary_button_fg()))
+        add_btn.setIcon(app_icon("fa5s.user-plus", color=primary_button_fg(), size=16))
         add_btn.setIconSize(_ICO)
         add_btn.setFixedHeight(44)
         add_btn.setCursor(Qt.PointingHandCursor)
@@ -1035,7 +1266,7 @@ class DashboardPage(QWidget):
         add_btn.clicked.connect(lambda: self.navigate("employees"))
 
         imp_btn = QPushButton("  " + t("nav_import"))
-        imp_btn.setIcon(qta.icon("fa5s.calendar", color=tokens().text))
+        imp_btn.setIcon(app_icon("fa5s.calendar", color=tokens().text, size=16))
         imp_btn.setIconSize(_ICO)
         imp_btn.setFixedHeight(44)
         imp_btn.setCursor(Qt.PointingHandCursor)
@@ -1054,17 +1285,26 @@ class DashboardPage(QWidget):
         layout.addSpacing(32)
 
         if self.increment_count > 0:
-            layout.addWidget(self._increment_alert())
+            notice_row = QHBoxLayout()
+            notice_row.setContentsMargins(0, 0, 0, 0)
+            notice_row.setSpacing(0)
+            if is_rtl():
+                notice_row.addStretch()
+                notice_row.addWidget(self._increment_alert(), 0)
+            else:
+                notice_row.addWidget(self._increment_alert(), 0)
+                notice_row.addStretch()
+            layout.addLayout(notice_row)
             layout.addSpacing(24)
 
         self.stats_layout = QGridLayout()
         self.stats_layout.setHorizontalSpacing(20)
         self.stats_layout.setVerticalSpacing(20)
         self.stat_cards = [
-            self._stat_card(t("total_employees"), str(self.emp_count), self.employee_delta, t("new_ytd"), "#3b82f6", "fa5s.users"),
-            self._stat_card(t("pending_promotions"), str(self.promotion_count), self.promotion_delta, t("eligible_now_snapshot"), race_color("eligible"), "fa5s.chart-line"),
-            self._stat_card(t("commendations"), str(self.commend_count), self.commend_delta, t("vs_previous_ytd"), tokens().warning, "fa5s.award"),
-            self._stat_card(t("active_sanctions"), str(self.sanction_count), self.sanction_delta, t("issued_vs_previous_ytd"), "#ef4444", "fa5s.exclamation-triangle"),
+            self._stat_card(t("total_employees"), str(self.emp_count), self.employee_delta, t("new_ytd"), "headcount", "fa5s.users"),
+            self._stat_card(t("pending_promotions"), str(self.promotion_count), self.promotion_delta, t("eligible_now_snapshot"), "promotion", "fa5s.chart-line"),
+            self._stat_card(t("commendations"), str(self.commend_count), self.commend_delta, t("vs_previous_ytd"), "commendation", "fa5s.award"),
+            self._stat_card(t("active_sanctions"), str(self.sanction_count), self.sanction_delta, t("issued_vs_previous_ytd"), "sanction", "fa5s.exclamation-triangle"),
         ]
         layout.addLayout(self.stats_layout)
         layout.addSpacing(28)
@@ -1154,25 +1394,44 @@ class DashboardPage(QWidget):
             self.bottom_layout.setColumnStretch(1, 1)
 
     def _increment_alert(self):
+        accent = chart_color("increment")
+        soft = chart_soft_color("increment")
         alert = QFrame()
         alert.setObjectName("IncrementAlert")
+        alert.setMaximumWidth(720)
+        alert.setMinimumHeight(64)
+        alert.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         alert.setStyleSheet(
-            f"QFrame#IncrementAlert {{ background: {tokens().warning_soft}; border: 1px solid {tokens().warning}; border-radius: 8px; }}"
+            f"QFrame#IncrementAlert {{ background-color: {soft}; border: 1px solid {accent}; border-radius: 8px; }}"
             "QFrame#IncrementAlert QLabel { border: none; background: transparent; }"
         )
         row = QHBoxLayout(alert)
-        row.setContentsMargins(16, 14, 16, 14)
+        row.setContentsMargins(14, 10, 14, 10)
         row.setSpacing(12)
         icon = QLabel()
-        icon.setPixmap(qta.icon("fa5s.coins", color=tokens().warning).pixmap(22, 22))
+        icon.setFixedSize(30, 30)
+        icon.setAlignment(Qt.AlignCenter)
+        icon.setStyleSheet(f"background-color: {tokens().surface}; border: 1px solid {tokens().border}; border-radius: 8px;")
+        icon.setPixmap(app_pixmap("fa5s.coins", color=accent, size=15))
         row.addWidget(icon)
+
+        copy = QVBoxLayout()
+        copy.setContentsMargins(0, 0, 0, 0)
+        copy.setSpacing(2)
+        title = QLabel(t("salary_increment_due"))
+        title.setStyleSheet(f"font-size: 13px; color: {tokens().text}; font-weight: 700;")
         txt = QLabel(t("salary_increment_prompt", count=self.increment_count))
-        txt.setStyleSheet(f"font-size: 13px; color: {tokens().warning};")
-        row.addWidget(txt, 1)
+        txt.setWordWrap(True)
+        txt.setStyleSheet(f"font-size: 12px; color: {tokens().text_muted}; font-weight: 500;")
+        copy.addWidget(title)
+        copy.addWidget(txt)
+        row.addLayout(copy, 1)
+
         btn = QPushButton(t("review"))
         btn.setFixedHeight(34)
+        btn.setMinimumWidth(90)
         btn.setCursor(Qt.PointingHandCursor)
-        btn.setStyleSheet(f"QPushButton {{ background: {tokens().warning}; color: #ffffff; border: none; border-radius: 6px; padding: 0 14px; font-weight: 600; }}")
+        btn.setStyleSheet(_increment_review_button_ss(34))
         btn.clicked.connect(self._open_increment_dialog)
         row.addWidget(btn)
         return alert
@@ -1186,24 +1445,31 @@ class DashboardPage(QWidget):
         card.setStyleSheet(dashboard_card_ss())
         return card
 
-    def _stat_card(self, label, value, delta, detail, color, icon_name):
+    def _stat_card(self, label, value, delta, detail, color_key, icon_name):
         card = self._card()
-        card.setMinimumHeight(148)
+        card.setMinimumHeight(132)
+        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        accent = chart_color(color_key)
+        soft = chart_soft_color(color_key)
         layout = QHBoxLayout(card)
-        layout.setContentsMargins(22, 22, 22, 22)
-        layout.setSpacing(12)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(14)
 
         text = QVBoxLayout()
         text.setSpacing(8)
         label_lbl = QLabel(label)
         label_lbl.setWordWrap(True)
-        label_lbl.setStyleSheet(f"font-size: 15px; color: {tokens().text_muted};")
+        label_lbl.setMinimumWidth(0)
+        label_lbl.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        label_lbl.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted}; font-weight: 700;")
         value_lbl = QLabel(value)
-        value_lbl.setStyleSheet(f"font-size: 30px; font-weight: 800; color: {tokens().text};")
+        value_lbl.setStyleSheet(f"font-size: 32px; font-weight: 800; color: {tokens().text};")
         delta_color = tokens().success if not str(delta).startswith("-") else tokens().danger
         change_lbl = QLabel(f"{delta} {detail}")
         change_lbl.setWordWrap(True)
-        change_lbl.setStyleSheet(f"font-size: 13px; color: {delta_color};")
+        change_lbl.setMinimumWidth(0)
+        change_lbl.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        change_lbl.setStyleSheet(f"font-size: 12px; color: {delta_color}; font-weight: 700;")
         change_lbl.setToolTip(f"{delta} {detail}")
         text.addWidget(label_lbl)
         text.addWidget(value_lbl)
@@ -1211,10 +1477,12 @@ class DashboardPage(QWidget):
         layout.addLayout(text, 1)
 
         icon_box = QLabel()
-        icon_box.setFixedSize(46, 46)
+        icon_box.setFixedSize(42, 42)
         icon_box.setAlignment(Qt.AlignCenter)
-        icon_box.setStyleSheet(f"background: {color}; border: none; border-radius: 8px;")
-        icon_box.setPixmap(qta.icon(icon_name, color="white").pixmap(24, 24))
+        icon_box.setStyleSheet(
+            f"background: {soft}; border: 1px solid {tokens().border}; border-radius: 8px;"
+        )
+        icon_box.setPixmap(app_pixmap(icon_name, color=accent, size=22))
         layout.addWidget(icon_box, 0, Qt.AlignTop)
         return card
 
@@ -1227,13 +1495,14 @@ class DashboardPage(QWidget):
 
         header = QHBoxLayout()
         self.org_chart_title = QLabel(t("employees_by_division"))
+        self.org_chart_title.setMinimumWidth(220)
+        self.org_chart_title.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.org_chart_title.setStyleSheet(f"font-size: 20px; font-weight: 700; color: {tokens().text};")
-        header.addWidget(self.org_chart_title)
-        header.addStretch()
-        header.addLayout(self._org_filter_pills())
+        header.addWidget(self.org_chart_title, 1)
+        header.addLayout(self._org_filter_pills(), 0)
         layout.addLayout(header)
 
-        self.department_chart = BarChartWidget(self.department_chart_data, "#3b82f6")
+        self.department_chart = BarChartWidget(self.department_chart_data, self.org_chart_level)
         layout.addWidget(self.department_chart, 1)
         return card
 
@@ -1268,6 +1537,7 @@ class DashboardPage(QWidget):
             self.department_chart_data = self._org_distribution(session, level)
         finally:
             session.close()
+        self.department_chart.color = level
         self.department_chart.set_data(self.department_chart_data)
         self.org_chart_title.setText(t(f"employees_by_{level}"))
         self._sync_org_filter_buttons()
@@ -1281,13 +1551,14 @@ class DashboardPage(QWidget):
 
         header = QHBoxLayout()
         title = QLabel(t("promotion_trend"))
+        title.setMinimumWidth(180)
+        title.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         title.setStyleSheet(f"font-size: 20px; font-weight: 700; color: {tokens().text};")
-        header.addWidget(title)
-        header.addStretch()
-        header.addLayout(self._filter_pills())
+        header.addWidget(title, 1)
+        header.addLayout(self._filter_pills(), 0)
         layout.addLayout(header)
 
-        self.promotion_chart = LineChartWidget(self.promotion_trend_data, race_color("eligible"))
+        self.promotion_chart = LineChartWidget(self.promotion_trend_data, "promotion")
         layout.addWidget(self.promotion_chart, 1)
         return card
 
@@ -1314,10 +1585,11 @@ class DashboardPage(QWidget):
 
     def _filter_button_ss(self, active):
         tkn = tokens()
+        active_bg = chart_color("promotion") if tkn.name == THEME_DARK else tkn.brand
         active_text = "#062f28" if tkn.name == THEME_DARK else "#ffffff"
         if active:
             return (
-                f"QPushButton {{ background: {tkn.brand}; color: {active_text}; border: none; "
+                f"QPushButton {{ background: {active_bg}; color: {active_text}; border: none; "
                 "border-radius: 15px; padding: 0 14px; font-size: 12px; font-weight: 700; }"
             )
         return (
@@ -1411,10 +1683,11 @@ class DashboardPage(QWidget):
 
         header = QHBoxLayout()
         title = QLabel(t("workforce_timeline"))
+        title.setMinimumWidth(220)
+        title.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         title.setStyleSheet(f"font-size: 20px; font-weight: 700; color: {tokens().text};")
-        header.addWidget(title)
-        header.addStretch()
-        header.addLayout(self._workforce_filter_pills())
+        header.addWidget(title, 1)
+        header.addLayout(self._workforce_filter_pills(), 0)
         layout.addLayout(header)
 
         metric_row = QHBoxLayout()
@@ -1510,7 +1783,7 @@ class DashboardPage(QWidget):
         pipeline = QFrame()
         pipeline.setObjectName("SignalBlock")
         pipeline.setStyleSheet(
-            f"QFrame#SignalBlock {{ background: {tokens().surface_muted}; border: none; border-radius: 8px; }}"
+            f"QFrame#SignalBlock {{ background: {tokens().surface_muted}; border: 1px solid {tokens().border}; border-radius: 8px; }}"
             "QFrame#SignalBlock QLabel { background: transparent; border: none; }"
         )
         pl = QVBoxLayout(pipeline)
@@ -1518,9 +1791,9 @@ class DashboardPage(QWidget):
         pl.setSpacing(12)
         pl.addWidget(self._section_label(t("promotion_pipeline")))
         pl.addLayout(self._metric_strip([
-            (t("eligible_now_short"), self.promotion_pipeline["eligible_now"], race_color("eligible")),
-            (t("due_in_3_months"), self.promotion_pipeline["due_three"], race_color("progress")),
-            (t("due_in_6_months"), self.promotion_pipeline["due_six"], race_color("progress")),
+            (t("eligible_now_short"), self.promotion_pipeline["eligible_now"], chart_color("promotion")),
+            (t("due_in_3_months"), self.promotion_pipeline["due_three"], chart_color("increment")),
+            (t("due_in_6_months"), self.promotion_pipeline["due_six"], chart_color("neutral")),
         ]))
         layout.addWidget(pipeline)
 
@@ -1548,7 +1821,7 @@ class DashboardPage(QWidget):
 
     def _section_label(self, text):
         label = QLabel(text)
-        label.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted}; font-weight: 800;")
+        label.setStyleSheet(f"font-size: 12px; color: {tokens().text_muted}; font-weight: 800;")
         return label
 
     def _metric_strip(self, metrics):
@@ -1557,6 +1830,8 @@ class DashboardPage(QWidget):
         for label, value, color in metrics:
             box = QFrame()
             box.setObjectName("MetricBox")
+            box.setMinimumHeight(58)
+            box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
             box.setStyleSheet(
                 f"QFrame#MetricBox {{ background: {tokens().surface}; border: 1px solid {tokens().border}; border-radius: 8px; }}"
                 "QFrame#MetricBox QLabel { background: transparent; border: none; }"
@@ -1566,14 +1841,14 @@ class DashboardPage(QWidget):
             box_l.setSpacing(2)
             value_lbl = QLabel(str(value))
             value_lbl.setAlignment(Qt.AlignCenter)
-            value_lbl.setStyleSheet(f"font-size: 22px; font-weight: 800; color: {color};")
+            value_lbl.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {color};")
             label_lbl = QLabel(label)
             label_lbl.setAlignment(Qt.AlignCenter)
             label_lbl.setWordWrap(True)
             label_lbl.setStyleSheet(f"font-size: 11px; color: {tokens().text_soft};")
             box_l.addWidget(value_lbl)
             box_l.addWidget(label_lbl)
-            row.addWidget(box)
+            row.addWidget(box, 1)
         return row
 
     def _queue_row(self, label, value, max_value):
@@ -1593,7 +1868,7 @@ class DashboardPage(QWidget):
         progress.setValue(value)
         progress.setFixedHeight(8)
         progress.setTextVisible(False)
-        progress.setStyleSheet(race_progress_bar_ss("increment", radius=4))
+        progress.setStyleSheet(_mini_progress_ss("increment", radius=4))
         layout.addWidget(progress, 1)
 
         value_lbl = QLabel(str(value))
@@ -1632,7 +1907,7 @@ class DashboardPage(QWidget):
 
         value = QLabel(str(signal["value"]))
         value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        value.setStyleSheet(f"font-size: 22px; color: {signal['color']}; font-weight: 800;")
+        value.setStyleSheet(f"font-size: 20px; color: {signal['color']}; font-weight: 800;")
         layout.addWidget(value)
 
         action = QPushButton(t("view"))
@@ -1649,9 +1924,9 @@ class DashboardPage(QWidget):
 
     def _recent_card(self):
         card = self._card()
-        card.setMinimumHeight(460)
+        card.setMinimumHeight(420)
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(32, 28, 32, 28)
+        layout.setContentsMargins(28, 24, 28, 24)
         layout.setSpacing(0)
 
         header = QHBoxLayout()
@@ -1665,7 +1940,7 @@ class DashboardPage(QWidget):
         header.addStretch()
         header.addWidget(view)
         layout.addLayout(header)
-        layout.addSpacing(28)
+        layout.addSpacing(20)
 
         if self.logs_data:
             for index, item in enumerate(self.logs_data[:5]):
@@ -1684,45 +1959,45 @@ class DashboardPage(QWidget):
     def _activity_row(self, item, is_last):
         row = QFrame()
         row.setObjectName("ActivityRow")
-        row.setMinimumHeight(94)
+        row.setMinimumHeight(76)
         border = "none" if is_last else f"1px solid {tokens().border}"
         row.setStyleSheet(
             f"QFrame#ActivityRow {{ background: transparent; border: none; border-bottom: {border}; border-radius: 0; }}"
             "QFrame#ActivityRow QLabel { border: none; background: transparent; }"
         )
         layout = QHBoxLayout(row)
-        layout.setContentsMargins(0, 0, 0, 16)
-        layout.setSpacing(16)
+        layout.setContentsMargins(0, 0, 0, 12)
+        layout.setSpacing(14)
 
         dot = QLabel()
-        dot.setFixedSize(10, 10)
-        dot.setStyleSheet(f"background: {tokens().brand}; border: none; border-radius: 5px;")
+        dot.setFixedSize(8, 8)
+        dot.setStyleSheet(f"background: {chart_color('promotion')}; border: none; border-radius: 4px;")
         layout.addWidget(dot, 0, Qt.AlignTop)
 
         text = QVBoxLayout()
         text.setSpacing(4)
         action = QLabel(item["action"])
-        action.setStyleSheet(f"font-size: 18px; font-weight: 700; color: {tokens().text};")
+        action.setStyleSheet(f"font-size: 15px; font-weight: 700; color: {tokens().text};")
         target = QLabel(item["target"])
         target.setWordWrap(True)
-        target.setStyleSheet(f"font-size: 16px; color: {tokens().text_muted};")
+        target.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted};")
         byline = QLabel(t("by_user", user=item["user"]))
-        byline.setStyleSheet(f"font-size: 14px; color: {tokens().text_soft};")
+        byline.setStyleSheet(f"font-size: 12px; color: {tokens().text_soft};")
         text.addWidget(action)
         text.addWidget(target)
         text.addWidget(byline)
         layout.addLayout(text, 1)
 
         time = QLabel(item["time"])
-        time.setStyleSheet(f"font-size: 14px; color: {tokens().text_soft};")
+        time.setStyleSheet(f"font-size: 12px; color: {tokens().text_soft};")
         layout.addWidget(time, 0, Qt.AlignTop)
         return row
 
     def _upcoming_card(self):
         card = self._card()
-        card.setMinimumHeight(460)
+        card.setMinimumHeight(420)
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(32, 28, 32, 28)
+        layout.setContentsMargins(28, 24, 28, 24)
         layout.setSpacing(0)
 
         header = QHBoxLayout()
@@ -1737,13 +2012,13 @@ class DashboardPage(QWidget):
         header.addStretch()
         header.addWidget(view)
         layout.addLayout(header)
-        layout.addSpacing(28)
+        layout.addSpacing(20)
 
         if self.upcoming_promotions:
             for index, item in enumerate(self.upcoming_promotions[:3]):
                 layout.addWidget(self._promo_row(item))
                 if index < len(self.upcoming_promotions[:3]) - 1:
-                    layout.addSpacing(20)
+                    layout.addSpacing(14)
         else:
             empty = QLabel(t("no_upcoming_promotions"))
             empty.setWordWrap(True)
@@ -1759,22 +2034,22 @@ class DashboardPage(QWidget):
     def _promo_row(self, item):
         row = QFrame()
         row.setObjectName("PromoRow")
-        row.setMinimumHeight(142)
+        row.setMinimumHeight(118)
         row.setStyleSheet(
-            f"QFrame#PromoRow {{ background: {tokens().surface_muted}; border: none; border-radius: 8px; }}"
+            f"QFrame#PromoRow {{ background: {tokens().surface}; border: 1px solid {tokens().border}; border-radius: 8px; }}"
             "QFrame#PromoRow QLabel { border: none; background: transparent; }"
         )
         layout = QVBoxLayout(row)
-        layout.setContentsMargins(20, 18, 20, 18)
-        layout.setSpacing(12)
+        layout.setContentsMargins(18, 14, 18, 14)
+        layout.setSpacing(10)
 
         top = QHBoxLayout()
         text = QVBoxLayout()
         text.setSpacing(6)
         name = QLabel(item["name"])
-        name.setStyleSheet(f"font-size: 18px; font-weight: 700; color: {tokens().text};")
+        name.setStyleSheet(f"font-size: 15px; font-weight: 700; color: {tokens().text};")
         level = QLabel(f"{item['current']} to {item['next']}")
-        level.setStyleSheet(f"font-size: 16px; color: {tokens().text_muted};")
+        level.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted};")
         text.addWidget(name)
         text.addWidget(level)
         top.addLayout(text)
@@ -1788,7 +2063,7 @@ class DashboardPage(QWidget):
         badge_status = "eligible" if item["eligible"] else "progress"
         badge.setStyleSheet(
             f"background: {race_soft_color(badge_status)}; color: {race_color(badge_status)}; border: none; "
-            "border-radius: 14px; padding: 4px 10px; font-size: 14px;"
+            "border-radius: 12px; padding: 3px 9px; font-size: 12px; font-weight: 700;"
         )
         top.addWidget(badge, 0, Qt.AlignTop)
         layout.addLayout(top)
@@ -1796,13 +2071,13 @@ class DashboardPage(QWidget):
         progress = QProgressBar()
         progress.setRange(0, 100)
         progress.setValue(item["progress_pct"])
-        progress.setFixedHeight(10)
+        progress.setFixedHeight(6)
         progress.setTextVisible(False)
-        progress.setStyleSheet(race_progress_bar_ss("eligible" if item["eligible"] else "progress", radius=5))
+        progress.setStyleSheet(race_progress_bar_ss("eligible" if item["eligible"] else "progress", radius=3))
         layout.addWidget(progress)
 
         complete = QLabel(f"{item['progress_pct']}% complete")
-        complete.setStyleSheet(f"font-size: 14px; color: {tokens().text_soft};")
+        complete.setStyleSheet(f"font-size: 12px; color: {tokens().text_soft};")
         layout.addWidget(complete)
         return row
 

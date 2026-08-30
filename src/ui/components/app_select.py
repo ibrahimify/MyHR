@@ -1,4 +1,3 @@
-import qtawesome as qta
 import shiboken6
 from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QPainterPath, QRegion
@@ -13,6 +12,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.ui.icons import app_pixmap
 from src.ui.theme import THEME_DARK, theme_manager, tokens
 
 
@@ -212,7 +212,7 @@ class AppSelect(QWidget):
             }}
         """)
         self.label.setStyleSheet(f"font-size: 14px; color: {t.text}; background: transparent; border: none;")
-        self.arrow.setPixmap(qta.icon("fa5s.chevron-down", color=t.text_muted).pixmap(12, 12))
+        self.arrow.setPixmap(app_pixmap("chevron-down", color=t.text_muted, size=12))
         self.popup_box.setStyleSheet(f"""
             QFrame#AppSelectPopupBox {{
                 background: {t.surface};

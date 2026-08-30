@@ -1,4 +1,3 @@
-import qtawesome as qta
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QPushButton, QLabel, QStackedWidget, QFrame
@@ -8,6 +7,7 @@ from src.core.i18n import t
 from src.core.app_settings import company_name, company_subtitle
 from src.ui.animations import animate_widget_entry
 from src.ui.components.theme_toggle import ThemeToggle
+from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import message_warning
 from src.ui.theme import icon_color, theme_manager, tokens
 
@@ -18,7 +18,7 @@ NAV_SECTIONS = [
     ]),
     ("nav_group_people", [
         ("nav_employees",     "employees",      "fa5s.users"),
-        ("nav_hierarchy",     "hierarchy",      "fa5s.building"),
+        ("nav_hierarchy",     "hierarchy",      "hierarchy"),
     ]),
     ("nav_group_growth", [
         ("nav_promotions",    "promotions",     "fa5s.chart-line"),
@@ -135,7 +135,7 @@ class Sidebar(QWidget):
 
             for key, page_key, icon_name in visible_items:
                 btn = QPushButton("  " + t(key))
-                btn.setIcon(qta.icon(icon_name, color=icon_color(muted=True)))
+                btn.setIcon(app_icon(icon_name, color=icon_color(muted=True), size=20))
                 btn.setIconSize(_ICON_SZ)
                 btn.setCursor(Qt.PointingHandCursor)
                 btn.setFixedHeight(34)
@@ -198,7 +198,7 @@ class Sidebar(QWidget):
 
         self.logout_btn = QPushButton("  " + t("logout"))
         logout_btn = self.logout_btn
-        logout_btn.setIcon(qta.icon("fa5s.sign-out-alt", color=icon_color(muted=True)))
+        logout_btn.setIcon(app_icon("logout", color=icon_color(muted=True), size=20))
         logout_btn.setIconSize(_ICON_SZ)
         logout_btn.setCursor(Qt.PointingHandCursor)
         logout_btn.setFixedHeight(32)
@@ -245,7 +245,7 @@ class Sidebar(QWidget):
             }}
         """)
         self.logo_mark.setStyleSheet(f"background: {tkn.brand}; border: none; border-radius: 8px;")
-        self.logo_mark.setPixmap(qta.icon("fa5s.building", color=primary_text).pixmap(24, 24))
+        self.logo_mark.setPixmap(app_pixmap("company", color=primary_text, size=24))
         self.user_card.setStyleSheet(f"""
             QFrame#SidebarUserCard {{
                 background: {tkn.surface};
@@ -284,12 +284,12 @@ class Sidebar(QWidget):
         for line in self.nav_section_lines:
             line.setStyleSheet(f"QFrame#SidebarSectionLine {{ background: {tkn.border}; border: none; margin: 0px 0px 0px 0px; }}")
         self.avatar.setStyleSheet(f"background: {tkn.brand}; color: {primary_text}; border: none; border-radius: 16px;")
-        self.avatar.setPixmap(qta.icon("fa5s.user", color=primary_text).pixmap(16, 16))
+        self.avatar.setPixmap(app_pixmap("profile", color=primary_text, size=16))
         self.brand_name_lbl.setStyleSheet(f"color: {tkn.text}; font-size: 20px; font-weight: 700; background: transparent; border: none;")
         self.brand_subtitle_lbl.setStyleSheet(f"color: {tkn.text_muted}; font-size: 12px; background: transparent; border: none;")
         self.name_lbl.setStyleSheet(f"color: {tkn.text}; font-size: 14px; font-weight: 500; background: transparent; border: none;")
         self.role_lbl.setStyleSheet(f"color: {tkn.text_muted}; font-size: 12px; background: transparent; border: none;")
-        self.logout_btn.setIcon(qta.icon("fa5s.sign-out-alt", color=tkn.text_muted))
+        self.logout_btn.setIcon(app_icon("logout", color=tkn.text_muted, size=20))
         self.logout_btn.setStyleSheet(f"""
             QPushButton {{
                 background: {tkn.surface}; color: {tkn.text};
@@ -301,7 +301,7 @@ class Sidebar(QWidget):
         """)
         for page_key, (btn, icon_name) in self.nav_buttons.items():
             selected = page_key == self.active_key
-            btn.setIcon(qta.icon(icon_name, color=icon_color(selected=selected, muted=not selected)))
+            btn.setIcon(app_icon(icon_name, color=icon_color(selected=selected, muted=not selected), size=20))
             btn.setStyleSheet(self._active_style() if selected else self._inactive_style())
 
     def refresh_branding(self):
@@ -319,12 +319,12 @@ class Sidebar(QWidget):
     def _set_active(self, key):
         if self.active_key in self.nav_buttons:
             btn, icon_name = self.nav_buttons[self.active_key]
-            btn.setIcon(qta.icon(icon_name, color=icon_color(muted=True)))
+            btn.setIcon(app_icon(icon_name, color=icon_color(muted=True), size=20))
             btn.setStyleSheet(self._inactive_style())
         self.active_key = key
         if key in self.nav_buttons:
             btn, icon_name = self.nav_buttons[key]
-            btn.setIcon(qta.icon(icon_name, color=icon_color(selected=True)))
+            btn.setIcon(app_icon(icon_name, color=icon_color(selected=True), size=20))
             btn.setStyleSheet(self._active_style())
 
     def _active_style(self):

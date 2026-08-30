@@ -14,7 +14,6 @@ import shutil
 import sqlite3
 from datetime import datetime
 
-import qtawesome as qta
 from sqlalchemy import func
 from PySide6.QtCore import Qt, QSize, QTimer, QMarginsF
 from PySide6.QtGui import QColor, QFont, QTextDocument, QPageLayout, QPageSize
@@ -29,6 +28,7 @@ from PySide6.QtWidgets import (
 from src.core.i18n import t
 from src.core.app_settings import app_settings, company_name
 from src.ui.animations import install_tab_transition
+from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
     pill_tab_ss, enable_table_row_selection, prepare_table_cell_widget,
     polish_combo_box, table_style, primary_button_fg, level_badge_colors,
@@ -831,7 +831,7 @@ class LevelManagementTab(QWidget):
         layout.setAlignment(Qt.AlignCenter)
 
         edit = QPushButton()
-        edit.setIcon(qta.icon("fa5s.edit", color=primary_button_fg()))
+        edit.setIcon(app_icon("fa5s.edit", color=primary_button_fg(), size=13))
         edit.setIconSize(QSize(13, 13))
         edit.setFixedSize(36, 34)
         edit.setCursor(Qt.PointingHandCursor)
@@ -841,7 +841,7 @@ class LevelManagementTab(QWidget):
         layout.addWidget(edit)
 
         delete = QPushButton()
-        delete.setIcon(qta.icon("fa5s.trash-alt", color="#dc2626"))
+        delete.setIcon(app_icon("fa5s.trash-alt", color="#dc2626", size=13))
         delete.setIconSize(QSize(13, 13))
         delete.setFixedSize(36, 34)
         delete.setCursor(Qt.PointingHandCursor)
@@ -849,7 +849,7 @@ class LevelManagementTab(QWidget):
         delete.setToolTip(t("delete_level"))
         delete.setEnabled(not row["protected"])
         if row["protected"]:
-            delete.setIcon(qta.icon("fa5s.trash-alt", color="#9ca3af"))
+            delete.setIcon(app_icon("fa5s.trash-alt", color="#9ca3af", size=13))
         delete.clicked.connect(lambda _, title_id=row["id"]: self._delete_level(title_id))
         layout.addWidget(delete)
         return cell
@@ -994,7 +994,7 @@ class AddLevelDialog(QDialog):
 
         hint = QLabel(t("target_promotion_bump_note"))
         hint.setWordWrap(True)
-        hint.setStyleSheet("font-size: 12px; color: #64748b; background: transparent;")
+        hint.setStyleSheet(f"font-size: 12px; color: {tokens().text_muted}; background: transparent;")
         layout.addWidget(hint)
 
         buttons = QHBoxLayout()
@@ -1829,7 +1829,7 @@ class UserManagementTab(QWidget):
         layout.setAlignment(Qt.AlignCenter)
 
         edit = QPushButton("  " + t("edit"))
-        edit.setIcon(qta.icon("fa5s.edit", color=primary_button_fg()))
+        edit.setIcon(app_icon("fa5s.edit", color=primary_button_fg(), size=13))
         edit.setIconSize(QSize(13, 13))
         edit.setFixedSize(88, 38)
         edit.setCursor(Qt.PointingHandCursor)
@@ -1840,7 +1840,7 @@ class UserManagementTab(QWidget):
 
         if row["role"] == "hr_officer":
             delete = QPushButton()
-            delete.setIcon(qta.icon("fa5s.trash-alt", color="#dc2626"))
+            delete.setIcon(app_icon("fa5s.trash-alt", color="#dc2626", size=13))
             delete.setIconSize(QSize(13, 13))
             delete.setFixedSize(38, 38)
             delete.setCursor(Qt.PointingHandCursor)
@@ -1991,7 +1991,7 @@ class UserAccountDialog(QDialog):
         layout.addWidget(title)
 
         self.role_label = QLabel(t("role_hr"))
-        self.role_label.setStyleSheet("font-size: 13px; color: #2563eb; font-weight: 700; background: transparent;")
+        self.role_label.setStyleSheet(f"font-size: 13px; color: {tokens().brand}; font-weight: 700; background: transparent;")
         layout.addWidget(self.role_label)
 
         self.username = _line_edit()
@@ -2502,7 +2502,7 @@ class YearlyReportPreviewDialog(QDialog):
         icon.setFixedSize(42, 42)
         icon.setAlignment(Qt.AlignCenter)
         icon.setStyleSheet(f"background: {tokens().danger_soft}; border-radius: 8px;")
-        icon.setPixmap(qta.icon("fa5s.file-pdf", color=tokens().danger).pixmap(18, 18))
+        icon.setPixmap(app_pixmap("fa5s.file-pdf", color=tokens().danger, size=18))
         text_col = QVBoxLayout()
         title = QLabel(t("report_preview_title"))
         title.setStyleSheet(f"font-size: 20px; font-weight: 900; color: {tokens().text};")
@@ -2577,7 +2577,7 @@ class YearlyReportPreviewDialog(QDialog):
         export = QPushButton(t("confirm_export_pdf"))
         export.setFixedHeight(38)
         export.setCursor(Qt.PointingHandCursor)
-        export.setIcon(qta.icon("fa5s.file-pdf", color="#062f28" if tokens().name == THEME_DARK else "#ffffff"))
+        export.setIcon(app_icon("fa5s.file-pdf", color="#062f28" if tokens().name == THEME_DARK else "#ffffff", size=15))
         export.setStyleSheet(_primary_button_ss())
         export.clicked.connect(self.accept)
         buttons.addWidget(cancel)
@@ -2883,7 +2883,7 @@ def _section_card(title, subtitle=None, icon_name=None, icon_color=BLUE):
     header.setSpacing(10)
     if icon_name:
         icon = QLabel()
-        icon.setPixmap(qta.icon(icon_name, color=icon_color).pixmap(18, 18))
+        icon.setPixmap(app_pixmap(icon_name, color=icon_color, size=18))
         header.addWidget(icon)
     texts = QVBoxLayout()
     texts.setSpacing(6)
@@ -2911,7 +2911,7 @@ def _note_card(title, lines, icon_name, color, stylesheet):
     header = QHBoxLayout()
     header.setSpacing(10)
     icon = QLabel()
-    icon.setPixmap(qta.icon(icon_name, color=color).pixmap(18, 18))
+    icon.setPixmap(app_pixmap(icon_name, color=color, size=18))
     title_lbl = QLabel(title)
     title_lbl.setStyleSheet(f"font-size: 16px; font-weight: 800; color: {color}; background: transparent;")
     header.addWidget(icon)
@@ -2967,13 +2967,13 @@ def _line_edit(placeholder=""):
 
 def _install_password_toggle(field):
     state = {"visible": False}
-    action = field.addAction(qta.icon("fa5s.eye", color=tokens().text_soft), QLineEdit.TrailingPosition)
+    action = field.addAction(app_icon("fa5s.eye", color=tokens().text_soft, size=16), QLineEdit.TrailingPosition)
     action.setToolTip(t("show_password"))
 
     def update_icon():
         icon_name = "fa5s.eye-slash" if state["visible"] else "fa5s.eye"
         tooltip_key = "hide_password" if state["visible"] else "show_password"
-        action.setIcon(qta.icon(icon_name, color=tokens().text_soft))
+        action.setIcon(app_icon(icon_name, color=tokens().text_soft, size=16))
         action.setToolTip(t(tooltip_key))
 
     def toggle():
@@ -3052,7 +3052,7 @@ def _add_form_field(grid, row, col, label_text, widget):
 def _button(text, icon_name, primary=False):
     button = QPushButton("  " + text)
     icon_color = primary_button_fg() if primary else tokens().text
-    button.setIcon(qta.icon(icon_name, color=icon_color))
+    button.setIcon(app_icon(icon_name, color=icon_color, size=15))
     button.setIconSize(QSize(15, 15))
     button.setCursor(Qt.PointingHandCursor)
     button.setFixedHeight(50)
@@ -3065,7 +3065,7 @@ def _badge_icon(icon_name, color, background, size=44, icon_size=20):
     label.setFixedSize(size, size)
     label.setAlignment(Qt.AlignCenter)
     label.setStyleSheet(f"background: {background}; border: none; border-radius: 8px;")
-    label.setPixmap(qta.icon(icon_name, color=color).pixmap(icon_size, icon_size))
+    label.setPixmap(app_pixmap(icon_name, color=color, size=icon_size))
     return label
 
 

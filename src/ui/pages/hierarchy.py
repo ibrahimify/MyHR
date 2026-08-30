@@ -1,6 +1,5 @@
 """Organization hierarchy page with lazy canvas rendering."""
 
-import qtawesome as qta
 from PySide6.QtCore import Qt, QSize, QRectF, QPointF
 from PySide6.QtGui import QColor, QPainter, QPen, QBrush, QFont, QPainterPath
 from PySide6.QtWidgets import (
@@ -11,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.core.i18n import t
+from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
     btn_outline,
     btn_primary,
@@ -159,7 +159,7 @@ class HierarchyNodeItem(QGraphicsItem):
         painter.setPen(Qt.NoPen)
         painter.setBrush(QBrush(QColor(_node_chip_bg())))
         painter.drawRoundedRect(QRectF(14, 18, 34, 34), 8, 8)
-        icon = qta.icon(self._icon_name(), color=fg)
+        icon = app_icon(self._icon_name(), color=fg, size=20)
         painter.drawPixmap(QRectF(21, 25, 20, 20).toRect(), icon.pixmap(20, 20))
 
         painter.setPen(QColor(fg if tokens().name == THEME_DARK else tokens().text))
@@ -258,7 +258,7 @@ class HierarchyPage(QWidget):
         header.addLayout(title_col, 1)
 
         add_root = QPushButton("  " + t("add_unit"))
-        add_root.setIcon(qta.icon("fa5s.plus", color=primary_button_fg()))
+        add_root.setIcon(app_icon("fa5s.plus", color=primary_button_fg(), size=14))
         add_root.setIconSize(QSize(14, 14))
         add_root.setCursor(Qt.PointingHandCursor)
         add_root.setFixedHeight(42)
@@ -278,13 +278,13 @@ class HierarchyPage(QWidget):
         self.search.setPlaceholderText(t("search_hierarchy"))
         self.search.setFixedHeight(40)
         self.search.setStyleSheet(INPUT_SS())
-        self.search.addAction(qta.icon("fa5s.search", color=tokens().text_soft), QLineEdit.LeadingPosition)
+        self.search.addAction(app_icon("fa5s.search", color=tokens().text_soft, size=16), QLineEdit.LeadingPosition)
         self.search.returnPressed.connect(self._run_search)
         self.search.textChanged.connect(self._on_search_text_changed)
         tools.addWidget(self.search, 1)
 
         search_btn = QPushButton(t("search"))
-        search_btn.setIcon(qta.icon("fa5s.search", color=tokens().text))
+        search_btn.setIcon(app_icon("fa5s.search", color=tokens().text, size=13))
         search_btn.setIconSize(QSize(13, 13))
         search_btn.setFixedHeight(40)
         search_btn.setCursor(Qt.PointingHandCursor)
@@ -303,7 +303,7 @@ class HierarchyPage(QWidget):
             structure_row.addWidget(_hierarchy_step(unit_type))
             if index < len(TYPE_ORDER_HINT) - 1:
                 arrow = QLabel()
-                arrow.setPixmap(qta.icon("fa5s.chevron-right", color=tokens().text_soft).pixmap(9, 9))
+                arrow.setPixmap(app_pixmap("fa5s.chevron-right", color=tokens().text_soft, size=9))
                 arrow.setStyleSheet("background: transparent; border: none;")
                 structure_row.addWidget(arrow)
         structure_row.addStretch()
@@ -343,7 +343,7 @@ class HierarchyPage(QWidget):
         ]:
             btn = QPushButton(label)
             if icon:
-                btn.setIcon(qta.icon(icon, color=tokens().text))
+                btn.setIcon(app_icon(icon, color=tokens().text, size=12))
                 btn.setIconSize(QSize(12, 12))
             btn.setFixedHeight(32)
             btn.setCursor(Qt.PointingHandCursor)
@@ -383,19 +383,19 @@ class HierarchyPage(QWidget):
         layout.addLayout(self.inspector_meta)
 
         self.action_add = QPushButton("  Add Child Unit")
-        self.action_add.setIcon(qta.icon("fa5s.plus", color=primary_button_fg()))
+        self.action_add.setIcon(app_icon("fa5s.plus", color=primary_button_fg(), size=16))
         self.action_add.setStyleSheet(_primary_btn())
         self.action_add.clicked.connect(self._add_child_from_selection)
         self.action_edit = QPushButton("  Edit Unit")
-        self.action_edit.setIcon(qta.icon("fa5s.edit", color=tokens().text))
+        self.action_edit.setIcon(app_icon("fa5s.edit", color=tokens().text, size=16))
         self.action_edit.setStyleSheet(_outline_btn())
         self.action_edit.clicked.connect(self._edit_selected_unit)
         self.action_view = QPushButton("  View Employees")
-        self.action_view.setIcon(qta.icon("fa5s.user-friends", color=tokens().text))
+        self.action_view.setIcon(app_icon("fa5s.user-friends", color=tokens().text, size=16))
         self.action_view.setStyleSheet(_outline_btn())
         self.action_view.clicked.connect(self._view_selected_unit_employees)
         self.action_delete = QPushButton("  Delete Unit")
-        self.action_delete.setIcon(qta.icon("fa5s.trash-alt", color=tokens().danger))
+        self.action_delete.setIcon(app_icon("fa5s.trash-alt", color=tokens().danger, size=16))
         self.action_delete.setStyleSheet(_danger_outline_btn())
         self.action_delete.clicked.connect(self._delete_selected_unit)
         for btn in [self.action_add, self.action_edit, self.action_view, self.action_delete]:
@@ -914,7 +914,7 @@ class UnitEmployeesDialog(QDialog):
         icon.setFixedSize(40, 40)
         icon.setAlignment(Qt.AlignCenter)
         icon.setStyleSheet("background: #dbeafe; border-radius: 8px;")
-        icon.setPixmap(qta.icon("fa5s.user-friends", color="#2563eb").pixmap(20, 20))
+        icon.setPixmap(app_pixmap("fa5s.user-friends", color="#2563eb", size=20))
         text = QVBoxLayout()
         text.setSpacing(4)
         self.title_lbl = QLabel("Employees")
@@ -1200,7 +1200,7 @@ def _hint_pill(text, bg, fg, border, icon):
     row.setContentsMargins(10, 5, 10, 5)
     row.setSpacing(7)
     icon_lbl = QLabel()
-    icon_lbl.setPixmap(qta.icon(icon, color=fg).pixmap(13, 13))
+    icon_lbl.setPixmap(app_pixmap(icon, color=fg, size=13))
     icon_lbl.setStyleSheet("background: transparent; border: none;")
     text_lbl = QLabel(text)
     text_lbl.setStyleSheet(f"background: transparent; border: none; color: {fg}; font-size: 12px; font-weight: 700;")
@@ -1229,7 +1229,7 @@ def _hierarchy_step(unit_type):
     row.setContentsMargins(10, 5, 10, 5)
     row.setSpacing(7)
     icon_lbl = QLabel()
-    icon_lbl.setPixmap(qta.icon(icon, color=fg).pixmap(12, 12))
+    icon_lbl.setPixmap(app_pixmap(icon, color=fg, size=12))
     icon_lbl.setStyleSheet("background: transparent; border: none;")
     text_lbl = QLabel(label)
     text_lbl.setStyleSheet(f"background: transparent; border: none; color: {fg}; font-size: 12px; font-weight: 800;")

@@ -9,7 +9,6 @@ Commendations Page
 
 import math
 
-import qtawesome as qta
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QTableWidget, QTableWidgetItem,
@@ -22,6 +21,7 @@ from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
 from src.ui.animations import install_tab_transition
+from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
     employee_picker_list_ss,
     pill_tab_ss,
@@ -219,14 +219,14 @@ class IssueCommendationTab(QWidget):
         mode_row.setSpacing(10)
 
         self.single_btn = QPushButton(t("single_employee"))
-        self.single_btn.setIcon(qta.icon("fa5s.user", color=tokens().brand))
+        self.single_btn.setIcon(app_icon("fa5s.user", color=tokens().brand, size=28))
         self.single_btn.setIconSize(QSize(28, 28))
         self.single_btn.setFixedHeight(104)
         self.single_btn.setCursor(Qt.PointingHandCursor)
         self.single_btn.clicked.connect(lambda: self._set_mode("single"))
 
         self.bulk_btn = QPushButton(t("team_award"))
-        self.bulk_btn.setIcon(qta.icon("fa5s.users", color=tokens().text_muted))
+        self.bulk_btn.setIcon(app_icon("fa5s.users", color=tokens().text_muted, size=28))
         self.bulk_btn.setIconSize(QSize(28, 28))
         self.bulk_btn.setFixedHeight(104)
         self.bulk_btn.setCursor(Qt.PointingHandCursor)
@@ -300,7 +300,7 @@ class IssueCommendationTab(QWidget):
         self.single_search.setPlaceholderText(t("search_employees"))
         self.single_search.setClearButtonEnabled(True)
         self.single_search.setStyleSheet(INPUT_SS())
-        self.single_search.addAction(qta.icon("fa5s.search", color=tokens().text_soft), QLineEdit.LeadingPosition)
+        self.single_search.addAction(app_icon("fa5s.search", color=tokens().text_soft, size=16), QLineEdit.LeadingPosition)
         self.single_search.textChanged.connect(self._filter_single_employees)
         ec.addWidget(self.single_search)
 
@@ -316,7 +316,7 @@ class IssueCommendationTab(QWidget):
         self.bulk_search.setFixedHeight(40)
         self.bulk_search.setPlaceholderText(t("search_employees"))
         self.bulk_search.setStyleSheet(INPUT_SS())
-        self.bulk_search.addAction(qta.icon("fa5s.search", color=tokens().text_soft), QLineEdit.LeadingPosition)
+        self.bulk_search.addAction(app_icon("fa5s.search", color=tokens().text_soft, size=16), QLineEdit.LeadingPosition)
         self.bulk_search.textChanged.connect(self._filter_bulk_employees)
         ec.addWidget(self.bulk_search)
 
@@ -358,7 +358,7 @@ class IssueCommendationTab(QWidget):
 
         impact_head = QHBoxLayout()
         impact_icon = QLabel()
-        impact_icon.setPixmap(qta.icon("fa5s.stopwatch", color=tokens().brand).pixmap(18, 18))
+        impact_icon.setPixmap(app_pixmap("fa5s.stopwatch", color=tokens().brand, size=18))
         ic_title = QLabel(t("promotion_track_impact"))
         ic_title.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {tokens().brand}; background: transparent;")
         impact_head.addWidget(impact_icon)
@@ -410,7 +410,7 @@ class IssueCommendationTab(QWidget):
         ac.addWidget(actions_title)
         ac.addSpacing(24)
         issue_btn = QPushButton("  " + t("issue_commendation"))
-        issue_btn.setIcon(qta.icon("fa5s.award", color=primary_button_fg()))
+        issue_btn.setIcon(app_icon("fa5s.award", color=primary_button_fg(), size=14))
         issue_btn.setIconSize(QSize(14, 14))
         issue_btn.setCursor(Qt.PointingHandCursor)
         issue_btn.setFixedHeight(50)
@@ -436,7 +436,7 @@ class IssueCommendationTab(QWidget):
         rc.setSpacing(12)
         rule_head = QHBoxLayout()
         rule_icon = QLabel()
-        rule_icon.setPixmap(qta.icon("fa5s.award", color=tokens().warning).pixmap(18, 18))
+        rule_icon.setPixmap(app_pixmap("fa5s.award", color=tokens().warning, size=18))
         rc_title = QLabel(t("important_rules"))
         rc_title.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {tokens().warning}; background: transparent;")
         rule_head.addWidget(rule_icon)
@@ -477,9 +477,9 @@ class IssueCommendationTab(QWidget):
             f"QPushButton:hover {{ background: {tokens().hover}; }}"
         )
         self.single_btn.setStyleSheet(active if mode == "single" else inactive)
-        self.single_btn.setIcon(qta.icon("fa5s.user", color=tokens().brand if mode == "single" else tokens().text_soft))
+        self.single_btn.setIcon(app_icon("fa5s.user", color=tokens().brand if mode == "single" else tokens().text_soft, size=28))
         self.bulk_btn.setStyleSheet(active if mode == "bulk" else inactive)
-        self.bulk_btn.setIcon(qta.icon("fa5s.users", color=tokens().brand if mode == "bulk" else tokens().text_soft))
+        self.bulk_btn.setIcon(app_icon("fa5s.users", color=tokens().brand if mode == "bulk" else tokens().text_soft, size=28))
         self.single_search.setVisible(mode == "single")
         self.single_list.setVisible(mode == "single")
         self.bulk_search.setVisible(mode == "bulk")
@@ -756,7 +756,7 @@ class CommendationHistoryTab(QWidget):
         hl = QHBoxLayout(header)
         hl.setContentsMargins(30, 28, 30, 28)
         icon = QLabel()
-        icon.setPixmap(qta.icon("fa5s.award", color=tokens().warning).pixmap(18, 18))
+        icon.setPixmap(app_pixmap("fa5s.award", color=tokens().warning, size=18))
         title = QLabel(t("recent_commendations"))
         title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text}; background: transparent;")
         hl.addWidget(icon)
@@ -862,7 +862,7 @@ class CommendationHistoryTab(QWidget):
                 self.table.setCellWidget(i, 2, self._badge_cell(row["category"], *_category_colors(row["cat_id"])))
 
                 impact_item = QTableWidgetItem(row["impact"])
-                impact_item.setIcon(qta.icon("fa5s.clock", color=tokens().success))
+                impact_item.setIcon(app_icon("fa5s.clock", color=tokens().success, size=14))
                 impact_item.setForeground(QColor(tokens().success))
                 impact_item.setToolTip(row["impact"])
                 self.table.setItem(i, 3, impact_item)

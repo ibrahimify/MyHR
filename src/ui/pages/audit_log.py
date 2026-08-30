@@ -11,8 +11,6 @@ import json
 from collections import Counter
 from datetime import datetime, timedelta
 from html import escape
-
-import qtawesome as qta
 from PySide6.QtCore import QMarginsF, Qt
 from PySide6.QtGui import QColor, QFont, QPageLayout, QPageSize, QTextDocument
 from PySide6.QtPrintSupport import QPrinter
@@ -27,6 +25,7 @@ from sqlalchemy import String, cast, func, or_
 from src.core.app_settings import company_name, company_subtitle
 from src.core.i18n import is_rtl, t
 from src.ui.components.app_select import AppSelect
+from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
     btn_outline,
     card_ss,
@@ -194,7 +193,7 @@ class AuditLogPage(QWidget):
         self.search.setFixedHeight(44)
         self.search.setMinimumWidth(360)
         self.search.setStyleSheet(INPUT_SS())
-        self.search.addAction(qta.icon("fa5s.search", color=tokens().text_soft), QLineEdit.LeadingPosition)
+        self.search.addAction(app_icon("fa5s.search", color=tokens().text_soft, size=16), QLineEdit.LeadingPosition)
         self.search.textChanged.connect(self._filter)
         fl.addWidget(self.search, 0, 0, 1, 4)
 
@@ -207,7 +206,7 @@ class AuditLogPage(QWidget):
         self.export_csv_btn = QPushButton(t("export_csv"))
         self.export_csv_btn.setFixedHeight(44)
         self.export_csv_btn.setCursor(Qt.PointingHandCursor)
-        self.export_csv_btn.setIcon(qta.icon("fa5s.download", color=tokens().text))
+        self.export_csv_btn.setIcon(app_icon("fa5s.download", color=tokens().text, size=16))
         self.export_csv_btn.setStyleSheet(btn_outline(44))
         self.export_csv_btn.clicked.connect(self._export_current_view)
         fl.addWidget(self.export_csv_btn, 0, 4)
@@ -215,7 +214,7 @@ class AuditLogPage(QWidget):
         self.export_pdf_btn = QPushButton(t("export_pdf"))
         self.export_pdf_btn.setFixedHeight(44)
         self.export_pdf_btn.setCursor(Qt.PointingHandCursor)
-        self.export_pdf_btn.setIcon(qta.icon("fa5s.file-pdf", color=tokens().text))
+        self.export_pdf_btn.setIcon(app_icon("fa5s.file-pdf", color=tokens().text, size=16))
         self.export_pdf_btn.setStyleSheet(btn_outline(44))
         self.export_pdf_btn.clicked.connect(self._export_pdf)
         fl.addWidget(self.export_pdf_btn, 0, 5)
@@ -307,7 +306,7 @@ class AuditLogPage(QWidget):
 
         info_head = QHBoxLayout()
         info_icon = QLabel()
-        info_icon.setPixmap(qta.icon("fa5s.clipboard-list", color=tokens().brand).pixmap(18, 18))
+        info_icon.setPixmap(app_pixmap("fa5s.clipboard-list", color=tokens().brand, size=18))
         info_title = QLabel(t("audit_log_information"))
         info_title.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {tokens().brand}; background: transparent;")
         info_head.addWidget(info_icon)
@@ -344,7 +343,7 @@ class AuditLogPage(QWidget):
         icon.setFixedSize(48, 48)
         icon.setAlignment(Qt.AlignCenter)
         icon.setStyleSheet(f"background: {bg}; border-radius: 8px;")
-        icon.setPixmap(qta.icon(icon_name, color=color).pixmap(22, 22))
+        icon.setPixmap(app_pixmap(icon_name, color=color, size=22))
 
         col = QVBoxLayout()
         col.setSpacing(0)
@@ -569,7 +568,7 @@ class AuditLogPage(QWidget):
                 self.table.setItem(row_index, 0, timestamp)
 
                 user_item = QTableWidgetItem(log["user"])
-                user_item.setIcon(qta.icon("fa5s.user", color=tokens().brand))
+                user_item.setIcon(app_icon("fa5s.user", color=tokens().brand, size=14))
                 user_font = user_item.font()
                 user_font.setBold(True)
                 user_item.setFont(user_font)
@@ -999,7 +998,7 @@ class AuditDetailDialog(QDialog):
         icon.setFixedSize(42, 42)
         icon.setAlignment(Qt.AlignCenter)
         icon.setStyleSheet(f"background: {tokens().selected}; border-radius: 8px;")
-        icon.setPixmap(qta.icon("fa5s.clipboard-list", color=tokens().brand).pixmap(18, 18))
+        icon.setPixmap(app_pixmap("fa5s.clipboard-list", color=tokens().brand, size=18))
         titles = QVBoxLayout()
         title = QLabel(t("audit_detail_title"))
         title.setStyleSheet(f"font-size: 20px; font-weight: 900; color: {tokens().text};")

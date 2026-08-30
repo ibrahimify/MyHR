@@ -1,0 +1,3 @@
+first_name,last_name,department,degree,position,join_date,base_salary,work_email,status,commendation_months,active_sanction_months,sanction_type
+Mira,Kovacs,Engineering,BSc,Junior Engineer,2024-02-12,2500,mira.kovacs.audit@example.com,active,1,0,
+Aron,Nagy,Data and AI,MSc,Data Analyst,2023-06-20,3200,aron.nagy.audit@example.com,active,0,2,verbal warning
