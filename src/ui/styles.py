@@ -2,7 +2,7 @@
 
 from PySide6.QtCore import QEvent, QObject, QRectF, Qt
 from PySide6.QtGui import QPainterPath, QRegion
-from PySide6.QtWidgets import QAbstractItemView, QFrame, QMessageBox
+from PySide6.QtWidgets import QAbstractItemView, QFrame, QListView, QMessageBox
 
 from src.ui.theme import THEME_DARK, tokens
 
@@ -248,7 +248,7 @@ QTimeEdit:focus, QDateTimeEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {{
     background: {t.surface};
 }}
 QComboBox {{
-    border: 1px solid {t.border};
+    border: 1px solid transparent;
     border-radius: 8px;
     padding: 0 32px 0 12px;
     font-size: 14px;
@@ -261,6 +261,9 @@ QComboBox:focus {{
     border-color: {t.brand};
     background: {t.surface};
 }}
+QComboBox:hover {{
+    background: {t.hover};
+}}
 QComboBox::drop-down {{
     width: 28px;
     border: none;
@@ -269,10 +272,10 @@ QComboBox::drop-down {{
 QComboBox QAbstractItemView {{
     background: {t.surface};
     color: {t.text};
-    border: 1px solid {t.border_strong};
+    border: 1px solid {t.border};
     border-radius: 8px;
-    selection-background-color: {t.selected};
-    selection-color: {t.text};
+    selection-background-color: {t.brand};
+    selection-color: {primary_button_fg()};
     outline: none;
     padding: 4px;
 }}
@@ -665,30 +668,55 @@ BADGE_GRAY = badge_ss("#f3f4f6", "#374151")
 
 def combo_popup_view_ss():
     t = tokens()
+    selected_text = primary_button_fg()
     return f"""
-QListView {{
+QAbstractItemView,
+QListView,
+QComboBoxListView {{
     background: {t.surface};
     color: {t.text};
-    border: 1px solid {t.border_strong};
+    border: 1px solid {t.border};
     border-radius: 8px;
     outline: none;
     padding: 4px;
+    show-decoration-selected: 1;
 }}
-QListView::item {{
+QAbstractItemView::item,
+QListView::item,
+QComboBoxListView::item {{
     min-height: 30px;
     padding: 6px 10px;
     background: {t.surface};
     color: {t.text};
     border-radius: 6px;
+    border: none;
 }}
+QAbstractItemView::item:selected,
+QAbstractItemView::item:selected:active,
+QAbstractItemView::item:selected:!active,
 QListView::item:selected,
-QListView::item:hover {{
-    background: {t.selected};
-    color: {t.text};
+QListView::item:selected:active,
+QListView::item:selected:!active,
+QComboBoxListView::item:selected,
+QComboBoxListView::item:selected:active,
+QComboBoxListView::item:selected {{
+    background: {t.brand};
+    color: {selected_text};
+    border: none;
 }}
-QListView::item:disabled {{
+QAbstractItemView::item:hover,
+QListView::item:hover,
+QComboBoxListView::item:hover {{
+    background: {t.hover};
+    color: {t.text};
+    border: none;
+}}
+QAbstractItemView::item:disabled,
+QListView::item:disabled,
+QComboBoxListView::item:disabled {{
     background: {t.danger_soft};
     color: {t.danger};
+    border: none;
 }}
 """
 
@@ -811,6 +839,8 @@ class _ComboPopupMask(QObject):
 
 def polish_combo_box(combo, *, max_visible_items=12, popup_min_width=None):
     """Make combo popups use the same rounded, clean dropdown treatment."""
+    if not isinstance(combo.view(), QListView):
+        combo.setView(QListView(combo))
     combo.setMaxVisibleItems(max_visible_items)
     view = combo.view()
 
@@ -820,11 +850,13 @@ def polish_combo_box(combo, *, max_visible_items=12, popup_min_width=None):
     view.setFrameShape(QFrame.NoFrame)
     view.setTextElideMode(Qt.ElideNone)
     view.setAttribute(Qt.WA_StyledBackground, True)
-    view.setStyleSheet(combo_popup_view_ss())
+    popup_style = combo_popup_view_ss()
+    view.setStyleSheet(popup_style)
+    view.viewport().setStyleSheet(f"background: {tokens().surface}; border: none;")
 
     popup = view.window()
     popup.setAttribute(Qt.WA_TranslucentBackground, True)
-    popup.setStyleSheet("background: transparent; border: none;")
+    popup.setStyleSheet(f"background: transparent; border: none; QFrame {{ background: {tokens().surface}; border-radius: 8px; }}")
 
     mask = _ComboPopupMask(combo)
     view.installEventFilter(mask)

@@ -19,13 +19,14 @@ from PySide6.QtPrintSupport import QPrinter
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
     QFrame, QTableWidget, QTableWidgetItem, QHeaderView,
-    QLineEdit, QComboBox, QScrollArea, QPushButton, QFileDialog,
-    QDialog, QTextEdit, QMessageBox
+    QLineEdit, QScrollArea, QPushButton, QFileDialog,
+    QDialog, QTextEdit, QMessageBox, QAbstractItemView
 )
 from sqlalchemy import String, cast, func, or_
 
 from src.core.app_settings import company_name, company_subtitle
 from src.core.i18n import is_rtl, t
+from src.ui.components.app_select import AppSelect
 from src.ui.styles import (
     btn_outline,
     card_ss,
@@ -36,6 +37,7 @@ from src.ui.styles import (
     pager_button_ss,
     prepare_table_cell_widget,
     polish_combo_box,
+    sync_table_widget_cells,
     table_style,
 )
 from src.ui.theme import THEME_DARK, tokens
@@ -218,10 +220,7 @@ class AuditLogPage(QWidget):
         self.export_pdf_btn.clicked.connect(self._export_pdf)
         fl.addWidget(self.export_pdf_btn, 0, 5)
 
-        self.category_filter = QComboBox()
-        self.category_filter.setFixedHeight(44)
-        self.category_filter.setStyleSheet(COMBO_SS())
-        _polish_combo(self.category_filter)
+        self.category_filter = AppSelect(height=44)
         self.category_filter.addItem(t("all_categories"), None)
         for key, meta in CATEGORY_META.items():
             if key != "other":
@@ -230,18 +229,12 @@ class AuditLogPage(QWidget):
         self.category_filter.currentIndexChanged.connect(self._filter)
         fl.addWidget(self.category_filter, 1, 0)
 
-        self.target_filter = QComboBox()
-        self.target_filter.setFixedHeight(44)
-        self.target_filter.setStyleSheet(COMBO_SS())
-        _polish_combo(self.target_filter)
+        self.target_filter = AppSelect(height=44)
         self.target_filter.addItem(t("all_targets"), None)
         self.target_filter.currentIndexChanged.connect(self._filter)
         fl.addWidget(self.target_filter, 1, 1)
 
-        self.date_filter = QComboBox()
-        self.date_filter.setFixedHeight(44)
-        self.date_filter.setStyleSheet(COMBO_SS())
-        _polish_combo(self.date_filter)
+        self.date_filter = AppSelect(height=44)
         self.date_filter.addItem(t("all_dates"), "all")
         self.date_filter.addItem(t("today"), "today")
         self.date_filter.addItem(t("last_7_days"), "last_7")
@@ -250,10 +243,7 @@ class AuditLogPage(QWidget):
         self.date_filter.currentIndexChanged.connect(self._filter)
         fl.addWidget(self.date_filter, 1, 2)
 
-        self.user_filter = QComboBox()
-        self.user_filter.setFixedHeight(44)
-        self.user_filter.setStyleSheet(COMBO_SS())
-        _polish_combo(self.user_filter)
+        self.user_filter = AppSelect(height=44)
         self.user_filter.addItem(t("all_users"), None)
         self.user_filter.currentIndexChanged.connect(self._filter)
         fl.addWidget(self.user_filter, 1, 3, 1, 3)
@@ -291,9 +281,11 @@ class AuditLogPage(QWidget):
         self.table.setColumnWidth(0, 190)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         enable_table_row_selection(self.table)
-        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.table.setMinimumHeight(620)
         self.table.cellDoubleClicked.connect(self._open_log_details)
         for col in range(self.table.columnCount()):
             header_item = self.table.horizontalHeaderItem(col)
@@ -564,8 +556,7 @@ class AuditLogPage(QWidget):
         self.table.clearContents()
         self.table.setRowCount(len(logs))
         row_height = 56
-        header_height = 52
-        self.table.setFixedHeight(max(620, header_height + (len(logs) * row_height) + 4))
+        self.table.setFixedHeight(620)
 
         try:
             for row_index, log in enumerate(logs):
@@ -604,6 +595,7 @@ class AuditLogPage(QWidget):
                 self.table.setItem(row_index, 4, details_item)
 
                 self.table.setCellWidget(row_index, 5, _category_badge(log["category"]))
+            sync_table_widget_cells(self.table)
         finally:
             self.table.setUpdatesEnabled(True)
 

@@ -103,7 +103,7 @@ INPUT_SS = f"""
 QLineEdit, QSpinBox, QDoubleSpinBox {{
     background: {tokens().input};
     color: {tokens().text};
-    border: 1px solid transparent;
+    border: 1px solid {tokens().border};
     border-radius: 8px;
     padding: 0 12px;
     min-height: 44px;
@@ -124,7 +124,7 @@ COMBO_SS = f"""
 QComboBox {{
     background: {tokens().input};
     color: {tokens().text};
-    border: 1px solid transparent;
+    border: 1px solid {tokens().border};
     border-radius: 8px;
     padding: 0 34px 0 12px;
     min-height: 44px;
@@ -134,9 +134,13 @@ QComboBox:focus {{
     background: {tokens().surface};
     border: 1px solid {tokens().brand};
 }}
+QComboBox:hover {{
+    background: {tokens().hover};
+}}
 QComboBox::drop-down {{
     width: 30px;
     border: none;
+    background: transparent;
 }}
 QComboBox::down-arrow {{
     image: url(src/ui/assets/chevron_down.svg);
@@ -146,11 +150,11 @@ QComboBox::down-arrow {{
 QComboBox QAbstractItemView {{
     background: {tokens().surface};
     color: {tokens().text};
-    border: 1px solid {tokens().border_strong};
+    border: 1px solid {tokens().border};
     border-radius: 8px;
     padding: 4px;
-    selection-background-color: {tokens().selected};
-    selection-color: {tokens().text};
+    selection-background-color: {tokens().brand};
+    selection-color: {"#062f28" if tokens().name == THEME_DARK else "#ffffff"};
     outline: none;
 }}
 """
@@ -216,7 +220,7 @@ QLabel {{
 QLineEdit, QSpinBox, QDoubleSpinBox {{
     background: {tokens().input};
     color: {tokens().text};
-    border: 1px solid transparent;
+    border: 1px solid {tokens().border};
     border-radius: 8px;
     padding: 0 12px;
     min-height: 44px;
@@ -236,7 +240,7 @@ QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
 QComboBox {{
     background: {tokens().input};
     color: {tokens().text};
-    border: 1px solid transparent;
+    border: 1px solid {tokens().border};
     border-radius: 8px;
     padding: 0 34px 0 12px;
     min-height: 44px;
@@ -246,9 +250,13 @@ QComboBox:focus {{
     background: {tokens().surface};
     border: 1px solid {tokens().brand};
 }}
+QComboBox:hover {{
+    background: {tokens().hover};
+}}
 QComboBox::drop-down {{
     width: 30px;
     border: none;
+    background: transparent;
 }}
 QComboBox::down-arrow {{
     image: url(src/ui/assets/chevron_down.svg);
@@ -258,11 +266,11 @@ QComboBox::down-arrow {{
 QComboBox QAbstractItemView {{
     background: {tokens().surface};
     color: {tokens().text};
-    border: 1px solid {tokens().border_strong};
+    border: 1px solid {tokens().border};
     border-radius: 8px;
     padding: 4px;
-    selection-background-color: {tokens().selected};
-    selection-color: {tokens().text};
+    selection-background-color: {tokens().brand};
+    selection-color: {"#062f28" if tokens().name == THEME_DARK else "#ffffff"};
     outline: none;
 }}
 """
@@ -392,7 +400,7 @@ class PolicySummaryTab(QWidget):
                 t("policy_summary_note_data"),
             ],
             "fa5s.info-circle",
-            "#1e40af",
+            tokens().brand,
             NOTE_BLUE_SS,
         ))
         self.outer.addWidget(header)
@@ -414,18 +422,17 @@ class PolicySummaryTab(QWidget):
             currency = titles[0].currency if titles else "EUR"
             currencies = sorted({title.currency for title in titles if title.currency})
             other_title = next((title for title in titles if title.name == "Other"), None)
-            metric_grid = QGridLayout()
-            metric_grid.setHorizontalSpacing(14)
-            metric_grid.setVerticalSpacing(14)
+            metric_row = QHBoxLayout()
+            metric_row.setSpacing(14)
             metrics = [
-                self._metric_card(t("configured_levels"), str(len(titles)), "fa5s.layer-group", BLUE, "#dbeafe"),
-                self._metric_card(t("active_promotion_tracks"), str(sum(1 for rule in rules if rule.is_active)), "fa5s.route", "#16a34a", "#dcfce7"),
-                self._metric_card(t("salary_currency"), ", ".join(currencies) or currency, "fa5s.money-bill-wave", "#7c3aed", "#ede9fe"),
-                self._metric_card(t("other_track"), t("configured") if other_title else t("not_configured"), "fa5s.user-cog", "#475569", "#e2e8f0"),
+                self._metric_card(t("configured_levels"), str(len(titles)), "fa5s.layer-group", BLUE, tokens().brand_soft),
+                self._metric_card(t("active_promotion_tracks"), str(sum(1 for rule in rules if rule.is_active)), "fa5s.route", tokens().success, tokens().success_soft),
+                self._metric_card(t("salary_currency"), ", ".join(currencies) or currency, "fa5s.money-bill-wave", tokens().warning, tokens().warning_soft),
+                self._metric_card(t("other_track"), t("configured") if other_title else t("not_configured"), "fa5s.user-cog", tokens().text_muted, tokens().surface_muted),
             ]
-            for index, metric in enumerate(metrics):
-                metric_grid.addWidget(metric, index // 2, index % 2)
-            self.outer.addLayout(metric_grid)
+            for metric in metrics:
+                metric_row.addWidget(metric, 1)
+            self.outer.addLayout(metric_row)
 
             salary_rows = []
             increment_rows = []
@@ -459,7 +466,7 @@ class PolicySummaryTab(QWidget):
         summaries.addWidget(self._summary_card(
             t("salary_policy_summary"),
             t("salary_policy_summary_subtitle"),
-            ["Level", t("name"), t("salary_range"), t("active_employees")],
+            [t("level"), t("name"), t("salary_range"), t("active_employees")],
             salary_rows,
             "fa5s.coins",
             [78, 180, 260, 142],
@@ -475,7 +482,7 @@ class PolicySummaryTab(QWidget):
         summaries.addWidget(self._summary_card(
             t("annual_increment_summary"),
             t("annual_increment_summary_subtitle"),
-            ["Level", t("increment_type"), t("increment_value"), t("promotion_salary_increase")],
+            [t("level"), t("increment_type"), t("increment_value"), t("promotion_salary_increase")],
             increment_rows,
             "fa5s.percentage",
             [78, 190, 170, 160],
@@ -493,22 +500,19 @@ class PolicySummaryTab(QWidget):
 
     def _metric_card(self, label, value, icon_name, color, bg):
         card = _plain_card()
-        card.setFixedHeight(94)
+        card.setFixedHeight(78)
         layout = QHBoxLayout(card)
-        layout.setContentsMargins(20, 0, 20, 0)
-        layout.setSpacing(14)
-        layout.addWidget(_badge_icon(icon_name, color, bg))
-        text = QVBoxLayout()
-        text.setSpacing(0)
-        text.setAlignment(Qt.AlignVCenter)
+        layout.setContentsMargins(16, 0, 16, 0)
+        layout.setSpacing(12)
+        layout.addWidget(_badge_icon(icon_name, color, bg, size=38, icon_size=17))
         title = QLabel(label)
-        title.setStyleSheet(f"font-size: 13px; font-weight: 700; color: {MUTED}; background: transparent;")
+        title.setStyleSheet(f"font-size: 12px; font-weight: 800; color: {MUTED}; background: transparent;")
+        title.setWordWrap(False)
         number = QLabel(value)
-        number.setStyleSheet(f"font-size: 24px; font-weight: 900; color: {TEXT}; background: transparent;")
-        text.addWidget(title)
-        text.addWidget(number)
-        layout.addLayout(text)
-        layout.addStretch()
+        number.setStyleSheet(f"font-size: 22px; font-weight: 900; color: {TEXT}; background: transparent;")
+        number.setWordWrap(False)
+        layout.addWidget(title, 1)
+        layout.addWidget(number, 0, Qt.AlignRight | Qt.AlignVCenter)
         return card
 
     def _summary_card(self, title, subtitle, headers, rows, icon_name, column_widths=None):
@@ -519,7 +523,7 @@ class PolicySummaryTab(QWidget):
 
         head = QHBoxLayout()
         head.setSpacing(10)
-        head.addWidget(_badge_icon(icon_name, BLUE, "#dbeafe"))
+        head.addWidget(_badge_icon(icon_name, tokens().brand, tokens().brand_soft))
         text = QVBoxLayout()
         text.setSpacing(2)
         title_lbl = QLabel(title)
@@ -617,7 +621,7 @@ class GeneralTab(QWidget):
                 t("branding_note_subtitle"),
             ],
             "fa5s.info-circle",
-            "#1e40af",
+            tokens().brand,
             NOTE_BLUE_SS,
         ))
         actions_layout.addStretch()
@@ -691,7 +695,7 @@ class LevelManagementTab(QWidget):
                 t("level_rule_existing_tabs"),
             ],
             "fa5s.info-circle",
-            "#1e40af",
+            tokens().brand,
             NOTE_BLUE_SS,
         ))
         outer.addWidget(header)
@@ -768,10 +772,11 @@ class LevelManagementTab(QWidget):
                 item = self.table.item(row_index, badge_col)
                 if item:
                     item.setText("")
-            self.table.setCellWidget(row_index, 0, _pill_cell(row["values"][0], "#1d4ed8", "#dbeafe", align=Qt.AlignCenter, min_width=52))
-            self.table.setCellWidget(row_index, 4, _pill_cell(row["values"][4], "#047857", "#dcfce7"))
-            self.table.setCellWidget(row_index, 5, _pill_cell(row["values"][5], "#1d4ed8", "#dbeafe", align=Qt.AlignCenter))
-            self.table.setCellWidget(row_index, 7, _pill_cell(row["values"][7], "#047857", "#dcfce7"))
+            level_bg, level_color = level_badge_colors()
+            self.table.setCellWidget(row_index, 0, _pill_cell(row["values"][0], level_color, level_bg, align=Qt.AlignCenter, min_width=52))
+            self.table.setCellWidget(row_index, 4, _pill_cell(row["values"][4], tokens().success, tokens().success_soft))
+            self.table.setCellWidget(row_index, 5, _pill_cell(row["values"][5], level_color, level_bg, align=Qt.AlignCenter))
+            self.table.setCellWidget(row_index, 7, _pill_cell(row["values"][7], tokens().success, tokens().success_soft))
             self.table.setCellWidget(row_index, 8, self._actions_cell(row))
         self._resize_level_columns()
         QTimer.singleShot(0, self._resize_level_columns)
@@ -804,20 +809,14 @@ class LevelManagementTab(QWidget):
             self.table.setColumnWidth(col, max(minimums.get(col, 56), widths.get(col, 80)))
 
     def _style_policy_row(self, row_index):
-        level_item = self.table.item(row_index, 0)
-        if level_item:
-            level_item.setBackground(QColor("#dbeafe"))
-            level_item.setForeground(QColor("#1d4ed8"))
-
         for col in (4, 7):
             item = self.table.item(row_index, col)
             if item:
-                item.setBackground(QColor("#ecfdf5"))
-                item.setForeground(QColor("#047857"))
+                item.setForeground(QColor(tokens().success))
 
         salary_item = self.table.item(row_index, 3)
         if salary_item:
-            salary_item.setForeground(QColor("#065f46"))
+            salary_item.setForeground(QColor(tokens().text))
 
         for col in (2, 5, 6):
             item = self.table.item(row_index, col)
@@ -972,6 +971,8 @@ class AddLevelDialog(QDialog):
         _style_combo(self.target_title)
         self.track_months = _spin(1, 240, 36)
         self.target_bump = _percent_spin(20.0)
+        self.track_months.setSuffix(" mo")
+        self.target_bump.setSuffix("%")
         self.target_title.currentIndexChanged.connect(self._load_target_defaults)
         self._load_target_defaults()
 
@@ -987,7 +988,7 @@ class AddLevelDialog(QDialog):
         form.addRow(t("increment_type") + " *", self.increment_type)
         form.addRow(t("increment_value") + " *", self.increment_value)
         form.addRow(t("promotion_target") + (" *" if not self.is_edit else ""), self.target_title)
-        form.addRow(t("base_track_duration_months") + " *", self.track_months)
+        form.addRow(t("base_track_duration") + " *", self.track_months)
         form.addRow(t("promotion_salary_increase"), self.target_bump)
         layout.addLayout(form)
 
@@ -1397,7 +1398,7 @@ class SettingsPromotionTab(QWidget):
                 t("track_modifier_reset"),
             ],
             "fa5s.clock",
-            "#92400e",
+            tokens().warning,
             NOTE_YELLOW_SS,
         ))
         save = _button(t("save_promotion_settings"), "fa5s.save", primary=True)
@@ -1442,17 +1443,24 @@ class SettingsPromotionTab(QWidget):
     def _rule_card(self, row):
         card = QFrame()
         card.setStyleSheet(
-            f"QFrame {{ background: {tokens().surface_muted}; border: 1px solid {tokens().border}; border-radius: 8px; }}"
+            f"QFrame {{ background: {tokens().surface}; border: 1px solid {tokens().border_strong}; border-radius: 8px; }}"
             "QLabel { background: transparent; border: none; }"
         )
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(28, 24, 28, 24)
-        layout.setSpacing(18)
+        layout.setContentsMargins(26, 22, 26, 22)
+        layout.setSpacing(16)
 
         title_row = QHBoxLayout()
         title_row.setSpacing(8)
-        icon = QLabel()
-        icon.setPixmap(qta.icon("fa5s.chart-line", color=BLUE).pixmap(17, 17))
+        bg, color = level_badge_colors()
+        from_badge = QLabel(row["from"])
+        from_badge.setAlignment(Qt.AlignCenter)
+        from_badge.setMinimumWidth(46)
+        from_badge.setFixedHeight(28)
+        from_badge.setStyleSheet(
+            f"background: {bg}; color: {color}; border: none; border-radius: 7px; "
+            "font-size: 13px; font-weight: 700; padding: 0 10px;"
+        )
         title = QLabel(t("level_to_level", from_level=row["from"], to_level=row["to"]))
         title.setStyleSheet(f"font-size: 16px; font-weight: 800; color: {TEXT}; background: transparent;")
         subtitle = QLabel(row["from_label"])
@@ -1461,7 +1469,7 @@ class SettingsPromotionTab(QWidget):
         text.setSpacing(2)
         text.addWidget(title)
         text.addWidget(subtitle)
-        title_row.addWidget(icon)
+        title_row.addWidget(from_badge)
         title_row.addLayout(text)
         title_row.addStretch()
         layout.addLayout(title_row)
@@ -1481,6 +1489,8 @@ class SettingsPromotionTab(QWidget):
         target_combo.setMinimumWidth(360)
         months = _spin(1, 120, row["base_months"])
         salary = _percent_spin(row["salary_increase"])
+        months.setSuffix(" mo")
+        salary.setSuffix("%")
         months.setMinimumWidth(180)
         salary.setMinimumWidth(180)
         def update_enabled():
@@ -1497,8 +1507,8 @@ class SettingsPromotionTab(QWidget):
         grid.addWidget(months, 1, 1)
         grid.addWidget(salary, 1, 2)
         grid.addWidget(_hint(t("promotion_rule_no_target_hint")), 2, 0)
-        grid.addWidget(_hint(t("starting_point_for_race")), 2, 1)
-        grid.addWidget(_hint(t("upon_promotion_to_next")), 2, 2)
+        grid.addWidget(_hint(t("duration_defines_promotion_wait")), 2, 1)
+        grid.addWidget(_hint(t("salary_increase_applied_on_promotion")), 2, 2)
         grid.setColumnStretch(0, 3)
         grid.setColumnStretch(1, 1)
         grid.setColumnStretch(2, 1)
@@ -1579,7 +1589,7 @@ class IncrementTab(QWidget):
             t("annual_increment_rules"),
             [t("increment_note")],
             "fa5s.calendar-check",
-            "#92400e",
+            tokens().warning,
             NOTE_YELLOW_SS,
         ))
 
@@ -1701,7 +1711,7 @@ class UserManagementTab(QWidget):
                 t("user_rule_audit_snapshot") if self.user.role == "admin" else t("security_note_hashes"),
             ],
             "fa5s.shield-alt",
-            "#1e40af",
+            tokens().brand,
             NOTE_BLUE_SS,
         ))
         outer.addWidget(header)
@@ -1726,7 +1736,7 @@ class UserManagementTab(QWidget):
         header_view = self.table.horizontalHeader()
         header_view.setStretchLastSection(False)
         header_view.setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        for col, width in {0: 180, 1: 240, 2: 160, 3: 130, 4: 180, 5: 190}.items():
+        for col, width in {0: 180, 1: 240, 2: 150, 3: 120, 4: 170, 5: 176}.items():
             self.table.setColumnWidth(col, width)
         for col in (0, 1):
             header_view.setSectionResizeMode(col, QHeaderView.Stretch)
@@ -1735,7 +1745,8 @@ class UserManagementTab(QWidget):
         for col in range(self.table.columnCount()):
             item = self.table.horizontalHeaderItem(col)
             if item:
-                item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                alignment = Qt.AlignCenter if col == 5 else Qt.AlignLeft | Qt.AlignVCenter
+                item.setTextAlignment(alignment)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         enable_table_row_selection(self.table)
@@ -1754,16 +1765,19 @@ class UserManagementTab(QWidget):
         form.setVerticalSpacing(14)
         self.current_pwd = _line_edit()
         self.current_pwd.setEchoMode(QLineEdit.Password)
+        _install_password_toggle(self.current_pwd)
         self.new_pwd = _line_edit()
         self.new_pwd.setEchoMode(QLineEdit.Password)
+        _install_password_toggle(self.new_pwd)
         self.confirm_pwd = _line_edit()
         self.confirm_pwd.setEchoMode(QLineEdit.Password)
+        _install_password_toggle(self.confirm_pwd)
         _add_form_field(form, 0, 0, t("current_password"), self.current_pwd)
         _add_form_field(form, 0, 1, t("new_password"), self.new_pwd)
         _add_form_field(form, 0, 2, t("confirm_new_password"), self.confirm_pwd)
         row.addLayout(form, 1)
         change = _button(t("change_password"), "fa5s.key", primary=True)
-        change.setFixedWidth(190)
+        change.setFixedWidth(230)
         change.clicked.connect(self._change_password)
         row.addWidget(change, alignment=Qt.AlignBottom)
         layout.addLayout(row)
@@ -1795,7 +1809,9 @@ class UserManagementTab(QWidget):
         _clear_table_widgets(self.table)
         self.table.clearContents()
         self.table.setRowCount(len(rows))
-        self.table.setMinimumHeight(112 + (62 * max(1, len(rows))))
+        table_height = min(430, 50 + (58 * max(1, len(rows))) + 6)
+        self.table.setMinimumHeight(table_height)
+        self.table.setMaximumHeight(table_height)
         for row_index, row in enumerate(rows):
             self.table.setRowHeight(row_index, 58)
             _set_tooltip_item(self.table, row_index, 0, row["username"])
@@ -1808,14 +1824,14 @@ class UserManagementTab(QWidget):
     def _actions_cell(self, row):
         cell = prepare_table_cell_widget(QWidget())
         layout = QHBoxLayout(cell)
-        layout.setContentsMargins(10, 8, 18, 8)
-        layout.setSpacing(0)
-        layout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(10)
+        layout.setAlignment(Qt.AlignCenter)
 
         edit = QPushButton("  " + t("edit"))
         edit.setIcon(qta.icon("fa5s.edit", color=primary_button_fg()))
         edit.setIconSize(QSize(13, 13))
-        edit.setFixedSize(96, 38)
+        edit.setFixedSize(88, 38)
         edit.setCursor(Qt.PointingHandCursor)
         edit.setStyleSheet(_primary_button_ss())
         edit.setToolTip(t("edit_user_account"))
@@ -1823,7 +1839,6 @@ class UserManagementTab(QWidget):
         layout.addWidget(edit)
 
         if row["role"] == "hr_officer":
-            layout.addSpacing(14)
             delete = QPushButton()
             delete.setIcon(qta.icon("fa5s.trash-alt", color="#dc2626"))
             delete.setIconSize(QSize(13, 13))
@@ -1983,8 +1998,10 @@ class UserAccountDialog(QDialog):
         self.full_name = _line_edit()
         self.password = _line_edit()
         self.password.setEchoMode(QLineEdit.Password)
+        _install_password_toggle(self.password)
         self.confirm = _line_edit()
         self.confirm.setEchoMode(QLineEdit.Password)
+        _install_password_toggle(self.confirm)
 
         form = QFormLayout()
         form.setHorizontalSpacing(18)
@@ -2254,7 +2271,7 @@ class DatabaseTab(QWidget):
                 t("db_note_health_check"),
             ],
             "fa5s.check-circle",
-            "#1e40af",
+            tokens().brand,
             NOTE_BLUE_SS,
         ))
         health = _button(t("run_health_check"), "fa5s.heartbeat", primary=False)
@@ -2912,7 +2929,6 @@ def _note_card(title, lines, icon_name, color, stylesheet):
 
 
 def _promotion_guide():
-    guide_color = tokens().brand if tokens().name == THEME_DARK else "#1e40af"
     return _note_card(
         t("how_promotion_race_works"),
         [
@@ -2923,7 +2939,7 @@ def _promotion_guide():
             t("race_guide_eligible"),
         ],
         "fa5s.chart-line",
-        guide_color,
+        tokens().brand,
         NOTE_BLUE_SS,
     )
 
@@ -2947,6 +2963,27 @@ def _line_edit(placeholder=""):
     field.setStyleSheet(INPUT_SS)
     field.setFixedHeight(44)
     return field
+
+
+def _install_password_toggle(field):
+    state = {"visible": False}
+    action = field.addAction(qta.icon("fa5s.eye", color=tokens().text_soft), QLineEdit.TrailingPosition)
+    action.setToolTip(t("show_password"))
+
+    def update_icon():
+        icon_name = "fa5s.eye-slash" if state["visible"] else "fa5s.eye"
+        tooltip_key = "hide_password" if state["visible"] else "show_password"
+        action.setIcon(qta.icon(icon_name, color=tokens().text_soft))
+        action.setToolTip(t(tooltip_key))
+
+    def toggle():
+        state["visible"] = not state["visible"]
+        field.setEchoMode(QLineEdit.Normal if state["visible"] else QLineEdit.Password)
+        update_icon()
+
+    action.triggered.connect(toggle)
+    update_icon()
+    return action
 
 
 def _spin(minimum, maximum, value):
@@ -3023,12 +3060,12 @@ def _button(text, icon_name, primary=False):
     return button
 
 
-def _badge_icon(icon_name, color, background):
+def _badge_icon(icon_name, color, background, size=44, icon_size=20):
     label = QLabel()
-    label.setFixedSize(44, 44)
+    label.setFixedSize(size, size)
     label.setAlignment(Qt.AlignCenter)
     label.setStyleSheet(f"background: {background}; border: none; border-radius: 8px;")
-    label.setPixmap(qta.icon(icon_name, color=color).pixmap(20, 20))
+    label.setPixmap(qta.icon(icon_name, color=color).pixmap(icon_size, icon_size))
     return label
 
 

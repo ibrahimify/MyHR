@@ -233,7 +233,7 @@ QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
 QComboBox {{
     color: {t.text};
     background: {t.input};
-    border: 1px solid {t.border};
+    border: 1px solid transparent;
     border-radius: 8px;
     padding: 0 30px 0 12px;
     min-height: 36px;
@@ -241,6 +241,9 @@ QComboBox {{
 }}
 QComboBox:focus {{
     border-color: {t.brand};
+}}
+QComboBox:hover {{
+    background: {t.hover};
 }}
 QComboBox::drop-down {{
     subcontrol-origin: padding;
@@ -257,10 +260,10 @@ QComboBox::down-arrow {{
 QComboBox QAbstractItemView {{
     background: {t.surface};
     color: {t.text};
-    border: 1px solid {t.border_strong};
+    border: 1px solid {t.border};
     border-radius: 8px;
-    selection-background-color: {t.selected};
-    selection-color: {t.text};
+    selection-background-color: {t.brand};
+    selection-color: {"#062f28" if t.name == THEME_DARK else "#ffffff"};
     outline: none;
     padding: 4px;
 }}

@@ -191,7 +191,6 @@ class ImportDataPage(QWidget):
         left.setSpacing(20)
         left.setAlignment(Qt.AlignTop)
         left.addWidget(self._build_upload_card())
-        left.addWidget(self._build_review_card())
         body.addLayout(left, 4)
 
         right = QVBoxLayout()
@@ -202,6 +201,8 @@ class ImportDataPage(QWidget):
         body.addLayout(right, 2)
 
         layout.addLayout(body)
+        layout.addSpacing(20)
+        layout.addWidget(self._build_review_card())
         layout.addStretch()
 
         scroll.setWidget(content)
@@ -278,7 +279,9 @@ class ImportDataPage(QWidget):
 
         self.file_label = QLabel("")
         self.file_label.setAlignment(Qt.AlignCenter)
-        self.file_label.setStyleSheet(f"font-size: 13px; color: {tokens().brand}; font-weight: 700; background: transparent;")
+        self.file_label.setWordWrap(True)
+        self.file_label.setVisible(False)
+        self.file_label.setStyleSheet(_file_status_ss("idle"))
         layout.addWidget(self.file_label)
 
         line = QFrame()
@@ -292,7 +295,7 @@ class ImportDataPage(QWidget):
         template_btn.setIcon(qta.icon("fa5s.download", color=tokens().text))
         template_btn.setIconSize(QSize(14, 14))
         template_btn.setCursor(Qt.PointingHandCursor)
-        template_btn.setFixedSize(250, 44)
+        template_btn.setFixedSize(280, 44)
         template_btn.setStyleSheet(_secondary_button_ss())
         template_btn.clicked.connect(self._download_template)
         layout.addWidget(template_btn, alignment=Qt.AlignCenter)
@@ -329,13 +332,23 @@ class ImportDataPage(QWidget):
         self.preview_table = QTableWidget()
         self.preview_table.setColumnCount(9)
         self.preview_table.setHorizontalHeaderLabels([
-            t("row"), t("employee"), t("department"), t("position"), t("degree"),
-            t("join_date"), t("salary"), t("history"), t("status")
+            t("row"), t("employee"), t("dept_short"), t("position"), t("degree"),
+            t("joined_short"), t("salary"), t("track_short"), t("status")
         ])
         self.preview_table.setStyleSheet(TABLE_SS())
-        self.preview_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.preview_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
+        header = self.preview_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Interactive)
+        header.setStretchLastSection(True)
+        self.preview_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.preview_table.setColumnWidth(0, 64)
+        self.preview_table.setColumnWidth(1, 150)
+        self.preview_table.setColumnWidth(2, 130)
+        self.preview_table.setColumnWidth(3, 130)
+        self.preview_table.setColumnWidth(4, 72)
+        self.preview_table.setColumnWidth(5, 98)
+        self.preview_table.setColumnWidth(6, 90)
+        self.preview_table.setColumnWidth(7, 130)
+        self.preview_table.setColumnWidth(8, 112)
         self.preview_table.verticalHeader().setVisible(False)
         self.preview_table.setEditTriggers(QTableWidget.NoEditTriggers)
         enable_table_row_selection(self.preview_table)
@@ -360,6 +373,7 @@ class ImportDataPage(QWidget):
 
     def _build_required_card(self):
         card = QFrame()
+        card.setMinimumHeight(190)
         card.setStyleSheet(
             f"QFrame {{ background: {tokens().selected}; border-radius: 8px; border: 1px solid {tokens().border_strong}; }} "
             "QLabel { background: transparent; border: none; }"
@@ -378,20 +392,21 @@ class ImportDataPage(QWidget):
         head.addStretch()
         layout.addLayout(head)
 
-        for text in [
-            "First Name",
-            "Last Name",
-            "Department",
-            "Degree (BSc, MSc, PhD, Other)",
-            "Position",
-            "Join Date",
-            "Base Salary",
+        for key in [
+            "import_required_first_name",
+            "import_required_last_name",
+            "import_required_department",
+            "import_required_degree",
+            "import_required_position",
+            "import_required_join_date",
+            "import_required_base_salary",
         ]:
-            layout.addWidget(_note_line(text, tokens().brand))
+            layout.addWidget(_note_line(t(key), tokens().brand))
         return card
 
     def _build_cleaning_card(self):
         card = QFrame()
+        card.setMinimumHeight(230)
         card.setStyleSheet(
             f"QFrame {{ background: {tokens().warning_soft}; border-radius: 8px; border: 1px solid {tokens().warning}; }} "
             "QLabel { background: transparent; border: none; }"
@@ -410,34 +425,37 @@ class ImportDataPage(QWidget):
         head.addStretch()
         layout.addLayout(head)
 
-        for text in [
-            "Remove duplicate rows before import",
-            "Validate work emails when provided",
-            "Use standard department and team names",
-            "Dates must use YYYY-MM-DD format",
-            "Commendation months: 0, 1, 3, or 6",
-            "Sanction months: 1-12",
+        for key in [
+            "import_clean_duplicates",
+            "import_clean_emails",
+            "import_clean_org_names",
+            "import_clean_dates",
+            "import_clean_commendations",
+            "import_clean_sanctions",
         ]:
-            layout.addWidget(_note_line(text, tokens().warning))
+            layout.addWidget(_note_line(t(key), tokens().warning))
         return card
 
     def _set_step(self, step):
         for index, (circle, text) in enumerate(self.step_widgets):
             if index == step:
                 circle.setStyleSheet(
-                    f"background: {tokens().brand}; color: {'#062f28' if tokens().name == THEME_DARK else '#ffffff'}; border-radius: 20px; "
+                    f"background: {tokens().brand}; color: {'#062f28' if tokens().name == THEME_DARK else '#ffffff'}; "
+                    f"border: 1px solid {tokens().brand}; border-radius: 20px; "
                     "font-size: 16px; font-weight: 800;"
                 )
                 text.setStyleSheet(f"font-size: 15px; font-weight: 800; color: {tokens().brand}; background: transparent;")
             elif index < step:
                 circle.setStyleSheet(
-                    f"background: {tokens().success_soft}; color: {tokens().success}; border-radius: 20px; "
+                    f"background: {tokens().success_soft}; color: {tokens().success}; "
+                    f"border: 1px solid {tokens().success}; border-radius: 20px; "
                     "font-size: 16px; font-weight: 800;"
                 )
                 text.setStyleSheet(f"font-size: 15px; font-weight: 800; color: {tokens().success}; background: transparent;")
             else:
                 circle.setStyleSheet(
-                    f"background: {tokens().surface_muted}; color: {tokens().text_soft}; border-radius: 20px; "
+                    f"background: {tokens().surface_muted}; color: {tokens().text_soft}; "
+                    f"border: 1px solid {tokens().border_strong}; border-radius: 20px; "
                     "font-size: 16px; font-weight: 800;"
                 )
                 text.setStyleSheet(f"font-size: 15px; font-weight: 800; color: {tokens().text_soft}; background: transparent;")
@@ -453,7 +471,7 @@ class ImportDataPage(QWidget):
             return
 
         self.current_file = path
-        self.file_label.setText(os.path.basename(path))
+        self._set_file_status(os.path.basename(path), "selected")
         self._set_step(1)
         self._validate_file(path)
 
@@ -461,6 +479,7 @@ class ImportDataPage(QWidget):
         try:
             headers, raw_rows = self._read_file(path)
             if not headers:
+                self._mark_file_invalid(path)
                 _critical(self, t("invalid_file"), t("no_header_row"))
                 self._set_step(0)
                 return
@@ -468,6 +487,7 @@ class ImportDataPage(QWidget):
             canonical_headers = {_normalize_header(header) for header in headers}
             missing = [col for col in REQUIRED_COLUMNS if col not in canonical_headers]
             if missing:
+                self._mark_file_invalid(path)
                 _critical(
                     self,
                     t("invalid_file"),
@@ -490,6 +510,7 @@ class ImportDataPage(QWidget):
                 rows.append(normalized)
 
             if not rows:
+                self._mark_file_invalid(path)
                 _warning(self, t("no_data"), t("no_employee_rows"))
                 self._set_step(0)
                 return
@@ -497,8 +518,25 @@ class ImportDataPage(QWidget):
             self.preview_data = rows
             self._show_preview(rows)
         except Exception as exc:
+            self._mark_file_invalid(path)
             _critical(self, t("error"), str(exc))
             self._set_step(0)
+
+    def _mark_file_invalid(self, path):
+        self.current_file = None
+        self.preview_data = []
+        self.review_card.setVisible(False)
+        self.preview_table.setRowCount(0)
+        while self.stats_row.count():
+            item = self.stats_row.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        self._set_file_status(f"{os.path.basename(path)} - {t('file_not_ready')}", "invalid")
+
+    def _set_file_status(self, text, kind):
+        self.file_label.setText(text)
+        self.file_label.setVisible(bool(text))
+        self.file_label.setStyleSheet(_file_status_ss(kind))
 
     def _read_file(self, path):
         extension = os.path.splitext(path)[1].lower()
@@ -686,6 +724,10 @@ class ImportDataPage(QWidget):
         self.review_card.setVisible(True)
         self._populate_stats(rows, valid, errors)
         self._populate_preview(rows)
+        file_name = os.path.basename(self.current_file) if self.current_file else t("selected_file")
+        status_key = "file_ready_with_warnings" if errors else "file_ready"
+        status_text = t(status_key, valid=len(valid), errors=len(errors))
+        self._set_file_status(f"{file_name} - {status_text}", "warning" if errors else "valid")
         self.import_btn.setEnabled(bool(valid))
         self.import_btn.setText("  " + t(
             "import_n_valid_rows",
@@ -701,9 +743,9 @@ class ImportDataPage(QWidget):
                 item.widget().deleteLater()
 
         for label, value, color, bg, icon_name in [
-            ("Total Rows", len(rows), "#2563eb", "#dbeafe", "fa5s.file-alt"),
-            ("Valid Rows", len(valid), "#16a34a", "#dcfce7", "fa5s.check-circle"),
-            ("Needs Fix", len(errors), "#dc2626", "#fee2e2", "fa5s.exclamation-triangle"),
+            (t("total_rows"), len(rows), tokens().brand, tokens().selected, "fa5s.file-alt"),
+            (t("valid_rows"), len(valid), tokens().success, tokens().success_soft, "fa5s.check-circle"),
+            (t("error_rows"), len(errors), tokens().danger, tokens().danger_soft, "fa5s.exclamation-triangle"),
         ]:
             self.stats_row.addWidget(_stat_card(label, value, color, bg, icon_name))
         self.stats_row.addStretch()
@@ -921,7 +963,7 @@ class ImportDataPage(QWidget):
     def _reset_page(self):
         self.preview_data = []
         self.current_file = None
-        self.file_label.setText("")
+        self._set_file_status("", "idle")
         self.review_card.setVisible(False)
         self.preview_table.setRowCount(0)
         while self.stats_row.count():
@@ -1134,6 +1176,23 @@ def _note_line(text, color):
     label.setWordWrap(False)
     label.setStyleSheet(f"font-size: 13px; color: {color}; background: transparent;")
     return label
+
+
+def _file_status_ss(kind):
+    t = tokens()
+    palette = {
+        "valid": (t.success_soft, t.success, t.success),
+        "warning": (t.warning_soft, t.warning, t.warning),
+        "invalid": (t.danger_soft, t.danger, t.danger),
+        "selected": (t.selected, t.brand, t.brand),
+        "idle": ("transparent", "transparent", t.text_soft),
+    }
+    bg, border, text = palette.get(kind, palette["idle"])
+    return (
+        f"font-size: 13px; color: {text}; font-weight: 700; "
+        f"background: {bg}; border: 1px solid {border}; border-radius: 8px; "
+        "padding: 8px 12px;"
+    )
 
 
 def _primary_button_ss():
