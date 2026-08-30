@@ -24,6 +24,7 @@ from src.database.models import (
 from src.ui.styles import (
     btn_primary, btn_outline, btn_ghost, table_style, scroll_ss, message_box_ss,
     enable_table_row_selection, prepare_table_cell_widget, primary_button_fg,
+    race_color, race_soft_color, race_progress_bar_ss,
 )
 from src.ui.theme import THEME_DARK, tokens
 
@@ -847,7 +848,7 @@ class DashboardPage(QWidget):
                     "label": t("sanction_delay_months"),
                     "value": sum(s.delay_months for s in active_sanctions),
                     "detail": t("total_months_added_to_races"),
-                    "color": "#f59e0b",
+                    "color": race_color("delay"),
                     "target": "sanctions_active",
                 },
                 {
@@ -922,8 +923,8 @@ class DashboardPage(QWidget):
 
         options = {
             "headcount": (t("headcount"), headcount_values, "#3b82f6"),
-            "promotions": (t("promotions"), promotion_values, "#10b981"),
-            "increments": (t("increments"), increment_values, "#f59e0b"),
+            "promotions": (t("promotions"), promotion_values, race_color("eligible")),
+            "increments": (t("increments"), increment_values, race_color("increment")),
         }
         if metric == "all":
             return labels, list(options.values())
@@ -1061,8 +1062,8 @@ class DashboardPage(QWidget):
         self.stats_layout.setVerticalSpacing(20)
         self.stat_cards = [
             self._stat_card(t("total_employees"), str(self.emp_count), self.employee_delta, t("new_ytd"), "#3b82f6", "fa5s.users"),
-            self._stat_card(t("pending_promotions"), str(self.promotion_count), self.promotion_delta, t("eligible_now_snapshot"), "#10b981", "fa5s.chart-line"),
-            self._stat_card(t("commendations"), str(self.commend_count), self.commend_delta, t("vs_previous_ytd"), "#f59e0b", "fa5s.award"),
+            self._stat_card(t("pending_promotions"), str(self.promotion_count), self.promotion_delta, t("eligible_now_snapshot"), race_color("eligible"), "fa5s.chart-line"),
+            self._stat_card(t("commendations"), str(self.commend_count), self.commend_delta, t("vs_previous_ytd"), tokens().warning, "fa5s.award"),
             self._stat_card(t("active_sanctions"), str(self.sanction_count), self.sanction_delta, t("issued_vs_previous_ytd"), "#ef4444", "fa5s.exclamation-triangle"),
         ]
         layout.addLayout(self.stats_layout)
@@ -1286,7 +1287,7 @@ class DashboardPage(QWidget):
         header.addLayout(self._filter_pills())
         layout.addLayout(header)
 
-        self.promotion_chart = LineChartWidget(self.promotion_trend_data, "#10b981")
+        self.promotion_chart = LineChartWidget(self.promotion_trend_data, race_color("eligible"))
         layout.addWidget(self.promotion_chart, 1)
         return card
 
@@ -1517,9 +1518,9 @@ class DashboardPage(QWidget):
         pl.setSpacing(12)
         pl.addWidget(self._section_label(t("promotion_pipeline")))
         pl.addLayout(self._metric_strip([
-            (t("eligible_now_short"), self.promotion_pipeline["eligible_now"], "#10b981"),
-            (t("due_in_3_months"), self.promotion_pipeline["due_three"], "#3b82f6"),
-            (t("due_in_6_months"), self.promotion_pipeline["due_six"], "#8b5cf6"),
+            (t("eligible_now_short"), self.promotion_pipeline["eligible_now"], race_color("eligible")),
+            (t("due_in_3_months"), self.promotion_pipeline["due_three"], race_color("progress")),
+            (t("due_in_6_months"), self.promotion_pipeline["due_six"], race_color("progress")),
         ]))
         layout.addWidget(pipeline)
 
@@ -1592,10 +1593,7 @@ class DashboardPage(QWidget):
         progress.setValue(value)
         progress.setFixedHeight(8)
         progress.setTextVisible(False)
-        progress.setStyleSheet(
-            f"QProgressBar {{ background: {tokens().border}; border: none; border-radius: 4px; }}"
-            "QProgressBar::chunk { background: #f59e0b; border-radius: 4px; }"
-        )
+        progress.setStyleSheet(race_progress_bar_ss("increment", radius=4))
         layout.addWidget(progress, 1)
 
         value_lbl = QLabel(str(value))
@@ -1787,8 +1785,9 @@ class DashboardPage(QWidget):
             badge_text = "Eligible" if item["eligible"] else f"{item['months_remaining']} mo"
         badge = QLabel(badge_text)
         badge.setAlignment(Qt.AlignCenter)
+        badge_status = "eligible" if item["eligible"] else "progress"
         badge.setStyleSheet(
-            f"background: {tokens().selected}; color: {tokens().brand}; border: none; "
+            f"background: {race_soft_color(badge_status)}; color: {race_color(badge_status)}; border: none; "
             "border-radius: 14px; padding: 4px 10px; font-size: 14px;"
         )
         top.addWidget(badge, 0, Qt.AlignTop)
@@ -1799,10 +1798,7 @@ class DashboardPage(QWidget):
         progress.setValue(item["progress_pct"])
         progress.setFixedHeight(10)
         progress.setTextVisible(False)
-        progress.setStyleSheet(
-            f"QProgressBar {{ background: {tokens().border}; border: none; border-radius: 5px; }}"
-            f"QProgressBar::chunk {{ background: {tokens().brand}; border-radius: 5px; }}"
-        )
+        progress.setStyleSheet(race_progress_bar_ss("eligible" if item["eligible"] else "progress", radius=5))
         layout.addWidget(progress)
 
         complete = QLabel(f"{item['progress_pct']}% complete")

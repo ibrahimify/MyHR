@@ -22,7 +22,8 @@ from src.ui.animations import install_tab_transition
 from src.ui.styles import (
     btn_primary, btn_outline, input_style, message_box_ss, pager_button_ss,
     pill_tab_ss, card_ss, enable_table_row_selection, prepare_table_cell_widget,
-    scroll_ss, table_style, primary_button_fg,
+    scroll_ss, table_style, primary_button_fg, sync_table_widget_cells,
+    level_badge_colors, race_color, race_soft_color, race_progress_bar_ss,
 )
 from src.ui.theme import THEME_DARK, tokens
 
@@ -48,12 +49,36 @@ def MESSAGE_BOX_SS():
 
 
 def _level_badge_colors():
-    return "#dbeafe", "#1d4ed8"
+    return level_badge_colors()
 
 
 def _success_badge_colors():
     tkn = tokens()
     return tkn.success_soft, tkn.success
+
+
+def _target_badge_colors():
+    return race_soft_color("eligible"), race_color("eligible")
+
+
+def _status_color(kind):
+    return race_color(kind)
+
+
+def _soft_panel_ss(kind):
+    tkn = tokens()
+    if kind == "warning":
+        bg, fg, border = tkn.warning_soft, tkn.warning, tkn.warning
+    elif kind == "reset":
+        bg = tkn.surface_muted if tkn.name == THEME_DARK else "#f4f0ff"
+        fg = "#c4b5fd" if tkn.name == THEME_DARK else "#5b21b6"
+        border = tkn.border_strong if tkn.name == THEME_DARK else "#ddd6fe"
+    else:
+        bg, fg, border = tkn.selected, tkn.brand, tkn.brand
+    return (
+        f"QFrame {{ background: {bg}; border: 1px solid {border}; border-radius: 8px; }}"
+        f"QLabel {{ background: transparent; border: none; color: {fg}; }}"
+    )
 
 
 def _info_panel_ss(object_name):
@@ -324,10 +349,10 @@ class EligibleTab(QWidget):
         self.current_page = 1
 
         # Stat cards
-        for label, val, color, icon_name, bg in [
-            (t("eligible_now"),  eligible_count, "#10b981", "fa5s.check-circle", "#dcfce7"),
-            (t("eligible_soon"), soon_count,     "#f59e0b", "fa5s.clock",        "#fef3c7"),
-            (t("in_progress"),   progress_count, "#2563eb", "fa5s.chart-line",   "#dbeafe"),
+        for label, val, status, icon_name in [
+            (t("eligible_now"), eligible_count, "eligible", "fa5s.check-circle"),
+            (t("eligible_soon"), soon_count, "soon", "fa5s.clock"),
+            (t("in_progress"), progress_count, "progress", "fa5s.chart-line"),
         ]:
             card = QFrame()
             card.setObjectName("PromoCard")
@@ -339,9 +364,12 @@ class EligibleTab(QWidget):
             ico_box = QLabel()
             ico_box.setFixedSize(48, 48)
             ico_box.setAlignment(Qt.AlignCenter)
-            if tokens().name == THEME_DARK:
-                bg = tokens().success_soft if color == "#10b981" else tokens().warning_soft if color == "#f59e0b" else tokens().selected
-                color = tokens().success if color == "#10b981" else tokens().warning if color == "#f59e0b" else tokens().brand
+            if status == "eligible":
+                bg, color = race_soft_color("eligible"), race_color("eligible")
+            elif status == "soon":
+                bg, color = race_soft_color("soon"), race_color("soon")
+            else:
+                bg, color = race_soft_color("progress"), race_color("progress")
             ico_box.setStyleSheet(f"background: {bg}; border-radius: 8px;")
             ico_box.setPixmap(qta.icon(icon_name, color=color).pixmap(22, 22))
             txt = QVBoxLayout()
@@ -377,6 +405,7 @@ class EligibleTab(QWidget):
             self._resize_columns()
             for ri, row in enumerate(page_rows):
                 self._set_eligible_row(ri, row)
+            sync_table_widget_cells(self.table)
         finally:
             self.table.setUpdatesEnabled(True)
 
@@ -401,8 +430,10 @@ class EligibleTab(QWidget):
         name_w.setToolTip(f"{row['name']} ({row['emp_id']})")
         self.table.setCellWidget(ri, 0, name_w)
 
-        self.table.setItem(ri, 1, self._badge_item(row["current"], "#dbeafe", "#1e40af"))
-        self.table.setItem(ri, 2, self._badge_item(row["next"], "#dcfce7", "#166534"))
+        level_bg, level_fg = _level_badge_colors()
+        target_bg, target_fg = _target_badge_colors()
+        self.table.setItem(ri, 1, self._badge_item(row["current"], level_bg, level_fg))
+        self.table.setItem(ri, 2, self._badge_item(row["next"], target_bg, target_fg))
         self._set_text_item(ri, 3, f"{row['elapsed']} mo")
         self._set_text_item(ri, 4, f"-{row['comm']} mo")
         self._set_text_item(ri, 5, f"+{row['sanction']} mo")
@@ -421,16 +452,8 @@ class EligibleTab(QWidget):
         bar.setValue(pct)
         bar.setFixedHeight(8)
         bar.setTextVisible(False)
-        if mr == 0:
-            bar_color = "#10b981"
-        elif mr <= 6:
-            bar_color = "#f59e0b"
-        else:
-            bar_color = "#3b82f6"
-        bar.setStyleSheet(
-            f"QProgressBar {{ background: {tokens().border}; border-radius: 4px; border: none; }}"
-            f" QProgressBar::chunk {{ background: {bar_color}; border-radius: 4px; }}"
-        )
+        bar_status = "eligible" if mr == 0 else "soon" if mr <= 6 else "progress"
+        bar.setStyleSheet(race_progress_bar_ss(bar_status, radius=4))
         prog_l.addWidget(bar)
         status_row = QHBoxLayout()
         status_row.setContentsMargins(0, 0, 0, 0)
@@ -439,15 +462,15 @@ class EligibleTab(QWidget):
         status_icon.setFixedSize(14, 14)
         if mr == 0:
             lbl_txt = t("eligible_now")
-            lbl_color = "#10b981"
+            lbl_color = _status_color("eligible")
             status_icon.setPixmap(qta.icon("fa5s.check-circle", color=lbl_color).pixmap(13, 13))
         elif mr <= 6:
             lbl_txt = t("months_remaining_count", count=mr)
-            lbl_color = "#f59e0b"
+            lbl_color = _status_color("soon")
             status_icon.setPixmap(qta.icon("fa5s.clock", color=lbl_color).pixmap(13, 13))
         else:
             lbl_txt = t("months_remaining_count", count=mr)
-            lbl_color = tokens().text_muted
+            lbl_color = _status_color("progress")
             status_icon.setPixmap(qta.icon("fa5s.chart-line", color=lbl_color).pixmap(13, 13))
         p_lbl = QLabel(lbl_txt)
         p_lbl.setStyleSheet(f"font-size: 12px; color: {lbl_color};")
@@ -501,7 +524,7 @@ class EligibleTab(QWidget):
         item = QTableWidgetItem(text)
         item.setBackground(QColor(bg))
         item.setForeground(QColor(fg))
-        item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        item.setTextAlignment(Qt.AlignCenter)
         item.setToolTip(text)
         return item
 
@@ -670,17 +693,19 @@ class HistoryTab(QWidget):
             width = max(760, self.table.viewport().width())
         except RuntimeError:
             return
-        base = [205, 300, 122, 92, 150, 120]
+        base = [220, 300, 132, 88, 176, 136]
         available = max(760, width - 8)
         total = sum(base)
         widths = list(base)
         if available > total:
             extra = available - total
-            widths[0] += int(extra * 0.35)
-            widths[1] += extra - int(extra * 0.35)
+            widths[0] += int(extra * 0.32)
+            widths[1] += int(extra * 0.36)
+            widths[4] += int(extra * 0.18)
+            widths[5] += extra - int(extra * 0.32) - int(extra * 0.36) - int(extra * 0.18)
         elif available < total:
             scale = available / total
-            minimums = [170, 235, 100, 76, 118, 96]
+            minimums = [178, 238, 106, 72, 132, 112]
             widths = [max(minimums[i], int(base[i] * scale)) for i in range(len(base))]
         for col, col_width in enumerate(widths):
             try:
@@ -773,6 +798,7 @@ class HistoryTab(QWidget):
             for i, row in enumerate(page_rows):
                 self._set_history_row(i, row)
             self._resize_columns()
+            sync_table_widget_cells(self.table)
         finally:
             self.table.setUpdatesEnabled(True)
 
@@ -803,6 +829,7 @@ class HistoryTab(QWidget):
             pl.setSpacing(6)
             fl = QLabel(row["from"])
             fl.setFixedHeight(28)
+            fl.setMinimumWidth(90)
             fl.setAlignment(Qt.AlignCenter)
             level_bg, level_fg = _level_badge_colors()
             fl.setStyleSheet(f"background: {level_bg}; color: {level_fg}; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 700;")
@@ -810,10 +837,10 @@ class HistoryTab(QWidget):
             arrow.setPixmap(qta.icon("fa5s.arrow-right", color=tokens().success).pixmap(12, 12))
             tl = QLabel(row["to"])
             tl.setFixedHeight(28)
-            tl.setMinimumWidth(132)
+            tl.setMinimumWidth(120)
             tl.setAlignment(Qt.AlignCenter)
             success_bg, success_fg = _success_badge_colors()
-            tl.setStyleSheet(f"background: {success_bg}; color: {success_fg}; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 800;")
+            tl.setStyleSheet(f"background: {success_bg}; color: {success_fg}; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 700;")
             promo_w.setToolTip(row.get("details") or f"{row['from']} -> {row['to']}")
             pl.addWidget(fl)
             pl.addWidget(arrow)
@@ -824,13 +851,17 @@ class HistoryTab(QWidget):
             pl.setContentsMargins(8, 5, 8, 5)
             pl.setSpacing(6)
             fl = QLabel(row["from"])
+            fl.setMinimumWidth(44)
+            fl.setAlignment(Qt.AlignCenter)
             level_bg, level_fg = _level_badge_colors()
-            fl.setStyleSheet(f"background: {level_bg}; color: {level_fg}; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600;")
+            fl.setStyleSheet(f"background: {level_bg}; color: {level_fg}; border-radius: 6px; padding: 3px 9px; font-size: 12px; font-weight: 700;")
             arrow = QLabel()
             arrow.setPixmap(qta.icon("fa5s.arrow-right", color=tokens().success).pixmap(12, 12))
             tl = QLabel(row["to"])
+            tl.setMinimumWidth(44)
+            tl.setAlignment(Qt.AlignCenter)
             success_bg, success_fg = _success_badge_colors()
-            tl.setStyleSheet(f"background: {success_bg}; color: {success_fg}; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600;")
+            tl.setStyleSheet(f"background: {success_bg}; color: {success_fg}; border-radius: 6px; padding: 3px 9px; font-size: 12px; font-weight: 700;")
             promo_w.setToolTip(f"{row['from']} -> {row['to']}")
             pl.addWidget(fl)
             pl.addWidget(arrow)
@@ -999,40 +1030,41 @@ class RulesTab(QWidget):
 
     def _modifier_card(self):
         card = QFrame()
-        card.setStyleSheet("QFrame { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; } QLabel { background: transparent; border: none; }")
+        card.setStyleSheet(_soft_panel_ss("warning"))
         layout = QHBoxLayout(card)
         layout.setContentsMargins(24, 22, 24, 22)
         layout.setSpacing(16)
         icon = QLabel()
-        icon.setPixmap(qta.icon("fa5s.clock", color="#f59e0b").pixmap(20, 20))
+        icon.setPixmap(qta.icon("fa5s.clock", color=tokens().warning).pixmap(20, 20))
         layout.addWidget(icon, alignment=Qt.AlignTop)
         text = QVBoxLayout()
         text.setSpacing(8)
         title = QLabel("Track Modifiers (Optional)")
-        title.setStyleSheet("font-size: 16px; font-weight: 800; color: #92400e;")
+        title.setStyleSheet(f"font-size: 16px; font-weight: 800; color: {tokens().warning};")
         text.addWidget(title)
-        text.addWidget(_mini_line("fa5s.award", "Commendations reduce the months remaining in the current race.", "#92400e"))
-        text.addWidget(_mini_line("fa5s.exclamation-triangle", "Sanctions add delay months to the promotion timeline.", "#92400e"))
-        text.addWidget(_mini_line("fa5s.cog", "Configure awards and sanction impacts on their own pages.", "#92400e"))
+        text.addWidget(_mini_line("fa5s.award", "Commendations reduce the months remaining in the current race.", tokens().warning))
+        text.addWidget(_mini_line("fa5s.exclamation-triangle", "Sanctions add delay months to the promotion timeline.", tokens().warning))
+        text.addWidget(_mini_line("fa5s.cog", "Configure awards and sanction impacts on their own pages.", tokens().warning))
         layout.addLayout(text, 1)
         return card
 
     def _reset_policy_card(self):
         card = QFrame()
-        card.setStyleSheet("QFrame { background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 8px; } QLabel { background: transparent; border: none; }")
+        card.setStyleSheet(_soft_panel_ss("reset"))
         layout = QHBoxLayout(card)
         layout.setContentsMargins(24, 22, 24, 22)
         layout.setSpacing(16)
         icon = QLabel()
-        icon.setPixmap(qta.icon("fa5s.chart-line", color="#7e22ce").pixmap(20, 20))
+        reset_color = "#c4b5fd" if tokens().name == THEME_DARK else "#5b21b6"
+        icon.setPixmap(qta.icon("fa5s.chart-line", color=reset_color).pixmap(20, 20))
         layout.addWidget(icon, alignment=Qt.AlignTop)
         text = QVBoxLayout()
         text.setSpacing(8)
         title = QLabel("Reset Policy")
-        title.setStyleSheet("font-size: 16px; font-weight: 800; color: #6b21a8;")
+        title.setStyleSheet(f"font-size: 16px; font-weight: 800; color: {reset_color};")
         body = QLabel("After a promotion, the employee starts a new race from month 0. The timer for the next promotion begins from the promotion date.")
         body.setWordWrap(True)
-        body.setStyleSheet("font-size: 14px; color: #6b21a8;")
+        body.setStyleSheet(f"font-size: 14px; color: {reset_color};")
         text.addWidget(title)
         text.addWidget(body)
         layout.addLayout(text, 1)
@@ -1063,7 +1095,7 @@ class RuleEditDialog(QDialog):
         layout.addWidget(_bold_label("Edit Promotion Rule", size=17))
 
         self.transition_lbl = QLabel("")
-        self.transition_lbl.setStyleSheet("font-size: 14px; color: #2563eb; font-weight: 600;")
+        self.transition_lbl.setStyleSheet(f"font-size: 14px; color: {tokens().brand}; font-weight: 600;")
         layout.addWidget(self.transition_lbl)
 
         self.months_spin = QSpinBox()
@@ -1087,7 +1119,7 @@ class RuleEditDialog(QDialog):
         layout.addLayout(form)
 
         note = QLabel("Commendations and sanctions modify the race duration. The salary increase is applied to the employee base salary when this promotion is approved.")
-        note.setStyleSheet("font-size: 12px; color: #9ca3af;")
+        note.setStyleSheet(f"font-size: 12px; color: {tokens().text_muted};")
         note.setWordWrap(True)
         layout.addWidget(note)
 

@@ -128,6 +128,42 @@ def primary_button_fg():
     return "#062f28" if tokens().name == THEME_DARK else "#ffffff"
 
 
+def level_badge_colors():
+    if tokens().name == THEME_DARK:
+        return "#18243a", "#93c5fd"
+    return "#dbeafe", "#1d4ed8"
+
+
+def race_color(status="progress"):
+    t = tokens()
+    if status in {"eligible", "complete", "completed", "success"}:
+        return t.success
+    if status in {"soon", "warning", "delay", "delayed", "increment"}:
+        return t.warning
+    if t.name == THEME_DARK:
+        return "#93c5fd"
+    return "#2563eb"
+
+
+def race_soft_color(status="progress"):
+    t = tokens()
+    if status in {"eligible", "complete", "completed", "success"}:
+        return t.success_soft
+    if status in {"soon", "warning", "delay", "delayed", "increment"}:
+        return t.warning_soft
+    if t.name == THEME_DARK:
+        return "#18243a"
+    return "#dbeafe"
+
+
+def race_progress_bar_ss(status="progress", radius=5):
+    t = tokens()
+    return (
+        f"QProgressBar {{ background: {t.border}; border: none; border-radius: {radius}px; }}"
+        f"QProgressBar::chunk {{ background: {race_color(status)}; border-radius: {radius}px; }}"
+    )
+
+
 def btn_blue(h=36):
     return btn_primary(h)
 

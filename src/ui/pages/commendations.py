@@ -39,6 +39,8 @@ from src.ui.styles import (
     polish_combo_box,
     table_style,
     primary_button_fg,
+    prepare_table_cell_widget,
+    sync_table_widget_cells,
 )
 from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import (
@@ -58,16 +60,32 @@ CATEGORIES = {
 
 
 def _category_colors(category_id):
-    category = CATEGORIES.get(category_id, {})
     if tokens().name != THEME_DARK:
-        return category.get("bg", tokens().surface_muted), category.get("color", tokens().text)
+        if category_id == 1:
+            return tokens().success_soft, tokens().success
+        if category_id == 2:
+            return "#e0f2fe", "#0369a1"
+        if category_id == 3:
+            return "#f5f3ff", "#6d28d9"
+        return tokens().surface_muted, tokens().text
     if category_id == 1:
-        return tokens().success_soft, tokens().success
+        return "#123525", "#34d399"
     if category_id == 2:
-        return tokens().selected, tokens().brand
+        return "#162f4a", "#60a5fa"
     if category_id == 3:
-        return tokens().surface_muted, "#c4b5fd"
+        return "#2d2144", "#a78bfa"
     return tokens().surface_muted, tokens().text_muted
+
+
+def _category_label(category_id):
+    category = CATEGORIES.get(category_id)
+    if not category:
+        return f"Category {category_id}"
+    return t(category["label_key"]).split(" (", 1)[0]
+
+
+def _impact_label(months):
+    return t("months_faster", count=abs(months))
 
 
 def PAGE_BG():
@@ -99,7 +117,7 @@ def COMBO_SS():
 
 
 def TABLE_SS():
-    return table_style()
+    return table_style(selected_bg=tokens().selected, hover_bg=tokens().hover)
 
 
 def MESSAGE_BOX_SS():
@@ -131,12 +149,15 @@ class CommendationsPage(QWidget):
         # Tabs
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet(pill_tab_ss())
+        self.tabs.tabBar().setExpanding(False)
+        self.tabs.tabBar().setUsesScrollButtons(False)
+        self.tabs.tabBar().setElideMode(Qt.ElideRight)
 
         self.issue_tab   = IssueCommendationTab(self.user, self._on_issued)
         self.history_tab = CommendationHistoryTab(self.user)
 
-        self.tabs.addTab(self.issue_tab,   t("issue_commendation"))
-        self.tabs.addTab(self.history_tab, t("commendation_history"))
+        self.tabs.addTab(self.issue_tab,   t("commendation_tab_issue"))
+        self.tabs.addTab(self.history_tab, t("commendation_tab_history"))
         self.tabs.currentChanged.connect(lambda i: self.history_tab.refresh() if i == 1 else None)
         install_tab_transition(self.tabs)
         layout.addWidget(self.tabs, 1)
@@ -176,7 +197,7 @@ class IssueCommendationTab(QWidget):
         content.setStyleSheet("background: transparent;")
         main = QHBoxLayout(content)
         main.setContentsMargins(0, 0, 0, 0)
-        main.setSpacing(30)
+        main.setSpacing(24)
         main.setAlignment(Qt.AlignTop)
 
         # Left form
@@ -188,8 +209,8 @@ class IssueCommendationTab(QWidget):
         mode_card.setObjectName("Card")
         mode_card.setStyleSheet(CARD_SS())
         mc = QVBoxLayout(mode_card)
-        mc.setContentsMargins(30, 28, 30, 28)
-        mc.setSpacing(24)
+        mc.setContentsMargins(24, 22, 24, 24)
+        mc.setSpacing(18)
         mc_title = QLabel(t("commendation_type"))
         mc_title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text}; background: transparent;")
         mc.addWidget(mc_title)
@@ -200,14 +221,14 @@ class IssueCommendationTab(QWidget):
         self.single_btn = QPushButton(t("single_employee"))
         self.single_btn.setIcon(qta.icon("fa5s.user", color=tokens().brand))
         self.single_btn.setIconSize(QSize(28, 28))
-        self.single_btn.setFixedHeight(150)
+        self.single_btn.setFixedHeight(104)
         self.single_btn.setCursor(Qt.PointingHandCursor)
         self.single_btn.clicked.connect(lambda: self._set_mode("single"))
 
         self.bulk_btn = QPushButton(t("team_award"))
         self.bulk_btn.setIcon(qta.icon("fa5s.users", color=tokens().text_muted))
         self.bulk_btn.setIconSize(QSize(28, 28))
-        self.bulk_btn.setFixedHeight(150)
+        self.bulk_btn.setFixedHeight(104)
         self.bulk_btn.setCursor(Qt.PointingHandCursor)
         self.bulk_btn.clicked.connect(lambda: self._set_mode("bulk"))
 
@@ -221,8 +242,8 @@ class IssueCommendationTab(QWidget):
         details_card.setObjectName("Card")
         details_card.setStyleSheet(CARD_SS())
         dc = QVBoxLayout(details_card)
-        dc.setContentsMargins(30, 28, 30, 28)
-        dc.setSpacing(16)
+        dc.setContentsMargins(24, 22, 24, 24)
+        dc.setSpacing(14)
 
         dc_title = QLabel(t("commendation_details"))
         dc_title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text}; background: transparent;")
@@ -245,7 +266,7 @@ class IssueCommendationTab(QWidget):
         _polish_combo(self.cat_combo)
         self.cat_combo.addItem(t("select_category_tier"), None)
         for cat_id, cat in CATEGORIES.items():
-            self.cat_combo.addItem(t(cat["label_key"]), cat_id)
+            self.cat_combo.addItem(f"{_category_label(cat_id)} - {_impact_label(cat['months'])}", cat_id)
         dc.addWidget(cat_lbl)
         dc.addWidget(self.cat_combo)
         cat_hint = QLabel(t("higher_categories_hint"))
@@ -267,7 +288,7 @@ class IssueCommendationTab(QWidget):
         emp_card.setObjectName("Card")
         emp_card.setStyleSheet(CARD_SS())
         ec = QVBoxLayout(emp_card)
-        ec.setContentsMargins(30, 28, 30, 28)
+        ec.setContentsMargins(24, 22, 24, 24)
         ec.setSpacing(14)
 
         self.emp_card_title = QLabel(t("select_employee"))
@@ -279,6 +300,7 @@ class IssueCommendationTab(QWidget):
         self.single_search.setPlaceholderText(t("search_employees"))
         self.single_search.setClearButtonEnabled(True)
         self.single_search.setStyleSheet(INPUT_SS())
+        self.single_search.addAction(qta.icon("fa5s.search", color=tokens().text_soft), QLineEdit.LeadingPosition)
         self.single_search.textChanged.connect(self._filter_single_employees)
         ec.addWidget(self.single_search)
 
@@ -294,6 +316,7 @@ class IssueCommendationTab(QWidget):
         self.bulk_search.setFixedHeight(40)
         self.bulk_search.setPlaceholderText(t("search_employees"))
         self.bulk_search.setStyleSheet(INPUT_SS())
+        self.bulk_search.addAction(qta.icon("fa5s.search", color=tokens().text_soft), QLineEdit.LeadingPosition)
         self.bulk_search.textChanged.connect(self._filter_bulk_employees)
         ec.addWidget(self.bulk_search)
 
@@ -321,6 +344,7 @@ class IssueCommendationTab(QWidget):
         right = QVBoxLayout()
         right.setSpacing(16)
         right.setAlignment(Qt.AlignTop)
+        right.setSizeConstraint(QVBoxLayout.SetMinimumSize)
 
         # Category impact info
         impact_card = QFrame()
@@ -329,8 +353,8 @@ class IssueCommendationTab(QWidget):
             "QLabel { background: transparent; border: none; }"
         )
         ic = QVBoxLayout(impact_card)
-        ic.setContentsMargins(30, 28, 30, 28)
-        ic.setSpacing(14)
+        ic.setContentsMargins(22, 20, 22, 22)
+        ic.setSpacing(12)
 
         impact_head = QHBoxLayout()
         impact_icon = QLabel()
@@ -347,6 +371,7 @@ class IssueCommendationTab(QWidget):
         ic.addWidget(intro)
 
         for cat_id, cat in CATEGORIES.items():
+            cat_bg, cat_fg = _category_colors(cat_id)
             row = QFrame()
             row_bg = tokens().surface if tokens().name != THEME_DARK else tokens().surface_raised
             row.setStyleSheet(
@@ -354,15 +379,17 @@ class IssueCommendationTab(QWidget):
                 "QLabel { background: transparent; border: none; }"
             )
             rl = QVBoxLayout(row)
-            rl.setContentsMargins(16, 14, 16, 14)
+            rl.setContentsMargins(14, 12, 14, 12)
             top = QHBoxLayout()
-            name = QLabel(t(cat["label_key"]))
-            name.setStyleSheet(f"font-size: 16px; font-weight: 800; color: {cat['color']}; background: transparent;")
-            badge = QLabel(f"-{abs(cat['months'])} mo")
-            badge.setText(t("negative_month_count", count=abs(cat["months"])))
-            badge.setStyleSheet(f"background: {cat['bg']}; color: {cat['color']}; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: bold;")
+            name = QLabel(_category_label(cat_id))
+            name.setStyleSheet(f"font-size: 15px; font-weight: 800; color: {tokens().text}; background: transparent;")
+            badge = QLabel(_impact_label(cat["months"]))
+            badge.setMinimumWidth(96)
+            badge.setAlignment(Qt.AlignCenter)
+            badge.setStyleSheet(f"background: {cat_bg}; color: {cat_fg}; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700;")
             desc = QLabel(t(cat["desc_key"]))
-            desc.setStyleSheet(f"font-size: 12px; color: {cat['color']}; background: transparent;")
+            desc.setWordWrap(True)
+            desc.setStyleSheet(f"font-size: 12px; color: {tokens().text_muted}; background: transparent;")
             top.addWidget(name)
             top.addStretch()
             top.addWidget(badge)
@@ -376,8 +403,8 @@ class IssueCommendationTab(QWidget):
         actions_card.setObjectName("Card")
         actions_card.setStyleSheet(CARD_SS())
         ac = QVBoxLayout(actions_card)
-        ac.setContentsMargins(30, 28, 30, 28)
-        ac.setSpacing(16)
+        ac.setContentsMargins(22, 20, 22, 22)
+        ac.setSpacing(14)
         actions_title = QLabel(t("actions"))
         actions_title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text}; background: transparent;")
         ac.addWidget(actions_title)
@@ -405,7 +432,7 @@ class IssueCommendationTab(QWidget):
             "QLabel { background: transparent; border: none; }"
         )
         rc = QVBoxLayout(rules_card)
-        rc.setContentsMargins(30, 28, 30, 28)
+        rc.setContentsMargins(22, 20, 22, 22)
         rc.setSpacing(12)
         rule_head = QHBoxLayout()
         rule_icon = QLabel()
@@ -442,11 +469,11 @@ class IssueCommendationTab(QWidget):
         self.mode = mode
         active = (
             f"QPushButton {{ background: {tokens().selected}; color: {tokens().brand}; border: 2px solid {tokens().brand};"
-            " border-radius: 8px; font-size: 17px; font-weight: 800; padding: 0 14px; }}"
+            " border-radius: 8px; font-size: 16px; font-weight: 800; padding: 0 14px; }"
         )
         inactive = (
             f"QPushButton {{ background: {tokens().surface}; color: {tokens().text}; border: 1px solid {tokens().border};"
-            " border-radius: 8px; font-size: 17px; font-weight: 800; padding: 0 14px; }}"
+            " border-radius: 8px; font-size: 16px; font-weight: 800; padding: 0 14px; }"
             f"QPushButton:hover {{ background: {tokens().hover}; }}"
         )
         self.single_btn.setStyleSheet(active if mode == "single" else inactive)
@@ -567,8 +594,8 @@ class IssueCommendationTab(QWidget):
             item.setToolTip(t("max_commendations_reached") if not emp["can"] else emp["label"])
             if not emp["can"]:
                 item.setFlags(Qt.NoItemFlags)
-                item.setBackground(QColor("#fef2f2"))
-                item.setForeground(QColor("#991b1b"))
+                item.setBackground(QColor(tokens().danger_soft))
+                item.setForeground(QColor(tokens().danger))
             self.single_list.addItem(item)
 
     def _select_single_employee_item(self, item):
@@ -729,7 +756,7 @@ class CommendationHistoryTab(QWidget):
         hl = QHBoxLayout(header)
         hl.setContentsMargins(30, 28, 30, 28)
         icon = QLabel()
-        icon.setPixmap(qta.icon("fa5s.award", color="#d97706").pixmap(18, 18))
+        icon.setPixmap(qta.icon("fa5s.award", color=tokens().warning).pixmap(18, 18))
         title = QLabel(t("recent_commendations"))
         title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text}; background: transparent;")
         hl.addWidget(icon)
@@ -744,17 +771,42 @@ class CommendationHistoryTab(QWidget):
             t("recipients"), t("issued_by"), t("date")
         ])
         self.table.setStyleSheet(TABLE_SS())
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Fixed)
         for col in range(self.table.columnCount()):
             header_item = self.table.horizontalHeaderItem(col)
             if header_item:
                 header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        enable_table_row_selection(self.table)
+        enable_table_row_selection(self.table, selected_bg=tokens().selected)
         cl.addWidget(self.table)
         cl.addWidget(self._pager())
-        layout.addWidget(card)
+        layout.addWidget(card, 1)
+
+    def _resize_columns(self):
+        try:
+            width = max(780, self.table.viewport().width())
+        except RuntimeError:
+            return
+        base = [178, 210, 126, 132, 260, 146, 108]
+        available = max(760, width - 8)
+        total = sum(base)
+        widths = list(base)
+        if available > total:
+            extra = available - total
+            widths[1] += int(extra * 0.30)
+            widths[4] += int(extra * 0.48)
+            widths[5] += extra - int(extra * 0.30) - int(extra * 0.48)
+        elif available < total:
+            scale = available / total
+            minimums = [168, 156, 112, 116, 170, 118, 96]
+            widths = [max(minimums[i], int(base[i] * scale)) for i in range(len(base))]
+        for col, col_width in enumerate(widths):
+            self.table.setColumnWidth(col, col_width)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._resize_columns()
 
     def refresh(self):
         session = get_session()
@@ -778,8 +830,8 @@ class CommendationHistoryTab(QWidget):
                 rows.append({
                     "ref": c.commendation_ref,
                     "title": c.title,
-                    "category": t(cat.get("label_key", "category")) if cat else f"Cat {c.category}",
-                    "impact": t("negative_month_count", count=abs(c.months_impact)),
+                    "category": _category_label(c.category),
+                    "impact": _impact_label(c.months_impact),
                     "recipients": recipients,
                     "issued_by": issuer.full_name if issuer else "-",
                     "date": c.issued_at.strftime("%Y-%m-%d") if c.issued_at else "-",
@@ -807,16 +859,11 @@ class CommendationHistoryTab(QWidget):
                 title_item.setToolTip(row["title"])
                 self.table.setItem(i, 1, title_item)
 
-                cat_bg, cat_fg = _category_colors(row["cat_id"])
-                cat_item = QTableWidgetItem(row["category"])
-                cat_item.setBackground(QColor(cat_bg))
-                cat_item.setForeground(QColor(cat_fg))
-                cat_item.setToolTip(row["category"])
-                self.table.setItem(i, 2, cat_item)
+                self.table.setCellWidget(i, 2, self._badge_cell(row["category"], *_category_colors(row["cat_id"])))
 
                 impact_item = QTableWidgetItem(row["impact"])
-                impact_item.setIcon(qta.icon("fa5s.clock", color="#10b981"))
-                impact_item.setForeground(QColor("#10b981"))
+                impact_item.setIcon(qta.icon("fa5s.clock", color=tokens().success))
+                impact_item.setForeground(QColor(tokens().success))
                 impact_item.setToolTip(row["impact"])
                 self.table.setItem(i, 3, impact_item)
 
@@ -824,8 +871,27 @@ class CommendationHistoryTab(QWidget):
                     item = QTableWidgetItem(row[key])
                     item.setToolTip(row[key])
                     self.table.setItem(i, col, item)
+            self._resize_columns()
+            sync_table_widget_cells(self.table, selected_bg=tokens().selected)
         finally:
             self.table.setUpdatesEnabled(True)
+
+    def _badge_cell(self, text, bg, fg):
+        cell = prepare_table_cell_widget(QWidget())
+        layout = QHBoxLayout(cell)
+        layout.setContentsMargins(12, 0, 12, 0)
+        layout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        badge = QLabel(text)
+        badge.setToolTip(text)
+        badge.setMinimumWidth(84)
+        badge.setAlignment(Qt.AlignCenter)
+        badge.setStyleSheet(
+            f"background: {bg}; color: {fg}; border: none; "
+            "border-radius: 7px; padding: 4px 10px; font-size: 12px; font-weight: 700;"
+        )
+        layout.addWidget(badge)
+        layout.addStretch()
+        return cell
 
     def _previous_page(self):
         if self.current_page <= 1:

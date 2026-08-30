@@ -39,6 +39,10 @@ from src.ui.styles import (
     table_style,
     polish_combo_box,
     primary_button_fg,
+    level_badge_colors,
+    race_color,
+    race_soft_color,
+    race_progress_bar_ss,
 )
 from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import (
@@ -128,11 +132,12 @@ def _warning_ss():
 
 
 def _level_badge_ss():
-    return "background: #dbeafe; color: #1d4ed8; border-radius: 8px; font-size: 16px; font-weight: 700; border: none;"
+    bg, fg = level_badge_colors()
+    return f"background: {bg}; color: {fg}; border-radius: 8px; font-size: 16px; font-weight: 700; border: none;"
 
 
 def _level_badge_colors():
-    return "#dbeafe", "#1d4ed8"
+    return level_badge_colors()
 
 
 def _admin_badge_colors():
@@ -154,9 +159,9 @@ def _semantic_pair(kind="muted"):
     if kind == "level":
         return _level_badge_colors()
     if kind == "success":
-        return tkn.success_soft, tkn.success
+        return race_soft_color("eligible"), race_color("eligible")
     if kind == "warning":
-        return tkn.warning_soft, tkn.warning
+        return race_soft_color("soon"), race_color("soon")
     if kind == "danger":
         return tkn.danger_soft, tkn.danger
     return tkn.surface_muted, tkn.text_muted
@@ -164,14 +169,14 @@ def _semantic_pair(kind="muted"):
 
 def _soft_bg_for_color(color):
     tkn = tokens()
-    if color in {"#10b981", "#166534"}:
+    if color in {"#10b981", "#166534", tkn.success, race_color("eligible")}:
         return tkn.success_soft
-    if color == "#f59e0b":
+    if color in {tkn.warning, race_color("increment"), race_color("delay")}:
         return tkn.warning_soft
-    if color == "#ef4444":
+    if color in {"#ef4444", tkn.danger}:
         return tkn.danger_soft
-    if color == "#2563eb":
-        return "#dbeafe" if tkn.name != THEME_DARK else tkn.selected
+    if color in {"#2563eb", race_color("progress")}:
+        return race_soft_color("progress")
     return tkn.surface_muted
 
 
@@ -2226,7 +2231,7 @@ class EmployeeProfileView(QWidget):
                 promo.promoted_at or datetime.min,
                 self._event_row(
                     "fa5s.chart-line",
-                    "#10b981",
+                    race_color("eligible"),
                     t("promotion_event_title", from_level=display_title_name(promo.from_title), to_level=display_title_name(promo.to_title)),
                     promo.notes or promo.basis.replace("_", " ").title(),
                     promo.promoted_at.strftime("%Y-%m-%d") if promo.promoted_at else "-",
@@ -2237,7 +2242,7 @@ class EmployeeProfileView(QWidget):
                 inc.applied_at or datetime.min,
                 self._event_row(
                     "fa5s.percentage",
-                    "#2563eb",
+                    race_color("increment"),
                     t("sub_race_increment_event"),
                     inc.notes or t("annual_increment"),
                     inc.applied_at.strftime("%Y-%m-%d") if inc.applied_at else "-",
@@ -2245,9 +2250,9 @@ class EmployeeProfileView(QWidget):
             ))
         for _, widget in sorted(timeline, key=lambda item: item[0], reverse=True):
             body.addWidget(widget)
-        body.addWidget(self._event_row("fa5s.chart-line", "#10b981", t("initial_position"), t("initial_hire_degree", degree=emp.degree), emp.join_date.strftime("%Y-%m-%d") if emp.join_date else "-"))
+        body.addWidget(self._event_row("fa5s.chart-line", race_color("eligible"), t("initial_position"), t("initial_hire_degree", degree=emp.degree), emp.join_date.strftime("%Y-%m-%d") if emp.join_date else "-"))
         if race["has_next_level"]:
-            body.addWidget(self._event_row("fa5s.clock", "#2563eb", t("current_promotion_race"), t("current_race_progress", percent=race["progress_pct"], months=race["months_remaining"]), t("live_label")))
+            body.addWidget(self._event_row("fa5s.clock", race_color("progress"), t("current_promotion_race"), t("current_race_progress", percent=race["progress_pct"], months=race["months_remaining"]), t("live_label")))
         layout.addWidget(card)
         layout.addStretch()
         return page
@@ -2283,7 +2288,8 @@ class EmployeeProfileView(QWidget):
         bar.setValue(sub_race.get("progress_pct") or 0)
         bar.setFixedHeight(12)
         bar.setTextVisible(False)
-        bar.setStyleSheet(f"QProgressBar {{ background: {tokens().surface_muted}; border-radius: 6px; border: none; }} QProgressBar::chunk {{ background: {tokens().warning}; border-radius: 6px; }}")
+        bar_status = "eligible" if sub_race.get("progress_pct", 0) >= 100 else "progress"
+        bar.setStyleSheet(race_progress_bar_ss(bar_status, radius=6))
         bar.setToolTip(middle_text)
         row.addWidget(bar, 1)
         sbg, sfg = _semantic_pair("success")
@@ -2369,7 +2375,7 @@ class EmployeeProfileView(QWidget):
         body = card.layout()
         if emp.commendations:
             for comm in sorted(emp.commendations, key=lambda c: c.issued_at or datetime.min, reverse=True):
-                body.addWidget(self._event_row("fa5s.award", "#f59e0b", f"{comm.title} ({comm.commendation_ref})", f"{t('commendation_category')} {comm.category} - {abs(comm.months_impact)}", comm.issued_at.strftime("%Y-%m-%d") if comm.issued_at else "-"))
+                body.addWidget(self._event_row("fa5s.award", tokens().warning, f"{comm.title} ({comm.commendation_ref})", f"{t('commendation_category')} {comm.category} - {abs(comm.months_impact)}", comm.issued_at.strftime("%Y-%m-%d") if comm.issued_at else "-"))
         else:
             body.addWidget(self._empty_row(t("no_commendations")))
         layout.addWidget(card)

@@ -31,7 +31,7 @@ from src.core.app_settings import app_settings, company_name
 from src.ui.animations import install_tab_transition
 from src.ui.styles import (
     pill_tab_ss, enable_table_row_selection, prepare_table_cell_widget,
-    polish_combo_box, table_style, primary_button_fg,
+    polish_combo_box, table_style, primary_button_fg, level_badge_colors,
 )
 from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import get_session, log_action, DB_PATH
@@ -53,12 +53,12 @@ BLUE = tokens().brand
 
 LEVEL_META = {
     "L7": ("level_l7_label", "#2563eb", "#dbeafe"),
-    "L6": ("level_l6_label", "#16a34a", "#dcfce7"),
-    "L5": ("level_l5_label", "#d97706", "#fef3c7"),
-    "L4": ("level_l4_label", "#7c3aed", "#ede9fe"),
-    "L3": ("level_l3_label", "#db2777", "#fce7f3"),
-    "L2": ("level_l2_label", "#0284c7", "#e0f2fe"),
-    "L1": ("level_l1_label", "#dc2626", "#fee2e2"),
+    "L6": ("level_l6_label", "#2563eb", "#dbeafe"),
+    "L5": ("level_l5_label", "#2563eb", "#dbeafe"),
+    "L4": ("level_l4_label", "#2563eb", "#dbeafe"),
+    "L3": ("level_l3_label", "#2563eb", "#dbeafe"),
+    "L2": ("level_l2_label", "#2563eb", "#dbeafe"),
+    "L1": ("level_l1_label", "#2563eb", "#dbeafe"),
     "Other": ("level_other_label", "#2563eb", "#dbeafe"),
 }
 LEVEL_ORDER = {level: index for index, level in enumerate(["L7", "L6", "L5", "L4", "L3", "L2", "L1", "Other"])}
@@ -1271,6 +1271,7 @@ class SalaryTab(QWidget):
 
     def _salary_card(self, title):
         label_key, color, bg = LEVEL_META.get(title.name, (None, BLUE, "#dbeafe"))
+        bg, color = level_badge_colors()
         label = t(label_key) if label_key else title.label
         card = _plain_card()
         layout = QVBoxLayout(card)
@@ -1597,6 +1598,7 @@ class IncrementTab(QWidget):
 
     def _increment_card(self, title):
         label_key, color, bg = LEVEL_META.get(title.name, (None, BLUE, "#dbeafe"))
+        bg, color = level_badge_colors()
         label = t(label_key) if label_key else title.label
         card = _plain_card()
         layout = QVBoxLayout(card)

@@ -90,7 +90,7 @@ ACTION_LABEL_KEYS = {
 CATEGORY_META = {
     "employee": {"label": "Employee Management", "bg": "#dbeafe", "fg": "#2563eb", "icon": "fa5s.file-alt"},
     "promotion": {"label": "Promotions", "bg": "#dcfce7", "fg": "#16a34a", "icon": "fa5s.chart-line"},
-    "commendation": {"label": "Commendations", "bg": "#fef3c7", "fg": "#d97706", "icon": "fa5s.award"},
+    "commendation": {"label": "Commendations", "bg": "#fff7e6", "fg": "#9a6500", "icon": "fa5s.award"},
     "sanction": {"label": "Sanctions", "bg": "#fee2e2", "fg": "#dc2626", "icon": "fa5s.exclamation-triangle"},
     "import": {"label": "Data Import", "bg": "#f3e8ff", "fg": "#9333ea", "icon": "fa5s.upload"},
     "settings": {"label": "Settings", "bg": "#f3f4f6", "fg": "#374151", "icon": "fa5s.cog"},
@@ -175,7 +175,7 @@ class AuditLogPage(QWidget):
         self._add_stat_card("total", t("total_logs"), "fa5s.file-alt", "#2563eb", "#dbeafe")
         self._add_stat_card("today", t("todays_activities"), "fa5s.user", "#16a34a", "#dcfce7")
         self._add_stat_card("week", t("this_week"), "fa5s.calendar-alt", "#9333ea", "#f3e8ff")
-        self._add_stat_card("active_user", t("most_active_user"), "fa5s.clipboard-list", "#d97706", "#fef3c7")
+        self._add_stat_card("active_user", t("most_active_user"), "fa5s.clipboard-list", tokens().warning, tokens().warning_soft)
         layout.addLayout(self.stats_row)
         layout.addSpacing(30)
 
@@ -1533,6 +1533,8 @@ def _category_badge(category):
     meta = CATEGORY_META.get(category, CATEGORY_META["other"])
     bg = meta["bg"]
     fg = meta["fg"]
+    if category == "commendation":
+        bg, fg = tokens().warning_soft, tokens().warning
     if tokens().name == THEME_DARK:
         dark_map = {
             "employee": (tokens().selected, tokens().brand),

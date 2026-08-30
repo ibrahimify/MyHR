@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QTableWidget, QTableWidgetItem,
     QHeaderView, QTabWidget, QComboBox, QTextEdit, QLineEdit,
-    QListWidget, QListWidgetItem,
+    QListWidget, QListWidgetItem, QAbstractItemView,
     QMessageBox, QSizePolicy
 )
 from PySide6.QtCore import Qt, QSize
@@ -28,6 +28,7 @@ from src.ui.styles import (
     pill_tab_ss,
     enable_table_row_selection,
     prepare_table_cell_widget,
+    sync_table_widget_cells,
     btn_primary,
     btn_outline,
     card_ss,
@@ -46,12 +47,75 @@ from src.database.models import Employee, Sanction
 from datetime import datetime
 
 
-SANCTION_TYPES = [
-    ("verbal_warning",  "verbal_warning",  "#f59e0b", "#fefce8"),
-    ("written_warning", "written_warning", "#ef4444", "#fef2f2"),
-    ("suspension",      "suspension",      "#dc2626", "#fef2f2"),
-    ("final_warning",   "final_warning",   "#991b1b", "#fef2f2"),
-]
+def _sanction_types():
+    if tokens().name == THEME_DARK:
+        return [
+            ("verbal_warning",  "verbal_warning",  "#f0b84f", "#34260d"),
+            ("written_warning", "written_warning", "#fb7185", "#3a161d"),
+            ("suspension",      "suspension",      "#fdba74", "#3a2412"),
+            ("final_warning",   "final_warning",   "#c084fc", "#2d2144"),
+        ]
+    return [
+        ("verbal_warning",  "verbal_warning",  "#a16207", "#fff3c4"),
+        ("written_warning", "written_warning", "#be123c", "#ffe4e6"),
+        ("suspension",      "suspension",      "#c2410c", "#ffedd5"),
+        ("final_warning",   "final_warning",   "#7e22ce", "#f3e8ff"),
+    ]
+
+
+def _delay_label(months):
+    return t("months_delayed", count=abs(months))
+
+
+def _delay_short_label(months):
+    return t("month_count_plain", count=abs(months))
+
+
+def _sanction_type_short(type_key):
+    key = f"{type_key}_short"
+    translated = t(key)
+    return translated if translated != key else t(type_key)
+
+
+def _fit_columns(table, weights, minimums):
+    try:
+        available = max(table.viewport().width(), table.width() - 22) - 8
+    except RuntimeError:
+        return
+    if available <= 0:
+        return
+
+    min_sum = sum(minimums)
+    if available <= min_sum:
+        widths = [max(44, int(available * width / min_sum)) for width in minimums]
+    else:
+        extra = available - min_sum
+        widths = [minimums[i] + int(extra * weights[i]) for i in range(len(minimums))]
+
+    widths[-1] = max(44, widths[-1] + available - sum(widths))
+    for col, col_width in enumerate(widths):
+        table.setColumnWidth(col, col_width)
+    table.horizontalScrollBar().setValue(0)
+
+
+def _badge_cell(text, bg, fg, min_width=92):
+    cell = prepare_table_cell_widget(QWidget())
+    layout = QHBoxLayout(cell)
+    layout.setContentsMargins(4, 0, 4, 0)
+    layout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+    badge = QLabel(text)
+    badge.setToolTip(text)
+    if min_width:
+        badge.setMinimumWidth(min_width)
+    badge.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
+    badge.setAlignment(Qt.AlignCenter)
+    badge.setStyleSheet(
+        f"background: {bg}; color: {fg}; border: none; "
+        "border-radius: 7px; padding: 4px 10px; font-size: 12px; font-weight: 700;"
+    )
+    layout.addWidget(badge)
+    layout.addStretch()
+    return cell
 
 
 class _EmployeePickerCompat:
@@ -94,7 +158,7 @@ def COMBO_SS():
 
 
 def TABLE_SS():
-    return table_style(selected_bg="#fef2f2", hover_bg="#fff7f7")
+    return table_style(selected_bg=tokens().danger_soft, hover_bg=tokens().hover)
 
 
 def MESSAGE_BOX_SS():
@@ -125,15 +189,19 @@ class SanctionsPage(QWidget):
 
         # Tabs
         self.tabs = QTabWidget()
+        self.tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Ignored)
         self.tabs.setStyleSheet(pill_tab_ss())
+        self.tabs.tabBar().setExpanding(False)
+        self.tabs.tabBar().setUsesScrollButtons(False)
+        self.tabs.tabBar().setElideMode(Qt.ElideRight)
 
         self.active_tab  = ActiveSanctionsTab(self.user)
         self.history_tab = SanctionHistoryTab(self.user)
         self.issue_tab   = IssueSanctionTab(self.user, self._on_issued)
 
-        self.tabs.addTab(self.issue_tab,   t("issue_sanction"))
-        self.tabs.addTab(self.history_tab, t("sanction_history"))
-        self.tabs.addTab(self.active_tab,  t("active_sanctions_label"))
+        self.tabs.addTab(self.issue_tab,   t("sanction_tab_issue"))
+        self.tabs.addTab(self.history_tab, t("sanction_tab_history"))
+        self.tabs.addTab(self.active_tab,  t("sanction_tab_active"))
 
         self.tabs.currentChanged.connect(self._on_tab_change)
         install_tab_transition(self.tabs)
@@ -190,7 +258,7 @@ class ActiveSanctionsTab(QWidget):
         tcl.setSpacing(0)
 
         card_header = QFrame()
-        card_header.setStyleSheet(f"background: transparent; border: none; border-bottom: 1px solid {tokens().border};")
+        card_header.setStyleSheet("background: transparent; border: none;")
         chl = QHBoxLayout(card_header)
         chl.setContentsMargins(30, 28, 30, 28)
         ch_icon = QLabel()
@@ -205,15 +273,12 @@ class ActiveSanctionsTab(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([
-            t("sanction_id"), t("employee"), t("sanction_type"),
-            t("reason"), t("issue_date"), t("promotion_delay"), t("actions")
+            t("sanction_id"), t("employee"), t("type"),
+            t("reason"), t("issue_date"), t("delay"), t("actions")
         ])
         self.table.setStyleSheet(TABLE_SS())
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.Fixed)
-        self.table.horizontalHeader().setSectionResizeMode(6, QHeaderView.Fixed)
-        self.table.setColumnWidth(5, 164)
-        self.table.setColumnWidth(6, 208)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Fixed)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         for col in range(self.table.columnCount()):
             header_item = self.table.horizontalHeaderItem(col)
             if header_item:
@@ -223,10 +288,33 @@ class ActiveSanctionsTab(QWidget):
                     header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        enable_table_row_selection(self.table, selected_bg="#fef2f2")
+        self.table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+        enable_table_row_selection(self.table, selected_bg=tokens().danger_soft)
         self.table.setShowGrid(False)
-        tcl.addWidget(self.table)
-        layout.addWidget(table_card)
+        self.table.setMinimumHeight(280)
+        tcl.addWidget(self.table, 1)
+        layout.addWidget(table_card, 1)
+
+    def _resize_columns(self):
+        _fit_columns(
+            self.table,
+            [0.12, 0.16, 0.12, 0.28, 0.10, 0.10, 0.12],
+            [210, 165, 150, 160, 118, 80, 150],
+        )
+
+    def _apply_table_height(self):
+        self.table.setMinimumHeight(280)
+        self.table.setMaximumHeight(16777215)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._resize_columns()
+        self._apply_table_height()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._resize_columns()
+        self._apply_table_height()
 
     def refresh(self):
         while self.stats_row.count():
@@ -252,8 +340,8 @@ class ActiveSanctionsTab(QWidget):
 
         # Stats
         for label, val, color, icon_name, bg in [
-            (t("active_sanctions_label"), len(rows), "#ef4444", "fa5s.exclamation-triangle", "#fee2e2"),
-            (t("total_delay_months"), sum(r["delay"] for r in rows), "#f59e0b", "fa5s.clock", "#fef3c7"),
+            (t("active_sanctions_label"), len(rows), tokens().danger, "fa5s.exclamation-triangle", tokens().danger_soft),
+            (t("total_delay_months"), sum(r["delay"] for r in rows), tokens().warning, "fa5s.clock", tokens().warning_soft),
         ]:
             card = QFrame()
             card.setObjectName("Card")
@@ -282,7 +370,6 @@ class ActiveSanctionsTab(QWidget):
         self.stats_row.addStretch()
 
         self.table.setRowCount(len(rows))
-        self.table.setMinimumHeight(112 + (56 * max(1, len(rows))))
         for i, row in enumerate(rows):
             self.table.setRowHeight(i, 50)
 
@@ -296,34 +383,33 @@ class ActiveSanctionsTab(QWidget):
             self.table.setItem(i, 1, emp_item)
 
             type_color = next(
-                (c for st, _, c, _ in SANCTION_TYPES if st == row["type"]), tokens().text_muted
+                (c for st, _, c, _ in _sanction_types() if st == row["type"]), tokens().text_muted
             )
             type_bg = next(
-                (b for st, _, _, b in SANCTION_TYPES if st == row["type"]), tokens().surface_muted
+                (b for st, _, _, b in _sanction_types() if st == row["type"]), tokens().surface_muted
             )
-            type_item = QTableWidgetItem(t(row["type"]))
-            type_item.setBackground(QColor(type_bg))
-            type_item.setForeground(QColor(type_color))
-            type_item.setToolTip(type_item.text())
-            self.table.setItem(i, 2, type_item)
+            type_cell = _badge_cell(_sanction_type_short(row["type"]), type_bg, type_color, 0)
+            type_cell.setToolTip(t(row["type"]))
+            self.table.setCellWidget(i, 2, type_cell)
 
-            reason_item = QTableWidgetItem(row["reason"][:60] + "..." if len(row["reason"]) > 60 else row["reason"])
+            reason_item = QTableWidgetItem(row["reason"][:50] + "..." if len(row["reason"]) > 50 else row["reason"])
             reason_item.setToolTip(row["reason"])
             self.table.setItem(i, 3, reason_item)
             date_item = QTableWidgetItem(row["date"])
             date_item.setToolTip(row["date"])
             self.table.setItem(i, 4, date_item)
 
-            delay_item = QTableWidgetItem(t("positive_month_count", count=row["delay"]))
-            delay_item.setIcon(qta.icon("fa5s.clock", color=tokens().danger))
-            delay_item.setForeground(QColor(tokens().danger))
-            delay_item.setToolTip(delay_item.text())
-            self.table.setItem(i, 5, delay_item)
+            self.table.setCellWidget(
+                i, 5,
+                _badge_cell(_delay_short_label(row["delay"]), tokens().danger_soft, tokens().danger, 0)
+            )
+            self.table.cellWidget(i, 5).setToolTip(_delay_label(row["delay"]))
 
-            resolve_btn = QPushButton(t("mark_resolved"))
+            resolve_btn = QPushButton(t("resolve_action"))
+            resolve_btn.setToolTip(t("mark_resolved"))
             resolve_btn.setIcon(qta.icon("fa5s.check-circle", color=tokens().success))
             resolve_btn.setIconSize(QSize(15, 15))
-            resolve_btn.setFixedSize(178, 36)
+            resolve_btn.setFixedSize(116, 34)
             resolve_btn.setCursor(Qt.PointingHandCursor)
             resolve_btn.setStyleSheet(
                 f"QPushButton {{ background: {tokens().surface}; color: {tokens().success}; border: 1px solid {tokens().success}; "
@@ -339,6 +425,9 @@ class ActiveSanctionsTab(QWidget):
             action_layout.setAlignment(Qt.AlignCenter)
             action_layout.addWidget(resolve_btn)
             self.table.setCellWidget(i, 6, action_cell)
+        self._resize_columns()
+        self.table.verticalScrollBar().setValue(0)
+        sync_table_widget_cells(self.table, selected_bg=tokens().danger_soft)
 
     def _resolve(self, sanction_id):
         confirm = _question(self, t("resolve_sanction"),
@@ -430,12 +519,12 @@ class SanctionHistoryTab(QWidget):
         cl.setSpacing(0)
 
         header = QFrame()
-        header.setStyleSheet(f"background: transparent; border: none; border-bottom: 1px solid {tokens().border};")
+        header.setStyleSheet("background: transparent; border: none;")
         hl = QHBoxLayout(header)
         hl.setContentsMargins(30, 28, 30, 28)
         icon = QLabel()
-        icon.setPixmap(qta.icon("fa5s.check-circle", color="#10b981").pixmap(18, 18))
-        title = QLabel(t("resolved_sanctions"))
+        icon.setPixmap(qta.icon("fa5s.check-circle", color=tokens().success).pixmap(18, 18))
+        title = QLabel(t("sanction_history"))
         title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text}; background: transparent;")
         hl.addWidget(icon)
         hl.addWidget(title)
@@ -446,21 +535,45 @@ class SanctionHistoryTab(QWidget):
         self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([
             t("sanction_id"), t("employee"), t("type"), t("reason"),
-            t("issue_date"), t("delay_applied"), t("status")
+            t("issue_date"), t("delay"), t("status")
         ])
         self.table.setStyleSheet(TABLE_SS())
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Fixed)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         for col in range(self.table.columnCount()):
             header_item = self.table.horizontalHeaderItem(col)
             if header_item:
                 header_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        enable_table_row_selection(self.table, selected_bg="#fef2f2")
+        self.table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+        enable_table_row_selection(self.table, selected_bg=tokens().danger_soft)
         self.table.setShowGrid(False)
-        cl.addWidget(self.table)
-        cl.addWidget(self._pager())
-        layout.addWidget(card)
+        self.table.setMinimumHeight(420)
+        cl.addWidget(self.table, 1)
+        cl.addWidget(self._pager(), 0)
+        layout.addWidget(card, 1)
+
+    def _resize_columns(self):
+        _fit_columns(
+            self.table,
+            [0.13, 0.18, 0.12, 0.30, 0.10, 0.10, 0.07],
+            [210, 190, 150, 170, 118, 86, 120],
+        )
+
+    def _apply_table_height(self):
+        self.table.setMinimumHeight(420)
+        self.table.setMaximumHeight(16777215)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._resize_columns()
+        self._apply_table_height()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._resize_columns()
+        self._apply_table_height()
 
     def refresh(self):
         session = get_session()
@@ -479,10 +592,13 @@ class SanctionHistoryTab(QWidget):
             rows = [{
                 "ref": s.sanction_ref,
                 "emp": f"{s.employee.full_name} ({s.employee.employee_id})",
-                "type": t(s.sanction_type),
-                "reason": s.reason[:60] + "..." if len(s.reason) > 60 else s.reason,
+                "type": _sanction_type_short(s.sanction_type),
+                "type_full": t(s.sanction_type),
+                "type_key": s.sanction_type,
+                "reason": s.reason[:50] + "..." if len(s.reason) > 50 else s.reason,
                 "date": s.issued_at.strftime("%Y-%m-%d") if s.issued_at else "-",
-                "delay": t("positive_month_count", count=s.delay_months),
+                "delay": _delay_short_label(s.delay_months),
+                "delay_full": _delay_label(s.delay_months),
                 "resolved": s.is_resolved,
                 "resolved_at": s.resolved_at.strftime("%Y-%m-%d") if s.resolved_at else "-",
             } for s in sanctions]
@@ -495,7 +611,6 @@ class SanctionHistoryTab(QWidget):
         self.table.setUpdatesEnabled(False)
         self.table.clearContents()
         self.table.setRowCount(len(rows))
-        self.table.setMinimumHeight(420)
         try:
             for i, row in enumerate(rows):
                 self.table.setRowHeight(i, 52)
@@ -503,19 +618,28 @@ class SanctionHistoryTab(QWidget):
                 ref.setForeground(QColor(tokens().text_soft))
                 ref.setToolTip(row["ref"])
                 self.table.setItem(i, 0, ref)
-                for col, key in [(1, "emp"), (2, "type"), (3, "reason"), (4, "date")]:
+                for col, key in [(1, "emp"), (3, "reason"), (4, "date")]:
                     item = QTableWidgetItem(row[key])
                     item.setToolTip(row[key])
                     self.table.setItem(i, col, item)
-                delay = QTableWidgetItem(row["delay"])
-                delay.setForeground(QColor("#ef4444"))
-                delay.setToolTip(row["delay"])
-                self.table.setItem(i, 5, delay)
-                status_text = f"{t('resolved')} ({row['resolved_at']})" if row["resolved"] else t("active")
-                status = QTableWidgetItem(status_text)
-                status.setForeground(QColor("#10b981") if row["resolved"] else QColor("#ef4444"))
-                status.setToolTip(status_text)
-                self.table.setItem(i, 6, status)
+                type_bg = next((b for st, _, _, b in _sanction_types() if st == row["type_key"]), tokens().surface_muted)
+                type_fg = next((c for st, _, c, _ in _sanction_types() if st == row["type_key"]), tokens().text_muted)
+                type_cell = _badge_cell(row["type"], type_bg, type_fg, 0)
+                type_cell.setToolTip(row["type_full"])
+                self.table.setCellWidget(i, 2, type_cell)
+                delay_cell = _badge_cell(row["delay"], tokens().danger_soft, tokens().danger, 0)
+                delay_cell.setToolTip(row["delay_full"])
+                self.table.setCellWidget(i, 5, delay_cell)
+                status_text = t("resolved") if row["resolved"] else t("active")
+                status_tip = f"{t('resolved')} ({row['resolved_at']})" if row["resolved"] else t("active")
+                status_bg = tokens().success_soft if row["resolved"] else tokens().danger_soft
+                status_fg = tokens().success if row["resolved"] else tokens().danger
+                status_cell = _badge_cell(status_text, status_bg, status_fg, 0)
+                status_cell.setToolTip(status_tip)
+                self.table.setCellWidget(i, 6, status_cell)
+            self._resize_columns()
+            self.table.verticalScrollBar().setValue(0)
+            sync_table_widget_cells(self.table, selected_bg=tokens().danger_soft)
         finally:
             self.table.setUpdatesEnabled(True)
 
@@ -617,6 +741,7 @@ class IssueSanctionTab(QWidget):
         self.emp_search.setPlaceholderText(t("search_employees"))
         self.emp_search.setClearButtonEnabled(True)
         self.emp_search.setStyleSheet(FIELD_SS())
+        self.emp_search.addAction(qta.icon("fa5s.search", color=tokens().text_soft), QLineEdit.LeadingPosition)
         self.emp_search.textChanged.connect(self._filter_employees)
 
         self.emp_list = QListWidget()
@@ -637,7 +762,7 @@ class IssueSanctionTab(QWidget):
         self.type_combo.setStyleSheet(COMBO_SS())
         _polish_combo(self.type_combo)
         self.type_combo.addItem(t("select_sanction_type"), None)
-        for val, label, _, _ in SANCTION_TYPES:
+        for val, label, _, _ in _sanction_types():
             self.type_combo.addItem(t(label), val)
         fc.addWidget(type_lbl)
         fc.addWidget(self.type_combo)
@@ -737,20 +862,51 @@ class IssueSanctionTab(QWidget):
         ac.addWidget(clear_btn)
         right.addWidget(actions_card)
 
+        # Guidelines
+        guide_card = QFrame()
+        guide_card.setStyleSheet(
+            f"QFrame {{ background: {tokens().surface}; border-radius: 8px; border: 1px solid {tokens().border}; }} "
+            "QLabel { background: transparent; border: none; }"
+        )
+        gc = QVBoxLayout(guide_card)
+        gc.setContentsMargins(24, 22, 24, 24)
+        gc.setSpacing(12)
+        guide_head = QHBoxLayout()
+        guide_icon = QLabel()
+        guide_icon.setPixmap(qta.icon("fa5s.clipboard-list", color=tokens().brand).pixmap(18, 18))
+        gc_title = QLabel(t("sanction_guidelines"))
+        gc_title.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {tokens().text}; background: transparent;")
+        guide_head.addWidget(guide_icon)
+        guide_head.addWidget(gc_title)
+        guide_head.addStretch()
+        gc.addLayout(guide_head)
+        for stype, desc in [
+            (t("verbal_warning"),  t("verbal_warning_guideline")),
+            (t("written_warning"), t("written_warning_guideline")),
+            (t("suspension"),      t("suspension_guideline")),
+            (t("final_warning"),   t("final_warning_guideline")),
+        ]:
+            lbl = QLabel(f"<b>{stype}:</b> {desc}")
+            lbl.setTextFormat(Qt.RichText)
+            lbl.setWordWrap(True)
+            lbl.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted}; background: transparent;")
+            gc.addWidget(lbl)
+        right.addWidget(guide_card)
+
         # Race impact info
         impact_card = QFrame()
         impact_card.setStyleSheet(
-            f"QFrame {{ background: {tokens().danger_soft}; border-radius: 8px; border: 1px solid {tokens().danger}; }} "
+            f"QFrame {{ background: {tokens().surface}; border-radius: 8px; border: 1px solid {tokens().border}; }} "
             "QLabel { background: transparent; border: none; }"
         )
         ic = QVBoxLayout(impact_card)
-        ic.setContentsMargins(30, 28, 30, 28)
+        ic.setContentsMargins(24, 22, 24, 24)
         ic.setSpacing(12)
         impact_head = QHBoxLayout()
         impact_icon = QLabel()
         impact_icon.setPixmap(qta.icon("fa5s.stopwatch", color=tokens().danger).pixmap(18, 18))
-        ic_title = QLabel(t("promotion_race_impact"))
-        ic_title.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {tokens().danger}; background: transparent;")
+        ic_title = QLabel(t("sanction_race_impact"))
+        ic_title.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {tokens().text}; background: transparent;")
         impact_head.addWidget(impact_icon)
         impact_head.addWidget(ic_title)
         impact_head.addStretch()
@@ -763,7 +919,8 @@ class IssueSanctionTab(QWidget):
         ]:
             lbl = QLabel("&bull; " + line)
             lbl.setTextFormat(Qt.RichText)
-            lbl.setStyleSheet(f"font-size: 14px; color: {tokens().text_muted}; background: transparent;")
+            lbl.setWordWrap(True)
+            lbl.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted}; background: transparent;")
             ic.addWidget(lbl)
         right.addWidget(impact_card)
 
@@ -773,7 +930,7 @@ class IssueSanctionTab(QWidget):
             "QLabel { background: transparent; border: none; }"
         )
         nc = QVBoxLayout(notes_card)
-        nc.setContentsMargins(30, 28, 30, 28)
+        nc.setContentsMargins(24, 22, 24, 24)
         nc.setSpacing(12)
         notes_head = QHBoxLayout()
         notes_icon = QLabel()
@@ -792,34 +949,6 @@ class IssueSanctionTab(QWidget):
         ]:
             nc.addWidget(_note_line(line, tokens().text_muted))
         right.addWidget(notes_card)
-
-        # Guidelines
-        guide_card = QFrame()
-        guide_card.setStyleSheet(f"QFrame {{ background: {tokens().selected}; border-radius: 8px; border: 1px solid {tokens().brand}; }} QLabel {{ background: transparent; border: none; }}")
-        gc = QVBoxLayout(guide_card)
-        gc.setContentsMargins(30, 28, 30, 28)
-        gc.setSpacing(12)
-        guide_head = QHBoxLayout()
-        guide_icon = QLabel()
-        guide_icon.setPixmap(qta.icon("fa5s.user", color=tokens().brand).pixmap(18, 18))
-        gc_title = QLabel(t("sanction_guidelines"))
-        gc_title.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {tokens().brand}; background: transparent;")
-        guide_head.addWidget(guide_icon)
-        guide_head.addWidget(gc_title)
-        guide_head.addStretch()
-        gc.addLayout(guide_head)
-        for stype, desc in [
-            (t("verbal_warning"),  t("verbal_warning_guideline")),
-            (t("written_warning"), t("written_warning_guideline")),
-            (t("suspension"),      t("suspension_guideline")),
-            (t("final_warning"),   t("final_warning_guideline")),
-        ]:
-            lbl = QLabel("")
-            lbl.setText(f"<b>{stype}:</b><br>{desc}")
-            lbl.setTextFormat(Qt.RichText)
-            lbl.setStyleSheet(f"font-size: 14px; color: {tokens().text_muted}; background: transparent;")
-            gc.addWidget(lbl)
-        right.addWidget(guide_card)
 
         main.addLayout(right, 2)
 
