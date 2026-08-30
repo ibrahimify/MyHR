@@ -18,7 +18,7 @@ A standalone, offline desktop application for managing employee records, organiz
 ---
 
 **Supervisor:** Dr. Husam Al-Magsoosi   
-**Developer:** Muhammad Ibrahim Shoeb  
+**Developer:** Muhammad Ibrahim Shoeb   
 **Institution:** Budapest University of Technology and Economics   
 **Status:** Project Lab finished. Thesis part starts from this checkpoint.
 
