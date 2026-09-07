@@ -331,9 +331,9 @@ class Sidebar(QWidget):
         return (
             f"QPushButton {{"
             f" background: {tokens().selected}; color: {tokens().brand};"
-            f" border: none; border-left: 3px solid {tokens().brand};"
-            " border-radius: 0px; border-top-right-radius: 8px; border-bottom-right-radius: 8px;"
-            " text-align: left; padding-left: 22px;"
+            f" border: 1px solid {tokens().selected};"
+            " border-radius: 8px;"
+            " text-align: left; padding-left: 25px;"
             " font-size: 14px; font-weight: 500;"
             " outline: none;"
             "}"
@@ -343,7 +343,7 @@ class Sidebar(QWidget):
         return (
             f"QPushButton {{"
             f" background: transparent; color: {tokens().text_muted};"
-            " border: none; border-radius: 0px; border-top-right-radius: 8px; border-bottom-right-radius: 8px;"
+            " border: 1px solid transparent; border-radius: 8px;"
             " text-align: left; padding-left: 25px;"
             " font-size: 14px; font-weight: 500;"
             " outline: none;"

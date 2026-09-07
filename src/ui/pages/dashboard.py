@@ -141,18 +141,6 @@ def _mini_progress_ss(color_key="increment", radius=4):
     )
 
 
-def _increment_review_button_ss(height=34):
-    tkn = tokens()
-    accent = chart_color("increment")
-    soft = chart_soft_color("increment")
-    return (
-        f"QPushButton {{ background-color: {tkn.surface}; color: {accent}; border: 1px solid {accent}; "
-        "border-radius: 7px; padding-left: 14px; padding-right: 14px; "
-        "font-size: 13px; font-weight: 700; }}"
-        f"QPushButton:hover {{ background-color: {soft}; }}"
-    )
-
-
 def dashboard_card_ss():
     tkn = tokens()
     return f"""
@@ -1285,16 +1273,7 @@ class DashboardPage(QWidget):
         layout.addSpacing(32)
 
         if self.increment_count > 0:
-            notice_row = QHBoxLayout()
-            notice_row.setContentsMargins(0, 0, 0, 0)
-            notice_row.setSpacing(0)
-            if is_rtl():
-                notice_row.addStretch()
-                notice_row.addWidget(self._increment_alert(), 0)
-            else:
-                notice_row.addWidget(self._increment_alert(), 0)
-                notice_row.addStretch()
-            layout.addLayout(notice_row)
+            layout.addWidget(self._increment_alert())
             layout.addSpacing(24)
 
         self.stats_layout = QGridLayout()
@@ -1398,11 +1377,10 @@ class DashboardPage(QWidget):
         soft = chart_soft_color("increment")
         alert = QFrame()
         alert.setObjectName("IncrementAlert")
-        alert.setMaximumWidth(720)
         alert.setMinimumHeight(64)
-        alert.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        alert.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         alert.setStyleSheet(
-            f"QFrame#IncrementAlert {{ background-color: {soft}; border: 1px solid {accent}; border-radius: 8px; }}"
+            f"QFrame#IncrementAlert {{ background: {soft}; border: 1px solid {accent}; border-radius: 8px; }}"
             "QFrame#IncrementAlert QLabel { border: none; background: transparent; }"
         )
         row = QHBoxLayout(alert)
@@ -1411,7 +1389,7 @@ class DashboardPage(QWidget):
         icon = QLabel()
         icon.setFixedSize(30, 30)
         icon.setAlignment(Qt.AlignCenter)
-        icon.setStyleSheet(f"background-color: {tokens().surface}; border: 1px solid {tokens().border}; border-radius: 8px;")
+        icon.setStyleSheet(f"background: {tokens().surface}; border: 1px solid {tokens().border}; border-radius: 8px;")
         icon.setPixmap(app_pixmap("fa5s.coins", color=accent, size=15))
         row.addWidget(icon)
 
@@ -1431,7 +1409,7 @@ class DashboardPage(QWidget):
         btn.setFixedHeight(34)
         btn.setMinimumWidth(90)
         btn.setCursor(Qt.PointingHandCursor)
-        btn.setStyleSheet(_increment_review_button_ss(34))
+        btn.setStyleSheet(btn_outline(34))
         btn.clicked.connect(self._open_increment_dialog)
         row.addWidget(btn)
         return alert
