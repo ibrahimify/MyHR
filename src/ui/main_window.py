@@ -1,3 +1,4 @@
+import shiboken6
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QPushButton, QLabel, QStackedWidget, QFrame
@@ -53,7 +54,17 @@ class Sidebar(QWidget):
         self.active_key = "dashboard"
         self._theme_bound_labels = []
         self._build()
-        theme_manager.theme_changed.connect(lambda _: self.apply_theme())
+        theme_manager.theme_changed.connect(self._on_theme_changed)
+        self.destroyed.connect(self._disconnect_theme_signal)
+
+    def _on_theme_changed(self, _theme):
+        self.apply_theme()
+
+    def _disconnect_theme_signal(self, *_args):
+        try:
+            theme_manager.theme_changed.disconnect(self._on_theme_changed)
+        except (RuntimeError, TypeError):
+            pass
 
     def _build(self):
         self.setFixedWidth(256)
@@ -332,23 +343,30 @@ class Sidebar(QWidget):
             f"QPushButton {{"
             f" background: {tokens().selected}; color: {tokens().brand};"
             f" border: 1px solid {tokens().selected};"
-            " border-radius: 8px;"
-            " text-align: left; padding-left: 25px;"
+            f" border-left: 3px solid {tokens().brand};"
+            " border-top-left-radius: 0px;"
+            " border-bottom-left-radius: 0px;"
+            " border-top-right-radius: 8px;"
+            " border-bottom-right-radius: 8px;"
+            " text-align: left; padding-left: 22px;"
             " font-size: 14px; font-weight: 500;"
             " outline: none;"
             "}"
+            f" QPushButton:hover {{ background: {tokens().selected}; color: {tokens().brand}; }}"
         )
 
     def _inactive_style(self):
         return (
             f"QPushButton {{"
             f" background: transparent; color: {tokens().text_muted};"
-            " border: 1px solid transparent; border-radius: 8px;"
-            " text-align: left; padding-left: 25px;"
+            " border: 1px solid transparent;"
+            " border-left: 3px solid transparent;"
+            " border-radius: 8px;"
+            " text-align: left; padding-left: 22px;"
             " font-size: 14px; font-weight: 500;"
             " outline: none;"
             "}"
-            f" QPushButton:hover {{ background: {tokens().hover}; color: {tokens().text}; }}"
+            f" QPushButton:hover {{ background: {tokens().hover}; color: {tokens().text}; border-left: 3px solid transparent; }}"
         )
 
 
@@ -406,10 +424,24 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "stack"):
             return
         key = getattr(self, "current_key", "dashboard")
-        page = self._pages_cache.pop(key, None)
-        if page is not None:
+        current_page = self._pages_cache.get(key)
+        stale_pages = [
+            page for cache_key, page in self._pages_cache.items()
+            if cache_key != key
+        ]
+        self._pages_cache.clear()
+        for page in stale_pages:
             self.stack.removeWidget(page)
-            page.deleteLater()
+            page.setParent(None)
+            QTimer.singleShot(1000, page.deleteLater)
+        if current_page is not None:
+            self.stack.removeWidget(current_page)
+            current_page.close()
+            try:
+                if shiboken6.isValid(current_page):
+                    shiboken6.delete(current_page)
+            except RuntimeError:
+                pass
         self._navigate(key, animate=False)
 
     def _enable_page_animations(self):
@@ -455,6 +487,19 @@ class MainWindow(QMainWindow):
         self._pages_cache[key] = page
         return page
 
+    def _discard_inactive_pages(self, active_key):
+        for cache_key, page in list(self._pages_cache.items()):
+            if cache_key == active_key:
+                continue
+            self._pages_cache.pop(cache_key, None)
+            self.stack.removeWidget(page)
+            page.close()
+            try:
+                if shiboken6.isValid(page):
+                    shiboken6.delete(page)
+            except RuntimeError:
+                pass
+
     def _page_class(self, module_name, class_name):
         if module_name == "dashboard":
             from src.ui.pages.dashboard import DashboardPage
@@ -495,13 +540,19 @@ class MainWindow(QMainWindow):
         if key in ("dashboard", "employees", "promotions", "audit_log") and key in self._pages_cache:
             old = self._pages_cache.pop(key)
             self.stack.removeWidget(old)
-            old.deleteLater()
+            old.close()
+            try:
+                if shiboken6.isValid(old):
+                    shiboken6.delete(old)
+            except RuntimeError:
+                pass
         page = self._get_page(key)
         self.current_key = key
         self.stack.setCurrentWidget(page)
         self.sidebar._set_active(key)
         if hasattr(page, "refresh"):
             page.refresh()
+        self._discard_inactive_pages(key)
         if animate and self._page_animation_ready:
             animate_widget_entry(page, duration=160, offset=0)
         if open_active_sanctions and hasattr(page, "open_active_sanctions"):
@@ -511,7 +562,12 @@ class MainWindow(QMainWindow):
         if "employees" in self._pages_cache:
             old = self._pages_cache.pop("employees")
             self.stack.removeWidget(old)
-            old.deleteLater()
+            old.close()
+            try:
+                if shiboken6.isValid(old):
+                    shiboken6.delete(old)
+            except RuntimeError:
+                pass
         page = self._get_page("employees")
         self.stack.setCurrentWidget(page)
         self.sidebar._set_active("employees")

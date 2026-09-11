@@ -18,7 +18,7 @@ from collections import defaultdict
 from datetime import datetime, date
 from hashlib import sha256
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker, Session, joinedload
 
 from src.core.i18n import t
 from src.database.models import (
@@ -593,6 +593,65 @@ def count_commendations_in_current_role(employee: Employee, session: Session) ->
     ).count()
 
 
+def count_commendations_in_current_role_batch(employees: list[Employee], session: Session) -> dict[int, int]:
+    """
+    Batched version of count_commendations_in_current_role for picker/list pages.
+    Preserves the rule: max 3 commendations since the employee's latest promotion.
+    """
+    employees = list(employees or [])
+    if not employees:
+        return {}
+
+    employee_ids = [employee.id for employee in employees]
+    race_start_by_employee = {
+        employee.id: employee.join_date
+        for employee in employees
+        if employee.join_date
+    }
+
+    promotions = (
+        session.query(PromotionHistory)
+        .filter(PromotionHistory.employee_id.in_(employee_ids))
+        .order_by(PromotionHistory.employee_id, PromotionHistory.promoted_at.desc())
+        .all()
+    )
+    latest_promotion_by_employee = {}
+    for promotion in promotions:
+        latest_promotion_by_employee.setdefault(promotion.employee_id, promotion.promoted_at)
+    race_start_by_employee.update(latest_promotion_by_employee)
+
+    comm_ids_by_employee = defaultdict(list)
+    comm_ids = set()
+    links = (
+        session.query(CommendationEmployee)
+        .filter(CommendationEmployee.employee_id.in_(employee_ids))
+        .all()
+    )
+    for link in links:
+        comm_ids_by_employee[link.employee_id].append(link.commendation_id)
+        comm_ids.add(link.commendation_id)
+
+    commendations_by_id = {
+        commendation.id: commendation
+        for commendation in session.query(Commendation).filter(Commendation.id.in_(comm_ids)).all()
+    } if comm_ids else {}
+
+    counts = {employee.id: 0 for employee in employees}
+    for employee_id, ids in comm_ids_by_employee.items():
+        race_start = race_start_by_employee.get(employee_id)
+        if not race_start:
+            continue
+        counts[employee_id] = sum(
+            1 for commendation_id in ids
+            if (
+                commendation_id in commendations_by_id
+                and commendations_by_id[commendation_id].issued_at
+                and commendations_by_id[commendation_id].issued_at >= race_start
+            )
+        )
+    return counts
+
+
 def can_receive_commendation(employee: Employee, session: Session) -> bool:
     """Returns True if employee has fewer than 3 commendations in current role."""
     return count_commendations_in_current_role(employee, session) < 3
@@ -609,7 +668,12 @@ def get_increment_due_employees(session: Session) -> list:
     today = datetime.utcnow()
     due = []
 
-    employees = session.query(Employee).filter_by(status="active").all()
+    employees = (
+        session.query(Employee)
+        .options(joinedload(Employee.title))
+        .filter_by(status="active")
+        .all()
+    )
     for emp in employees:
         if not emp.join_date:
             continue

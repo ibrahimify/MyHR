@@ -9,7 +9,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 import src.database.connection as db
-from src.database.models import Base, Employee, OrgUnit, SystemUser
+from src.database.models import Base, Employee, OrgUnit, Sanction, SystemUser
 
 
 class ScaleSmokeTests(unittest.TestCase):
@@ -31,6 +31,7 @@ class ScaleSmokeTests(unittest.TestCase):
         with db.SessionLocal() as session:
             db._seed_defaults(session)
             cls._seed_large_company(session, cls.EMPLOYEE_COUNT)
+            cls._seed_active_sanctions(session, 37)
 
         from PySide6.QtWidgets import QApplication
         from src.ui.theme import apply_theme
@@ -89,6 +90,30 @@ class ScaleSmokeTests(unittest.TestCase):
         session.bulk_save_objects(employees)
         session.commit()
 
+    @classmethod
+    def _seed_active_sanctions(cls, session, sanction_count):
+        employees = (
+            session.query(Employee)
+            .filter_by(status="active")
+            .order_by(Employee.id.asc())
+            .limit(sanction_count)
+            .all()
+        )
+        sanctions = []
+        for index, employee in enumerate(employees):
+            sanctions.append(Sanction(
+                sanction_ref=f"SAN-SCALE-{index + 1:03d}",
+                employee_id=employee.id,
+                sanction_type=("verbal_warning", "written_warning", "suspension")[index % 3],
+                reason="Scale smoke sanction",
+                delay_months=(index % 12) + 1,
+                issued_by_id=1,
+                issued_at=datetime.utcnow(),
+                is_resolved=False,
+            ))
+        session.bulk_save_objects(sanctions)
+        session.commit()
+
     def test_dashboard_and_employee_list_handle_5000_employees(self):
         from src.ui.pages.dashboard import DashboardPage
         from src.ui.pages.employees import EmployeesPage
@@ -140,3 +165,40 @@ class ScaleSmokeTests(unittest.TestCase):
             if "Could not parse stylesheet" in message
         ]
         self.assertEqual(parse_warnings, [])
+
+    def test_active_sanctions_are_paginated_at_scale(self):
+        from src.ui.pages.sanctions import ActiveSanctionsTab
+
+        user = SimpleNamespace(id=1, username="admin", role="admin", full_name="Scale Admin")
+        tab = ActiveSanctionsTab(user)
+        try:
+            tab.refresh()
+            self.assertEqual(tab.total_pages, 4)
+            self.assertEqual(tab.table.rowCount(), tab.page_size)
+            self.assertEqual(tab.page_lbl.text(), "Page 1 of 4")
+        finally:
+            tab.close()
+
+    def test_theme_switch_rebuilds_cached_pages_to_avoid_stale_styles(self):
+        from src.ui.main_window import MainWindow
+        from src.ui.theme import THEME_DARK, THEME_LIGHT, theme_manager
+
+        original_theme = theme_manager.theme
+        target_theme = THEME_DARK if original_theme != THEME_DARK else THEME_LIGHT
+        user = SimpleNamespace(id=1, username="admin", role="admin", full_name="Scale Admin")
+        window = MainWindow(user)
+        try:
+            window._navigate("employees", animate=False)
+            old_employees_page = window._pages_cache["employees"]
+            window._navigate("hierarchy", animate=False)
+            self.assertNotIn("employees", window._pages_cache)
+
+            theme_manager.set_theme(target_theme, persist=False)
+            self.app.processEvents()
+
+            self.assertNotIn("employees", window._pages_cache)
+            window._navigate("employees", animate=False)
+            self.assertIsNot(window._pages_cache["employees"], old_employees_page)
+        finally:
+            window.close()
+            theme_manager.set_theme(original_theme, persist=False)

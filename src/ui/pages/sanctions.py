@@ -9,6 +9,7 @@ Sanctions Page
 
 import math
 
+from sqlalchemy import func
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QTableWidget, QTableWidgetItem,
@@ -45,6 +46,9 @@ from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import get_session, generate_sanction_ref, log_action, is_other_employee
 from src.database.models import Employee, Sanction
 from datetime import datetime
+
+
+PICKER_VISIBLE_LIMIT = 150
 
 
 def _sanction_types():
@@ -235,6 +239,9 @@ class ActiveSanctionsTab(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
+        self.current_page = 1
+        self.page_size = 12
+        self.total_pages = 1
         self.setObjectName("ActiveSanctionsTab")
         self.setStyleSheet(f"QWidget#ActiveSanctionsTab {{ background: {tokens().canvas}; }}")
         self._build()
@@ -291,8 +298,9 @@ class ActiveSanctionsTab(QWidget):
         self.table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         enable_table_row_selection(self.table, selected_bg=tokens().danger_soft)
         self.table.setShowGrid(False)
-        self.table.setMinimumHeight(280)
+        self.table.setMinimumHeight(420)
         tcl.addWidget(self.table, 1)
+        tcl.addWidget(self._pager(), 0)
         layout.addWidget(table_card, 1)
 
     def _resize_columns(self):
@@ -303,7 +311,7 @@ class ActiveSanctionsTab(QWidget):
         )
 
     def _apply_table_height(self):
-        self.table.setMinimumHeight(280)
+        self.table.setMinimumHeight(420)
         self.table.setMaximumHeight(16777215)
 
     def resizeEvent(self, event):
@@ -324,7 +332,23 @@ class ActiveSanctionsTab(QWidget):
 
         session = get_session()
         try:
-            active = session.query(Sanction).filter_by(is_resolved=False).all()
+            active_count = session.query(Sanction).filter_by(is_resolved=False).count()
+            total_delay = (
+                session.query(func.coalesce(func.sum(Sanction.delay_months), 0))
+                .filter_by(is_resolved=False)
+                .scalar()
+            )
+            self.total_pages = max(1, math.ceil(active_count / self.page_size))
+            self.current_page = max(1, min(self.current_page, self.total_pages))
+            active = (
+                session.query(Sanction)
+                .options(joinedload(Sanction.employee))
+                .filter_by(is_resolved=False)
+                .order_by(Sanction.issued_at.desc(), Sanction.id.desc())
+                .offset((self.current_page - 1) * self.page_size)
+                .limit(self.page_size)
+                .all()
+            )
             rows = [{
                 "id": s.id,
                 "ref": s.sanction_ref,
@@ -338,10 +362,14 @@ class ActiveSanctionsTab(QWidget):
         finally:
             session.close()
 
+        self.page_lbl.setText(t("page_status", page=self.current_page, pages=self.total_pages))
+        self.prev_btn.setEnabled(self.current_page > 1)
+        self.next_btn.setEnabled(self.current_page < self.total_pages)
+
         # Stats
         for label, val, color, icon_name, bg in [
-            (t("active_sanctions_label"), len(rows), tokens().danger, "fa5s.exclamation-triangle", tokens().danger_soft),
-            (t("total_delay_months"), sum(r["delay"] for r in rows), tokens().warning, "fa5s.clock", tokens().warning_soft),
+            (t("active_sanctions_label"), active_count, tokens().danger, "fa5s.exclamation-triangle", tokens().danger_soft),
+            (t("total_delay_months"), int(total_delay or 0), tokens().warning, "fa5s.clock", tokens().warning_soft),
         ]:
             card = QFrame()
             card.setObjectName("Card")
@@ -369,65 +397,107 @@ class ActiveSanctionsTab(QWidget):
             self.stats_row.addWidget(card)
         self.stats_row.addStretch()
 
+        self.table.setUpdatesEnabled(False)
+        self.table.clearContents()
         self.table.setRowCount(len(rows))
-        for i, row in enumerate(rows):
-            self.table.setRowHeight(i, 50)
+        try:
+            for i, row in enumerate(rows):
+                self.table.setRowHeight(i, 50)
 
-            ref_item = QTableWidgetItem(row["ref"])
-            ref_item.setForeground(QColor(tokens().text_soft))
-            ref_item.setToolTip(row["ref"])
-            self.table.setItem(i, 0, ref_item)
+                ref_item = QTableWidgetItem(row["ref"])
+                ref_item.setForeground(QColor(tokens().text_soft))
+                ref_item.setToolTip(row["ref"])
+                self.table.setItem(i, 0, ref_item)
 
-            emp_item = QTableWidgetItem(f"{row['emp_name']}\n{row['emp_id']}")
-            emp_item.setToolTip(f"{row['emp_name']} ({row['emp_id']})")
-            self.table.setItem(i, 1, emp_item)
+                emp_item = QTableWidgetItem(f"{row['emp_name']}\n{row['emp_id']}")
+                emp_item.setToolTip(f"{row['emp_name']} ({row['emp_id']})")
+                self.table.setItem(i, 1, emp_item)
 
-            type_color = next(
-                (c for st, _, c, _ in _sanction_types() if st == row["type"]), tokens().text_muted
-            )
-            type_bg = next(
-                (b for st, _, _, b in _sanction_types() if st == row["type"]), tokens().surface_muted
-            )
-            type_cell = _badge_cell(_sanction_type_short(row["type"]), type_bg, type_color, 0)
-            type_cell.setToolTip(t(row["type"]))
-            self.table.setCellWidget(i, 2, type_cell)
+                type_color = next(
+                    (c for st, _, c, _ in _sanction_types() if st == row["type"]), tokens().text_muted
+                )
+                type_bg = next(
+                    (b for st, _, _, b in _sanction_types() if st == row["type"]), tokens().surface_muted
+                )
+                type_cell = _badge_cell(_sanction_type_short(row["type"]), type_bg, type_color, 0)
+                type_cell.setToolTip(t(row["type"]))
+                self.table.setCellWidget(i, 2, type_cell)
 
-            reason_item = QTableWidgetItem(row["reason"][:50] + "..." if len(row["reason"]) > 50 else row["reason"])
-            reason_item.setToolTip(row["reason"])
-            self.table.setItem(i, 3, reason_item)
-            date_item = QTableWidgetItem(row["date"])
-            date_item.setToolTip(row["date"])
-            self.table.setItem(i, 4, date_item)
+                reason_item = QTableWidgetItem(row["reason"][:50] + "..." if len(row["reason"]) > 50 else row["reason"])
+                reason_item.setToolTip(row["reason"])
+                self.table.setItem(i, 3, reason_item)
+                date_item = QTableWidgetItem(row["date"])
+                date_item.setToolTip(row["date"])
+                self.table.setItem(i, 4, date_item)
 
-            self.table.setCellWidget(
-                i, 5,
-                _badge_cell(_delay_short_label(row["delay"]), tokens().danger_soft, tokens().danger, 0)
-            )
-            self.table.cellWidget(i, 5).setToolTip(_delay_label(row["delay"]))
+                self.table.setCellWidget(
+                    i, 5,
+                    _badge_cell(_delay_short_label(row["delay"]), tokens().danger_soft, tokens().danger, 0)
+                )
+                self.table.cellWidget(i, 5).setToolTip(_delay_label(row["delay"]))
 
-            resolve_btn = QPushButton(t("resolve_action"))
-            resolve_btn.setToolTip(t("mark_resolved"))
-            resolve_btn.setIcon(app_icon("fa5s.check-circle", color=tokens().success, size=15))
-            resolve_btn.setIconSize(QSize(15, 15))
-            resolve_btn.setFixedSize(116, 34)
-            resolve_btn.setCursor(Qt.PointingHandCursor)
-            resolve_btn.setStyleSheet(
-                f"QPushButton {{ background: {tokens().surface}; color: {tokens().success}; border: 1px solid {tokens().success}; "
-                "border-radius: 8px; font-size: 13px; font-weight: 800; "
-                "padding: 0 14px; text-align: center; } "
-                f"QPushButton:hover {{ background: {tokens().success_soft}; }} "
-                f"QPushButton:pressed {{ background: {tokens().success_soft}; }}"
-            )
-            resolve_btn.clicked.connect(lambda _, sid=row["id"]: self._resolve(sid))
-            action_cell = prepare_table_cell_widget(QWidget())
-            action_layout = QHBoxLayout(action_cell)
-            action_layout.setContentsMargins(8, 6, 8, 6)
-            action_layout.setAlignment(Qt.AlignCenter)
-            action_layout.addWidget(resolve_btn)
-            self.table.setCellWidget(i, 6, action_cell)
-        self._resize_columns()
-        self.table.verticalScrollBar().setValue(0)
-        sync_table_widget_cells(self.table, selected_bg=tokens().danger_soft)
+                resolve_btn = QPushButton(t("resolve_action"))
+                resolve_btn.setToolTip(t("mark_resolved"))
+                resolve_btn.setIcon(app_icon("fa5s.check-circle", color=tokens().success, size=15))
+                resolve_btn.setIconSize(QSize(15, 15))
+                resolve_btn.setFixedSize(116, 34)
+                resolve_btn.setCursor(Qt.PointingHandCursor)
+                resolve_btn.setStyleSheet(
+                    f"QPushButton {{ background: {tokens().surface}; color: {tokens().success}; border: 1px solid {tokens().success}; "
+                    "border-radius: 8px; font-size: 13px; font-weight: 800; "
+                    "padding: 0 14px; text-align: center; } "
+                    f"QPushButton:hover {{ background: {tokens().success_soft}; }} "
+                    f"QPushButton:pressed {{ background: {tokens().success_soft}; }}"
+                )
+                resolve_btn.clicked.connect(lambda _, sid=row["id"]: self._resolve(sid))
+                action_cell = prepare_table_cell_widget(QWidget())
+                action_layout = QHBoxLayout(action_cell)
+                action_layout.setContentsMargins(8, 6, 8, 6)
+                action_layout.setAlignment(Qt.AlignCenter)
+                action_layout.addWidget(resolve_btn)
+                self.table.setCellWidget(i, 6, action_cell)
+            self._resize_columns()
+            self.table.verticalScrollBar().setValue(0)
+            sync_table_widget_cells(self.table, selected_bg=tokens().danger_soft)
+        finally:
+            self.table.setUpdatesEnabled(True)
+
+    def _previous_page(self):
+        if self.current_page <= 1:
+            return
+        self.current_page -= 1
+        self.refresh()
+
+    def _next_page(self):
+        if self.current_page >= self.total_pages:
+            return
+        self.current_page += 1
+        self.refresh()
+
+    def _pager(self):
+        pager = QFrame()
+        pager.setStyleSheet(f"background: {tokens().surface}; border: none; border-top: 1px solid {tokens().border};")
+        layout = QHBoxLayout(pager)
+        layout.setContentsMargins(16, 10, 16, 10)
+        layout.setSpacing(10)
+        self.page_lbl = QLabel("")
+        self.page_lbl.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted}; background: transparent;")
+        btn_ss = pager_button_ss()
+        self.prev_btn = QPushButton(t("previous_page"))
+        self.prev_btn.setFixedHeight(34)
+        self.prev_btn.setCursor(Qt.PointingHandCursor)
+        self.prev_btn.setStyleSheet(btn_ss)
+        self.prev_btn.clicked.connect(self._previous_page)
+        self.next_btn = QPushButton(t("next_page"))
+        self.next_btn.setFixedHeight(34)
+        self.next_btn.setCursor(Qt.PointingHandCursor)
+        self.next_btn.setStyleSheet(btn_ss)
+        self.next_btn.clicked.connect(self._next_page)
+        layout.addStretch()
+        layout.addWidget(self.page_lbl)
+        layout.addWidget(self.prev_btn)
+        layout.addWidget(self.next_btn)
+        return pager
 
     def _resolve(self, sanction_id):
         confirm = _question(self, t("resolve_sanction"),
@@ -960,7 +1030,12 @@ class IssueSanctionTab(QWidget):
     def refresh_employees(self):
         session = get_session()
         try:
-            emps = session.query(Employee).filter_by(status="active").all()
+            emps = (
+                session.query(Employee)
+                .options(joinedload(Employee.title))
+                .filter_by(status="active")
+                .all()
+            )
             self.employee_options = []
             for e in emps:
                 if is_other_employee(e):
@@ -986,7 +1061,7 @@ class IssueSanctionTab(QWidget):
         visible = [
             emp for emp in self.employee_options
             if not needle or needle in emp["search_text"]
-        ]
+        ][:PICKER_VISIBLE_LIMIT]
 
         if not visible:
             item = QListWidgetItem(t("no_data"))

@@ -46,6 +46,7 @@ from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import (
     get_session, generate_commendation_ref, log_action,
     can_receive_commendation, count_commendations_in_current_role,
+    count_commendations_in_current_role_batch,
     is_other_employee
 )
 from src.database.models import Employee, Commendation, CommendationEmployee
@@ -57,6 +58,8 @@ CATEGORIES = {
     2: {"label_key": "category_2", "months": -3, "desc_key": "category_2_desc", "color": "#2563eb", "bg": "#eff6ff"},
     3: {"label_key": "category_3", "months": -6, "desc_key": "category_3_desc", "color": "#8b5cf6", "bg": "#f3e8ff"},
 }
+
+PICKER_VISIBLE_LIMIT = 150
 
 
 def _category_colors(category_id):
@@ -491,9 +494,15 @@ class IssueCommendationTab(QWidget):
         session = get_session()
         try:
             emps = [
-                emp for emp in session.query(Employee).filter_by(status="active").all()
+                emp for emp in (
+                    session.query(Employee)
+                    .options(joinedload(Employee.title))
+                    .filter_by(status="active")
+                    .all()
+                )
                 if not is_other_employee(emp)
             ]
+            counts = count_commendations_in_current_role_batch(emps, session)
             emp_data = [{
                 "id": e.id,
                 "label": f"{e.employee_id} - {e.full_name} ({e.title.name if e.title else '?'})",
@@ -501,8 +510,8 @@ class IssueCommendationTab(QWidget):
                     f"{e.employee_id} {e.full_name} {e.work_email or ''} "
                     f"{e.personal_email or ''} {e.title.name if e.title else ''}"
                 ).lower(),
-                "can": can_receive_commendation(e, session),
-                "count": count_commendations_in_current_role(e, session),
+                "can": counts.get(e.id, 0) < 3,
+                "count": counts.get(e.id, 0),
             } for e in emps]
         finally:
             session.close()
@@ -510,51 +519,59 @@ class IssueCommendationTab(QWidget):
         self.employee_options = emp_data
         self.selected_single_employee_id = None
         self._filter_single_employees(self.single_search.text())
+        self._filter_bulk_employees(self.bulk_search.text())
 
-        # Bulk checkboxes
+    def _clear_bulk_rows(self):
         while self.bulk_layout.count():
             item = self.bulk_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
-
         self.checkboxes = []
-        self.selected_employees = set()
         self.bulk_rows = []
         self.bulk_row_by_checkbox = {}
 
-        for e in emp_data:
-            row = QFrame()
-            row.setObjectName("EmployeePickerRow")
-            row.setProperty("search_text", f"{e['label']} {e['count']}/3".lower())
-            row_layout = QHBoxLayout(row)
-            row_layout.setContentsMargins(12, 9, 12, 9)
-            row_layout.setSpacing(8)
+    def _add_bulk_row(self, employee):
+        row = QFrame()
+        row.setObjectName("EmployeePickerRow")
+        row.setProperty("search_text", f"{employee['label']} {employee['count']}/3".lower())
+        row_layout = QHBoxLayout(row)
+        row_layout.setContentsMargins(12, 9, 12, 9)
+        row_layout.setSpacing(8)
 
-            cb = QCheckBox(e["label"] + f"  [{e['count']}/3 {t('commendations').lower()}]")
-            cb.setStyleSheet(employee_picker_checkbox_ss(e["can"]))
-            if not e["can"]:
-                cb.setEnabled(False)
-                cb.setToolTip(t("max_commendations_reached"))
-            cb.setProperty("emp_id", e["id"])
-            cb.stateChanged.connect(self._on_checkbox_change)
-            row_layout.addWidget(cb)
-            row.setStyleSheet(employee_picker_row_ss(enabled=e["can"], selected=False))
-            if e["can"]:
-                row.setCursor(Qt.PointingHandCursor)
-                row.mousePressEvent = lambda event, box=cb: self._toggle_bulk_checkbox(box)
-            self.bulk_layout.addWidget(row)
-            self.checkboxes.append(cb)
-            self.bulk_rows.append(row)
-            self.bulk_row_by_checkbox[cb] = row
+        cb = QCheckBox(employee["label"] + f"  [{employee['count']}/3 {t('commendations').lower()}]")
+        cb.setStyleSheet(employee_picker_checkbox_ss(employee["can"]))
+        if not employee["can"]:
+            cb.setEnabled(False)
+            cb.setToolTip(t("max_commendations_reached"))
+        cb.setProperty("emp_id", employee["id"])
+        cb.setChecked(employee["id"] in self.selected_employees)
+        cb.stateChanged.connect(self._on_checkbox_change)
+        row_layout.addWidget(cb)
+        row.setStyleSheet(employee_picker_row_ss(enabled=employee["can"], selected=cb.isChecked()))
+        if employee["can"]:
+            row.setCursor(Qt.PointingHandCursor)
+            row.mousePressEvent = lambda event, box=cb: self._toggle_bulk_checkbox(box)
+        self.bulk_layout.addWidget(row)
+        self.checkboxes.append(cb)
+        self.bulk_rows.append(row)
+        self.bulk_row_by_checkbox[cb] = row
+
+    def _populate_bulk_rows(self, employees):
+        self._clear_bulk_rows()
+        for employee in employees[:PICKER_VISIBLE_LIMIT]:
+            self._add_bulk_row(employee)
 
         self.bulk_layout.addStretch()
-        self._filter_bulk_employees(self.bulk_search.text())
 
     def _on_checkbox_change(self):
-        self.selected_employees = {
-            cb.property("emp_id") for cb in self.checkboxes
-            if cb.isChecked() and cb.isEnabled()
-        }
+        for cb in self.checkboxes:
+            emp_id = cb.property("emp_id")
+            if not emp_id:
+                continue
+            if cb.isChecked() and cb.isEnabled():
+                self.selected_employees.add(emp_id)
+            else:
+                self.selected_employees.discard(emp_id)
         self.selected_count_lbl.setText(t("selected_count", count=len(self.selected_employees)))
         for cb, row in self.bulk_row_by_checkbox.items():
             row.setStyleSheet(employee_picker_row_ss(enabled=cb.isEnabled(), selected=cb.isChecked()))
@@ -565,8 +582,11 @@ class IssueCommendationTab(QWidget):
 
     def _filter_bulk_employees(self, text):
         needle = text.strip().lower()
-        for row in self.bulk_rows:
-            row.setVisible(not needle or needle in row.property("search_text"))
+        visible = [
+            emp for emp in self.employee_options
+            if not needle or needle in emp["search_text"]
+        ]
+        self._populate_bulk_rows(visible)
 
     def _filter_single_employees(self, text):
         needle = text.strip().lower()
@@ -576,7 +596,7 @@ class IssueCommendationTab(QWidget):
         visible = [
             emp for emp in self.employee_options
             if not needle or needle in emp["search_text"]
-        ]
+        ][:PICKER_VISIBLE_LIMIT]
 
         if not visible:
             item = QListWidgetItem(t("no_data"))

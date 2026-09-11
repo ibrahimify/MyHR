@@ -751,7 +751,10 @@ class EmployeeListView(QWidget):
     def _resize_columns(self):
         if not hasattr(self, "table"):
             return
-        width = max(760, self.table.viewport().width())
+        try:
+            width = max(760, self.table.viewport().width())
+        except RuntimeError:
+            return
         compact = width < 980
         fixed = {
             0: 104 if compact else 132,
@@ -760,7 +763,10 @@ class EmployeeListView(QWidget):
             7: 96 if compact else 116,
         }
         for col, col_width in fixed.items():
-            self.table.setColumnWidth(col, col_width)
+            try:
+                self.table.setColumnWidth(col, col_width)
+            except RuntimeError:
+                return
 
     def _badge(self, text, bg, fg, border=None):
         wrap = prepare_table_cell_widget(QWidget())

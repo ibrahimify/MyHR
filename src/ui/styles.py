@@ -1,5 +1,6 @@
 """Shared QSS constants matching the MockUI design system."""
 
+import shiboken6
 from PySide6.QtCore import QEvent, QObject, QRectF, Qt
 from PySide6.QtGui import QPainterPath, QRegion
 from PySide6.QtWidgets import QAbstractItemView, QFrame, QListView, QMessageBox
@@ -825,13 +826,23 @@ class _ComboPopupMask(QObject):
         self.radius = radius
 
     def eventFilter(self, obj, event):
-        if event.type() in (QEvent.Show, QEvent.Resize):
+        if (
+            shiboken6.isValid(self.combo)
+            and shiboken6.isValid(obj)
+            and event.type() in (QEvent.Show, QEvent.Resize)
+        ):
             self._apply_mask()
         return super().eventFilter(obj, event)
 
     def _apply_mask(self):
+        if not shiboken6.isValid(self.combo):
+            return
         view = self.combo.view()
+        if not shiboken6.isValid(view):
+            return
         popup = view.window()
+        if not shiboken6.isValid(popup):
+            return
         path = QPainterPath()
         path.addRoundedRect(QRectF(popup.rect()).adjusted(0, 0, -1, -1), self.radius, self.radius)
         popup.setMask(QRegion(path.toFillPolygon().toPolygon()))

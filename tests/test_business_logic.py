@@ -161,6 +161,30 @@ class PromotionRaceTests(IsolatedDatabaseTestCase):
         self.assertEqual(db.count_commendations_in_current_role(employee, self.session), 1)
         self.assertTrue(db.can_receive_commendation(employee, self.session))
 
+    def test_batch_commendation_count_matches_single_employee_count(self):
+        employee = self.make_employee(join_months_ago=48)
+        old_title = self.title("L7")
+        new_title = self.title("L6")
+        for month in (40, 39, 38):
+            self.add_commendation(employee, months_impact=-1, issued_months_ago=month)
+        promotion = PromotionHistory(
+            employee_id=employee.id,
+            from_title_id=old_title.id,
+            to_title_id=new_title.id,
+            approved_by_id=self.admin.id,
+            basis="time_based",
+            months_taken=36,
+            promoted_at=db._add_months(datetime.utcnow(), -12),
+        )
+        employee.title = new_title
+        self.session.add(promotion)
+        self.add_commendation(employee, months_impact=-1, issued_months_ago=2)
+        self.session.flush()
+
+        batch = db.count_commendations_in_current_role_batch([employee], self.session)
+
+        self.assertEqual(batch[employee.id], db.count_commendations_in_current_role(employee, self.session))
+
     def test_other_employee_has_only_sub_race_and_no_main_promotion_race(self):
         employee = self.make_employee(title_name="Other", degree="Other", join_months_ago=26, salary=2200)
 

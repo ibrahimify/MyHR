@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QApplication
 
 _ICON_DIR = Path(__file__).resolve().parent / "assets" / "icons" / "lucide"
 _CACHE: dict[tuple[str, str, int, float], QIcon] = {}
+_PIXMAP_CACHE: dict[tuple[str, str, int, float], QPixmap] = {}
 
 _ALIASES = {
     "dashboard": "layout-dashboard",
@@ -123,9 +124,18 @@ def app_icon(name: str, *, color: str = "#111827", size: int = 20) -> QIcon:
 def app_pixmap(name: str, *, color: str = "#111827", size: int = 20) -> QPixmap:
     lucide_name = _ALIASES.get(name, _QTA_TO_LUCIDE.get(name, name))
     path = _ICON_DIR / f"{lucide_name}.svg"
+    dpr = _render_dpr()
+    cache_key = (lucide_name, color.lower(), int(size), dpr)
+    cached = _PIXMAP_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
     if not path.exists():
-        return qta.icon(name, color=color).pixmap(QSize(size, size))
-    return _render_svg_pixmap(path, color, int(size), _render_dpr())
+        pixmap = qta.icon(name, color=color).pixmap(QSize(size, size))
+    else:
+        pixmap = _render_svg_pixmap(path, color, int(size), dpr)
+    _PIXMAP_CACHE[cache_key] = pixmap
+    return pixmap
 
 
 def _render_dpr() -> float:

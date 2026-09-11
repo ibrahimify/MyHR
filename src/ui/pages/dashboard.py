@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QSize, QRectF, QPointF, QDate
 from PySide6.QtGui import QColor, QPainter, QPen, QBrush, QFont, QPainterPath, QLinearGradient
+from sqlalchemy.orm import joinedload
 
 from src.core.i18n import is_rtl, t
 from src.database.connection import (
@@ -1008,7 +1009,12 @@ class DashboardPage(QWidget):
             active_sanctions = session.query(Sanction).filter_by(is_resolved=False).all()
             for sanction in active_sanctions:
                 blocked_by_sanction.add(sanction.employee_id)
-            active_emps = session.query(Employee).filter_by(status="active").all()
+            active_emps = (
+                session.query(Employee)
+                .options(joinedload(Employee.title))
+                .filter_by(status="active")
+                .all()
+            )
             races = calculate_months_remaining_batch(active_emps, session)
             for emp in active_emps:
                 if emp.title and emp.title.name == "Other":

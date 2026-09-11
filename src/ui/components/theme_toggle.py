@@ -21,6 +21,7 @@ class ThemeToggle(QAbstractButton):
         self._anim.setEasingCurve(QEasingCurve.OutCubic)
         self.clicked.connect(self._toggle_theme)
         theme_manager.theme_changed.connect(self._sync_theme)
+        self.destroyed.connect(self._disconnect_theme_signal)
 
     def _toggle_theme(self):
         theme_manager.toggle()
@@ -34,6 +35,12 @@ class ThemeToggle(QAbstractButton):
         self._anim.setStartValue(self._offset)
         self._anim.setEndValue(1.0 if checked else 0.0)
         self._anim.start()
+
+    def _disconnect_theme_signal(self, *_args):
+        try:
+            theme_manager.theme_changed.disconnect(self._sync_theme)
+        except (RuntimeError, TypeError):
+            pass
 
     def get_offset(self) -> float:
         return self._offset
