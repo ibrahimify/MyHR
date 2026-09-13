@@ -27,12 +27,12 @@ from PySide6.QtWidgets import (
 
 from src.core.i18n import t
 from src.core.app_settings import app_settings, company_name
-from src.ui.animations import install_tab_transition
+from src.ui.animations import animate_widget_entry, install_tab_transition
 from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
     pill_tab_ss, enable_table_row_selection, prepare_table_cell_widget,
     polish_combo_box, table_style, primary_button_fg, level_badge_colors,
-    alert_ss, badge_ss, card_ss, combo_style, input_style, message_box_ss,
+    alert_ss, badge_ss, card_ss, combo_style, input_style, message_box_icon_pixmap, message_box_ss,
     btn_danger_outline, btn_outline, btn_primary,
 )
 from src.ui.theme import THEME_DARK, tokens
@@ -88,6 +88,74 @@ def _refresh_theme_constants():
     MESSAGE_BOX_SS = message_box_ss()
 
 
+class LazySettingsTab(QWidget):
+    def __init__(self, owner, attr_name, factory):
+        super().__init__()
+        self._owner = owner
+        self._attr_name = attr_name
+        self._factory = factory
+        self._loaded = False
+        self._loading = False
+        self._cancelled = False
+        self._child = None
+        self.destroyed.connect(self._mark_cancelled)
+
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(0)
+
+        self._placeholder = _settings_placeholder()
+        self._placeholder.hide()
+        self._layout.addWidget(self._placeholder, 1)
+
+    @property
+    def loaded_widget(self):
+        return self._child
+
+    def ensure_loaded(self):
+        if self._loaded or self._loading:
+            return
+        self._loading = True
+        self._placeholder.show()
+        QTimer.singleShot(40, self._materialize)
+
+    def refresh(self):
+        if self._loaded:
+            refresh = getattr(self._child, "refresh", None)
+            if callable(refresh):
+                refresh()
+        else:
+            self.ensure_loaded()
+
+    def _materialize(self):
+        if self._loaded or self._cancelled:
+            return
+        child = self._factory()
+        self._child = child
+        setattr(self._owner, self._attr_name, child)
+        self._placeholder.hide()
+        self._layout.addWidget(child, 1)
+        self._loaded = True
+        self._loading = False
+        self._settle_child_layout()
+        animate_widget_entry(child, duration=180, offset=6)
+
+    def _mark_cancelled(self, *_args):
+        self._cancelled = True
+
+    def _settle_child_layout(self):
+        for delay in (0, 80, 180):
+            QTimer.singleShot(delay, self._refresh_child_layout)
+
+    def _refresh_child_layout(self):
+        child = self._child
+        if child is None:
+            return
+        resize = getattr(child, "_resize_level_columns", None)
+        if callable(resize):
+            resize()
+
+
 class SettingsPage(QWidget):
     def __init__(self, user):
         super().__init__()
@@ -114,26 +182,36 @@ class SettingsPage(QWidget):
 
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet(pill_tab_ss())
-        self.tabs.addTab(GeneralTab(self.user), t("general"))
+        self.tabs.addTab(
+            LazySettingsTab(self, "general_tab", lambda: GeneralTab(self.user)),
+            t("general"),
+        )
         self._add_policy_tabs()
-        self.tabs.addTab(UserManagementTab(self.user), t("user_management"))
-        self.tabs.addTab(DatabaseTab(self.user), t("database_tab"))
+        self.tabs.addTab(
+            LazySettingsTab(self, "user_management_tab", lambda: UserManagementTab(self.user)),
+            t("user_management"),
+        )
+        self.tabs.addTab(
+            LazySettingsTab(self, "database_tab", lambda: DatabaseTab(self.user)),
+            t("database_tab"),
+        )
         self.tabs.currentChanged.connect(self._handle_tab_changed)
         install_tab_transition(self.tabs, duration=240, offset=10)
         layout.addWidget(self.tabs, 1)
+        self._refresh_current_tab(self.tabs.currentIndex())
 
     def _add_policy_tabs(self, insert_at=None):
-        self.summary_tab = PolicySummaryTab(self.user)
-        self.level_tab = LevelManagementTab(self.user, on_saved=self._reload_policy_tabs)
-        self.salary_tab = SalaryTab(self.user, on_saved=self._refresh_policy_views)
-        self.promotion_tab = SettingsPromotionTab(self.user, on_saved=self._refresh_policy_views)
-        self.increment_tab = IncrementTab(self.user, on_saved=self._refresh_policy_views)
+        self.summary_tab = None
+        self.level_tab = None
+        self.salary_tab = None
+        self.promotion_tab = None
+        self.increment_tab = None
         tabs = [
-            (self.summary_tab, t("policy_summary")),
-            (self.level_tab, t("level_management")),
-            (self.salary_tab, t("salary_ranges")),
-            (self.promotion_tab, t("promotion_rules_tab")),
-            (self.increment_tab, t("annual_increment")),
+            (LazySettingsTab(self, "summary_tab", lambda: PolicySummaryTab(self.user)), t("policy_summary")),
+            (LazySettingsTab(self, "level_tab", lambda: LevelManagementTab(self.user, on_saved=self._reload_policy_tabs)), t("level_management")),
+            (LazySettingsTab(self, "salary_tab", lambda: SalaryTab(self.user, on_saved=self._refresh_policy_views)), t("salary_ranges")),
+            (LazySettingsTab(self, "promotion_tab", lambda: SettingsPromotionTab(self.user, on_saved=self._refresh_policy_views)), t("promotion_rules_tab")),
+            (LazySettingsTab(self, "increment_tab", lambda: IncrementTab(self.user, on_saved=self._refresh_policy_views)), t("annual_increment")),
         ]
         if insert_at is None:
             for widget, label in tabs:
@@ -582,6 +660,12 @@ class LevelManagementTab(QWidget):
         super().resizeEvent(event)
         if hasattr(self, "table"):
             self._resize_level_columns()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if hasattr(self, "table"):
+            for delay in (0, 80, 180):
+                QTimer.singleShot(delay, self._resize_level_columns)
 
     def _resize_level_columns(self):
         if not hasattr(self, "table"):
@@ -2670,6 +2754,25 @@ def _plain_card():
     return card
 
 
+def _settings_placeholder():
+    content, outer = _content()
+    outer.setSpacing(18)
+    for width, height in ((52, 52), (360, 16), (520, 12), (440, 12), (610, 12)):
+        bar = QFrame()
+        bar.setFixedSize(width, height)
+        radius = min(height // 2, 8)
+        bar.setStyleSheet(f"""
+            QFrame {{
+                background: {tokens().surface_muted};
+                border: 1px solid {tokens().border};
+                border-radius: {radius}px;
+            }}
+        """)
+        outer.addWidget(bar, 0, Qt.AlignHCenter)
+    outer.addStretch()
+    return content
+
+
 def _section_card(title, subtitle=None, icon_name=None, icon_color=BLUE):
     card = _plain_card()
     layout = QVBoxLayout(card)
@@ -3120,6 +3223,9 @@ def _danger_icon_button_ss():
 def _styled_message_box(parent, icon, title, text, buttons=QMessageBox.Ok, default_button=QMessageBox.Ok):
     box = QMessageBox(parent)
     box.setIcon(icon)
+    icon_pixmap = message_box_icon_pixmap(icon)
+    if icon_pixmap is not None:
+        box.setIconPixmap(icon_pixmap)
     box.setWindowTitle(title)
     box.setText(text)
     box.setStandardButtons(buttons)

@@ -5,6 +5,7 @@ from PySide6.QtCore import QEvent, QObject, QRectF, Qt
 from PySide6.QtGui import QPainterPath, QRegion
 from PySide6.QtWidgets import QAbstractItemView, QFrame, QListView, QMessageBox
 
+from src.ui.icons import app_pixmap
 from src.ui.theme import THEME_DARK, tokens
 
 # Colors
@@ -524,9 +525,25 @@ QPushButton:default {{ background: {t.brand}; color: {default_text}; border: non
 MESSAGE_BOX_SS = message_box_ss()
 
 
+def message_box_icon_pixmap(icon, *, size=32):
+    t = tokens()
+    if icon == QMessageBox.Warning:
+        return app_pixmap("circle-alert", color=t.warning, size=size)
+    if icon == QMessageBox.Critical:
+        return app_pixmap("triangle-alert", color=t.danger, size=size)
+    if icon == QMessageBox.Question:
+        return app_pixmap("info", color=t.brand, size=size)
+    if icon == QMessageBox.Information:
+        return app_pixmap("info", color=t.brand, size=size)
+    return None
+
+
 def show_message_box(parent, icon, title, text, buttons=QMessageBox.Ok, default_button=QMessageBox.Ok):
     box = QMessageBox(parent)
     box.setIcon(icon)
+    icon_pixmap = message_box_icon_pixmap(icon)
+    if icon_pixmap is not None:
+        box.setIconPixmap(icon_pixmap)
     box.setWindowTitle(title)
     box.setText(text)
     box.setStandardButtons(buttons)

@@ -32,6 +32,7 @@ from src.ui.styles import (
     combo_style,
     enable_table_row_selection,
     input_style,
+    message_box_icon_pixmap,
     message_box_ss,
     pager_button_ss,
     prepare_table_cell_widget,
@@ -1449,19 +1450,21 @@ def _date_range_start(date_range):
 
 def _info(parent, title, text):
     box = QMessageBox(parent)
-    box.setIcon(QMessageBox.Information)
+    box.setIconPixmap(message_box_icon_pixmap(QMessageBox.Information))
     box.setWindowTitle(title)
     box.setText(text)
     box.setStandardButtons(QMessageBox.Ok)
+    box.setStyleSheet(message_box_ss())
     box.exec()
 
 
 def _error(parent, title, text):
     box = QMessageBox(parent)
-    box.setIcon(QMessageBox.Critical)
+    box.setIconPixmap(message_box_icon_pixmap(QMessageBox.Critical))
     box.setWindowTitle(title)
     box.setText(text)
     box.setStandardButtons(QMessageBox.Ok)
+    box.setStyleSheet(message_box_ss())
     box.exec()
 
 

@@ -23,7 +23,7 @@ from src.database.models import (
     PromotionHistory, SalaryIncrementHistory
 )
 from src.ui.styles import (
-    btn_primary, btn_outline, btn_ghost, table_style, scroll_ss, message_box_ss,
+    btn_primary, btn_outline, btn_ghost, table_style, scroll_ss, message_box_icon_pixmap, message_box_ss,
     enable_table_row_selection, prepare_table_cell_widget, primary_button_fg,
     race_color, race_soft_color, race_progress_bar_ss,
     alert_ss, badge_ss, btn_success_outline, empty_state_ss,
@@ -2067,6 +2067,9 @@ class DashboardPage(QWidget):
 def _styled_message_box(parent, icon, title, text):
     box = QMessageBox(parent)
     box.setIcon(icon)
+    icon_pixmap = message_box_icon_pixmap(icon)
+    if icon_pixmap is not None:
+        box.setIconPixmap(icon_pixmap)
     box.setWindowTitle(title)
     box.setText(text)
     box.setStandardButtons(QMessageBox.Ok)

@@ -35,6 +35,7 @@ from src.ui.styles import (
     card_ss,
     input_style,
     combo_style,
+    message_box_icon_pixmap,
     message_box_ss,
     scroll_ss,
     pager_button_ss,
@@ -521,6 +522,9 @@ class ActiveSanctionsTab(QWidget):
 def _styled_message_box(parent, icon, title, text, buttons=QMessageBox.Ok, default_button=QMessageBox.Ok):
     box = QMessageBox(parent)
     box.setIcon(icon)
+    icon_pixmap = message_box_icon_pixmap(icon)
+    if icon_pixmap is not None:
+        box.setIconPixmap(icon_pixmap)
     box.setWindowTitle(title)
     box.setText(text)
     box.setStandardButtons(buttons)

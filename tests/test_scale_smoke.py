@@ -412,3 +412,27 @@ class ScaleSmokeTests(unittest.TestCase):
         finally:
             window.close()
             theme_manager.set_theme(original_theme, persist=False)
+
+    def test_theme_switch_keeps_settings_subpage(self):
+        from src.ui.main_window import MainWindow
+        from src.ui.theme import THEME_DARK, THEME_LIGHT, theme_manager
+
+        original_theme = theme_manager.theme
+        target_theme = THEME_DARK if original_theme != THEME_DARK else THEME_LIGHT
+        user = SimpleNamespace(id=1, username="admin", role="admin", full_name="Scale Admin")
+        window = MainWindow(user)
+        try:
+            window._navigate("settings", animate=False)
+            page = window.stack.currentWidget()
+            database_index = page.tabs.count() - 1
+            page.tabs.setCurrentIndex(database_index)
+            self.assertEqual(page.tabs.currentIndex(), database_index)
+
+            theme_manager.set_theme(target_theme, persist=False)
+            self.app.processEvents()
+
+            page = window.stack.currentWidget()
+            self.assertEqual(page.tabs.currentIndex(), database_index)
+        finally:
+            window.close()
+            theme_manager.set_theme(original_theme, persist=False)

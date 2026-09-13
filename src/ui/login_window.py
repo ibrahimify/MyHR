@@ -28,6 +28,7 @@ from src.core.i18n import available_languages, get_language, is_rtl, set_languag
 from src.database.connection import verify_login
 from src.ui.components.theme_toggle import ThemeToggle
 from src.ui.icons import app_icon, app_pixmap
+from src.ui.styles import message_box_icon_pixmap
 from src.ui.theme import theme_manager, tokens
 
 
@@ -656,6 +657,9 @@ class LoginWindow(QWidget):
 def _styled_message_box(parent, icon, title, text):
     box = QMessageBox(parent)
     box.setIcon(icon)
+    icon_pixmap = message_box_icon_pixmap(icon)
+    if icon_pixmap is not None:
+        box.setIconPixmap(icon_pixmap)
     box.setWindowTitle(title)
     box.setText(text)
     box.setStandardButtons(QMessageBox.Ok)

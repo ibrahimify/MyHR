@@ -20,7 +20,7 @@ from src.database.models import Employee, Title, PromotionRule, PromotionHistory
 from src.ui.animations import install_tab_transition
 from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
-    btn_primary, btn_outline, input_style, message_box_ss, pager_button_ss,
+    btn_primary, btn_outline, input_style, message_box_icon_pixmap, message_box_ss, pager_button_ss,
     pill_tab_ss, card_ss, enable_table_row_selection, prepare_table_cell_widget,
     scroll_ss, table_style, primary_button_fg, sync_table_widget_cells,
     level_badge_colors, race_color, race_soft_color, race_progress_bar_ss,
@@ -1261,6 +1261,9 @@ def _mini_line(icon_name, text, color):
 def _styled_message_box(parent, icon, title, text, buttons=QMessageBox.Ok, default_button=QMessageBox.Ok):
     box = QMessageBox(parent)
     box.setIcon(icon)
+    icon_pixmap = message_box_icon_pixmap(icon)
+    if icon_pixmap is not None:
+        box.setIconPixmap(icon_pixmap)
     box.setWindowTitle(title)
     box.setText(text)
     box.setStandardButtons(buttons)

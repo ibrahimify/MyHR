@@ -40,6 +40,11 @@ NAV_SECTIONS = [
 ADMIN_ONLY_PAGES = {"settings"}
 
 _ICON_SZ = QSize(20, 20)
+PAGE_NAV_META = {
+    page_key: (label_key, icon_name)
+    for _section_key, items in NAV_SECTIONS
+    for label_key, page_key, icon_name in items
+}
 
 
 class Sidebar(QWidget):
@@ -381,9 +386,13 @@ class MainWindow(QMainWindow):
         theme_manager.theme_changed.connect(self._handle_theme_changed)
         self._pages_cache = {}
         self._page_animation_ready = False
+        self._pending_navigation = None
+        self._navigation_token = 0
+        self._nav_skeleton = None
         self._build()
         self.showMaximized()
         QTimer.singleShot(350, self._enable_page_animations)
+        QTimer.singleShot(900, self._preload_page_classes)
 
     def _build(self):
         central = QWidget()
@@ -418,6 +427,8 @@ class MainWindow(QMainWindow):
             """)
         if hasattr(self, "sidebar"):
             self.sidebar.apply_theme()
+        if hasattr(self, "_nav_skeleton") and self._nav_skeleton is not None:
+            self._nav_skeleton.apply_theme()
 
     def _handle_theme_changed(self, _theme):
         self.apply_theme()
@@ -425,6 +436,9 @@ class MainWindow(QMainWindow):
             return
         key = getattr(self, "current_key", "dashboard")
         current_page = self._pages_cache.get(key)
+        settings_tab_index = None
+        if key == "settings" and current_page is not None and hasattr(current_page, "tabs"):
+            settings_tab_index = current_page.tabs.currentIndex()
         stale_pages = [
             page for cache_key, page in self._pages_cache.items()
             if cache_key != key
@@ -443,9 +457,38 @@ class MainWindow(QMainWindow):
             except RuntimeError:
                 pass
         self._navigate(key, animate=False)
+        if key == "settings" and settings_tab_index is not None:
+            new_page = self._pages_cache.get("settings")
+            if new_page is not None and hasattr(new_page, "tabs"):
+                new_page.tabs.setCurrentIndex(settings_tab_index)
 
     def _enable_page_animations(self):
         self._page_animation_ready = True
+
+    def _preload_page_classes(self):
+        modules = [
+            ("settings", "SettingsPage"),
+            ("employees", "EmployeesPage"),
+            ("hierarchy", "HierarchyPage"),
+            ("promotions", "PromotionsPage"),
+            ("commendations", "CommendationsPage"),
+            ("sanctions", "SanctionsPage"),
+            ("audit_log", "AuditLogPage"),
+            ("import_data", "ImportDataPage"),
+        ]
+        for index, (module_name, class_name) in enumerate(modules):
+            QTimer.singleShot(70 * index, lambda m=module_name, c=class_name: self._safe_preload_page_class(m, c))
+
+    def _safe_preload_page_class(self, module_name, class_name):
+        try:
+            if not shiboken6.isValid(self):
+                return
+        except RuntimeError:
+            return
+        try:
+            self._page_class(module_name, class_name)
+        except Exception:
+            pass
 
     def _get_page(self, key):
         if key in self._pages_cache:
@@ -537,26 +580,67 @@ class MainWindow(QMainWindow):
         if key in ADMIN_ONLY_PAGES and self.user.role != "admin":
             message_warning(self, t("access_denied"), t("admin_only_section"))
             return
+        if animate and self._page_animation_ready and key not in self._pages_cache:
+            self._navigation_token += 1
+            token = self._navigation_token
+            self._pending_navigation = (key, open_active_sanctions, token)
+            self.sidebar._set_active(key)
+            self._show_navigation_skeleton(key)
+            QTimer.singleShot(55, lambda: self._finish_pending_navigation(token))
+            return
+        self._perform_navigation(key, open_active_sanctions, animate=animate)
+
+    def _finish_pending_navigation(self, token):
+        pending = self._pending_navigation
+        self._pending_navigation = None
+        if pending is None:
+            return
+        key, open_active_sanctions, pending_token = pending
+        if pending_token != token:
+            return
+        self._perform_navigation(key, open_active_sanctions, animate=True)
+
+    def _show_navigation_skeleton(self, key):
+        if self._nav_skeleton is None:
+            self._nav_skeleton = _NavigationSkeletonPage(key)
+            self.stack.addWidget(self._nav_skeleton)
+        else:
+            self._nav_skeleton.set_page_key(key)
+        self.stack.setCurrentWidget(self._nav_skeleton)
+
+    def _perform_navigation(self, key, open_active_sanctions=False, *, animate=True):
+        was_cached = key in self._pages_cache
         if key in ("dashboard", "employees", "promotions", "audit_log") and key in self._pages_cache:
-            old = self._pages_cache.pop(key)
-            self.stack.removeWidget(old)
-            old.close()
-            try:
-                if shiboken6.isValid(old):
-                    shiboken6.delete(old)
-            except RuntimeError:
-                pass
+            if not (animate and self._page_animation_ready):
+                old = self._pages_cache.pop(key)
+                self.stack.removeWidget(old)
+                old.close()
+                try:
+                    if shiboken6.isValid(old):
+                        shiboken6.delete(old)
+                except RuntimeError:
+                    pass
+                was_cached = False
         page = self._get_page(key)
         self.current_key = key
         self.stack.setCurrentWidget(page)
         self.sidebar._set_active(key)
         if hasattr(page, "refresh"):
-            page.refresh()
-        self._discard_inactive_pages(key)
+            if animate and self._page_animation_ready and was_cached:
+                QTimer.singleShot(140, page.refresh)
+            else:
+                page.refresh()
         if animate and self._page_animation_ready:
-            animate_widget_entry(page, duration=160, offset=0)
+            self._schedule_inactive_page_discard(key)
+        else:
+            self._discard_inactive_pages(key)
+        if animate and self._page_animation_ready and key != "settings":
+            animate_widget_entry(page, duration=170, offset=0)
         if open_active_sanctions and hasattr(page, "open_active_sanctions"):
             page.open_active_sanctions()
+
+    def _schedule_inactive_page_discard(self, active_key):
+        QTimer.singleShot(450, lambda key=active_key: self._discard_inactive_pages(key))
 
     def _navigate_to_employee(self, emp_db_id: int):
         if "employees" in self._pages_cache:
@@ -569,10 +653,11 @@ class MainWindow(QMainWindow):
             except RuntimeError:
                 pass
         page = self._get_page("employees")
+        self.current_key = "employees"
         self.stack.setCurrentWidget(page)
         self.sidebar._set_active("employees")
         page._show_profile(emp_db_id)
-        animate_widget_entry(page, duration=160, offset=0)
+        animate_widget_entry(page, duration=170, offset=0)
 
     def _logout(self):
         from src.ui.login_window import LoginWindow
@@ -594,3 +679,73 @@ class _PlaceholderPage(QWidget):
         lbl.setAlignment(Qt.AlignCenter)
         lbl.setStyleSheet(f"font-size: 16px; color: {tokens().text_soft};")
         layout.addWidget(lbl)
+
+
+class _NavigationSkeletonPage(QWidget):
+    def __init__(self, key):
+        super().__init__()
+        self.setObjectName("NavigationSkeletonPage")
+        self._bars = []
+        self._icon = QLabel()
+        self._title = QLabel()
+        self._subtitle = QLabel()
+        self._build()
+        self.set_page_key(key)
+
+    def _build(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setSpacing(18)
+
+        header = QHBoxLayout()
+        header.setSpacing(12)
+        self._icon.setFixedSize(34, 34)
+        self._icon.setAlignment(Qt.AlignCenter)
+        header.addWidget(self._icon, 0, Qt.AlignTop)
+
+        text_col = QVBoxLayout()
+        text_col.setSpacing(7)
+        self._title.setStyleSheet("font-size: 28px; font-weight: 850; background: transparent;")
+        self._subtitle.setFixedHeight(13)
+        text_col.addWidget(self._title)
+        text_col.addWidget(self._subtitle)
+        header.addLayout(text_col)
+        header.addStretch()
+        layout.addLayout(header)
+
+        for width, height in ((640, 42), (860, 82), (860, 42), (820, 42), (780, 42), (720, 42)):
+            bar = QFrame()
+            bar.setObjectName("SkeletonBar")
+            bar.setFixedHeight(height)
+            bar.setMaximumWidth(width)
+            layout.addWidget(bar)
+            self._bars.append(bar)
+        layout.addStretch()
+        self.apply_theme()
+
+    def set_page_key(self, key):
+        label_key, icon_name = PAGE_NAV_META.get(key, (key, "dashboard"))
+        self._title.setText(t(label_key))
+        self._icon.setPixmap(app_pixmap(icon_name, color=tokens().brand, size=22))
+        self.apply_theme()
+
+    def apply_theme(self):
+        tkn = tokens()
+        self.setStyleSheet(f"QWidget#NavigationSkeletonPage {{ background: {tkn.canvas}; border: none; }}")
+        self._title.setStyleSheet(f"font-size: 28px; font-weight: 850; color: {tkn.text}; background: transparent;")
+        self._subtitle.setStyleSheet(f"""
+            QLabel {{
+                background: {tkn.surface_muted};
+                border: 1px solid {tkn.border};
+                border-radius: 6px;
+            }}
+        """)
+        for index, bar in enumerate(self._bars):
+            radius = 8 if index < 2 else 6
+            bar.setStyleSheet(f"""
+                QFrame#SkeletonBar {{
+                    background: {tkn.surface_raised};
+                    border: 1px solid {tkn.border};
+                    border-radius: {radius}px;
+                }}
+            """)
