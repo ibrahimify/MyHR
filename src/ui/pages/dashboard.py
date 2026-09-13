@@ -26,6 +26,7 @@ from src.ui.styles import (
     btn_primary, btn_outline, btn_ghost, table_style, scroll_ss, message_box_ss,
     enable_table_row_selection, prepare_table_cell_widget, primary_button_fg,
     race_color, race_soft_color, race_progress_bar_ss,
+    alert_ss, badge_ss, btn_success_outline, empty_state_ss,
 )
 from src.ui.chart_theme import chart_axis_color, chart_color, chart_grid_color, chart_soft_color
 from src.ui.icons import app_icon, app_pixmap
@@ -836,8 +837,14 @@ class SalaryIncrementReviewDialog(QDialog):
             lbl.setAlignment(Qt.AlignCenter)
             lbl.setFixedSize(120, 32)
             lbl.setStyleSheet(
-                f"background: {tokens().success_soft}; color: {tokens().success}; border: 1px solid {tokens().success}; border-radius: 8px; "
-                "font-size: 12px; font-weight: 800;"
+                badge_ss(
+                    tokens().success_soft,
+                    tokens().success,
+                    radius=8,
+                    padding="0 12px",
+                    font_size=12,
+                    weight=800,
+                ) + f" border: 1px solid {tokens().success};"
             )
             layout.addWidget(lbl)
             self.table.setCellWidget(idx, 4, cell)
@@ -848,12 +855,7 @@ class SalaryIncrementReviewDialog(QDialog):
         btn.setIconSize(QSize(13, 13))
         btn.setFixedSize(120, 34)
         btn.setCursor(Qt.PointingHandCursor)
-        btn.setStyleSheet(
-            f"QPushButton {{ background: {tokens().surface}; color: {tokens().success}; border: 1px solid {tokens().success}; "
-            "border-radius: 8px; font-size: 12px; font-weight: 800; padding: 0 12px; } "
-            f"QPushButton:hover {{ background: {tokens().success_soft}; }} "
-            f"QPushButton:pressed {{ background: {tokens().success_soft}; }}"
-        )
+        btn.setStyleSheet(btn_success_outline(34))
         btn.setIcon(app_icon("fa5s.check", color=tokens().success, size=13))
         btn.clicked.connect(lambda _, eid=emp_id, ridx=idx: self._approve_one(eid, ridx))
         layout.addWidget(btn)
@@ -1380,15 +1382,11 @@ class DashboardPage(QWidget):
 
     def _increment_alert(self):
         accent = chart_color("increment")
-        soft = chart_soft_color("increment")
         alert = QFrame()
         alert.setObjectName("IncrementAlert")
         alert.setMinimumHeight(64)
         alert.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        alert.setStyleSheet(
-            f"QFrame#IncrementAlert {{ background: {soft}; border: 1px solid {accent}; border-radius: 8px; }}"
-            "QFrame#IncrementAlert QLabel { border: none; background: transparent; }"
-        )
+        alert.setStyleSheet(alert_ss("increment", "QFrame#IncrementAlert"))
         row = QHBoxLayout(alert)
         row.setContentsMargins(14, 10, 14, 10)
         row.setSpacing(12)
@@ -1932,10 +1930,7 @@ class DashboardPage(QWidget):
         else:
             empty = QLabel(t("no_recent_activity"))
             empty.setAlignment(Qt.AlignCenter)
-            empty.setStyleSheet(
-                f"font-size: 15px; color: {tokens().text_soft}; background: {tokens().surface_muted}; "
-                "border: none; border-radius: 8px; padding: 28px;"
-            )
+            empty.setStyleSheet(empty_state_ss())
             layout.addWidget(empty)
         layout.addStretch()
         return card
@@ -2007,10 +2002,7 @@ class DashboardPage(QWidget):
             empty = QLabel(t("no_upcoming_promotions"))
             empty.setWordWrap(True)
             empty.setAlignment(Qt.AlignCenter)
-            empty.setStyleSheet(
-                f"font-size: 15px; color: {tokens().text_soft}; background: {tokens().surface_muted}; "
-                "border: none; border-radius: 8px; padding: 28px;"
-            )
+            empty.setStyleSheet(empty_state_ss())
             layout.addWidget(empty)
         layout.addStretch()
         return card
@@ -2046,8 +2038,14 @@ class DashboardPage(QWidget):
         badge.setAlignment(Qt.AlignCenter)
         badge_status = "eligible" if item["eligible"] else "progress"
         badge.setStyleSheet(
-            f"background: {race_soft_color(badge_status)}; color: {race_color(badge_status)}; border: none; "
-            "border-radius: 12px; padding: 3px 9px; font-size: 12px; font-weight: 700;"
+            badge_ss(
+                race_soft_color(badge_status),
+                race_color(badge_status),
+                radius=12,
+                padding="3px 9px",
+                font_size=12,
+                weight=700,
+            )
         )
         top.addWidget(badge, 0, Qt.AlignTop)
         layout.addLayout(top)

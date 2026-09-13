@@ -38,6 +38,8 @@ from src.ui.styles import (
     polish_combo_box,
     sync_table_widget_cells,
     table_style,
+    badge_ss,
+    alert_ss,
 )
 from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import get_session, log_action
@@ -296,10 +298,7 @@ class AuditLogPage(QWidget):
         layout.addSpacing(30)
 
         info_card = QFrame()
-        info_card.setStyleSheet(
-            f"QFrame {{ background: {tokens().selected}; border-radius: 8px; border: 1px solid {tokens().brand}; }} "
-            "QLabel { background: transparent; border: none; }"
-        )
+        info_card.setStyleSheet(alert_ss("info"))
         il = QVBoxLayout(info_card)
         il.setContentsMargins(30, 28, 30, 28)
         il.setSpacing(12)
@@ -1546,10 +1545,7 @@ def _category_badge(category):
 
     label = _category_label(category)
     badge = QLabel(label)
-    badge.setStyleSheet(
-        f"background: {bg}; color: {fg}; border: none; "
-        "border-radius: 7px; padding: 4px 10px; font-size: 12px; font-weight: 800;"
-    )
+    badge.setStyleSheet(badge_ss(bg, fg, radius=7, padding="4px 10px", font_size=12, weight=800))
     badge.setToolTip(label)
     layout.addWidget(badge)
     return cell

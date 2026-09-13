@@ -41,6 +41,9 @@ from src.ui.styles import (
     polish_combo_box,
     table_style,
     primary_button_fg,
+    badge_ss,
+    btn_success_outline,
+    alert_ss,
 )
 from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import get_session, generate_sanction_ref, log_action, is_other_employee
@@ -113,10 +116,7 @@ def _badge_cell(text, bg, fg, min_width=92):
         badge.setMinimumWidth(min_width)
     badge.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
     badge.setAlignment(Qt.AlignCenter)
-    badge.setStyleSheet(
-        f"background: {bg}; color: {fg}; border: none; "
-        "border-radius: 7px; padding: 4px 10px; font-size: 12px; font-weight: 700;"
-    )
+    badge.setStyleSheet(badge_ss(bg, fg, radius=7, padding="4px 10px", font_size=12, weight=700))
     layout.addWidget(badge)
     layout.addStretch()
     return cell
@@ -442,13 +442,7 @@ class ActiveSanctionsTab(QWidget):
                 resolve_btn.setIconSize(QSize(15, 15))
                 resolve_btn.setFixedSize(116, 34)
                 resolve_btn.setCursor(Qt.PointingHandCursor)
-                resolve_btn.setStyleSheet(
-                    f"QPushButton {{ background: {tokens().surface}; color: {tokens().success}; border: 1px solid {tokens().success}; "
-                    "border-radius: 8px; font-size: 13px; font-weight: 800; "
-                    "padding: 0 14px; text-align: center; } "
-                    f"QPushButton:hover {{ background: {tokens().success_soft}; }} "
-                    f"QPushButton:pressed {{ background: {tokens().success_soft}; }}"
-                )
+                resolve_btn.setStyleSheet(btn_success_outline(34))
                 resolve_btn.clicked.connect(lambda _, sid=row["id"]: self._resolve(sid))
                 action_cell = prepare_table_cell_widget(QWidget())
                 action_layout = QHBoxLayout(action_cell)
@@ -995,10 +989,7 @@ class IssueSanctionTab(QWidget):
         right.addWidget(impact_card)
 
         notes_card = QFrame()
-        notes_card.setStyleSheet(
-            f"QFrame {{ background: {tokens().danger_soft}; border-radius: 8px; border: 1px solid {tokens().danger}; }} "
-            "QLabel { background: transparent; border: none; }"
-        )
+        notes_card.setStyleSheet(alert_ss("danger"))
         nc = QVBoxLayout(notes_card)
         nc.setContentsMargins(24, 22, 24, 24)
         nc.setSpacing(12)

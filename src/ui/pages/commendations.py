@@ -41,6 +41,8 @@ from src.ui.styles import (
     primary_button_fg,
     prepare_table_cell_widget,
     sync_table_widget_cells,
+    badge_ss,
+    alert_ss,
 )
 from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import (
@@ -351,10 +353,7 @@ class IssueCommendationTab(QWidget):
 
         # Category impact info
         impact_card = QFrame()
-        impact_card.setStyleSheet(
-            f"QFrame {{ background: {tokens().selected}; border-radius: 8px; border: 1px solid {tokens().brand}; }} "
-            "QLabel { background: transparent; border: none; }"
-        )
+        impact_card.setStyleSheet(alert_ss("info"))
         ic = QVBoxLayout(impact_card)
         ic.setContentsMargins(22, 20, 22, 22)
         ic.setSpacing(12)
@@ -389,7 +388,7 @@ class IssueCommendationTab(QWidget):
             badge = QLabel(_impact_label(cat["months"]))
             badge.setMinimumWidth(96)
             badge.setAlignment(Qt.AlignCenter)
-            badge.setStyleSheet(f"background: {cat_bg}; color: {cat_fg}; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700;")
+            badge.setStyleSheet(badge_ss(cat_bg, cat_fg, radius=6, padding="4px 10px", font_size=11, weight=700))
             desc = QLabel(t(cat["desc_key"]))
             desc.setWordWrap(True)
             desc.setStyleSheet(f"font-size: 12px; color: {tokens().text_muted}; background: transparent;")
@@ -430,10 +429,7 @@ class IssueCommendationTab(QWidget):
 
         # Rules card
         rules_card = QFrame()
-        rules_card.setStyleSheet(
-            f"QFrame {{ background: {tokens().warning_soft}; border-radius: 8px; border: 1px solid {tokens().warning}; }} "
-            "QLabel { background: transparent; border: none; }"
-        )
+        rules_card.setStyleSheet(alert_ss("warning"))
         rc = QVBoxLayout(rules_card)
         rc.setContentsMargins(22, 20, 22, 22)
         rc.setSpacing(12)
@@ -905,10 +901,7 @@ class CommendationHistoryTab(QWidget):
         badge.setToolTip(text)
         badge.setMinimumWidth(84)
         badge.setAlignment(Qt.AlignCenter)
-        badge.setStyleSheet(
-            f"background: {bg}; color: {fg}; border: none; "
-            "border-radius: 7px; padding: 4px 10px; font-size: 12px; font-weight: 700;"
-        )
+        badge.setStyleSheet(badge_ss(bg, fg, radius=7, padding="4px 10px", font_size=12, weight=700))
         layout.addWidget(badge)
         layout.addStretch()
         return cell

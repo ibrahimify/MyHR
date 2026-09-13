@@ -41,6 +41,7 @@ from src.ui.styles import (
     scroll_ss,
     table_style,
     primary_button_fg,
+    alert_ss,
 )
 from src.ui.theme import THEME_DARK, tokens
 
@@ -374,10 +375,7 @@ class ImportDataPage(QWidget):
     def _build_required_card(self):
         card = QFrame()
         card.setMinimumHeight(190)
-        card.setStyleSheet(
-            f"QFrame {{ background: {tokens().selected}; border-radius: 8px; border: 1px solid {tokens().border_strong}; }} "
-            "QLabel { background: transparent; border: none; }"
-        )
+        card.setStyleSheet(alert_ss("info"))
         layout = QVBoxLayout(card)
         layout.setContentsMargins(24, 22, 24, 22)
         layout.setSpacing(9)
@@ -407,10 +405,7 @@ class ImportDataPage(QWidget):
     def _build_cleaning_card(self):
         card = QFrame()
         card.setMinimumHeight(230)
-        card.setStyleSheet(
-            f"QFrame {{ background: {tokens().warning_soft}; border-radius: 8px; border: 1px solid {tokens().warning}; }} "
-            "QLabel { background: transparent; border: none; }"
-        )
+        card.setStyleSheet(alert_ss("warning"))
         layout = QVBoxLayout(card)
         layout.setContentsMargins(24, 22, 24, 22)
         layout.setSpacing(9)

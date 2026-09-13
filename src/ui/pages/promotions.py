@@ -24,6 +24,7 @@ from src.ui.styles import (
     pill_tab_ss, card_ss, enable_table_row_selection, prepare_table_cell_widget,
     scroll_ss, table_style, primary_button_fg, sync_table_widget_cells,
     level_badge_colors, race_color, race_soft_color, race_progress_bar_ss,
+    badge_ss,
 )
 from src.ui.theme import THEME_DARK, tokens
 
@@ -832,7 +833,7 @@ class HistoryTab(QWidget):
             fl.setMinimumWidth(90)
             fl.setAlignment(Qt.AlignCenter)
             level_bg, level_fg = _level_badge_colors()
-            fl.setStyleSheet(f"background: {level_bg}; color: {level_fg}; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 700;")
+            fl.setStyleSheet(badge_ss(level_bg, level_fg, radius=6, padding="2px 10px", font_size=12, weight=700))
             arrow = QLabel()
             arrow.setPixmap(app_pixmap("fa5s.arrow-right", color=tokens().success, size=12))
             tl = QLabel(row["to"])
@@ -840,7 +841,7 @@ class HistoryTab(QWidget):
             tl.setMinimumWidth(120)
             tl.setAlignment(Qt.AlignCenter)
             success_bg, success_fg = _success_badge_colors()
-            tl.setStyleSheet(f"background: {success_bg}; color: {success_fg}; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 700;")
+            tl.setStyleSheet(badge_ss(success_bg, success_fg, radius=6, padding="2px 10px", font_size=12, weight=700))
             promo_w.setToolTip(row.get("details") or f"{row['from']} -> {row['to']}")
             pl.addWidget(fl)
             pl.addWidget(arrow)
@@ -854,14 +855,14 @@ class HistoryTab(QWidget):
             fl.setMinimumWidth(44)
             fl.setAlignment(Qt.AlignCenter)
             level_bg, level_fg = _level_badge_colors()
-            fl.setStyleSheet(f"background: {level_bg}; color: {level_fg}; border-radius: 6px; padding: 3px 9px; font-size: 12px; font-weight: 700;")
+            fl.setStyleSheet(badge_ss(level_bg, level_fg, radius=6, padding="3px 9px", font_size=12, weight=700))
             arrow = QLabel()
             arrow.setPixmap(app_pixmap("fa5s.arrow-right", color=tokens().success, size=12))
             tl = QLabel(row["to"])
             tl.setMinimumWidth(44)
             tl.setAlignment(Qt.AlignCenter)
             success_bg, success_fg = _success_badge_colors()
-            tl.setStyleSheet(f"background: {success_bg}; color: {success_fg}; border-radius: 6px; padding: 3px 9px; font-size: 12px; font-weight: 700;")
+            tl.setStyleSheet(badge_ss(success_bg, success_fg, radius=6, padding="3px 9px", font_size=12, weight=700))
             promo_w.setToolTip(f"{row['from']} -> {row['to']}")
             pl.addWidget(fl)
             pl.addWidget(arrow)
@@ -1184,7 +1185,7 @@ def _set_table_item(table, row, col, text):
 
 def _level_badge(text, bg, fg):
     label = QLabel(text)
-    label.setStyleSheet(f"background: {bg}; color: {fg}; border-radius: 7px; padding: 4px 10px; font-size: 12px; font-weight: 700;")
+    label.setStyleSheet(badge_ss(bg, fg, radius=7, padding="4px 10px", font_size=12, weight=700))
     return label
 
 

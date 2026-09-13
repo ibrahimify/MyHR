@@ -171,6 +171,29 @@ def table_selection_bg(selected_bg=TABLE_ROW_SELECTED_BG):
     return selected_bg
 
 
+def semantic_colors(kind="neutral"):
+    t = tokens()
+    if kind in {"success", "eligible", "complete", "completed"}:
+        return t.success, t.success_soft
+    if kind in {"warning", "soon", "delay", "increment", "commendation"}:
+        return t.warning, t.warning_soft
+    if kind in {"danger", "error", "sanction"}:
+        return t.danger, t.danger_soft
+    if kind in {"brand", "info", "selected"}:
+        return t.brand, t.selected
+    return t.text_muted, t.surface_muted
+
+
+def semantic_pair(kind="neutral"):
+    fg, bg = semantic_colors(kind)
+    return bg, fg
+
+
+def semantic_badge_ss(kind="neutral", *, radius=7, padding="4px 10px", font_size=12, weight=700):
+    bg, fg = semantic_pair(kind)
+    return badge_ss(bg, fg, radius=radius, padding=padding, font_size=font_size, weight=weight)
+
+
 def btn_blue(h=36):
     return btn_primary(h)
 
@@ -227,6 +250,49 @@ QPushButton {{
     outline: none;
 }}
 QPushButton:hover {{ background: {t.danger_soft}; border: 1px solid {t.danger}; }}
+"""
+
+
+def btn_success_outline(h=36):
+    t = tokens()
+    return f"""
+QPushButton {{
+    background: {t.surface};
+    color: {t.success};
+    border: 1px solid {t.success};
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 0 14px;
+    min-height: {h}px;
+    outline: none;
+}}
+QPushButton:hover {{ background: {t.success_soft}; }}
+QPushButton:pressed {{ background: {t.success_soft}; }}
+"""
+
+
+def btn_danger_outline(h=36):
+    t = tokens()
+    return f"""
+QPushButton {{
+    background: {t.surface};
+    color: {t.danger};
+    border: 1px solid {t.danger};
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 0 14px;
+    min-height: {h}px;
+    outline: none;
+}}
+QPushButton:hover {{ background: {t.danger_soft}; }}
+QPushButton:pressed {{ background: {t.danger_soft}; }}
+QPushButton:disabled {{
+    background: {t.surface_muted};
+    color: {t.text_soft};
+    border: 1px solid {t.border};
+}}
 """
 
 
@@ -561,6 +627,37 @@ def card_ss(object_name: str = "QFrame"):
 
 CARD_SS = card_ss()
 
+
+def alert_ss(kind="info", object_name="QFrame"):
+    fg, bg = semantic_colors(kind)
+    return f"""
+{object_name} {{
+    background: {bg};
+    border: 1px solid {fg};
+    border-radius: 8px;
+}}
+{object_name} QLabel {{
+    background: transparent;
+    border: none;
+}}
+"""
+
+
+def empty_state_ss():
+    t = tokens()
+    return (
+        f"font-size: 15px; color: {t.text_soft}; background: {t.surface_muted}; "
+        "border: none; border-radius: 8px; padding: 28px;"
+    )
+
+
+def field_value_ss(font_size=12, radius=7, padding="8px 10px"):
+    t = tokens()
+    return (
+        f"font-size: {font_size}px; color: {t.text_muted}; background: {t.surface_muted}; "
+        f"border: none; border-radius: {radius}px; padding: {padding};"
+    )
+
 # Page scroll area
 def scroll_ss(background: str | None = None):
     t = tokens()
@@ -663,10 +760,10 @@ QTabBar::tab:hover {{
 PILL_TAB_SS = pill_tab_ss()
 
 
-def badge_ss(bg, fg):
+def badge_ss(bg, fg, *, radius=4, padding="2px 8px", font_size=11, weight=600):
     return (
-        f"background: {bg}; color: {fg}; border: none; border-radius: 4px; "
-        "padding: 2px 8px; font-size: 11px; font-weight: 600;"
+        f"background: {bg}; color: {fg}; border: none; border-radius: {radius}px; "
+        f"padding: {padding}; font-size: {font_size}px; font-weight: {weight};"
     )
 
 

@@ -32,6 +32,8 @@ from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
     pill_tab_ss, enable_table_row_selection, prepare_table_cell_widget,
     polish_combo_box, table_style, primary_button_fg, level_badge_colors,
+    alert_ss, badge_ss, card_ss, combo_style, input_style, message_box_ss,
+    btn_danger_outline, btn_outline, btn_primary,
 )
 from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import get_session, log_action, DB_PATH
@@ -63,117 +65,12 @@ LEVEL_META = {
 }
 LEVEL_ORDER = {level: index for index, level in enumerate(["L7", "L6", "L5", "L4", "L3", "L2", "L1", "Other"])}
 
-CARD_SS = f"""
-QFrame#Card {{
-    background: {tokens().surface};
-    border: 1px solid {tokens().border};
-    border-radius: 8px;
-}}
-QFrame#Card QLabel {{
-    background: transparent;
-    border: none;
-}}
-"""
-
-NOTE_BLUE_SS = f"""
-QFrame {{
-    background: {tokens().selected};
-    border: 1px solid {tokens().brand};
-    border-radius: 8px;
-}}
-QLabel {{
-    background: transparent;
-    border: none;
-}}
-"""
-
-NOTE_YELLOW_SS = f"""
-QFrame {{
-    background: {tokens().warning_soft};
-    border: 1px solid {tokens().warning};
-    border-radius: 8px;
-}}
-QLabel {{
-    background: transparent;
-    border: none;
-}}
-"""
-
-INPUT_SS = f"""
-QLineEdit, QSpinBox, QDoubleSpinBox {{
-    background: {tokens().input};
-    color: {tokens().text};
-    border: 1px solid {tokens().border};
-    border-radius: 8px;
-    padding: 0 12px;
-    min-height: 44px;
-    font-size: 14px;
-}}
-QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {{
-    background: {tokens().surface};
-    border: 1px solid {tokens().brand};
-}}
-QSpinBox::up-button, QSpinBox::down-button,
-QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
-    width: 0px;
-    border: none;
-}}
-"""
-
-COMBO_SS = f"""
-QComboBox {{
-    background: {tokens().input};
-    color: {tokens().text};
-    border: 1px solid {tokens().border};
-    border-radius: 8px;
-    padding: 0 34px 0 12px;
-    min-height: 44px;
-    font-size: 14px;
-}}
-QComboBox:focus {{
-    background: {tokens().surface};
-    border: 1px solid {tokens().brand};
-}}
-QComboBox:hover {{
-    background: {tokens().hover};
-}}
-QComboBox::drop-down {{
-    width: 30px;
-    border: none;
-    background: transparent;
-}}
-QComboBox::down-arrow {{
-    image: url(src/ui/assets/chevron_down.svg);
-    width: 13px;
-    height: 13px;
-}}
-QComboBox QAbstractItemView {{
-    background: {tokens().surface};
-    color: {tokens().text};
-    border: 1px solid {tokens().border};
-    border-radius: 8px;
-    padding: 4px;
-    selection-background-color: {tokens().brand};
-    selection-color: {"#062f28" if tokens().name == THEME_DARK else "#ffffff"};
-    outline: none;
-}}
-"""
-
-MESSAGE_BOX_SS = f"""
-QMessageBox {{ background: {tokens().surface}; color: {tokens().text}; }}
-QMessageBox QLabel {{ color: {tokens().text}; background: transparent; font-size: 13px; }}
-QPushButton {{
-    background: {tokens().surface};
-    color: {tokens().text};
-    border: 1px solid {tokens().border_strong};
-    border-radius: 6px;
-    min-width: 84px;
-    min-height: 30px;
-    font-weight: 600;
-}}
-QPushButton:hover {{ background: {tokens().hover}; }}
-QPushButton:default {{ background: {tokens().brand}; color: {"#062f28" if tokens().name == THEME_DARK else "#ffffff"}; border: none; }}
-"""
+CARD_SS = card_ss("QFrame#Card")
+NOTE_BLUE_SS = alert_ss("info")
+NOTE_YELLOW_SS = alert_ss("warning")
+INPUT_SS = input_style(44)
+COMBO_SS = combo_style(44)
+MESSAGE_BOX_SS = message_box_ss()
 
 
 def _refresh_theme_constants():
@@ -183,112 +80,12 @@ def _refresh_theme_constants():
     MUTED = tokens().text_muted
     BLACK = tokens().text
     BLUE = tokens().brand
-    CARD_SS = f"""
-QFrame#Card {{
-    background: {tokens().surface};
-    border: 1px solid {tokens().border};
-    border-radius: 8px;
-}}
-QFrame#Card QLabel {{
-    background: transparent;
-    border: none;
-}}
-"""
-    NOTE_BLUE_SS = f"""
-QFrame {{
-    background: {tokens().selected};
-    border: 1px solid {tokens().brand};
-    border-radius: 8px;
-}}
-QLabel {{
-    background: transparent;
-    border: none;
-}}
-"""
-    NOTE_YELLOW_SS = f"""
-QFrame {{
-    background: {tokens().warning_soft};
-    border: 1px solid {tokens().warning};
-    border-radius: 8px;
-}}
-QLabel {{
-    background: transparent;
-    border: none;
-}}
-"""
-    INPUT_SS = f"""
-QLineEdit, QSpinBox, QDoubleSpinBox {{
-    background: {tokens().input};
-    color: {tokens().text};
-    border: 1px solid {tokens().border};
-    border-radius: 8px;
-    padding: 0 12px;
-    min-height: 44px;
-    font-size: 14px;
-}}
-QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {{
-    background: {tokens().surface};
-    border: 1px solid {tokens().brand};
-}}
-QSpinBox::up-button, QSpinBox::down-button,
-QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
-    width: 0px;
-    border: none;
-}}
-"""
-    COMBO_SS = f"""
-QComboBox {{
-    background: {tokens().input};
-    color: {tokens().text};
-    border: 1px solid {tokens().border};
-    border-radius: 8px;
-    padding: 0 34px 0 12px;
-    min-height: 44px;
-    font-size: 14px;
-}}
-QComboBox:focus {{
-    background: {tokens().surface};
-    border: 1px solid {tokens().brand};
-}}
-QComboBox:hover {{
-    background: {tokens().hover};
-}}
-QComboBox::drop-down {{
-    width: 30px;
-    border: none;
-    background: transparent;
-}}
-QComboBox::down-arrow {{
-    image: url(src/ui/assets/chevron_down.svg);
-    width: 13px;
-    height: 13px;
-}}
-QComboBox QAbstractItemView {{
-    background: {tokens().surface};
-    color: {tokens().text};
-    border: 1px solid {tokens().border};
-    border-radius: 8px;
-    padding: 4px;
-    selection-background-color: {tokens().brand};
-    selection-color: {"#062f28" if tokens().name == THEME_DARK else "#ffffff"};
-    outline: none;
-}}
-"""
-    MESSAGE_BOX_SS = f"""
-QMessageBox {{ background: {tokens().surface}; color: {tokens().text}; }}
-QMessageBox QLabel {{ color: {tokens().text}; background: transparent; font-size: 13px; }}
-QPushButton {{
-    background: {tokens().surface};
-    color: {tokens().text};
-    border: 1px solid {tokens().border_strong};
-    border-radius: 6px;
-    min-width: 84px;
-    min-height: 30px;
-    font-weight: 600;
-}}
-QPushButton:hover {{ background: {tokens().hover}; }}
-QPushButton:default {{ background: {tokens().brand}; color: {"#062f28" if tokens().name == THEME_DARK else "#ffffff"}; border: none; }}
-"""
+    CARD_SS = card_ss("QFrame#Card")
+    NOTE_BLUE_SS = alert_ss("info")
+    NOTE_YELLOW_SS = alert_ss("warning")
+    INPUT_SS = input_style(44)
+    COMBO_SS = combo_style(44)
+    MESSAGE_BOX_SS = message_box_ss()
 
 
 class SettingsPage(QWidget):
@@ -3285,8 +3082,14 @@ def _pill_cell(text, color, background, bold=False, align=Qt.AlignLeft, min_widt
     label.setToolTip(str(text))
     label.setAlignment(Qt.AlignCenter)
     label.setStyleSheet(
-        f"background: {background}; color: {color}; border: none; border-radius: 7px; "
-        f"font-size: 13px; font-weight: {'900' if bold else '500'}; padding: 2px 9px;"
+        badge_ss(
+            background,
+            color,
+            radius=7,
+            padding="2px 9px",
+            font_size=13,
+            weight=900 if bold else 500,
+        )
     )
     label.setMinimumHeight(24)
     computed_width = max(44, len(str(text)) * 8 + 24)
@@ -3303,54 +3106,15 @@ def _pill_cell(text, color, background, bold=False, align=Qt.AlignLeft, min_widt
 
 
 def _primary_button_ss():
-    text = primary_button_fg()
-    return f"""
-QPushButton {{
-    background: {tokens().brand};
-    color: {text};
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 800;
-    padding: 0 18px;
-}}
-QPushButton:hover {{ background: {tokens().brand_hover}; }}
-QPushButton:disabled {{ background: {tokens().border_strong}; color: {tokens().text_soft}; }}
-"""
+    return btn_primary(44)
 
 
 def _secondary_button_ss():
-    return f"""
-QPushButton {{
-    background: {tokens().surface};
-    color: {tokens().text};
-    border: 1px solid {tokens().border};
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 800;
-    padding: 0 18px;
-}}
-QPushButton:hover {{ background: {tokens().hover}; }}
-"""
+    return btn_outline(44)
 
 
 def _danger_icon_button_ss():
-    return f"""
-QPushButton {{
-    background: {tokens().surface};
-    color: {tokens().danger};
-    border: 1px solid {tokens().danger};
-    border-radius: 8px;
-}}
-QPushButton:hover {{
-    background: {tokens().danger_soft};
-}}
-QPushButton:disabled {{
-    background: {tokens().surface_muted};
-    color: {tokens().text_soft};
-    border: 1px solid {tokens().border};
-}}
-"""
+    return btn_danger_outline(32)
 
 
 def _styled_message_box(parent, icon, title, text, buttons=QMessageBox.Ok, default_button=QMessageBox.Ok):

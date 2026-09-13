@@ -43,6 +43,9 @@ from src.ui.styles import (
     race_color,
     race_soft_color,
     race_progress_bar_ss,
+    alert_ss,
+    badge_ss,
+    field_value_ss,
 )
 from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import (
@@ -1019,10 +1022,7 @@ class AddEmployeeView(QWidget):
         right.addWidget(actions_card)
 
         rules_card = QFrame()
-        rules_card.setStyleSheet(
-            f"QFrame {{ background: {tokens().selected}; border-radius: 8px; border: 1px solid {tokens().brand}; }}"
-            "QLabel { border: none; background: transparent; }"
-        )
+        rules_card.setStyleSheet(alert_ss("info"))
         rc = QVBoxLayout(rules_card)
         rc.setContentsMargins(24, 22, 24, 22)
         rc.setSpacing(10)
@@ -1066,10 +1066,7 @@ class AddEmployeeView(QWidget):
         right.addWidget(rules_card)
 
         info_card = QFrame()
-        info_card.setStyleSheet(
-            f"QFrame {{ background: {tokens().success_soft}; border-radius: 8px; border: 1px solid {tokens().success}; }}"
-            "QLabel { border: none; background: transparent; }"
-        )
+        info_card.setStyleSheet(alert_ss("success"))
         ic = QVBoxLayout(info_card)
         ic.setContentsMargins(24, 22, 24, 22)
         ic.setSpacing(10)
@@ -1710,11 +1707,11 @@ class EmployeeProfileView(QWidget):
             }
             sbg, sfg = STATUS_COLORS.get(emp.status, _semantic_pair("muted"))
             sb = QLabel(emp.status.replace("_"," ").title())
-            sb.setStyleSheet(f"background: {sbg}; color: {sfg}; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: bold;")
+            sb.setStyleSheet(badge_ss(sbg, sfg, radius=6, padding="2px 10px", font_size=12, weight=700))
             name_row.addWidget(sb)
             lb = QLabel(emp.title.name if emp.title else "-")
             lb_bg, lb_fg = _semantic_pair("level")
-            lb.setStyleSheet(f"background: {lb_bg}; color: {lb_fg}; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: bold;")
+            lb.setStyleSheet(badge_ss(lb_bg, lb_fg, radius=6, padding="2px 10px", font_size=12, weight=700))
             name_row.addWidget(lb)
             name_row.addStretch()
             info.addLayout(name_row)
@@ -2439,7 +2436,7 @@ class EmployeeProfileView(QWidget):
 
     def _badge(self, text, bg, fg):
         label = QLabel(text)
-        label.setStyleSheet(f"background: {bg}; color: {fg}; border-radius: 6px; padding: 2px 9px; font-size: 11px; font-weight: 700;")
+        label.setStyleSheet(badge_ss(bg, fg, radius=6, padding="2px 9px", font_size=11, weight=700))
         return label
 
     def _info_card(self, title, rows, badge=None):
@@ -2462,7 +2459,7 @@ class EmployeeProfileView(QWidget):
             k.setStyleSheet(f"font-size: 12px; font-weight: 700; color: {_text()}; background: transparent;")
             v = QLabel(str(val))
             v.setWordWrap(True)
-            v.setStyleSheet(f"font-size: 12px; color: {_muted()}; background: {tokens().surface_muted}; border: none; border-radius: 7px; padding: 8px 10px;")
+            v.setStyleSheet(field_value_ss())
             field.addWidget(k)
             field.addWidget(v)
             layout.addLayout(field)
