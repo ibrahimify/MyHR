@@ -592,5 +592,5 @@ class _PlaceholderPage(QWidget):
         )
         lbl = QLabel(msg)
         lbl.setAlignment(Qt.AlignCenter)
-        lbl.setStyleSheet("font-size: 16px; color: #9ca3af;")
+        lbl.setStyleSheet(f"font-size: 16px; color: {tokens().text_soft};")
         layout.addWidget(lbl)

@@ -154,6 +154,41 @@ def _primary_button_fg():
     return primary_button_fg()
 
 
+def _back_button_ss():
+    tkn = tokens()
+    return f"""
+QPushButton {{
+    background: {tkn.surface};
+    color: {tkn.brand};
+    border: 1px solid {tkn.border};
+    border-radius: 8px;
+    padding: 0 12px;
+    min-height: 34px;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: left;
+    outline: none;
+}}
+QPushButton:hover {{
+    background: {tkn.selected};
+    border-color: {tkn.brand};
+}}
+QPushButton:pressed {{
+    background: {tkn.hover};
+}}
+"""
+
+
+def _prepare_back_button(button):
+    button.setIcon(app_icon("fa5s.arrow-left", color=tokens().brand, size=14))
+    button.setIconSize(QSize(14, 14))
+    button.setCursor(Qt.PointingHandCursor)
+    button.setFixedHeight(34)
+    button.setMaximumWidth(220)
+    button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+    button.setStyleSheet(_back_button_ss())
+
+
 def _semantic_pair(kind="muted"):
     tkn = tokens()
     if kind == "level":
@@ -448,7 +483,7 @@ class EmployeeListView(QWidget):
         self.search_input.setPlaceholderText(t("search_employees"))
         self.search_input.setFixedHeight(44)
         self.search_input.setStyleSheet(INPUT_STYLE())
-        self.search_input.addAction(app_icon("fa5s.search", color="#9ca3af", size=16), QLineEdit.LeadingPosition)
+        self.search_input.addAction(app_icon("fa5s.search", color=tokens().text_soft, size=16), QLineEdit.LeadingPosition)
         self.search_input.textChanged.connect(self._on_filter_changed)
         bl.addWidget(self.search_input, 1)
 
@@ -712,7 +747,7 @@ class EmployeeListView(QWidget):
                 )
 
                 view_btn = QPushButton()
-                view_btn.setIcon(app_icon("fa5s.eye", color="#2563eb", size=16))
+                view_btn.setIcon(app_icon("fa5s.eye", color=tokens().brand, size=16))
                 view_btn.setIconSize(_ico)
                 view_btn.setToolTip(t("view_profile"))
                 view_btn.setCursor(Qt.PointingHandCursor)
@@ -728,7 +763,7 @@ class EmployeeListView(QWidget):
                 edit_btn.clicked.connect(lambda _, eid=emp["id"]: self._do_edit(eid))
 
                 del_btn = QPushButton()
-                del_btn.setIcon(app_icon("fa5s.trash-alt", color="#dc2626", size=16))
+                del_btn.setIcon(app_icon("fa5s.trash-alt", color=tokens().danger, size=16))
                 del_btn.setIconSize(_ico)
                 del_btn.setToolTip(t("delete_employee"))
                 del_btn.setCursor(Qt.PointingHandCursor)
@@ -874,11 +909,8 @@ class AddEmployeeView(QWidget):
         h = QVBoxLayout(header)
         h.setContentsMargins(40, 28, 40, 12)
         h.setSpacing(0)
-        back_btn = QPushButton("  " + t("back_to_employees"))
-        back_btn.setIcon(app_icon("fa5s.arrow-left", color=tokens().brand, size=12))
-        back_btn.setIconSize(QSize(12, 12))
-        back_btn.setCursor(Qt.PointingHandCursor)
-        back_btn.setStyleSheet(f"QPushButton {{ background: transparent; color: {tokens().brand}; border: none; font-size: 13px; font-weight: 600; }} QPushButton:hover {{ text-decoration: underline; }}")
+        back_btn = QPushButton(t("back_to_employees"))
+        _prepare_back_button(back_btn)
         back_btn.clicked.connect(self.on_back)
         title = QLabel(t("add_employee_title"))
         title.setStyleSheet(f"font-size: 30px; font-weight: 800; color: {_text()}; background: transparent;")
@@ -939,7 +971,7 @@ class AddEmployeeView(QWidget):
         ll.addWidget(self.level_display)
         row.addLayout(ll)
         dcl.addLayout(row)
-        self.level_rule_label = self._lbl(t("level_rule_dynamic"), color="#9ca3af", size=11)
+        self.level_rule_label = self._lbl(t("level_rule_dynamic"), color=tokens().text_soft, size=11)
         dcl.addWidget(self.level_rule_label)
         left.addWidget(deg_card)
 
@@ -1318,11 +1350,8 @@ class EditEmployeeView(QWidget):
         header.setStyleSheet(f"background: {tokens().surface}; border-bottom: 1px solid {tokens().border};")
         h = QHBoxLayout(header)
         h.setContentsMargins(28, 0, 28, 0)
-        back_btn = QPushButton("  " + t("back_to_employees"))
-        back_btn.setIcon(app_icon("fa5s.arrow-left", color=tokens().brand, size=12))
-        back_btn.setIconSize(QSize(12, 12))
-        back_btn.setCursor(Qt.PointingHandCursor)
-        back_btn.setStyleSheet(f"QPushButton {{ background: transparent; color: {tokens().brand}; border: none; font-size: 13px; font-weight: 600; }} QPushButton:hover {{ text-decoration: underline; }}")
+        back_btn = QPushButton(t("back_to_employees"))
+        _prepare_back_button(back_btn)
         back_btn.clicked.connect(self.on_back)
         self.header_title = QLabel(t("edit_employee"))
         self.header_title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {_text()}; margin-left: 12px;")
@@ -1618,11 +1647,8 @@ class EmployeeProfileView(QWidget):
         self.header.setStyleSheet(f"background: {tokens().surface}; border-bottom: 1px solid {tokens().border};")
         h = QHBoxLayout(self.header)
         h.setContentsMargins(28, 0, 28, 0)
-        back_btn = QPushButton("  " + t("back_to_employees"))
-        back_btn.setIcon(app_icon("fa5s.arrow-left", color=tokens().brand, size=12))
-        back_btn.setIconSize(QSize(12, 12))
-        back_btn.setCursor(Qt.PointingHandCursor)
-        back_btn.setStyleSheet(f"QPushButton {{ background: transparent; color: {tokens().brand}; border: none; font-size: 13px; font-weight: 600; }} QPushButton:hover {{ text-decoration: underline; }}")
+        back_btn = QPushButton(t("back_to_employees"))
+        _prepare_back_button(back_btn)
         back_btn.clicked.connect(self.on_back)
         self.header_title = QLabel(t("view_profile"))
         self.header_title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {_text()}; margin-left: 12px;")
@@ -1743,14 +1769,13 @@ class EmployeeProfileView(QWidget):
 
             if race["has_next_level"]:
                 pct = race["progress_pct"]
-                bar_bg = QFrame()
-                bar_bg.setFixedHeight(10)
-                bar_bg.setStyleSheet(f"background: {tokens().surface_muted}; border-radius: 5px;")
-                bar_fill = QFrame(bar_bg)
-                bar_fill.setFixedHeight(10)
-                bar_fill.setStyleSheet(f"background: {tokens().success if pct >= 100 else tokens().brand}; border-radius: 5px;")
-                bar_fill.setFixedWidth(max(10, int(pct / 100 * 300)))
-                rc.addWidget(bar_bg)
+                bar = QProgressBar()
+                bar.setRange(0, 100)
+                bar.setValue(pct)
+                bar.setFixedHeight(6)
+                bar.setTextVisible(False)
+                bar.setStyleSheet(race_progress_bar_ss("eligible" if race["eligible"] else "progress", radius=3))
+                rc.addWidget(bar)
                 el = QLabel(t("eligible_for_promotion") if race["eligible"] else t("months_remaining_count", count=race["months_remaining"]))
                 el.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {tokens().success if race['eligible'] else tokens().brand}; background: transparent;")
                 rc.addWidget(el)
@@ -1851,12 +1876,8 @@ class EmployeeProfileView(QWidget):
             page.setContentsMargins(28, 28, 28, 28)
             page.setSpacing(18)
 
-            back = QPushButton("  " + t("back_to_employees"))
-            back.setIcon(app_icon("fa5s.arrow-left", color=tokens().text, size=12))
-            back.setIconSize(QSize(12, 12))
-            back.setCursor(Qt.PointingHandCursor)
-            back.setFixedWidth(170)
-            back.setStyleSheet(f"QPushButton {{ background: transparent; color: {_text()}; border: none; font-size: 13px; font-weight: 600; text-align: left; }} QPushButton:hover {{ color: {tokens().brand}; }}")
+            back = QPushButton(t("back_to_employees"))
+            _prepare_back_button(back)
             back.clicked.connect(self.on_back)
             page.addWidget(back)
             page.addWidget(self._profile_header(emp))
@@ -2292,10 +2313,10 @@ class EmployeeProfileView(QWidget):
         bar = QProgressBar()
         bar.setRange(0, 100)
         bar.setValue(sub_race.get("progress_pct") or 0)
-        bar.setFixedHeight(12)
+        bar.setFixedHeight(6)
         bar.setTextVisible(False)
         bar_status = "eligible" if sub_race.get("progress_pct", 0) >= 100 else "progress"
-        bar.setStyleSheet(race_progress_bar_ss(bar_status, radius=6))
+        bar.setStyleSheet(race_progress_bar_ss(bar_status, radius=3))
         bar.setToolTip(middle_text)
         row.addWidget(bar, 1)
         sbg, sfg = _semantic_pair("success")
@@ -2399,7 +2420,7 @@ class EmployeeProfileView(QWidget):
             for sanction in sorted(emp.sanctions, key=lambda s: s.issued_at or datetime.min, reverse=True):
                 status = t("resolved") if sanction.is_resolved else t("active")
                 resolved = f", resolved {sanction.resolved_at:%Y-%m-%d}" if sanction.resolved_at else ""
-                body.addWidget(self._event_row("fa5s.exclamation-triangle", "#ef4444", f"{t(sanction.sanction_type)} ({sanction.sanction_ref})", f"{sanction.reason} - +{sanction.delay_months}, {status}{resolved}", sanction.issued_at.strftime("%Y-%m-%d") if sanction.issued_at else "-"))
+                body.addWidget(self._event_row("fa5s.exclamation-triangle", tokens().danger, f"{t(sanction.sanction_type)} ({sanction.sanction_ref})", f"{sanction.reason} - +{sanction.delay_months}, {status}{resolved}", sanction.issued_at.strftime("%Y-%m-%d") if sanction.issued_at else "-"))
         else:
             body.addWidget(self._empty_row(t("no_sanctions")))
         layout.addWidget(card)

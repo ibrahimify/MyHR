@@ -281,7 +281,7 @@ class BarChartWidget(QWidget):
         super().__init__(parent)
         self.data = data or []
         self.color = color
-        self.setMinimumHeight(320)
+        self.setMinimumHeight(290)
         self.setMouseTracking(True)
 
     def set_data(self, data):
@@ -369,7 +369,7 @@ class LineChartWidget(QWidget):
         super().__init__(parent)
         self.data = data or []
         self.color = color
-        self.setMinimumHeight(260)
+        self.setMinimumHeight(235)
         self.setMouseTracking(True)
 
     def set_data(self, data):
@@ -485,7 +485,7 @@ class WorkforceTimelineWidget(QWidget):
         super().__init__(parent)
         self.labels = labels or []
         self.series = series or []
-        self.setMinimumHeight(300)
+        self.setMinimumHeight(275)
         self.setMouseTracking(True)
 
     def set_data(self, labels, series):
@@ -1292,15 +1292,15 @@ class DashboardPage(QWidget):
             self._stat_card(t("active_sanctions"), str(self.sanction_count), self.sanction_delta, t("issued_vs_previous_ytd"), "sanction", "fa5s.exclamation-triangle"),
         ]
         layout.addLayout(self.stats_layout)
-        layout.addSpacing(28)
+        layout.addSpacing(24)
 
         self.charts_layout = QGridLayout()
         self.charts_layout.setHorizontalSpacing(20)
-        self.charts_layout.setVerticalSpacing(20)
+        self.charts_layout.setVerticalSpacing(18)
         self.department_card = self._department_chart_card()
         self.promotion_card = self._promotion_chart_card()
         layout.addLayout(self.charts_layout)
-        layout.addSpacing(28)
+        layout.addSpacing(24)
 
         self.insights_layout = QGridLayout()
         self.insights_layout.setHorizontalSpacing(20)
@@ -1472,10 +1472,10 @@ class DashboardPage(QWidget):
 
     def _department_chart_card(self):
         card = self._card()
-        card.setMinimumHeight(390)
+        card.setMinimumHeight(360)
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(28, 24, 28, 24)
-        layout.setSpacing(16)
+        layout.setContentsMargins(28, 22, 28, 22)
+        layout.setSpacing(12)
 
         header = QHBoxLayout()
         self.org_chart_title = QLabel(t("employees_by_division"))
@@ -1528,10 +1528,10 @@ class DashboardPage(QWidget):
 
     def _promotion_chart_card(self):
         card = self._card()
-        card.setMinimumHeight(340)
+        card.setMinimumHeight(315)
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(28, 24, 28, 24)
-        layout.setSpacing(14)
+        layout.setContentsMargins(28, 22, 28, 22)
+        layout.setSpacing(12)
 
         header = QHBoxLayout()
         title = QLabel(t("promotion_trend"))
@@ -1660,7 +1660,7 @@ class DashboardPage(QWidget):
 
     def _workforce_timeline_card(self):
         card = self._card()
-        card.setMinimumHeight(360)
+        card.setMinimumHeight(335)
         layout = QVBoxLayout(card)
         layout.setContentsMargins(26, 22, 26, 22)
         layout.setSpacing(12)

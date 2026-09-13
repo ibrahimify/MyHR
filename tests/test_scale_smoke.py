@@ -179,6 +179,24 @@ class ScaleSmokeTests(unittest.TestCase):
         finally:
             tab.close()
 
+    def test_sidebar_selected_item_keeps_left_rail(self):
+        from src.ui.main_window import Sidebar
+
+        user = SimpleNamespace(id=1, username="admin", role="admin", full_name="Scale Admin")
+        sidebar = Sidebar(user, on_navigate=lambda _key: None, on_logout=lambda: None)
+        try:
+            dashboard_btn, _ = sidebar.nav_buttons["dashboard"]
+            employees_btn, _ = sidebar.nav_buttons["employees"]
+
+            self.assertIn("border-left: 3px solid", dashboard_btn.styleSheet())
+            self.assertIn("border-left: 3px solid transparent", employees_btn.styleSheet())
+
+            sidebar._set_active("employees")
+            self.assertIn("border-left: 3px solid", employees_btn.styleSheet())
+            self.assertIn("border-left: 3px solid transparent", dashboard_btn.styleSheet())
+        finally:
+            sidebar.close()
+
     def test_theme_switch_rebuilds_cached_pages_to_avoid_stale_styles(self):
         from src.ui.main_window import MainWindow
         from src.ui.theme import THEME_DARK, THEME_LIGHT, theme_manager

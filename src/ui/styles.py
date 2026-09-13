@@ -165,6 +165,12 @@ def race_progress_bar_ss(status="progress", radius=5):
     )
 
 
+def table_selection_bg(selected_bg=TABLE_ROW_SELECTED_BG):
+    if tokens().name == THEME_DARK and selected_bg == TABLE_ROW_SELECTED_BG:
+        return tokens().selected
+    return selected_bg
+
+
 def btn_blue(h=36):
     return btn_primary(h)
 
@@ -308,7 +314,7 @@ def table_style(
     item_padding=12,
 ):
     t = tokens()
-    selected_bg = selected_bg if t.name != THEME_DARK else "#142616"
+    selected_bg = table_selection_bg(selected_bg)
     hover_bg = hover_bg if t.name != THEME_DARK else t.hover
     header_bg = header_bg if header_bg != "white" or t.name != THEME_DARK else t.surface
     header_color = header_color if t.name != THEME_DARK else t.text
@@ -409,7 +415,11 @@ QScrollBar::sub-page:vertical {{
 
 
 TABLE_SS = table_style()
-SANCTION_TABLE_SS = table_style(selected_bg="#fef2f2", hover_bg="#fff7f7")
+def sanction_table_style():
+    return table_style(selected_bg=tokens().danger_soft, hover_bg=tokens().hover)
+
+
+SANCTION_TABLE_SS = sanction_table_style()
 
 
 def pager_button_ss():
@@ -515,7 +525,7 @@ def prepare_table_cell_widget(widget, background=TABLE_ROW_BG):
 
 
 def sync_table_widget_cells(table, selected_bg=TABLE_ROW_SELECTED_BG):
-    selected_bg = selected_bg if tokens().name != THEME_DARK else "#142616"
+    selected_bg = table_selection_bg(selected_bg)
     for row in range(table.rowCount()):
         selected = table.selectionModel().isRowSelected(row, table.rootIndex())
         bg = selected_bg if selected else tokens().surface

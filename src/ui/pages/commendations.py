@@ -772,7 +772,7 @@ class CommendationHistoryTab(QWidget):
         cl.setSpacing(0)
 
         header = QFrame()
-        header.setStyleSheet(f"background: transparent; border: none; border-bottom: 1px solid {tokens().border};")
+        header.setStyleSheet("background: transparent; border: none;")
         hl = QHBoxLayout(header)
         hl.setContentsMargins(30, 28, 30, 28)
         icon = QLabel()

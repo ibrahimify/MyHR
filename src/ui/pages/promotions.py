@@ -193,7 +193,7 @@ class EligibleTab(QWidget):
         tcl.setSpacing(0)
 
         card_hdr = QFrame()
-        card_hdr.setStyleSheet(f"background: transparent; border: none; border-bottom: 1px solid {tokens().border};")
+        card_hdr.setStyleSheet("background: transparent; border: none;")
         chl = QHBoxLayout(card_hdr)
         chl.setContentsMargins(32, 28, 32, 28)
         ch_title = QLabel(t("promotion_tracker"))
@@ -450,10 +450,10 @@ class EligibleTab(QWidget):
         bar = QProgressBar()
         bar.setRange(0, 100)
         bar.setValue(pct)
-        bar.setFixedHeight(8)
+        bar.setFixedHeight(6)
         bar.setTextVisible(False)
         bar_status = "eligible" if mr == 0 else "soon" if mr <= 6 else "progress"
-        bar.setStyleSheet(race_progress_bar_ss(bar_status, radius=4))
+        bar.setStyleSheet(race_progress_bar_ss(bar_status, radius=3))
         prog_l.addWidget(bar)
         status_row = QHBoxLayout()
         status_row.setContentsMargins(0, 0, 0, 0)
@@ -622,7 +622,7 @@ class HistoryTab(QWidget):
         cl.setContentsMargins(0, 0, 0, 0)
 
         ch = QFrame()
-        ch.setStyleSheet(f"background: transparent; border: none; border-bottom: 1px solid {tokens().border};")
+        ch.setStyleSheet("background: transparent; border: none;")
         chl = QHBoxLayout(ch)
         chl.setContentsMargins(32, 28, 32, 28)
         chl.addWidget(_bold_label(t("recent_promotions"), size=20, weight=800))
