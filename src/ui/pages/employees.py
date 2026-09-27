@@ -15,8 +15,8 @@ from PySide6.QtWidgets import (
     QTextEdit, QMessageBox, QDateEdit, QGridLayout, QListWidget,
     QListWidgetItem, QSizePolicy, QProgressBar
 )
-from PySide6.QtCore import Qt, QDate, QSize, Signal, QTimer
-from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt, QDate, QSize, Signal, QTimer, QRectF
+from PySide6.QtGui import QColor, QBrush, QFont, QPainter, QPen
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
@@ -45,7 +45,6 @@ from src.ui.styles import (
     race_progress_bar_ss,
     alert_ss,
     badge_ss,
-    field_value_ss,
 )
 from src.ui.theme import THEME_DARK, tokens
 from src.database.connection import (
@@ -226,6 +225,92 @@ def _would_create_manager_cycle(session, employee_id, manager_id):
         manager = session.query(Employee).filter_by(id=current_id).first()
         current_id = manager.reports_to_id if manager else None
     return False
+
+
+class SubRaceTimelineWidget(QWidget):
+    def __init__(self, steps, parent=None):
+        super().__init__(parent)
+        self.steps = list(steps or [])
+        self.setMinimumHeight(142)
+        self.setMinimumWidth(max(680, len(self.steps) * 128))
+        self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
+
+    def _date_text(self, step):
+        due_date = step.get("due_date")
+        return due_date.strftime("%Y-%m-%d") if due_date else "-"
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        tkn = tokens()
+        steps = self.steps
+        if not steps:
+            painter.setPen(QPen(QColor(tkn.text_soft)))
+            painter.setFont(QFont("Segoe UI", 10))
+            painter.drawText(self.rect(), Qt.AlignCenter, t("sub_race"))
+            return
+
+        margin_x = 64
+        top_y = 24
+        line_y = 54
+        date_y = 86
+        chip_y = 108
+        usable_width = max(1, self.width() - (margin_x * 2))
+        spacing = usable_width / max(1, len(steps) - 1)
+        xs = [margin_x + spacing * index for index in range(len(steps))]
+
+        complete_color = QColor(race_color("eligible"))
+        future_color = QColor(tkn.border_strong)
+        painter.setPen(QPen(future_color, 2, Qt.SolidLine, Qt.RoundCap))
+        painter.drawLine(int(xs[0]), line_y, int(xs[-1]), line_y)
+
+        painter.setPen(QPen(complete_color, 2, Qt.SolidLine, Qt.RoundCap))
+        for index in range(len(steps) - 1):
+            if steps[index].get("completed") and steps[index + 1].get("completed"):
+                painter.drawLine(int(xs[index]), line_y, int(xs[index + 1]), line_y)
+
+        font_label = QFont("Segoe UI", 10)
+        font_label.setBold(True)
+        font_date = QFont("Segoe UI", 9)
+        font_chip = QFont("Segoe UI", 9)
+        font_chip.setBold(True)
+
+        for index, step in enumerate(steps):
+            x = xs[index]
+            completed = bool(step.get("completed"))
+            is_final = index == len(steps) - 1 or step.get("kind") == "promotion"
+            radius = 9 if not is_final else 11
+
+            painter.setFont(font_label)
+            painter.setPen(QPen(QColor(tkn.text)))
+            painter.drawText(QRectF(x - 54, top_y - 16, 108, 20), Qt.AlignCenter, str(step.get("label") or "-"))
+
+            node_border = complete_color if completed else future_color
+            if is_final:
+                ring = QColor(tkn.success_soft if completed else tkn.surface_muted)
+                painter.setBrush(QBrush(ring))
+                painter.setPen(QPen(node_border, 2))
+                painter.drawEllipse(QRectF(x - radius - 4, line_y - radius - 4, (radius + 4) * 2, (radius + 4) * 2))
+
+            painter.setBrush(QBrush(complete_color if completed else QColor(tkn.surface)))
+            painter.setPen(QPen(node_border, 2))
+            painter.drawEllipse(QRectF(x - radius, line_y - radius, radius * 2, radius * 2))
+
+            painter.setFont(font_date)
+            painter.setPen(QPen(QColor(tkn.text_muted)))
+            painter.drawText(QRectF(x - 58, date_y - 10, 116, 22), Qt.AlignCenter, self._date_text(step))
+
+            increment = str(step.get("increment") or "")
+            if increment:
+                chip_width = max(56, min(90, 14 + len(increment) * 7))
+                chip_rect = QRectF(x - chip_width / 2, chip_y - 3, chip_width, 26)
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(QColor(tkn.success_soft)))
+                painter.drawRoundedRect(chip_rect, 7, 7)
+                painter.setFont(font_chip)
+                painter.setPen(QPen(QColor(race_color("eligible"))))
+                painter.drawText(chip_rect, Qt.AlignCenter, increment)
 
 
 class CleanSelect(QWidget):
@@ -1853,6 +1938,7 @@ class EmployeeProfileView(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.scroll.setStyleSheet(scroll_ss(_page_bg()))
         layout.addWidget(self.scroll)
 
@@ -1870,7 +1956,7 @@ class EmployeeProfileView(QWidget):
             content = QWidget()
             content.setStyleSheet(f"background: {_page_bg()};")
             page = QVBoxLayout(content)
-            page.setContentsMargins(28, 28, 28, 28)
+            page.setContentsMargins(24, 28, 24, 28)
             page.setSpacing(18)
 
             back = QPushButton(t("back_to_employees"))
@@ -1894,61 +1980,130 @@ class EmployeeProfileView(QWidget):
             session.close()
 
     def _profile_header(self, emp):
+        wrapper = QWidget()
+        wrapper.setStyleSheet("background: transparent;")
+        layout = QHBoxLayout(wrapper)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(16)
+
         card = QFrame()
         card.setObjectName("ProfileCard")
         card.setStyleSheet(PROFILE_CARD_SS())
-        layout = QHBoxLayout(card)
-        layout.setContentsMargins(24, 20, 24, 20)
-        layout.setSpacing(20)
+        card.setMinimumHeight(150)
+        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        left = QHBoxLayout(card)
+        left.setContentsMargins(28, 24, 28, 24)
+        left.setSpacing(24)
+
         initials = (emp.first_name[:1] + emp.last_name[:1]).upper()
         avatar = QLabel(initials)
-        avatar.setFixedSize(80, 80)
+        avatar.setFixedSize(96, 96)
         avatar.setAlignment(Qt.AlignCenter)
-        avatar.setStyleSheet(f"background: {tokens().brand}; color: {'#062f28' if tokens().name == THEME_DARK else '#ffffff'}; border-radius: 40px; font-size: 26px; font-weight: 800;")
-        layout.addWidget(avatar)
+        avatar.setStyleSheet(
+            f"background: {tokens().brand}; color: {_primary_button_fg()}; "
+            "border-radius: 48px; font-size: 30px; font-weight: 800;"
+        )
+        left.addWidget(avatar, 0, Qt.AlignVCenter)
+
         info = QVBoxLayout()
-        info.setSpacing(6)
-        name_row = QHBoxLayout()
+        info.setSpacing(8)
         name = QLabel(emp.full_name)
-        name.setStyleSheet(f"font-size: 24px; font-weight: 800; color: {_text()}; background: transparent;")
-        name_row.addWidget(name)
-        sbg, sfg = _semantic_pair("success") if emp.status == "active" else _semantic_pair("muted")
-        name_row.addWidget(self._badge(t(emp.status), sbg, sfg))
-        name_row.addWidget(self._badge(display_title_name(emp.title), *_level_badge_colors()))
-        name_row.addStretch()
-        info.addLayout(name_row)
+        name.setStyleSheet(f"font-size: 28px; font-weight: 800; color: {_text()}; background: transparent;")
+        info.addWidget(name)
         pos = QLabel(emp.position)
-        pos.setStyleSheet(f"font-size: 14px; color: {_muted()}; background: transparent;")
+        pos.setStyleSheet(f"font-size: 18px; color: {_muted()}; background: transparent;")
         info.addWidget(pos)
         meta = QHBoxLayout()
-        for icon_name, value in [
-            ("fa5s.envelope", emp.work_email or "-"),
-            ("fa5s.phone", emp.work_phone or emp.phone or "-"),
-            ("fa5s.map-marker-alt", emp.address or "-"),
-            ("fa5s.calendar-alt", t("joined_on", date=emp.join_date.date()) if emp.join_date else "-"),
+        meta.setSpacing(18)
+        for icon_name, value, accent in [
+            ("fa5s.envelope", emp.work_email or emp.personal_email or "-", True),
+            ("fa5s.phone", emp.work_phone or emp.phone or "-", False),
+            ("fa5s.map-marker-alt", emp.address or "-", False),
         ]:
-            row = QHBoxLayout()
-            row.setSpacing(5)
-            ico = QLabel()
-            ico.setPixmap(app_pixmap(icon_name, color=tokens().text_muted, size=13))
-            lbl = QLabel(str(value))
-            lbl.setStyleSheet(f"font-size: 12px; color: {_muted()}; background: transparent;")
-            row.addWidget(ico)
-            row.addWidget(lbl)
-            meta.addLayout(row)
-            meta.addSpacing(16)
+            meta.addLayout(self._profile_meta_item(icon_name, value, accent=accent))
         meta.addStretch()
         info.addLayout(meta)
-        layout.addLayout(info, 1)
+        left.addLayout(info, 1)
+
+        facts = QFrame()
+        facts.setObjectName("ProfileCard")
+        facts.setStyleSheet(PROFILE_CARD_SS())
+        facts.setMinimumHeight(150)
+        facts.setMinimumWidth(320)
+        facts.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        right = QVBoxLayout(facts)
+        right.setContentsMargins(22, 24, 22, 24)
+        right.setSpacing(14)
+
+        top = QHBoxLayout()
+        top.setSpacing(8)
+        sbg, sfg = _semantic_pair("success") if emp.status == "active" else _semantic_pair("muted")
+        top.addWidget(self._badge(t(emp.status), sbg, sfg))
+        top.addWidget(self._badge(display_title_name(emp.title), *_level_badge_colors()))
+        top.addStretch()
         edit = QPushButton("  " + (t("editing") if self.editing else t("edit_profile")))
         edit.setIcon(app_icon("fa5s.edit", color=_primary_button_fg(), size=13))
         edit.setIconSize(QSize(13, 13))
         edit.setCursor(Qt.PointingHandCursor)
-        edit.setFixedHeight(36)
-        edit.setStyleSheet(btn_primary(36))
+        edit.setFixedHeight(38)
+        edit.setMinimumWidth(132)
+        edit.setStyleSheet(btn_primary(38))
         edit.clicked.connect(self._begin_inline_edit)
-        layout.addWidget(edit, alignment=Qt.AlignTop)
-        return card
+        top.addWidget(edit)
+        right.addLayout(top)
+
+        detail_row = QHBoxLayout()
+        detail_row.setSpacing(18)
+        detail_row.addLayout(self._profile_fact(t("employee_id"), emp.employee_id, "fa5s.id-card"))
+        joined_text = str(emp.join_date.date()) if emp.join_date else "-"
+        detail_row.addLayout(self._profile_fact(t("joined_short"), joined_text, "fa5s.calendar-alt"))
+        detail_row.addStretch()
+        right.addLayout(detail_row)
+        right.addStretch()
+
+        layout.addWidget(card, 2)
+        layout.addWidget(facts, 1)
+        return wrapper
+
+    def _profile_meta_item(self, icon_name, value, accent=False):
+        row = QHBoxLayout()
+        row.setSpacing(7)
+        icon_color = tokens().brand if accent else tokens().text_muted
+        ico = QLabel()
+        ico.setFixedSize(16, 16)
+        ico.setAlignment(Qt.AlignCenter)
+        ico.setPixmap(app_pixmap(icon_name, color=icon_color, size=14))
+        lbl = QLabel(str(value))
+        lbl.setToolTip(str(value))
+        lbl.setMinimumWidth(145 if accent and str(value) != "-" else 70)
+        lbl.setMaximumWidth(230 if accent else 150)
+        lbl.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        color = tokens().brand if accent and str(value) != "-" else _muted()
+        weight = 700 if accent and str(value) != "-" else 500
+        lbl.setStyleSheet(f"font-size: 13px; color: {color}; font-weight: {weight}; background: transparent;")
+        row.addWidget(ico)
+        row.addWidget(lbl)
+        return row
+
+    def _profile_fact(self, label, value, icon_name):
+        col = QVBoxLayout()
+        col.setSpacing(4)
+        header = QHBoxLayout()
+        header.setSpacing(6)
+        ico = QLabel()
+        ico.setFixedSize(16, 16)
+        ico.setPixmap(app_pixmap(icon_name, color=tokens().text_muted, size=14))
+        text = QLabel(label)
+        text.setStyleSheet(f"font-size: 12px; color: {_muted()}; background: transparent;")
+        header.addWidget(ico)
+        header.addWidget(text)
+        header.addStretch()
+        val = QLabel(str(value))
+        val.setToolTip(str(value))
+        val.setStyleSheet(f"font-size: 14px; color: {_text()}; font-weight: 700; background: transparent;")
+        col.addLayout(header)
+        col.addWidget(val)
+        return col
 
     def _begin_inline_edit(self):
         if not self.employee_db_id:
@@ -1971,25 +2126,27 @@ class EmployeeProfileView(QWidget):
 
         info_row = QHBoxLayout()
         info_row.setSpacing(16)
-        info_row.addWidget(self._info_card(t("employment_info"), [
+        employment_card = self._info_card(t("employment_info"), [
             (t("employee_id"), emp.employee_id),
             (t("department"), emp.org_unit.name if emp.org_unit else "-"),
             (t("position"), emp.position),
             (t("level"), display_title_name(emp.title)),
+            (t("work_email"), emp.work_email or "-", "highlight"),
             (t("base_salary"), _salary_text(emp)),
-            (t("reports_to"), emp.reports_to.full_name if emp.reports_to else "-"),
+            (t("reports_to"), emp.reports_to.full_name if emp.reports_to else "-", "highlight"),
             (t("join_date"), str(emp.join_date.date()) if emp.join_date else "-"),
-        ]))
+        ])
+        info_row.addWidget(employment_card, 1)
         if self.user.role == "admin":
-            info_row.addWidget(self._info_card(t("personal_info_admin"), [
+            personal_card = self._info_card(t("personal_info_admin"), [
                 (t("full_name"), emp.full_name),
-                (t("personal_email"), emp.personal_email or "-"),
+                (t("personal_email"), emp.personal_email or "-", "highlight"),
                 (t("phone"), emp.phone or "-"),
                 (t("address"), emp.address or "-"),
                 (t("degree"), t("other_misc") if emp.degree == "Other" else emp.degree),
                 (t("base_salary"), _salary_text(emp)),
-            ], badge=t("admin_only_badge")))
-        info_row.addStretch()
+            ], badge=t("admin_only_badge"))
+            info_row.addWidget(personal_card, 1)
         layout.addLayout(info_row)
         layout.addStretch()
         return page
@@ -2287,14 +2444,12 @@ class EmployeeProfileView(QWidget):
         card.setStyleSheet(PROFILE_CARD_SS())
         layout = QVBoxLayout(card)
         layout.setContentsMargins(24, 22, 24, 22)
-        layout.setSpacing(16)
-        header = QHBoxLayout()
-        header.addWidget(self._info_title(t("current_promotion_race")))
-        header.addStretch()
-        layout.addLayout(header)
+        layout.setSpacing(20)
 
         next_step = next((step for step in sub_race.get("steps", []) if not step.get("completed")), None)
-        right_label = sub_race.get("next_title") or (next_step["label"] if next_step else t("annual_increment"))
+        current_title = sub_race.get("current_title") or "-"
+        next_title = sub_race.get("next_title") or (next_step["label"] if next_step else None)
+        route_text = f"{current_title} to {next_title}" if next_title else current_title
         expected_date = sub_race.get("expected_promotion_date") or (next_step.get("due_date") if next_step else None)
         expected_text = expected_date.strftime("%Y-%m-%d") if expected_date else "-"
         start_text = sub_race["race_start"].strftime("%Y-%m-%d") if sub_race.get("race_start") else "-"
@@ -2303,42 +2458,101 @@ class EmployeeProfileView(QWidget):
             if sub_race.get("months_left") is not None
             else t("ongoing_service_track")
         )
+        pct = max(0, min(100, int(sub_race.get("progress_pct") or 0)))
+
+        header = QHBoxLayout()
+        header.setSpacing(14)
+        icon = QLabel()
+        icon.setFixedSize(46, 46)
+        icon.setAlignment(Qt.AlignCenter)
+        icon.setStyleSheet(f"background: {tokens().success_soft}; border-radius: 8px;")
+        icon.setPixmap(app_pixmap("fa5s.chart-bar", color=race_color("eligible"), size=18))
+        header.addWidget(icon, 0, Qt.AlignTop)
+        title_col = QVBoxLayout()
+        title_col.setSpacing(2)
+        title = QLabel(t("promotion_race"))
+        title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {_text()}; background: transparent;")
+        subtitle = QLabel(route_text)
+        subtitle.setToolTip(route_text)
+        subtitle.setStyleSheet(f"font-size: 15px; color: {_muted()}; background: transparent;")
+        title_col.addWidget(title)
+        title_col.addWidget(subtitle)
+        header.addLayout(title_col)
+        header.addStretch()
+        dots = QLabel("...")
+        dots.setStyleSheet(f"font-size: 22px; color: {tokens().text_muted}; font-weight: 800; background: transparent;")
+        header.addWidget(dots, 0, Qt.AlignTop)
+        layout.addLayout(header)
 
         row = QHBoxLayout()
-        row.setSpacing(14)
-        row.addWidget(self._badge(sub_race["current_title"], *_level_badge_colors()))
+        row.setSpacing(18)
         bar = QProgressBar()
         bar.setRange(0, 100)
-        bar.setValue(sub_race.get("progress_pct") or 0)
-        bar.setFixedHeight(6)
+        bar.setValue(pct)
+        bar.setFixedHeight(10)
         bar.setTextVisible(False)
-        bar_status = "eligible" if sub_race.get("progress_pct", 0) >= 100 else "progress"
-        bar.setStyleSheet(race_progress_bar_ss(bar_status, radius=3))
+        bar.setStyleSheet(race_progress_bar_ss("eligible", radius=5))
         bar.setToolTip(middle_text)
         row.addWidget(bar, 1)
-        sbg, sfg = _semantic_pair("success")
-        row.addWidget(self._badge(right_label, sbg, sfg))
+        progress_lbl = QLabel(f"{pct}% complete")
+        progress_lbl.setMinimumWidth(116)
+        progress_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        progress_lbl.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {race_color('eligible')}; background: transparent;")
+        row.addWidget(progress_lbl)
         layout.addLayout(row)
 
-        meta = QGridLayout()
-        meta.setHorizontalSpacing(18)
-        for col, (label, value, align) in enumerate([
-            (t("started"), start_text, Qt.AlignLeft),
-            (t("remaining"), middle_text, Qt.AlignCenter),
-            (t("expected"), expected_text, Qt.AlignRight),
-        ]):
-            label_widget = QLabel(label.upper())
-            label_widget.setAlignment(align)
-            label_widget.setStyleSheet(f"font-size: 10px; font-weight: 800; color: {tokens().text_soft}; letter-spacing: 0; background: transparent;")
-            value_widget = QLabel(value)
-            value_widget.setAlignment(align)
-            value_widget.setStyleSheet(f"font-size: 13px; font-weight: 700; color: {tokens().text}; background: transparent;")
-            value_widget.setToolTip(value)
-            meta.addWidget(label_widget, 0, col)
-            meta.addWidget(value_widget, 1, col)
-            meta.setColumnStretch(col, 1)
-        layout.addLayout(meta)
+        layout.addLayout(self._race_milestone_row(start_text, middle_text, expected_text))
         return card
+
+    def _race_milestone_row(self, start_text, middle_text, expected_text):
+        row = QHBoxLayout()
+        row.setSpacing(14)
+        row.addLayout(self._race_metric(t("started"), start_text, "filled"))
+        row.addWidget(self._race_connector("solid"), 1)
+        row.addLayout(self._race_metric(t("remaining"), middle_text, "filled"))
+        row.addWidget(self._race_connector("dashed"), 1)
+        row.addLayout(self._race_metric(t("expected"), expected_text, "hollow"))
+        return row
+
+    def _race_connector(self, style):
+        wrap = QWidget()
+        wrap.setFixedHeight(48)
+        wrap.setStyleSheet("background: transparent; border: none;")
+        layout = QVBoxLayout(wrap)
+        layout.setContentsMargins(0, 10, 0, 0)
+        layout.setSpacing(0)
+        line = QFrame()
+        line.setFixedHeight(2)
+        border_style = "dashed" if style == "dashed" else "solid"
+        color = tokens().border_strong if style == "dashed" else race_color("eligible")
+        line.setStyleSheet(f"background: transparent; border: none; border-top: 2px {border_style} {color};")
+        layout.addWidget(line)
+        layout.addStretch()
+        return wrap
+
+    def _race_metric(self, label, value, marker="filled"):
+        group = QHBoxLayout()
+        group.setSpacing(9)
+        dot = QLabel()
+        dot.setFixedSize(22, 22)
+        if marker == "hollow":
+            dot.setStyleSheet(f"background: transparent; border: 2px solid {tokens().text_muted}; border-radius: 11px;")
+        else:
+            dot.setStyleSheet(f"background: {race_color('eligible')}; border: none; border-radius: 11px;")
+        text = QVBoxLayout()
+        text.setSpacing(2)
+        title = QLabel(label)
+        title.setStyleSheet(f"font-size: 14px; font-weight: 700; color: {_text()}; background: transparent;")
+        val = QLabel(str(value))
+        val.setToolTip(str(value))
+        val.setWordWrap(True)
+        val.setMinimumWidth(112)
+        val.setStyleSheet(f"font-size: 13px; color: {_muted()}; background: transparent;")
+        text.addWidget(title)
+        text.addWidget(val)
+        group.addWidget(dot, 0, Qt.AlignTop)
+        group.addLayout(text)
+        return group
 
     def _sub_race_card(self, sub_race):
         card = QFrame()
@@ -2346,47 +2560,28 @@ class EmployeeProfileView(QWidget):
         card.setStyleSheet(PROFILE_CARD_SS())
         layout = QVBoxLayout(card)
         layout.setContentsMargins(24, 18, 24, 20)
-        layout.setSpacing(12)
-        layout.addWidget(self._info_title(t("sub_race")))
+        layout.setSpacing(10)
+        header = QHBoxLayout()
+        header.setSpacing(12)
+        icon = QLabel()
+        icon.setFixedSize(28, 28)
+        icon.setAlignment(Qt.AlignCenter)
+        icon.setPixmap(app_pixmap("fa5s.project-diagram", color=race_color("eligible"), size=17))
+        header.addWidget(icon)
+        title = QLabel(t("sub_race"))
+        title.setStyleSheet(f"font-size: 19px; font-weight: 800; color: {_text()}; background: transparent;")
+        header.addWidget(title)
+        header.addStretch()
+        layout.addLayout(header)
 
         scroller = QScrollArea()
         scroller.setWidgetResizable(True)
         scroller.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroller.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroller.setFixedHeight(128)
-        scroller.setStyleSheet("border: none; background: transparent;")
-        holder = QWidget()
-        holder.setStyleSheet("background: transparent;")
-        row = QHBoxLayout(holder)
-        row.setContentsMargins(36, 0, 36, 0)
-        row.setSpacing(12)
-        for step in sub_race.get("steps", []):
-            box = QFrame()
-            done = step["completed"]
-            bg, color = _semantic_pair("success") if done else _semantic_pair("muted")
-            border = tokens().success if done else tokens().border
-            box.setStyleSheet(f"QFrame {{ background: {bg}; border: 1px solid {border}; border-radius: 8px; }} QLabel {{ background: transparent; border: none; }}")
-            box.setFixedWidth(118)
-            bl = QVBoxLayout(box)
-            bl.setContentsMargins(10, 8, 10, 8)
-            bl.setSpacing(4)
-            title = QLabel(step["label"])
-            title.setAlignment(Qt.AlignCenter)
-            title.setStyleSheet(f"font-size: 13px; font-weight: 800; color: {color};")
-            date_text = step["due_date"].strftime("%Y-%m-%d") if step.get("due_date") else "-"
-            box.setToolTip(f"{step['label']} - {date_text}")
-            date = QLabel(date_text)
-            date.setAlignment(Qt.AlignCenter)
-            date.setStyleSheet(f"font-size: 11px; color: {color};")
-            inc = QLabel(step.get("increment") or "")
-            inc.setAlignment(Qt.AlignCenter)
-            inc.setStyleSheet(f"font-size: 11px; font-weight: 700; color: {color};")
-            bl.addWidget(title)
-            bl.addWidget(date)
-            bl.addWidget(inc)
-            row.addWidget(box)
-        row.addStretch()
-        scroller.setWidget(holder)
+        scroller.setFixedHeight(152)
+        scroller.setStyleSheet(scroll_ss("transparent"))
+        timeline = SubRaceTimelineWidget(sub_race.get("steps", []))
+        scroller.setWidget(timeline)
         layout.addWidget(scroller)
         return card
 
@@ -2444,25 +2639,41 @@ class EmployeeProfileView(QWidget):
         card.setObjectName("ProfileCard")
         card.setStyleSheet(PROFILE_CARD_SS())
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(20, 18, 20, 18)
-        layout.setSpacing(12)
+        layout.setContentsMargins(22, 18, 22, 18)
+        layout.setSpacing(10)
         header = QHBoxLayout()
         header.addWidget(self._info_title(title))
         if badge:
             header.addWidget(self._badge(badge, *_admin_badge_colors()))
         header.addStretch()
         layout.addLayout(header)
-        for key, val in rows:
-            field = QVBoxLayout()
-            field.setSpacing(4)
+        for row_data in rows:
+            if len(row_data) == 2:
+                key, val = row_data
+                kind = "default"
+            else:
+                key, val, kind = row_data
+            row = QFrame()
+            row.setStyleSheet(
+                f"QFrame {{ background: {tokens().surface_muted}; border: none; border-radius: 7px; }}"
+                "QFrame QLabel { background: transparent; border: none; }"
+            )
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(12, 7, 12, 7)
+            row_layout.setSpacing(12)
             k = QLabel(key)
+            k.setMinimumWidth(118)
             k.setStyleSheet(f"font-size: 12px; font-weight: 700; color: {_text()}; background: transparent;")
             v = QLabel(str(val))
             v.setWordWrap(True)
-            v.setStyleSheet(field_value_ss())
-            field.addWidget(k)
-            field.addWidget(v)
-            layout.addLayout(field)
+            v.setToolTip(str(val))
+            if kind == "highlight" and str(val) != "-":
+                v.setStyleSheet(f"font-size: 12px; color: {tokens().brand}; font-weight: 800; background: transparent;")
+            else:
+                v.setStyleSheet(f"font-size: 12px; color: {_muted()}; font-weight: 600; background: transparent;")
+            row_layout.addWidget(k, 0, Qt.AlignTop)
+            row_layout.addWidget(v, 1, Qt.AlignTop)
+            layout.addWidget(row)
         return card
 
     def _list_card(self, title):
