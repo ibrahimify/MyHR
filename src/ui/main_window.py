@@ -502,7 +502,7 @@ class MainWindow(QMainWindow):
                 page = EmployeesPage(self.user)
             elif key == "hierarchy":
                 HierarchyPage = self._page_class("hierarchy", "HierarchyPage")
-                page = HierarchyPage(self.user)
+                page = HierarchyPage(self.user, on_view_employee=self._navigate_to_employee)
             elif key == "promotions":
                 PromotionsPage = self._page_class("promotions", "PromotionsPage")
                 page = PromotionsPage(self.user, navigate_to_employee=self._navigate_to_employee)
