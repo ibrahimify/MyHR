@@ -978,6 +978,54 @@ class DashboardSmokeTests(unittest.TestCase):
         self.assertEqual(page.selected_node["kind"], "employee")
         self.assertEqual(page.selected_node["name"], "Sarah Canvas")
 
+    def test_other_employee_profile_is_increment_only_but_keeps_hr_tabs(self):
+        from datetime import datetime
+
+        from PySide6.QtWidgets import QLabel, QTabWidget
+
+        from src.database.models import Employee, OrgUnit
+        from src.ui.pages.employees import EmployeeProfileView
+
+        with db.SessionLocal() as session:
+            other_title = session.query(db.Title).filter_by(name="Other").one()
+            org = OrgUnit(name="Increment Only Org", unit_type="organization")
+            division = OrgUnit(name="Facilities", unit_type="division", parent=org)
+            session.add_all([org, division])
+            session.flush()
+            employee = Employee(
+                employee_id="OTHER-PROFILE-001",
+                first_name="Increment",
+                last_name="Only",
+                degree="Other",
+                work_email="increment.only@example.test",
+                position="Facilities Assistant",
+                join_date=datetime.utcnow(),
+                base_salary=2200,
+                status="active",
+                title_id=other_title.id,
+                org_unit_id=division.id,
+            )
+            session.add(employee)
+            session.commit()
+            employee_id = employee.id
+
+        user = SimpleNamespace(id=1, username="admin", role="admin", full_name="Smoke Admin")
+        view = EmployeeProfileView(user, on_back=lambda: None, on_edit=lambda _: None)
+        try:
+            view.load(employee_id)
+            labels = {label.text() for label in view.findChildren(QLabel)}
+            tabs = view.findChild(QTabWidget)
+            tab_names = {tabs.tabText(index) for index in range(tabs.count())}
+
+            self.assertIn("No promotion race assigned", labels)
+            self.assertIn("Annual Increment Timeline", labels)
+            self.assertIn("Promotion History", tab_names)
+            self.assertIn("Commendations", tab_names)
+            self.assertIn("Sanctions", tab_names)
+            self.assertNotIn("Promotion Race", labels)
+        finally:
+            view.close()
+
 
 if __name__ == "__main__":
     unittest.main()

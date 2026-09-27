@@ -2066,7 +2066,7 @@ class DatabaseTab(QWidget):
 
         self.report_type = QComboBox()
         self.report_type.setFixedHeight(40)
-        _style_combo(self.report_type)
+        _style_report_filter_combo(self.report_type)
         self.report_type.addItem(t("report_type_full"), "full")
         self.report_type.addItem(t("report_type_executive"), "executive")
         self.report_type.addItem(t("report_type_audit"), "audit")
@@ -2075,7 +2075,7 @@ class DatabaseTab(QWidget):
 
         self.report_year = QComboBox()
         self.report_year.setFixedHeight(40)
-        _style_combo(self.report_year)
+        _style_report_filter_combo(self.report_year)
         for year in available_report_years():
             self.report_year.addItem(str(year), year)
         filter_layout.addWidget(_field_label(t("report_period_label")), 1, 1)
@@ -2083,7 +2083,7 @@ class DatabaseTab(QWidget):
 
         self.report_status = QComboBox()
         self.report_status.setFixedHeight(40)
-        _style_combo(self.report_status)
+        _style_report_filter_combo(self.report_status)
         self.report_status.addItem(t("all_statuses"), None)
         for status in ["active", "inactive", "on_leave", "terminated"]:
             self.report_status.addItem(t(status), status)
@@ -2092,10 +2092,10 @@ class DatabaseTab(QWidget):
 
         self.report_department = QComboBox()
         self.report_department.setFixedHeight(40)
-        _style_combo(self.report_department)
+        _style_report_filter_combo(self.report_department)
         self.report_level = QComboBox()
         self.report_level.setFixedHeight(40)
-        _style_combo(self.report_level)
+        _style_report_filter_combo(self.report_level)
         self._load_report_filter_options()
         filter_layout.addWidget(_field_label(t("department")), 3, 0)
         filter_layout.addWidget(self.report_department, 4, 0, 1, 2)
@@ -2938,6 +2938,49 @@ def _sync_increment_spin_suffix(combo, spin, currency):
 def _style_combo(combo):
     combo.setStyleSheet(COMBO_SS)
     combo.setFixedHeight(44)
+    polish_combo_box(combo)
+
+
+def _style_report_filter_combo(combo):
+    tkn = tokens()
+    field_bg = tkn.surface if tkn.name != THEME_DARK else "#121412"
+    hover_bg = "#fbfcfb" if tkn.name != THEME_DARK else "#171a17"
+    combo.setStyleSheet(f"""
+QComboBox {{
+    border: 1px solid {tkn.border_strong};
+    border-radius: 8px;
+    padding: 0 34px 0 12px;
+    font-size: 14px;
+    color: {tkn.text};
+    background: {field_bg};
+    min-height: 40px;
+    outline: none;
+}}
+QComboBox:hover {{
+    border-color: {tkn.text_soft};
+    background: {hover_bg};
+}}
+QComboBox:focus {{
+    border-color: {tkn.brand};
+    background: {field_bg};
+}}
+QComboBox::drop-down {{
+    width: 30px;
+    border: none;
+    background: transparent;
+}}
+QComboBox QAbstractItemView {{
+    background: {tkn.surface_raised};
+    color: {tkn.text};
+    border: 1px solid {tkn.border_strong};
+    border-radius: 8px;
+    selection-background-color: {tkn.brand};
+    selection-color: {primary_button_fg()};
+    outline: none;
+    padding: 4px;
+}}
+""")
+    combo.setFixedHeight(40)
     polish_combo_box(combo)
 
 

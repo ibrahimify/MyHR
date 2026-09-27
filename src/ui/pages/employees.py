@@ -1969,9 +1969,8 @@ class EmployeeProfileView(QWidget):
             tabs.setStyleSheet(pill_tab_ss())
             tabs.addTab(self._details_tab(emp, sub_race), t("personal_details"))
             tabs.addTab(self._promotion_tab(emp, race, sub_race), t("promotion_history"))
-            if not is_other_employee(emp):
-                tabs.addTab(self._commendations_tab(emp), t("commendations"))
-                tabs.addTab(self._sanctions_tab(emp), t("sanctions"))
+            tabs.addTab(self._commendations_tab(emp), t("commendations"))
+            tabs.addTab(self._sanctions_tab(emp), t("sanctions"))
             install_tab_transition(tabs)
             page.addWidget(tabs)
             page.addStretch()
@@ -2121,7 +2120,10 @@ class EmployeeProfileView(QWidget):
         layout.setSpacing(16)
 
         if sub_race:
-            layout.addWidget(self._race_overview_card(sub_race))
+            if sub_race.get("is_other_track"):
+                layout.addWidget(self._increment_only_notice_card())
+            else:
+                layout.addWidget(self._race_overview_card(sub_race))
             layout.addWidget(self._sub_race_card(sub_race))
 
         info_row = QHBoxLayout()
@@ -2434,9 +2436,53 @@ class EmployeeProfileView(QWidget):
         body.addWidget(self._event_row("fa5s.chart-line", race_color("eligible"), t("initial_position"), t("initial_hire_degree", degree=emp.degree), emp.join_date.strftime("%Y-%m-%d") if emp.join_date else "-"))
         if race["has_next_level"]:
             body.addWidget(self._event_row("fa5s.clock", race_color("progress"), t("current_promotion_race"), t("current_race_progress", percent=race["progress_pct"], months=race["months_remaining"]), t("live_label")))
+        elif sub_race and sub_race.get("is_other_track"):
+            body.addWidget(self._event_row(
+                "fa5s.info-circle",
+                tokens().text_muted,
+                t("no_promotion_race_assigned"),
+                t("increment_only_track_description"),
+                t("live_label"),
+            ))
         layout.addWidget(card)
         layout.addStretch()
         return page
+
+    def _increment_only_notice_card(self):
+        card = QFrame()
+        card.setObjectName("ProfileCard")
+        card.setStyleSheet(PROFILE_CARD_SS())
+        layout = QHBoxLayout(card)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(16)
+
+        icon = QLabel()
+        icon.setFixedSize(46, 46)
+        icon.setAlignment(Qt.AlignCenter)
+        icon.setStyleSheet(f"background: {tokens().surface_muted}; border-radius: 8px;")
+        icon.setPixmap(app_pixmap("fa5s.info-circle", color=tokens().text_muted, size=18))
+
+        text = QVBoxLayout()
+        text.setSpacing(4)
+        title = QLabel(t("no_promotion_race_assigned"))
+        title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {_text()}; background: transparent;")
+        body = QLabel(t("increment_only_track_description"))
+        body.setWordWrap(True)
+        body.setStyleSheet(f"font-size: 13px; color: {_muted()}; background: transparent;")
+        text.addWidget(title)
+        text.addWidget(body)
+
+        chip = QLabel(t("annual_increment_only"))
+        chip.setAlignment(Qt.AlignCenter)
+        chip.setStyleSheet(
+            f"background: {tokens().success_soft}; color: {race_color('eligible')}; "
+            "border-radius: 8px; padding: 7px 12px; font-size: 12px; font-weight: 800;"
+        )
+
+        layout.addWidget(icon, 0, Qt.AlignTop)
+        layout.addLayout(text, 1)
+        layout.addWidget(chip, 0, Qt.AlignTop)
+        return card
 
     def _race_overview_card(self, sub_race):
         card = QFrame()
@@ -2568,7 +2614,8 @@ class EmployeeProfileView(QWidget):
         icon.setAlignment(Qt.AlignCenter)
         icon.setPixmap(app_pixmap("fa5s.project-diagram", color=race_color("eligible"), size=17))
         header.addWidget(icon)
-        title = QLabel(t("sub_race"))
+        title_key = "annual_increment_timeline" if sub_race.get("is_other_track") else "sub_race"
+        title = QLabel(t(title_key))
         title.setStyleSheet(f"font-size: 19px; font-weight: 800; color: {_text()}; background: transparent;")
         header.addWidget(title)
         header.addStretch()

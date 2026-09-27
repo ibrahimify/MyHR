@@ -1,14 +1,12 @@
 """Organization hierarchy page with lazy canvas rendering."""
 
-from pathlib import Path
-
-from PySide6.QtCore import Qt, QSize, QRectF, QPointF
+from PySide6.QtCore import Qt, QSize, QRectF, QPointF, QTimer
 from PySide6.QtGui import QColor, QPainter, QPen, QBrush, QFont, QPainterPath
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
     QScrollArea, QDialog, QFormLayout, QLineEdit, QComboBox, QMessageBox,
     QTableWidget, QTableWidgetItem, QHeaderView, QGraphicsView, QGraphicsScene,
-    QGraphicsItem, QGraphicsPathItem, QGridLayout
+    QGraphicsItem, QGraphicsPathItem, QGridLayout, QMenu, QFileDialog
 )
 
 from src.core.i18n import t
@@ -39,6 +37,13 @@ NEXT_TYPE_LABEL = {
     "unit": ("team", "teams"),
     "team": ("member", "members"),
     "position": ("employee", "employees"),
+}
+CHILD_TYPE_BY_PARENT = {
+    "organization": "division",
+    "division": "department",
+    "department": "unit",
+    "unit": "team",
+    "team": "position",
 }
 PARENT_BY_TYPE = {
     "organization": None,
@@ -129,7 +134,7 @@ def TABLE_SS():
 
 
 NODE_W = 292
-NODE_H = 116
+NODE_H = 122
 H_GAP = 52
 V_GAP = 78
 NODE_RENDER_LIMIT = 8
@@ -201,10 +206,6 @@ class HierarchyNodeItem(QGraphicsItem):
         painter.setPen(QPen(QColor(tokens().brand if self.selected else border), 2.4 if self.selected else 1))
         painter.setBrush(QBrush(QColor(bg)))
         painter.drawRoundedRect(card_rect, 10, 10)
-        if self.selected:
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(QBrush(QColor(tokens().brand)))
-            painter.drawEllipse(QRectF(NODE_W / 2 - 3, NODE_H - 6, 6, 6))
 
         painter.setPen(Qt.NoPen)
         avatar_bg = QColor(_avatar_bg(self.data.get("type", "team")))
@@ -331,6 +332,7 @@ class HierarchyPage(QWidget):
         self.node_items = {}
         self.edge_items = []
         self._did_initial_expand = False
+        self.show_all_reports = False
         self.setObjectName("HierarchyPage")
         self.setStyleSheet(f"QWidget#HierarchyPage {{ background: {tokens().canvas}; }}")
         self._build()
@@ -420,6 +422,8 @@ class HierarchyPage(QWidget):
                 background: {tokens().surface};
                 border: 1px solid {tokens().border};
                 border-radius: 10px;
+                margin-left: 12px;
+                margin-bottom: 12px;
             }}
         """)
         controls_row = QHBoxLayout(canvas_controls)
@@ -459,33 +463,26 @@ class HierarchyPage(QWidget):
             QFrame#HierarchyInspector QLabel {{ background: transparent; border: none; }}
         """)
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(22, 20, 22, 20)
-        layout.setSpacing(14)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(10)
 
-        top = QHBoxLayout()
         self.inspector_title = QLabel("Selected employee")
         self.inspector_title.setWordWrap(True)
         self.inspector_title.setStyleSheet(f"font-size: 15px; font-weight: 800; color: {tokens().text};")
-        close = QLabel()
-        close.setFixedSize(16, 16)
-        close.setPixmap(app_pixmap("fa5s.times", color=tokens().text_muted, size=12))
-        close.setStyleSheet("background: transparent; border: none;")
-        top.addWidget(self.inspector_title, 1)
-        top.addWidget(close)
-        layout.addLayout(top)
+        layout.addWidget(self.inspector_title)
 
         identity = QHBoxLayout()
-        identity.setSpacing(14)
+        identity.setSpacing(12)
         self.inspector_avatar = QLabel("--")
-        self.inspector_avatar.setFixedSize(58, 58)
+        self.inspector_avatar.setFixedSize(52, 52)
         self.inspector_avatar.setAlignment(Qt.AlignCenter)
-        self.inspector_avatar.setStyleSheet(f"background: {tokens().success_soft}; color: {tokens().brand}; border-radius: 29px; font-size: 18px; font-weight: 800;")
+        self.inspector_avatar.setStyleSheet(f"background: {tokens().success_soft}; color: {tokens().brand}; border-radius: 26px; font-size: 17px; font-weight: 800;")
         self.inspector_name = QLabel("No selection")
         self.inspector_name.setWordWrap(True)
-        self.inspector_name.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {tokens().text};")
+        self.inspector_name.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {tokens().text};")
         self.inspector_subtitle = QLabel("Select a unit or employee on the canvas.")
         self.inspector_subtitle.setWordWrap(True)
-        self.inspector_subtitle.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted};")
+        self.inspector_subtitle.setStyleSheet(f"font-size: 12px; color: {tokens().text_muted};")
         text_col = QVBoxLayout()
         text_col.setSpacing(2)
         text_col.addWidget(self.inspector_name)
@@ -503,14 +500,10 @@ class HierarchyPage(QWidget):
         meta_holder.setStyleSheet("background: transparent; border: none;")
         self.inspector_meta = QVBoxLayout(meta_holder)
         self.inspector_meta.setContentsMargins(0, 0, 0, 0)
-        self.inspector_meta.setSpacing(8)
+        self.inspector_meta.setSpacing(5)
         self.inspector_meta.addStretch()
         meta_scroll.setWidget(meta_holder)
         layout.addWidget(meta_scroll, 1)
-
-        self.inspector_span = _span_card(0)
-        self.inspector_span.hide()
-        layout.addWidget(self.inspector_span)
 
         self.action_add = QPushButton("  Add child unit")
         self.action_add.setIcon(app_icon("fa5s.plus", color=primary_button_fg(), size=16))
@@ -524,6 +517,10 @@ class HierarchyPage(QWidget):
         self.action_view.setIcon(app_icon("fa5s.user", color=primary_button_fg(), size=15))
         self.action_view.setStyleSheet(_outline_btn())
         self.action_view.clicked.connect(self._view_selected_profile)
+        self.action_more = QPushButton("  More actions")
+        self.action_more.setIcon(app_icon("fa5s.ellipsis-h", color=tokens().text, size=15))
+        self.action_more.setStyleSheet(_outline_btn())
+        self.action_more.clicked.connect(self._show_unit_actions_menu)
         self.action_delete = QPushButton("  Delete unit")
         self.action_delete.setIcon(app_icon("fa5s.trash-alt", color=tokens().danger, size=16))
         self.action_delete.setStyleSheet(_danger_outline_btn())
@@ -534,8 +531,8 @@ class HierarchyPage(QWidget):
         self.action_view.setText("  View full profile")
         self.action_view.setStyleSheet(_primary_btn())
         self.action_view.setIcon(app_icon("fa5s.user", color=primary_button_fg(), size=15))
-        for btn in [self.action_view, self.action_add, self.action_edit, self.action_delete]:
-            btn.setFixedHeight(38)
+        for btn in [self.action_view, self.action_more, self.action_add, self.action_edit, self.action_delete]:
+            btn.setFixedHeight(34)
             btn.setCursor(Qt.PointingHandCursor)
             layout.addWidget(btn)
         self._sync_inspector()
@@ -758,6 +755,8 @@ class HierarchyPage(QWidget):
         head_name = unit.head.full_name if unit.head else "Unassigned"
         head_position = _display_position(unit.head.position) if unit.head and unit.head.position else unit.unit_type.title()
         parent_head = unit.parent.head.full_name if unit.parent and unit.parent.head else "-"
+        parent_head_position = _display_position(unit.parent.head.position) if unit.parent and unit.parent.head else ""
+        parent_head_employee_id = unit.parent.head.id if unit.parent and unit.parent.head else None
         count_text = self._unit_count_text(unit.unit_type, child_count, visible_people)
         return {
             "kind": "unit",
@@ -776,6 +775,8 @@ class HierarchyPage(QWidget):
             "head_location": unit.head.address if unit.head and unit.head.address else "-",
             "head_start": unit.head.join_date.strftime("%b %d, %Y") if unit.head and unit.head.join_date else "-",
             "reports_to": parent_head,
+            "reports_to_position": parent_head_position,
+            "reports_to_employee_db_id": parent_head_employee_id,
             "head_employee_id": unit.head_employee_id,
             "employee_db_id": unit.head.id if unit.head else None,
             "child_count": child_count,
@@ -841,6 +842,7 @@ class HierarchyPage(QWidget):
 
     def _select_node(self, node):
         self.selected_node = node
+        self.show_all_reports = False
         self._render_initial(preserve_view=True)
         self._sync_inspector()
 
@@ -862,26 +864,41 @@ class HierarchyPage(QWidget):
             rows = self._inspector_rows(node, is_unit)
             for label, value in rows:
                 self.inspector_meta.addWidget(_meta_row(label, value))
+            reports_to = self._reports_to_summary(node, is_unit)
+            if reports_to:
+                self.inspector_meta.addWidget(_soft_divider())
+                self.inspector_meta.addWidget(_section_label("Reports to"))
+                self.inspector_meta.addWidget(
+                    _person_row(
+                        reports_to["name"],
+                        reports_to["subtitle"],
+                        reports_to.get("employee_db_id"),
+                        self._open_employee_profile,
+                        tone="blue",
+                        bordered=False,
+                    )
+                )
             reports = []
             if is_unit:
                 reports = self._direct_report_summaries(node["id"])
             elif node.get("employee_db_id"):
                 reports = self._employee_report_summaries(node["employee_db_id"])
             if reports:
+                self.inspector_meta.addWidget(_soft_divider())
                 self.inspector_meta.addWidget(_section_label(f"Direct reports ({len(reports)})"))
-                for report in reports:
+                visible_reports = reports if self.show_all_reports or len(reports) <= 4 else reports[:3]
+                for report in visible_reports:
                     self.inspector_meta.addWidget(
                         _person_row(report["name"], report["subtitle"], report.get("employee_db_id"), self._open_employee_profile)
                     )
-            self.inspector_span.count_label.setText(str(len(reports)))
-            self.inspector_span.setVisible(True)
-        else:
-            self.inspector_span.setVisible(False)
+                if len(reports) > len(visible_reports):
+                    self.inspector_meta.addWidget(_link_row(f"View all {len(reports)} reports", self._show_all_reports))
         self.inspector_meta.addStretch()
         self.action_add.setVisible(False)
         self.action_edit.setVisible(False)
         self.action_view.setVisible(bool(self._selected_employee_db_id()))
         self.action_delete.setVisible(False)
+        self.action_more.setVisible(is_unit)
 
     def _inspector_rows(self, node, is_unit):
         if is_unit:
@@ -890,18 +907,26 @@ class HierarchyPage(QWidget):
                 ("Email", node.get("head_email", "-")),
                 ("Location", node.get("head_location", "-")),
                 ("Start date", node.get("head_start", "-")),
-                ("Reports to", node.get("reports_to", "-")),
             ]
         return [
             ("Employee ID", node.get("employee_id", "-")),
             ("Email", node.get("email", "-")),
             ("Location", node.get("location", "-")),
             ("Start date", node.get("start_date", "-")),
-            ("Reports to", node.get("reports_to", "-")),
             ("Position", node.get("position", "-")),
             ("Level", node.get("level", "-")),
             ("Department", node.get("department", "-")),
         ]
+
+    def _reports_to_summary(self, node, is_unit):
+        name = node.get("reports_to")
+        if not name or name == "-":
+            return None
+        return {
+            "name": name,
+            "subtitle": node.get("reports_to_position") or "Manager",
+            "employee_db_id": node.get("reports_to_employee_db_id"),
+        }
 
     def _direct_report_summaries(self, unit_id):
         children = []
@@ -965,10 +990,61 @@ class HierarchyPage(QWidget):
 
     def _open_employee_profile(self, employee_db_id):
         if employee_db_id and self.on_view_employee:
-            self.on_view_employee(employee_db_id)
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            QApplication.processEvents()
+            try:
+                self.on_view_employee(employee_db_id)
+            finally:
+                QApplication.restoreOverrideCursor()
 
     def _view_selected_profile(self):
-        self._open_employee_profile(self._selected_employee_db_id())
+        employee_db_id = self._selected_employee_db_id()
+        if not employee_db_id or not self.on_view_employee:
+            return
+        self.action_view.setText("  Opening profile...")
+        self.action_view.setEnabled(False)
+        QApplication.processEvents()
+        QTimer.singleShot(80, lambda: self._finish_profile_open(employee_db_id))
+
+    def _finish_profile_open(self, employee_db_id):
+        self.action_view.setEnabled(True)
+        self.action_view.setText("  View full profile")
+        self._open_employee_profile(employee_db_id)
+
+    def _show_all_reports(self):
+        self.show_all_reports = True
+        self._sync_inspector()
+
+    def _show_unit_actions_menu(self):
+        if not self.selected_node or self.selected_node.get("kind") != "unit":
+            return
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background: {tokens().surface};
+                color: {tokens().text};
+                border: 1px solid {tokens().border};
+                border-radius: 8px;
+                padding: 6px;
+            }}
+            QMenu::item {{
+                padding: 8px 26px 8px 10px;
+                border-radius: 6px;
+            }}
+            QMenu::item:selected {{
+                background: {tokens().selected};
+            }}
+        """)
+        add_action = menu.addAction(app_icon("fa5s.plus", color=tokens().brand, size=13), "Add child unit")
+        edit_action = menu.addAction(app_icon("fa5s.edit", color=tokens().text, size=13), "Edit unit")
+        delete_action = menu.addAction(app_icon("fa5s.trash-alt", color=tokens().danger, size=13), "Delete unit")
+        chosen = menu.exec(self.action_more.mapToGlobal(self.action_more.rect().bottomLeft()))
+        if chosen == add_action:
+            self._add_child_from_selection()
+        elif chosen == edit_action:
+            self._edit_selected_unit()
+        elif chosen == delete_action:
+            self._delete_selected_unit()
 
     def _run_search(self):
         self.expanded.clear()
@@ -1096,6 +1172,8 @@ class HierarchyPage(QWidget):
             "location": employee.address or "-",
             "start_date": employee.join_date.strftime("%b %d, %Y") if employee.join_date else "-",
             "reports_to": employee.reports_to.full_name if employee.reports_to else "-",
+            "reports_to_position": _display_position(employee.reports_to.position) if employee.reports_to else "",
+            "reports_to_employee_db_id": employee.reports_to.id if employee.reports_to else None,
             "position": employee.position or "-",
             "level": employee.title.name if employee.title else "-",
             "subtitle": _display_position(employee.position) if employee.position else employee.employee_id,
@@ -1154,15 +1232,36 @@ class HierarchyPage(QWidget):
             self.view.scale(factor, factor)
 
     def _export_canvas_snapshot(self):
-        out_dir = Path("tmp_profile_audit")
-        out_dir.mkdir(exist_ok=True)
-        path = out_dir / "org_hierarchy_export.png"
-        self.view.grab().save(str(path))
-        self.action_view.setToolTip(f"Exported canvas to {path}")
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export org hierarchy canvas",
+            "org_hierarchy.png",
+            "PNG image (*.png)",
+        )
+        if not path:
+            return
+        if not path.lower().endswith(".png"):
+            path = f"{path}.png"
+
+        if self.view.grab().save(path, "PNG"):
+            self.action_view.setToolTip(f"Exported current org hierarchy canvas to {path}")
+            _styled_message_box(
+                self,
+                QMessageBox.Information,
+                "Export saved",
+                f"Saved the current org hierarchy canvas as a PNG image:\n{path}",
+            )
+        else:
+            _critical(self, "Export failed", "Could not save the org hierarchy canvas image. Please choose another location.")
 
     def _add_child_from_selection(self):
         if self.selected_node and self.selected_node.get("kind") == "unit":
-            self._add_unit(parent_id=self.selected_node["id"])
+            parent_type = self.selected_node.get("type")
+            child_type = CHILD_TYPE_BY_PARENT.get(parent_type)
+            if not child_type:
+                _warning(self, t("warning"), "This is the lowest organization node. Add employees to it instead of child units.")
+                return
+            self._add_unit(default_type=child_type, parent_id=self.selected_node["id"])
 
     def _edit_selected_unit(self):
         if self.selected_node and self.selected_node.get("kind") == "unit":
@@ -1368,10 +1467,12 @@ class OrgUnitDialog(QDialog):
             if idx >= 0:
                 self.type_combo.setCurrentIndex(idx)
                 self._load_parents()
+                self.type_combo.setEnabled(False)
         if self.default_parent_id:
             idx = self.parent_combo.findData(self.default_parent_id)
             if idx >= 0:
                 self.parent_combo.setCurrentIndex(idx)
+                self.parent_combo.setEnabled(False)
         self.type_combo.currentIndexChanged.connect(lambda _: self._load_parents())
         buttons = QHBoxLayout()
         buttons.addStretch()
@@ -1568,6 +1669,7 @@ def _floating_hint(text, icon):
             background: {tokens().surface};
             border: 1px solid {tokens().border};
             border-radius: 10px;
+            margin-bottom: 12px;
         }}
         QFrame#CanvasFloatingHint QLabel {{
             background: transparent;
@@ -1642,26 +1744,49 @@ def _initials(name):
 def _meta_row(label, value):
     row = QFrame()
     row.setObjectName("InspectorMetaRow")
-    row.setMinimumHeight(44)
-    row.setStyleSheet(f"QFrame#InspectorMetaRow {{ background: transparent; border: none; border-bottom: 1px solid {tokens().border}; }} QFrame#InspectorMetaRow QLabel {{ background: transparent; border: none; }}")
+    row.setMinimumHeight(24)
+    row.setStyleSheet(f"QFrame#InspectorMetaRow {{ background: transparent; border: none; }} QFrame#InspectorMetaRow QLabel {{ background: transparent; border: none; }}")
     layout = QHBoxLayout(row)
-    layout.setContentsMargins(0, 7, 0, 7)
-    layout.setSpacing(10)
+    layout.setContentsMargins(0, 1, 0, 1)
+    layout.setSpacing(8)
+    icon = QLabel()
+    icon.setFixedSize(16, 16)
+    icon.setPixmap(app_pixmap(_meta_icon(label), color=tokens().text_muted, size=13))
     label_widget = QLabel(label)
-    label_widget.setFixedWidth(78)
-    label_widget.setStyleSheet(f"font-size: 10px; color: {tokens().text_muted}; background: transparent; border: none;")
+    label_widget.setFixedWidth(88)
+    label_widget.setStyleSheet(f"font-size: 11px; color: {tokens().text_muted}; background: transparent; border: none;")
     value_widget = QLabel(_compact_value(value))
     value_widget.setToolTip(str(value))
-    value_widget.setMaximumWidth(230)
+    value_widget.setMaximumWidth(200)
     value_widget.setWordWrap(False)
     value_widget.setTextInteractionFlags(Qt.TextSelectableByMouse)
-    value_widget.setStyleSheet(f"font-size: 10px; color: {tokens().text}; font-weight: 700; background: transparent; border: none;")
+    value_widget.setStyleSheet(f"font-size: 11px; color: {tokens().text}; font-weight: 700; background: transparent; border: none;")
+    layout.addWidget(icon)
     layout.addWidget(label_widget)
     layout.addWidget(value_widget, 1)
     return row
 
 
-def _compact_value(value, limit=28):
+def _meta_icon(label):
+    normalized = str(label or "").lower()
+    if "email" in normalized:
+        return "fa5s.envelope"
+    if "location" in normalized:
+        return "fa5s.map-marker-alt"
+    if "date" in normalized or "start" in normalized:
+        return "fa5s.calendar"
+    if "reports" in normalized:
+        return "fa5s.user-friends"
+    if "position" in normalized:
+        return "fa5s.briefcase"
+    if "level" in normalized:
+        return "fa5s.layer-group"
+    if "department" in normalized:
+        return "fa5s.sitemap"
+    return "fa5s.id-badge"
+
+
+def _compact_value(value, limit=32):
     text = str(value or "-")
     if len(text) <= limit:
         return text
@@ -1675,27 +1800,64 @@ def _section_label(text):
     return label
 
 
-def _person_row(name, subtitle, employee_db_id=None, callback=None):
+def _soft_divider():
+    line = QFrame()
+    line.setFixedHeight(1)
+    line.setStyleSheet(f"background: {tokens().border}; border: none; margin-top: 6px; margin-bottom: 4px;")
+    return line
+
+
+def _link_row(text, callback):
+    btn = QPushButton(text)
+    btn.setCursor(Qt.PointingHandCursor)
+    btn.setFlat(True)
+    btn.setFixedHeight(28)
+    btn.setStyleSheet(f"""
+        QPushButton {{
+            background: transparent;
+            border: none;
+            color: {tokens().brand};
+            font-size: 11px;
+            font-weight: 800;
+            text-align: left;
+            padding: 0;
+            text-decoration: underline;
+        }}
+        QPushButton:hover {{
+            color: {tokens().text};
+            text-decoration: underline;
+        }}
+    """)
+    btn.clicked.connect(callback)
+    return btn
+
+
+def _person_row(name, subtitle, employee_db_id=None, callback=None, tone="green", bordered=True):
     row = QFrame()
     row.setObjectName("InspectorPersonRow")
-    row.setMinimumHeight(50)
-    row.setStyleSheet(f"QFrame#InspectorPersonRow {{ background: transparent; border: none; border-bottom: 1px solid {tokens().border}; }} QFrame#InspectorPersonRow QLabel {{ background: transparent; border: none; }}")
+    row.setMinimumHeight(40)
+    row.setStyleSheet(_person_row_style(tone=tone, bordered=bordered))
     if employee_db_id and callback:
         row.setCursor(Qt.PointingHandCursor)
-        row.mousePressEvent = lambda event, emp_id=employee_db_id: (callback(emp_id), event.accept())
+        def handle_press(event, emp_id=employee_db_id):
+            row.setStyleSheet(_person_row_style(tone=tone, bordered=bordered, active=True))
+            QApplication.processEvents()
+            event.accept()
+            QTimer.singleShot(70, lambda: callback(emp_id))
+        row.mousePressEvent = handle_press
     layout = QHBoxLayout(row)
-    layout.setContentsMargins(0, 8, 0, 8)
-    layout.setSpacing(10)
+    layout.setContentsMargins(0, 4, 0, 4)
+    layout.setSpacing(8)
     avatar = QLabel(_initials(name))
-    avatar.setFixedSize(34, 34)
+    avatar.setFixedSize(30, 30)
     avatar.setAlignment(Qt.AlignCenter)
-    avatar.setStyleSheet(f"background: {tokens().success_soft}; color: {tokens().brand}; border-radius: 17px; font-size: 11px; font-weight: 800;")
+    avatar.setStyleSheet(_person_avatar_style(tone))
     text = QVBoxLayout()
     text.setSpacing(1)
     title = QLabel(name)
-    title.setStyleSheet(f"font-size: 12px; font-weight: 800; color: {tokens().text};")
+    title.setStyleSheet(f"font-size: 11px; font-weight: 800; color: {tokens().text};")
     sub = QLabel(subtitle)
-    sub.setStyleSheet(f"font-size: 11px; color: {tokens().text_muted};")
+    sub.setStyleSheet(f"font-size: 10px; color: {tokens().text_muted};")
     text.addWidget(title)
     text.addWidget(sub)
     chevron = QLabel()
@@ -1704,6 +1866,25 @@ def _person_row(name, subtitle, employee_db_id=None, callback=None):
     layout.addLayout(text, 1)
     layout.addWidget(chevron)
     return row
+
+
+def _person_row_style(tone="green", bordered=True, active=False):
+    border = f"border-bottom: 1px solid {tokens().border};" if bordered else "border-bottom: none;"
+    bg = tokens().selected if active else "transparent"
+    return (
+        f"QFrame#InspectorPersonRow {{ background: {bg}; border: none; {border} border-radius: 6px; }}"
+        " QFrame#InspectorPersonRow QLabel { background: transparent; border: none; }"
+    )
+
+
+def _person_avatar_style(tone="green"):
+    if tone == "blue":
+        bg = "#dbeafe" if tokens().name != THEME_DARK else "#16345c"
+        fg = "#1d4ed8" if tokens().name != THEME_DARK else "#93c5fd"
+    else:
+        bg = tokens().success_soft
+        fg = tokens().brand
+    return f"background: {bg}; color: {fg}; border-radius: 15px; font-size: 10px; font-weight: 800;"
 
 
 def _span_card(count):
@@ -1791,6 +1972,15 @@ def _validate_unit_structure(session, unit_type, parent_id, current_unit_id=None
     parent = session.query(OrgUnit).filter_by(id=parent_id).first()
     if not parent or parent.unit_type != required_parent_type:
         return f"A {unit_type} must be placed under a {required_parent_type}."
+    if current_unit_id:
+        children = session.query(OrgUnit).filter_by(parent_id=current_unit_id).all()
+        for child in children:
+            expected_parent = PARENT_BY_TYPE.get(child.unit_type)
+            if expected_parent != unit_type:
+                return (
+                    f"This unit cannot become a {unit_type} because it already has "
+                    f"{child.unit_type} child units. Move or edit child units first."
+                )
     return ""
 
 
