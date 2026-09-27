@@ -58,6 +58,7 @@ Thumbs.db
 .temp/
 *.log
 tmp_theme*/
+tmp_*/
 ~$*.docx
 ~$*.pptx
 ~$*.xlsx

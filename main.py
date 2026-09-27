@@ -3,6 +3,7 @@ from PySide6.QtWidgets import QApplication, QLabel, QAbstractItemView
 from PySide6.QtCore import Qt, QObject, QEvent, QPoint
 from src.database.connection import init_db
 from src.ui.login_window import LoginWindow
+from src.ui.icons import app_window_icon
 from src.ui.theme import apply_theme, theme_manager, tokens
 
 
@@ -78,6 +79,7 @@ def main():
     app.setApplicationName("MyHR")
     app.setStyle("Fusion")
     apply_theme(app)
+    app.setWindowIcon(app_window_icon())
     tooltip_filter = AppTooltipFilter(app)
     app.installEventFilter(tooltip_filter)
     app._tooltip_filter = tooltip_filter

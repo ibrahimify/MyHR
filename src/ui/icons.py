@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QApplication
 
 
 _ICON_DIR = Path(__file__).resolve().parent / "assets" / "icons" / "lucide"
+APP_ICON_PATH = Path(__file__).resolve().parent / "assets" / "myhr.ico"
 _CACHE: dict[tuple[str, str, int, float], QIcon] = {}
 _PIXMAP_CACHE: dict[tuple[str, str, int, float], QPixmap] = {}
 
@@ -136,6 +137,12 @@ def app_pixmap(name: str, *, color: str = "#111827", size: int = 20) -> QPixmap:
         pixmap = _render_svg_pixmap(path, color, int(size), dpr)
     _PIXMAP_CACHE[cache_key] = pixmap
     return pixmap
+
+
+def app_window_icon() -> QIcon:
+    if APP_ICON_PATH.exists():
+        return QIcon(str(APP_ICON_PATH))
+    return app_icon("company", color="#062f28", size=64)
 
 
 def _render_dpr() -> float:

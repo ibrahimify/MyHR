@@ -1241,6 +1241,7 @@ class DashboardPage(QWidget):
         layout = QVBoxLayout(content)
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(0)
+        self.content_layout = layout
 
         title = QLabel(t("dashboard_title"))
         title.setStyleSheet(f"font-size: 30px; font-weight: 800; color: {tokens().text}; background: transparent;")
@@ -1322,7 +1323,7 @@ class DashboardPage(QWidget):
 
         scroll.setWidget(content)
         outer.addWidget(scroll)
-        self._dashboard_compact = None
+        self._dashboard_layout_mode = None
         self._apply_responsive_layout()
 
     def resizeEvent(self, event):
@@ -1335,20 +1336,24 @@ class DashboardPage(QWidget):
             layout.takeAt(0)
 
     def _apply_responsive_layout(self):
-        compact = self.width() < 1280
-        if getattr(self, "_dashboard_compact", None) == compact:
+        width = self.width()
+        mode = "single" if width < 1040 else "compact" if width < 1420 else "full"
+        if getattr(self, "_dashboard_layout_mode", None) == mode:
             return
-        self._dashboard_compact = compact
+        self._dashboard_layout_mode = mode
+        compact = mode != "full"
+        single_column = mode == "single"
+        self._apply_density(compact, single_column)
 
         self._clear_layout(self.stats_layout)
-        stats_columns = 2 if compact else 4
+        stats_columns = 2 if single_column else 4
         for index, card in enumerate(self.stat_cards):
             self.stats_layout.addWidget(card, index // stats_columns, index % stats_columns)
         for column in range(4):
             self.stats_layout.setColumnStretch(column, 1 if column < stats_columns else 0)
 
         self._clear_layout(self.charts_layout)
-        if compact:
+        if single_column:
             self.charts_layout.addWidget(self.department_card, 0, 0)
             self.charts_layout.addWidget(self.promotion_card, 1, 0)
             self.charts_layout.setColumnStretch(0, 1)
@@ -1359,7 +1364,7 @@ class DashboardPage(QWidget):
             self.charts_layout.setColumnStretch(1, 1)
 
         self._clear_layout(self.insights_layout)
-        if compact:
+        if single_column:
             self.insights_layout.addWidget(self.timeline_card, 0, 0)
             self.insights_layout.addWidget(self.priority_card, 1, 0)
             self.insights_layout.setColumnStretch(0, 1)
@@ -1370,7 +1375,7 @@ class DashboardPage(QWidget):
             self.insights_layout.setColumnStretch(1, 1)
 
         self._clear_layout(self.bottom_layout)
-        if compact:
+        if single_column:
             self.bottom_layout.addWidget(self.recent_card, 0, 0)
             self.bottom_layout.addWidget(self.upcoming_card, 1, 0)
             self.bottom_layout.setColumnStretch(0, 1)
@@ -1379,6 +1384,61 @@ class DashboardPage(QWidget):
             self.bottom_layout.addWidget(self.upcoming_card, 0, 1)
             self.bottom_layout.setColumnStretch(0, 1)
             self.bottom_layout.setColumnStretch(1, 1)
+
+    def _apply_density(self, compact, single_column):
+        margin = 22 if single_column else 24 if compact else 40
+        if hasattr(self, "content_layout"):
+            self.content_layout.setContentsMargins(margin, margin, margin, margin)
+            self.content_layout.setSpacing(0)
+        for grid in (self.stats_layout, self.charts_layout, self.insights_layout, self.bottom_layout):
+            grid.setHorizontalSpacing(14 if compact else 20)
+            grid.setVerticalSpacing(14 if compact else 20)
+
+        for card in getattr(self, "stat_cards", []):
+            card.setMinimumHeight(112 if compact else 132)
+        self.department_card.setMinimumHeight(304 if compact else 360)
+        self.department_chart.setMinimumHeight(226 if compact else 290)
+        self.promotion_card.setMinimumHeight(284 if compact else 315)
+        self.promotion_chart.setMinimumHeight(196 if compact else 235)
+        self.timeline_card.setMinimumHeight(296 if compact else 335)
+        self.timeline_chart.setMinimumHeight(214 if compact else 275)
+        self.priority_card.setMinimumHeight(336 if compact else 390)
+        self.recent_card.setMinimumHeight(350 if compact else 420)
+        self.upcoming_card.setMinimumHeight(350 if compact else 420)
+
+        for card, margins, spacing in [
+            (self.department_card, (20, 18, 20, 18), 10),
+            (self.promotion_card, (20, 18, 20, 18), 10),
+            (self.timeline_card, (20, 18, 20, 18), 10),
+            (self.priority_card, (20, 18, 20, 18), 12),
+            (self.recent_card, (20, 18, 20, 18), 0),
+            (self.upcoming_card, (20, 18, 20, 18), 0),
+        ]:
+            layout = card.layout()
+            if layout is not None:
+                if compact:
+                    layout.setContentsMargins(*margins)
+                    layout.setSpacing(spacing)
+                else:
+                    layout.setContentsMargins(28, 24 if card in (self.priority_card, self.recent_card, self.upcoming_card) else 22, 28, 24 if card in (self.priority_card, self.recent_card, self.upcoming_card) else 22)
+                    layout.setSpacing(16 if card is self.priority_card else 12 if card in (self.department_card, self.promotion_card, self.timeline_card) else 0)
+
+        if hasattr(self, "org_chart_title"):
+            self.org_chart_title.setMinimumWidth(145 if compact else 220)
+            self.org_chart_title.setStyleSheet(
+                f"font-size: {18 if compact else 20}px; font-weight: 700; color: {tokens().text};"
+            )
+        if hasattr(self, "promotion_chart_title"):
+            self.promotion_chart_title.setMinimumWidth(125 if compact else 180)
+            self.promotion_chart_title.setStyleSheet(
+                f"font-size: {18 if compact else 20}px; font-weight: 700; color: {tokens().text};"
+            )
+
+        self._dashboard_pills_compact = compact
+        for sync_name in ("_sync_filter_buttons", "_sync_org_filter_buttons", "_sync_workforce_filter_buttons", "_sync_workforce_metric_buttons"):
+            sync = getattr(self, sync_name, None)
+            if sync:
+                sync()
 
     def _increment_alert(self):
         accent = chart_color("increment")
@@ -1532,11 +1592,11 @@ class DashboardPage(QWidget):
         layout.setSpacing(12)
 
         header = QHBoxLayout()
-        title = QLabel(t("promotion_trend"))
-        title.setMinimumWidth(180)
-        title.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        title.setStyleSheet(f"font-size: 20px; font-weight: 700; color: {tokens().text};")
-        header.addWidget(title, 1)
+        self.promotion_chart_title = QLabel(t("promotion_trend"))
+        self.promotion_chart_title.setMinimumWidth(180)
+        self.promotion_chart_title.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.promotion_chart_title.setStyleSheet(f"font-size: 20px; font-weight: 700; color: {tokens().text};")
+        header.addWidget(self.promotion_chart_title, 1)
         header.addLayout(self._filter_pills(), 0)
         layout.addLayout(header)
 
@@ -1569,14 +1629,18 @@ class DashboardPage(QWidget):
         tkn = tokens()
         active_bg = chart_color("promotion") if tkn.name == THEME_DARK else tkn.brand
         active_text = "#062f28" if tkn.name == THEME_DARK else "#ffffff"
+        compact = getattr(self, "_dashboard_pills_compact", False)
+        radius = 13 if compact else 15
+        padding = 10 if compact else 14
+        font_size = 11 if compact else 12
         if active:
             return (
                 f"QPushButton {{ background: {active_bg}; color: {active_text}; border: none; "
-                "border-radius: 15px; padding: 0 14px; font-size: 12px; font-weight: 700; }"
+                f"border-radius: {radius}px; padding: 0 {padding}px; font-size: {font_size}px; font-weight: 700; }}"
             )
         return (
             f"QPushButton {{ background: {tkn.surface_muted}; color: {tkn.text_muted}; border: 1px solid {tkn.border}; "
-            "border-radius: 15px; padding: 0 14px; font-size: 12px; font-weight: 600; }"
+            f"border-radius: {radius}px; padding: 0 {padding}px; font-size: {font_size}px; font-weight: 600; }}"
             f"QPushButton:hover {{ background: {tkn.hover}; color: {tkn.text}; }}"
         )
 

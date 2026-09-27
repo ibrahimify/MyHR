@@ -1,26 +1,46 @@
+# MyHR - Employee Management System
 
-# MyHR -  Employee Management System
+MyHR is a standalone offline desktop application for managing employee records,
+organization hierarchy, promotions, commendations, sanctions, salary increments,
+audit logs, imports, exports, and yearly HR reports.
 
-
-
-A standalone, offline desktop application for managing employee records, organizational hierarchy, promotions, commendations, and sanctions in government like organizations.
+It is built for a local-first HR workflow: no server is required, data is stored
+in SQLite, and the desktop UI is implemented with PySide6.
 
 ![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
 ![Qt](https://img.shields.io/badge/PySide6-Qt6-41CD52?logo=qt&logoColor=white)
-![SQLite](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite&logoColor=white) <br/>
-![Status](https://img.shields.io/badge/Status-Semester%201%20Complete-brightgreen)
-
-
-<p align="center">
-  <img src="docs/media/demo.gif" alt="MyHR Demo" width="800"/>
-</p>
+![SQLite](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite&logoColor=white)
 
 ---
 
-**Supervisor:** Dr. Husam Al-Magsoosi   
-**Developer:** Muhammad Ibrahim Shoeb   
-**Institution:** Budapest University of Technology and Economics   
-**Status:** Project Lab finished. Thesis part starts from this checkpoint.
+## Project Status
+
+Current checkpoint: pre-packaging polish complete.
+
+Completed:
+- Core desktop app workflow
+- Employee CRUD and profile pages
+- Organization hierarchy canvas
+- Promotion race and annual increment logic
+- Commendations, sanctions, audit log, import/export
+- Yearly PDF reports
+- Light/dark themes
+- Multi-language support
+- Dashboard density polish for laptop and desktop layouts
+- Application icon asset ready for packaging
+
+Remaining:
+- Build/package the desktop app as a standalone Windows application or installer
+
+---
+
+## Supervisor And Developer
+
+| Role | Name |
+|---|---|
+| Supervisor | Dr. Husam Al-Magsoosi |
+| Developer | Muhammad Ibrahim Shoeb |
+| Institution | Budapest University of Technology and Economics |
 
 ---
 
@@ -29,69 +49,26 @@ A standalone, offline desktop application for managing employee records, organiz
 | Layer | Technology |
 |---|---|
 | Language | Python 3.12+ |
-| UI Framework | PySide6 6.11.0 (Qt6) |
-| Database | SQLite (local, offline -  no networking required) |
+| UI Framework | PySide6 6.11.0 / Qt6 |
+| Database | SQLite |
 | ORM | SQLAlchemy 2.0 |
-| Icons | qtawesome 1.4.2 (Font Awesome 5) |
-| Spreadsheet Support | openpyxl (XLSX import) |
-| Version Control | GitHub |
-| UI Reference | Figma MockUI (React + Tailwind, in `MockUI/` folder) |
+| Icons | Local Lucide SVG icons with QtAwesome fallback |
+| Spreadsheet Import | openpyxl |
+| PDF/Document Support | PySide6 printing, pypdf, python-docx |
+| Mock UI Reference | `MockUI/` React + Vite prototype |
 
 ---
 
-## Getting Started
+## Run The Desktop App
 
-## 1. Running the MockUI
-
-The MockUI is a React-based interactive prototype of the application interface built with Vite, TypeScript, and Tailwind CSS. It was used as the design reference for the desktop app's UI.
-
-### Prerequisites
-- Node.js 16+ and npm/pnpm installed
-
-### Setup & Run
-
-1. Navigate to the MockUI directory:
-```bash
-cd MockUI
-```
-
-2. Install dependencies:
-```bash
-npm install
-# or if using pnpm:
-pnpm install
-```
-
-3. Start the development server:
-```bash
-npm run dev
-```
-
-4. Open your browser and navigate to `http://localhost:5173` (or the port shown in terminal)
-
-### Build for Production
-```bash
-npm run build
-npm run preview
-```
-
----
-## 2. Running the Desktop Appication
-
-## Install & Run
+Create and activate a virtual environment first if desired, then install:
 
 ```bash
 pip install -r requirements.txt
 python main.py
 ```
 
-### Run Tests
-
-```bash
-python -m unittest discover -s tests -v
-```
-
-### Default Credentials
+Default credentials:
 
 | Role | Username | Password |
 |---|---|---|
@@ -100,48 +77,180 @@ python -m unittest discover -s tests -v
 
 ---
 
-### Load Demo Data (Optional)
+## Run Tests
 
-To populate the app with a realistic 300-person company dataset for testing:
+```bash
+python -m unittest discover tests
+```
+
+Before pushing or packaging, this should pass:
+
+```bash
+python -m py_compile main.py src/ui/icons.py src/ui/pages/dashboard.py
+python -m unittest discover tests
+```
+
+Latest verification before this README update:
+
+```text
+Ran 34 tests in 101.648s
+OK
+```
+
+---
+
+## Demo Data
+
+To reset the local database and populate a realistic demo company dataset:
 
 ```bash
 python scripts/seed_demo_company.py
 ```
 
-> This resets the database and creates employees, departments, promotions, commendations, and sanctions.
+This creates employees, org units, promotion records, commendations, sanctions,
+salary increment data, and audit activity for testing.
+
+---
+
+## MockUI Prototype
+
+The `MockUI/` folder contains the original React/Vite design reference.
+It is not required to run the desktop app.
+
+```bash
+cd MockUI
+npm install
+npm run dev
+```
+
+Open the local URL shown by Vite, usually:
+
+```text
+http://localhost:5173
+```
+
+---
+
+## Main Features
+
+### Employee Management
+
+- Add, edit, view, and delete employee records
+- Auto-generated employee IDs
+- Degree-based level assignment for BSc, MSc, and PhD employees
+- `Other` employee track for increment-only roles
+- Professional employee profile with employment, personal, promotion, commendation, and sanction records
+- Search, filtering, and pagination
+
+### Organization Hierarchy
+
+- Hierarchy model: Organization -> Division -> Department -> Unit -> Team -> Position
+- Premium canvas view with pan, zoom, fit view, search, and lazy expansion
+- Selected employee/unit inspector panel
+- Add, edit, and delete unit actions with hierarchy dependency checks
+- Export current hierarchy canvas as PNG through a save dialog
+
+### Promotion Race
+
+- Promotion race is calculated live from raw records
+- Commendations reduce race months
+- Sanctions add delay months
+- Promotions reset the race clock
+- Sub-race checkpoints show annual progress
+- `Other` employees do not get promotion races; they keep annual increment timelines only
+
+### Annual Salary Increment
+
+- Annual increments are separate from promotion
+- Dashboard alert when increments are due
+- Admin review and approval workflow
+- Per-level increment settings
+- Full before/after salary audit trail
+
+### Commendations And Sanctions
+
+- Commendations can be issued to one employee or bulk teams
+- Sanctions track disciplinary delay months
+- Active and resolved sanctions are separated
+- Commendations and sanctions remain available for `Other` employees
+
+### Dashboard
+
+- KPI overview
+- Increment queue
+- Promotion pipeline
+- Priority signals
+- Workforce charts
+- Recent activity
+- Responsive density for laptop and desktop screens
+
+### Import, Export, And Reports
+
+- CSV/XLSX employee import with validation preview
+- Downloadable import template
+- Employee CSV export
+- Yearly PDF report with Full, Executive, and Audit-only modes
+- Report preview before PDF generation
+- Export history via immutable audit records
+- SQLite backup to a chosen location
+
+### Audit Log
+
+- Immutable audit trail for admin and HR actions
+- Username snapshots survive account renames
+- Search, filters, tooltips, and readable before/after diffs
+- CSV and PDF audit export
+
+### Access Control
+
+| Capability | Admin | HR Officer |
+|---|:---:|:---:|
+| Dashboard | Yes | Yes |
+| Employee Management | Yes | Yes |
+| Organization Hierarchy | Yes | Yes |
+| Promotions | Yes | Yes |
+| Commendations | Yes | Yes |
+| Sanctions | Yes | Yes |
+| Audit Log | Yes | Yes |
+| Import Data | Yes | Yes |
+| Settings | Yes | No |
+| User Management | Yes | No |
+| Export And Backup | Yes | No |
+
+---
 
 ## Project Structure
 
-```
+```text
 MyHR/
-|-- main.py                         # Desktop app entry point
-|-- requirements.txt                # Python dependencies
-|-- README.md                       # Project overview and setup
+|-- main.py
+|-- requirements.txt
+|-- README.md
 |-- docs/
 |   |-- guides/
-|   |   |-- MyHR_User_Guide.docx
-|   |   |-- MyHR_Developer_Guide.docx
 |   |-- media/
-|   |   |-- demo.gif
-|   |   |-- screenshots/
-|   |-- Presentation/
-|   |-- Analysis Module/
 |-- scripts/
-|   |-- seed_demo_company.py        # Rebuilds the demo company dataset
-|   |-- generate_docs.py            # Rebuilds Word documentation
-|-- MockUI/                         # React design reference only
+|   |-- seed_demo_company.py
+|   |-- generate_docs.py
+|-- MockUI/
 |-- src/
 |   |-- core/
-|   |   |-- i18n.py                 # EN/HU/AR translations and RTL support
-|   |   |-- app_settings.py         # Company branding via QSettings
+|   |   |-- i18n.py
+|   |   |-- app_settings.py
 |   |-- database/
-|   |   |-- models.py               # SQLAlchemy schema
-|   |   |-- connection.py           # DB init, business logic, audit helpers
+|   |   |-- models.py
+|   |   |-- connection.py
+|   |-- services/
+|   |   |-- reporting_service.py
 |   |-- ui/
-|       |-- styles.py               # Shared Qt styles
-|       |-- login_window.py         # Login and language selector
-|       |-- main_window.py          # Sidebar navigation shell
 |       |-- assets/
+|       |   |-- myhr.ico
+|       |   |-- icons/lucide/
+|       |-- icons.py
+|       |-- styles.py
+|       |-- theme.py
+|       |-- login_window.py
+|       |-- main_window.py
 |       |-- pages/
 |           |-- dashboard.py
 |           |-- employees.py
@@ -152,145 +261,75 @@ MyHR/
 |           |-- audit_log.py
 |           |-- import_data.py
 |           |-- settings.py
+|-- tests/
 ```
 
 ---
 
-## Features
+## Packaging Notes
 
-### Employee Management
-- Add, edit, view, and delete employees with auto-generated unique IDs (EMP-XXXX)
-- Degree-based level auto-assignment on hire: BSc → L7, MSc → L6, PhD → L5
-- Other/Miscellaneous employee track for non-standard roles (janitors, guards, etc.)
-- Employee profile with promotion race status, commendation and sanction history
-- Search, filter, and paginated employee list
+Packaging is intentionally not done yet.
 
-### Organizational Hierarchy
-- Unlimited depth tree: Organization → Division → Department → Unit → Team → Position
-- Self-referencing structure with head/in-charge assignment per node
-- Inline add, edit, and delete with dependency checks
-- Dedicated OTHERS branch for miscellaneous employees
-- Optimized hierarchy canvas with lazy expansion, zoom, pan, reset, fit, search focus, and team-member drilldown
+Before building the standalone app:
 
-### Promotion Race Engine
-- Each level is a race track with a configurable base duration in months
-- Employees advance 1 checkpoint per month automatically
-- Commendations speed up the race (−1, −3, or −6 months)
-- Sanctions delay the race (+1 to +12 months)
-- Months remaining calculated live -  never stored in the database
-- Clock resets to zero after each promotion
-- Sub-race milestones (L7.1, L7.2, etc.) tracked for annual checkpoints
-- Promotion levels: L7 → L6 → L5 → L4 → L3 → L2 (Board) → L1 (CEO)
+1. Make sure tests pass.
+2. Make sure temporary folders are not included:
+   - `tmp_*/`
+   - `build/`
+   - `dist/`
+   - `MockUI/node_modules/`
+   - local `*.db` files
+3. Use `src/ui/assets/myhr.ico` as the Windows executable icon.
+4. Include `src/ui/assets/icons/lucide/` with the package so SVG icons load correctly.
+5. Decide whether the packaged app should create a fresh local database or ship with a demo database.
 
-### Commendations
-- Three categories: Category 1 (−1 month), Category 2 (−3 months), Category 3 (−6 months)
-- Maximum 3 commendations per employee per role -  enforced in backend
-- Single employee or bulk team awards
-- Team awards skip employees at max limit with warning instead of blocking
-- Unique auto-generated IDs: COM-YYYY-MMDD-NNN
+Suggested packaging tool for the next step:
 
-### Sanctions
-- Disciplinary actions with 1–12 month promotion delay
-- Types: verbal warning, written warning, suspension, final warning
-- Active/resolved tracking -  only unresolved sanctions affect the promotion race
-- Unique auto-generated IDs: SAN-YYYY-MMDD-NNN
+```bash
+pyinstaller --noconfirm --windowed --name MyHR --icon src/ui/assets/myhr.ico main.py
+```
 
-### Annual Salary Increment
-- Separate from promotion -  every employee's salary increases on their anniversary date
-- Dashboard alert banner when employees are due for increment
-- Admin reviews and approves individually or in bulk
-- Configurable per level: percentage or fixed amount
-- Full before/after salary audit trail
-
-### Data Import & Export
-- CSV and XLSX bulk import with validation and preview
-- Error rows highlighted before import -  only valid rows are written
-- Downloadable CSV template with sample data
-- Employee data export to CSV
-- Yearly PDF reports with Full, Executive Summary, and Audit-Only report types
-- Report preview before PDF generation with scope, metrics, sections, and empty-result warning
-- In-app report export history sourced from immutable audit records
-- SQLite database backup to any location
-
-### Audit Log
-- Immutable record of every admin and HR action
-- Stores username snapshot at time of action -  survives account renames
-- Searchable by action, description, user, and category
-- Filterable with full-text tooltips for long descriptions
-- Readable field-level before/after diff view for JSON audit snapshots
-- Filtered audit export to CSV and PDF
-
-### User Management (Admin Only)
-- Create, edit, and deactivate HR Officer accounts
-- Each HR account has its own username and password
-- Soft delete: deactivated accounts cannot log in but remain in audit history
-- Admin can edit their own username and password for handover scenarios
-- Audit logs preserve the original username even after account changes
-
-### Settings (Admin Only)
-- Company name and subtitle (reflected on login screen and sidebar)
-- Dynamic level management with add, edit, delete rules, salary ranges, annual increment, and promotion target setup
-- Salary ranges per level with live currency badge and promotion-chain validation
-- Annual increment rules per level (percentage or fixed)
-- Promotion track base duration configuration
-- Password management
-- Database backup and export
-
-### Multi-language Support
-- Language selector on login: English, Hungarian, Arabic
-- Arabic applies right-to-left layout automatically via Qt
-- Per-session language selection -  resets on logout
-
-### Access Control
-
-| Capability | Admin | HR Officer |
-|---|:---:|:---:|
-| Dashboard | ✓ | ✓ |
-| Employee Management | ✓ | ✓ |
-| Organization Hierarchy | ✓ | ✓ |
-| Promotions | ✓ | ✓ |
-| Commendations | ✓ | ✓ |
-| Sanctions | ✓ | ✓ |
-| Audit Log | ✓ | ✓ |
-| Import Data | ✓ | ✓ |
-| Settings & Configuration | ✓ | X |
-| User Management | ✓ | X |
-| Export & Backup | ✓ | X |
+That command may need additional data-file options for assets. Do not treat it as final until the packaged app is tested.
 
 ---
 
-## Database Schema
+## Safe Push And Rollback
 
-| Table | Purpose |
-|---|---|
-| `system_user` | Admin and HR Officer accounts (employees never log in) |
-| `org_unit` | Self-referencing organizational hierarchy |
-| `employee` | Core employee records with personal and work-facing data |
-| `title` | Salary levels L1–L7 + Other, with ranges and increment config |
-| `promotion_rule` | Base months per level transition (configurable) |
-| `promotion_history` | Every promotion applied (immutable) |
-| `commendation` | Awards with category and month impact |
-| `commendation_employee` | Junction -  one commendation to many employees |
-| `sanction` | Disciplinary actions with delay months and resolution tracking |
-| `salary_increment_history` | Annual increment records with before/after values |
-| `audit_log` | Immutable activity trail with username snapshots |
+Before pushing:
 
----
+```bash
+git status
+python -m unittest discover tests
+git add .
+git commit -m "Pre-package polish"
+git push
+```
 
-## Architecture Decisions
+If something goes wrong after pushing, first find the last good commit:
 
-| Decision | Choice | Reason |
-|---|---|---|
-| Promotion months remaining | Calculated live, never stored | Avoids stale data, fully auditable from raw records |
-| Annual salary increment | Manual approval via dashboard | Appropriate for offline app without background services |
-| Language preference | Per session, not stored in DB | Minimal overhead for 1–2 concurrent users |
-| Employee system access | None -  data subjects only | Per professor requirement |
-| Audit log identity | Username snapshot at write time | Survives account renames, ensures accountability |
-| HR account deletion | Soft delete (is_active=False) | Preserves audit log references |
-| Page data freshness | Recreated per visit | Ensures live data without manual refresh |
-| List page performance | Batched race calculation | Same formula, fewer DB queries |
-| Report history | Reads immutable audit export logs | Avoids duplicate state while preserving traceability |
-| Audit diff view | Parses JSON snapshots into field rows | Keeps audit readable without changing stored records |
+```bash
+git log --oneline -5
+```
+
+To temporarily go back and inspect an older version:
+
+```bash
+git switch --detach <commit-hash>
+```
+
+To return to your working branch:
+
+```bash
+git switch <branch-name>
+```
+
+To undo the latest commit safely with a new revert commit:
+
+```bash
+git revert HEAD
+```
+
+Avoid `git reset --hard` unless you are completely sure you want to discard local changes.
 
 ---
 
@@ -300,27 +339,11 @@ MyHR/
 |---|---|
 | User Guide | `docs/guides/MyHR_User_Guide.docx` |
 | Developer Guide | `docs/guides/MyHR_Developer_Guide.docx` |
-| UI Mockup | `MockUI/` -  run with `cd MockUI && npm install && npm run dev` |
-| Demo Dataset | `scripts/seed_demo_company.py` -  generates 300 employees |
+| UI Mockup | `MockUI/` |
+| Demo Dataset Script | `scripts/seed_demo_company.py` |
 
----
-
-## Thesis Extension (Semester 2 -  In Progress)
-
-- Desktop app packaging as a standalone installer
-- Encrypted backups for sensitive HR data
-- Formal database migration tooling
-- Multi-year analytical reports and richer department-level summaries
-- Email reminders for salary increment due dates
-- Dark mode and extended multi-language support
-- Automated test suite for promotion math, imports, and access control
-
----
-
-## Check the Teleprompter
-*[Launch Teleprompter](https://raw.githack.com/ibrahimify/MyHR/master/teleprompter.html)*
 ---
 
 ## License
 
-Academic project -  Budapest University of Technology and Economics, 2025–2026.
+Academic project for Budapest University of Technology and Economics, 2025-2026.
