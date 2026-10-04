@@ -339,8 +339,12 @@ Avoid `git reset --hard` unless you are completely sure you want to discard loca
 |---|---|
 | User Guide | `docs/guides/MyHR_User_Guide.docx` |
 | Developer Guide | `docs/guides/MyHR_Developer_Guide.docx` |
+| Thesis Completion Plan | `docs/THESIS_COMPLETION_PLAN.md` |
 | UI Mockup | `MockUI/` |
 | Demo Dataset Script | `scripts/seed_demo_company.py` |
+
+Private TDK research planning notes are kept locally under `docs/research/` and
+are intentionally ignored by Git until they are cleaned for public release.
 
 ---
 

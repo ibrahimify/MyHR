@@ -63,6 +63,9 @@ tmp_*/
 ~$*.pptx
 ~$*.xlsx
 
+# Private research notes
+docs/research/
+
 # Dependencies
 pip-log.txt
 pip-delete-this-directory.txt
