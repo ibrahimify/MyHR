@@ -181,7 +181,99 @@ def _seed_defaults(session: Session):
                     base_months=r["base_months"],
                 ))
 
+    _seed_demo_performance_reviews(session)
     session.commit()
+
+
+def _seed_demo_performance_reviews(session: Session):
+    """Seed review examples for the demo employee without overwriting user data."""
+    employee = session.query(Employee).filter_by(employee_id="EMP-0034").first()
+    if not employee:
+        return
+    evaluator = (
+        session.query(SystemUser).filter_by(username="admin").first()
+        or session.query(SystemUser).order_by(SystemUser.id.asc()).first()
+    )
+    if not evaluator:
+        return
+    examples = [
+        {
+            "review_type": "quarterly",
+            "review_period": "Q1 2025",
+            "evaluation_date": datetime(2025, 3, 31),
+            "goal_score": 62,
+            "competency_score": 68,
+            "conduct_score": 72,
+            "teamwork_score": 66,
+            "notes": "Early baseline review after role transition.",
+        },
+        {
+            "review_type": "quarterly",
+            "review_period": "Q3 2025",
+            "evaluation_date": datetime(2025, 9, 30),
+            "goal_score": 78,
+            "competency_score": 80,
+            "conduct_score": 82,
+            "teamwork_score": 76,
+            "notes": "Delivery quality improved across assigned objectives.",
+        },
+        {
+            "review_type": "annual",
+            "review_period": "2026",
+            "evaluation_date": datetime(2026, 6, 30),
+            "goal_score": 84,
+            "competency_score": 82,
+            "conduct_score": 86,
+            "teamwork_score": 80,
+            "notes": "Reliable annual performance with strong goal delivery.",
+        },
+        {
+            "review_type": "promotion",
+            "review_period": "Q3 2026",
+            "evaluation_date": datetime(2026, 9, 30),
+            "goal_score": 90,
+            "competency_score": 86,
+            "conduct_score": 88,
+            "teamwork_score": 84,
+            "notes": "Promotion readiness review with sustained high performance.",
+        },
+    ]
+    for item in examples:
+        score = calculate_performance_rubric_score(
+            goal_score=item["goal_score"],
+            competency_score=item["competency_score"],
+            conduct_score=item["conduct_score"],
+            teamwork_score=item["teamwork_score"],
+        )
+        existing = session.query(PerformanceScore).filter_by(
+            employee_id=employee.id,
+            review_type=item["review_type"],
+            review_period=item["review_period"],
+        ).first()
+        if existing:
+            if any(getattr(existing, attr, None) is None for attr in PERFORMANCE_RUBRIC_WEIGHTS):
+                existing.score = score
+                existing.max_score = 100
+                existing.goal_score = item["goal_score"]
+                existing.competency_score = item["competency_score"]
+                existing.conduct_score = item["conduct_score"]
+                existing.teamwork_score = item["teamwork_score"]
+                existing.notes = existing.notes or item["notes"]
+            continue
+        session.add(PerformanceScore(
+            employee_id=employee.id,
+            evaluator_id=evaluator.id,
+            score=score,
+            max_score=100,
+            review_type=item["review_type"],
+            review_period=item["review_period"],
+            goal_score=item["goal_score"],
+            competency_score=item["competency_score"],
+            conduct_score=item["conduct_score"],
+            teamwork_score=item["teamwork_score"],
+            evaluation_date=item["evaluation_date"],
+            notes=item["notes"],
+        ))
 
 
 def get_session() -> Session:
@@ -935,6 +1027,129 @@ def record_performance_score(
         target_id=record.id,
         description=f"Performance review recorded for {employee.full_name}: {score:g}/{max_score:g}",
         after_value=json.dumps(payload),
+    )
+    session.commit()
+    return {"success": True, "record_id": record.id, "percentage": record.percentage}
+
+
+def update_performance_score(
+    record_id: int,
+    evaluator_id: int,
+    session: Session,
+    *,
+    score: float,
+    max_score: float = 100.0,
+    evaluation_date: datetime = None,
+    review_type: str = "annual",
+    review_period: str = "",
+    goal_score=None,
+    competency_score=None,
+    conduct_score=None,
+    teamwork_score=None,
+    notes: str = "",
+) -> dict:
+    """Update a performance review record and audit the correction."""
+    record = session.query(PerformanceScore).filter_by(id=record_id).first()
+    if not record:
+        return {"success": False, "error": "Performance review not found"}
+    evaluator = session.query(SystemUser).filter_by(id=evaluator_id).first()
+    if not evaluator:
+        return {"success": False, "error": "Evaluator not found"}
+    try:
+        score = float(score)
+        max_score = float(max_score)
+    except (TypeError, ValueError):
+        return {"success": False, "error": "Score must be numeric"}
+    if max_score <= 0:
+        return {"success": False, "error": "Maximum score must be greater than zero"}
+    rubric_values = {
+        "goal_score": goal_score,
+        "competency_score": competency_score,
+        "conduct_score": conduct_score,
+        "teamwork_score": teamwork_score,
+    }
+    for label, value in rubric_values.items():
+        if value is None:
+            continue
+        try:
+            rubric_values[label] = float(value)
+        except (TypeError, ValueError):
+            return {"success": False, "error": "Rubric scores must be numeric"}
+        if rubric_values[label] < 0 or rubric_values[label] > max_score:
+            return {"success": False, "error": f"Rubric scores must be between 0 and {max_score:g}"}
+    rubric_score = calculate_performance_rubric_score(max_score=max_score, **rubric_values)
+    if rubric_score is not None:
+        score = rubric_score
+    if score < 0 or score > max_score:
+        return {"success": False, "error": f"Score must be between 0 and {max_score:g}"}
+
+    review_type = (review_type or "annual").strip() or "annual"
+    review_period = (review_period or "").strip() or str((evaluation_date or datetime.utcnow()).year)
+    duplicate = (
+        session.query(PerformanceScore)
+        .filter(
+            PerformanceScore.id != record.id,
+            PerformanceScore.employee_id == record.employee_id,
+            PerformanceScore.review_type == review_type,
+            PerformanceScore.review_period == review_period,
+        )
+        .first()
+    )
+    if duplicate:
+        return {
+            "success": False,
+            "error": f"A {review_type.replace('_', ' ')} review already exists for {review_period}.",
+        }
+
+    before_payload = {
+        "score": record.score,
+        "max_score": record.max_score,
+        "band": performance_score_band(record.score, record.max_score),
+        "review_type": record.review_type,
+        "review_period": record.review_period,
+        "rubric": {
+            "goal_score": record.goal_score,
+            "competency_score": record.competency_score,
+            "conduct_score": record.conduct_score,
+            "teamwork_score": record.teamwork_score,
+        },
+        "evaluation_date": record.evaluation_date.isoformat() if record.evaluation_date else None,
+        "notes": record.notes,
+    }
+
+    record.score = score
+    record.max_score = max_score
+    record.review_type = review_type
+    record.review_period = review_period
+    record.goal_score = rubric_values["goal_score"]
+    record.competency_score = rubric_values["competency_score"]
+    record.conduct_score = rubric_values["conduct_score"]
+    record.teamwork_score = rubric_values["teamwork_score"]
+    record.evaluation_date = evaluation_date or datetime.utcnow()
+    record.notes = notes.strip() or None
+    session.flush()
+
+    after_payload = {
+        "score": record.score,
+        "max_score": record.max_score,
+        "percentage": record.percentage,
+        "band": performance_score_band(record.score, record.max_score),
+        "review_type": record.review_type,
+        "review_period": record.review_period,
+        "rubric": rubric_values,
+        "evaluation_date": record.evaluation_date.isoformat() if record.evaluation_date else None,
+        "notes": record.notes,
+    }
+    employee_name = record.employee.full_name if record.employee else f"employee #{record.employee_id}"
+    log_action(
+        session=session,
+        performed_by_id=evaluator_id,
+        action="performance_review.update",
+        target_table="performance_score",
+        target_id=record.id,
+        description=f"Performance review updated for {employee_name}: {score:g}/{max_score:g}",
+        before_value=json.dumps(before_payload),
+        after_value=json.dumps(after_payload),
     )
     session.commit()
     return {"success": True, "record_id": record.id, "percentage": record.percentage}

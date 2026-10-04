@@ -15,8 +15,8 @@ from PySide6.QtWidgets import (
     QTextEdit, QMessageBox, QDateEdit, QGridLayout, QListWidget,
     QListWidgetItem, QSizePolicy, QProgressBar, QDialog, QSpinBox
 )
-from PySide6.QtCore import Qt, QDate, QSize, Signal, QTimer, QRectF
-from PySide6.QtGui import QColor, QBrush, QFont, QPainter, QPen
+from PySide6.QtCore import Qt, QDate, QSize, Signal, QTimer, QRectF, QPointF
+from PySide6.QtGui import QColor, QBrush, QFont, QPainter, QPen, QPolygonF
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
@@ -52,11 +52,11 @@ from src.database.connection import (
     degree_to_title_name, calculate_months_remaining, calculate_sub_race,
     display_title_name, ensure_others_org_unit, is_other_employee,
     is_other_title, valid_other_manager_ids, validate_salary_for_title,
-    performance_score_band, record_performance_score, OTHER_ORG_UNIT_NAME
+    performance_score_band, record_performance_score, update_performance_score, OTHER_ORG_UNIT_NAME
 )
 from src.database.models import (
     Employee, Title, OrgUnit,
-    CommendationEmployee, PromotionHistory, SalaryIncrementHistory, Sanction
+    CommendationEmployee, PromotionHistory, SalaryIncrementHistory, Sanction, PerformanceScore
 )
 from datetime import datetime
 import json
@@ -311,6 +311,252 @@ class SubRaceTimelineWidget(QWidget):
                 painter.setFont(font_chip)
                 painter.setPen(QPen(QColor(race_color("eligible"))))
                 painter.drawText(chip_rect, Qt.AlignCenter, increment)
+
+
+def _score_percentage(score):
+    if not score or not getattr(score, "max_score", None):
+        return 0.0
+    return max(0.0, min(100.0, (float(score.score) / float(score.max_score)) * 100.0))
+
+
+def _band_kind(score):
+    pct = _score_percentage(score)
+    if pct >= 80:
+        return "success"
+    if pct >= 70:
+        return "brand"
+    if pct >= 60:
+        return "warning"
+    return "danger"
+
+
+def _band_color(score):
+    kind = _band_kind(score)
+    if kind == "success":
+        return QColor(tokens().success)
+    if kind == "warning":
+        return QColor(tokens().warning)
+    if kind == "danger":
+        return QColor(tokens().danger)
+    return QColor(tokens().brand)
+
+
+def _review_type_label(value):
+    return (value or "review").replace("_", " ").title()
+
+
+def _trend_period_label(score):
+    period = (score.review_period or "").strip()
+    review_type = (score.review_type or "").strip()
+    if review_type == "annual" and period.isdigit() and len(period) == 4:
+        return f"FY {period}"
+    if period:
+        return period
+    return score.evaluation_date.strftime("%Y-%m") if score.evaluation_date else "-"
+
+
+class PerformanceGaugeWidget(QWidget):
+    def __init__(self, score=None, parent=None):
+        super().__init__(parent)
+        self.score = score
+        self.setMinimumSize(180, 166)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        tkn = tokens()
+        pct = _score_percentage(self.score)
+        side = min(self.width(), self.height() + 12, 154)
+        rect = QRectF((self.width() - side) / 2, max(0, (self.height() - side) / 2), side, side)
+        stroke = max(10, int(side * 0.075))
+
+        painter.setPen(QPen(QColor(tkn.border), stroke, Qt.SolidLine, Qt.RoundCap))
+        painter.drawArc(rect.adjusted(stroke / 2, stroke / 2, -stroke / 2, -stroke / 2), 0, 360 * 16)
+        painter.setPen(QPen(_band_color(self.score), stroke, Qt.SolidLine, Qt.RoundCap))
+        painter.drawArc(rect.adjusted(stroke / 2, stroke / 2, -stroke / 2, -stroke / 2), 90 * 16, int(-360 * 16 * pct / 100))
+
+        score_text = "No score" if not self.score else f"{round(self.score.score):g}/{self.score.max_score:g}"
+        font = QFont("Segoe UI", 17 if self.score else 15)
+        font.setBold(True)
+        painter.setFont(font)
+        painter.setPen(QPen(QColor(tkn.text)))
+        painter.drawText(rect, Qt.AlignCenter, score_text)
+
+
+class PerformanceRadarWidget(QWidget):
+    AXES = [
+        ("goal_score", "1. Goal Delivery\n(40%)", 40),
+        ("competency_score", "2. Role Competencies\n(30%)", 30),
+        ("conduct_score", "3. Conduct & Reliability\n(20%)", 20),
+        ("teamwork_score", "4. Teamwork & Leadership\n(10%)", 10),
+        ("total_score", "Total Score\nweighted", 0),
+    ]
+
+    def __init__(self, score=None, parent=None):
+        super().__init__(parent)
+        self.score = score
+        self.setMinimumSize(320, 270)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setToolTip(self._tooltip_text())
+
+    def _tooltip_text(self):
+        if not self.score:
+            return "No performance review recorded yet."
+        values = [
+            ("Goal Delivery", getattr(self.score, "goal_score", None), 40),
+            ("Role Competencies", getattr(self.score, "competency_score", None), 30),
+            ("Conduct & Reliability", getattr(self.score, "conduct_score", None), 20),
+            ("Teamwork & Leadership", getattr(self.score, "teamwork_score", None), 10),
+            ("Total Calculated Score", round(self.score.score), None),
+        ]
+        lines = []
+        for label, value, weight in values:
+            if value is None:
+                continue
+            suffix = f" ({weight}%)" if weight is not None else ""
+            lines.append(f"{label}{suffix}: {value:g}/{self.score.max_score:g}")
+        return "\n".join(lines)
+
+    def _value(self, attr):
+        if not self.score:
+            return 0.0
+        if attr == "total_score":
+            return _score_percentage(self.score)
+        value = getattr(self.score, attr, None)
+        if value is None:
+            return _score_percentage(self.score)
+        return max(0.0, min(100.0, (float(value) / float(self.score.max_score or 100)) * 100.0))
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        tkn = tokens()
+        center = QPointF(self.width() / 2, self.height() / 2 + 13)
+        radius = max(96, min(self.width() * 0.28, self.height() * 0.36))
+
+        grid_pen = QPen(QColor(tkn.border_strong), 1)
+        text_pen = QPen(QColor(tkn.text_muted))
+        axis_angles = [-90, -18, 54, 126, 198]
+
+        for ring in (0.25, 0.5, 0.75, 1.0):
+            poly = QPolygonF()
+            for angle in axis_angles:
+                rad = math.radians(angle)
+                poly.append(QPointF(center.x() + math.cos(rad) * radius * ring, center.y() + math.sin(rad) * radius * ring))
+            painter.setPen(grid_pen)
+            painter.setBrush(Qt.NoBrush)
+            painter.drawPolygon(poly)
+
+        label_font = QFont("Segoe UI", 8)
+        label_font.setBold(False)
+        painter.setFont(label_font)
+        for index, (angle, (_, label, _)) in enumerate(zip(axis_angles, self.AXES)):
+            rad = math.radians(angle)
+            end = QPointF(center.x() + math.cos(rad) * radius, center.y() + math.sin(rad) * radius)
+            painter.setPen(grid_pen)
+            painter.drawLine(center, end)
+            label_distance = radius + 20
+            label_center = QPointF(
+                center.x() + math.cos(rad) * label_distance,
+                center.y() + math.sin(rad) * label_distance,
+            )
+            label_rect = QRectF(label_center.x() - 72, label_center.y() - 20, 144, 40)
+            flags = Qt.AlignCenter | Qt.TextWordWrap
+            if index == 1:
+                flags = Qt.AlignLeft | Qt.AlignVCenter | Qt.TextWordWrap
+                label_rect.moveLeft(label_center.x() - 6)
+            elif index == 2:
+                flags = Qt.AlignLeft | Qt.AlignVCenter | Qt.TextWordWrap
+                label_rect.moveLeft(label_center.x() - 8)
+            elif index == 3:
+                flags = Qt.AlignRight | Qt.AlignVCenter | Qt.TextWordWrap
+                label_rect.moveRight(label_center.x() + 8)
+            elif index == 4:
+                flags = Qt.AlignRight | Qt.AlignVCenter | Qt.TextWordWrap
+                label_rect.moveRight(label_center.x() + 6)
+            painter.setPen(text_pen)
+            painter.drawText(label_rect, flags, label)
+
+        data = QPolygonF()
+        for angle, (attr, _, _) in zip(axis_angles, self.AXES):
+            rad = math.radians(angle)
+            pct = self._value(attr) / 100.0
+            data.append(QPointF(center.x() + math.cos(rad) * radius * pct, center.y() + math.sin(rad) * radius * pct))
+
+        fill = QColor(tokens().brand)
+        fill.setAlpha(72 if tokens().name == THEME_DARK else 92)
+        painter.setBrush(QBrush(fill))
+        painter.setPen(QPen(QColor(tokens().brand), 2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        painter.drawPolygon(data)
+
+        painter.setBrush(QBrush(QColor(tokens().surface)))
+        painter.setPen(QPen(QColor(tokens().brand), 2))
+        for index, point in enumerate(data):
+            node_radius = 5 if self.AXES[index][0] == "total_score" else 4
+            painter.drawEllipse(QRectF(point.x() - node_radius, point.y() - node_radius, node_radius * 2, node_radius * 2))
+
+
+class PerformanceTrendWidget(QWidget):
+    def __init__(self, scores=None, parent=None):
+        super().__init__(parent)
+        self.scores = list(scores or [])
+        self.setMinimumSize(260, 220)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        tkn = tokens()
+        rect = QRectF(46, 20, max(20, self.width() - 76), max(40, self.height() - 60))
+        plot_rect = rect.adjusted(10, 0, -10, 0)
+
+        painter.setPen(QPen(QColor(tkn.border), 1))
+        painter.setFont(QFont("Segoe UI", 8))
+        for value in (60, 70, 80, 90, 100):
+            y = rect.bottom() - ((value - 50) / 50) * rect.height()
+            painter.drawLine(QPointF(rect.left(), y), QPointF(rect.right(), y))
+            painter.setPen(QPen(QColor(tkn.text_soft)))
+            painter.drawText(QRectF(4, y - 8, 34, 16), Qt.AlignRight | Qt.AlignVCenter, str(value))
+            painter.setPen(QPen(QColor(tkn.border), 1))
+
+        scores = sorted(self.scores, key=lambda item: item.evaluation_date or datetime.min)
+        if not scores:
+            painter.setPen(QPen(QColor(tkn.text_muted)))
+            painter.drawText(self.rect(), Qt.AlignCenter, "No trend yet")
+            return
+
+        points = []
+        for index, score in enumerate(scores):
+            x = plot_rect.left() + (plot_rect.width() * index / max(1, len(scores) - 1))
+            pct = _score_percentage(score)
+            y = rect.bottom() - ((pct - 50) / 50) * rect.height()
+            y = max(rect.top(), min(rect.bottom(), y))
+            points.append(QPointF(x, y))
+
+        if len(points) > 1:
+            fill_poly = QPolygonF(points + [QPointF(points[-1].x(), rect.bottom()), QPointF(points[0].x(), rect.bottom())])
+            fill = QColor(tkn.success)
+            fill.setAlpha(38 if tkn.name == THEME_DARK else 48)
+            painter.setBrush(QBrush(fill))
+            painter.setPen(Qt.NoPen)
+            painter.drawPolygon(fill_poly)
+
+        painter.setPen(QPen(QColor(tkn.success), 2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        for left, right in zip(points, points[1:]):
+            painter.drawLine(left, right)
+
+        painter.setFont(QFont("Segoe UI", 8))
+        for point, score in zip(points, scores):
+            painter.setBrush(QBrush(_band_color(score)))
+            painter.setPen(QPen(QColor(tkn.surface), 2))
+            painter.drawEllipse(QRectF(point.x() - 4, point.y() - 4, 8, 8))
+            label = _trend_period_label(score)
+            painter.setPen(QPen(QColor(tkn.text_muted)))
+            painter.drawText(QRectF(point.x() - 45, rect.bottom() + 10, 90, 18), Qt.AlignCenter, label)
 
 
 class CleanSelect(QWidget):
@@ -1929,9 +2175,11 @@ class PerformanceScoreDialog(QDialog):
         ("teamwork_score", "Teamwork and leadership", "Collaboration, mentoring, communication, initiative", 10),
     ]
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, score_record=None):
         super().__init__(parent)
-        self.setWindowTitle("Add Performance Review")
+        self.score_record = score_record
+        is_editing = score_record is not None
+        self.setWindowTitle("Edit Performance Review" if is_editing else "Add Performance Review")
         self.setModal(True)
         self.setMinimumWidth(560)
         self.setStyleSheet(f"QDialog {{ background: {_page_bg()}; font-family: 'Segoe UI'; }}" + TOOLTIP_SS)
@@ -1940,18 +2188,18 @@ class PerformanceScoreDialog(QDialog):
         layout.setContentsMargins(24, 22, 24, 22)
         layout.setSpacing(14)
 
-        title = QLabel("Add Performance Review")
+        title = QLabel("Edit Performance Review" if is_editing else "Add Performance Review")
         title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {_text()}; background: transparent;")
         layout.addWidget(title)
 
-        hint = QLabel("Record a reviewed performance result for HR history, promotion evidence, and later anomaly checks.")
+        hint = QLabel("Update the reviewed performance result. Changes are audited and keep the weighted rubric calculation intact." if is_editing else "Record a reviewed performance result for HR history, promotion evidence, and later anomaly checks.")
         hint.setWordWrap(True)
         hint.setStyleSheet(f"font-size: 13px; color: {_muted()}; background: transparent;")
         layout.addWidget(hint)
 
         self.max_score_input = QSpinBox()
         self.max_score_input.setRange(1, 1000)
-        self.max_score_input.setValue(100)
+        self.max_score_input.setValue(int(score_record.max_score) if score_record else 100)
         self.max_score_input.setFixedHeight(40)
         self.max_score_input.setStyleSheet(INPUT_STYLE())
         self.max_score_input.valueChanged.connect(self._sync_score_range)
@@ -1965,16 +2213,21 @@ class PerformanceScoreDialog(QDialog):
             ("Corrective Review", "corrective"),
         ]:
             self.review_type_input.addItem(label, value)
+        if score_record:
+            self._set_review_type(score_record.review_type)
 
         self.period_input = QLineEdit()
         self.period_input.setPlaceholderText("e.g. 2026, Q1 2026, Jan-Jun 2026")
-        self.period_input.setText(str(QDate.currentDate().year()))
+        self.period_input.setText(score_record.review_period if score_record else str(QDate.currentDate().year()))
         self.period_input.setFixedHeight(40)
         self.period_input.setStyleSheet(INPUT_STYLE())
 
         self.date_input = ChevronDateEdit()
         self.date_input.setCalendarPopup(True)
-        self.date_input.setDate(QDate.currentDate())
+        if score_record and score_record.evaluation_date:
+            self.date_input.setDate(QDate(score_record.evaluation_date.year, score_record.evaluation_date.month, score_record.evaluation_date.day))
+        else:
+            self.date_input.setDate(QDate.currentDate())
         self.date_input.setFixedHeight(40)
         self.date_input.setStyleSheet(DATE_STYLE())
 
@@ -2007,6 +2260,14 @@ class PerformanceScoreDialog(QDialog):
         rubric_layout.setSpacing(10)
         for key, label, desc, weight in self.RUBRIC:
             rubric_layout.addWidget(self._rubric_row(key, label, desc, weight))
+        if score_record:
+            fallback_score = int(round(score_record.score if score_record.score is not None else 80))
+            for key, _, _, _ in self.RUBRIC:
+                value = getattr(score_record, key, None)
+                spin = self.rubric_inputs[key]
+                was_blocked = spin.blockSignals(True)
+                spin.setValue(int(round(value if value is not None else fallback_score)))
+                spin.blockSignals(was_blocked)
         layout.addWidget(rubric_card)
 
         self.band_preview = QLabel("")
@@ -2027,6 +2288,8 @@ class PerformanceScoreDialog(QDialog):
         layout.addWidget(note_label)
         self.notes_input = QTextEdit()
         self.notes_input.setPlaceholderText("Optional context for this evaluation")
+        if score_record and score_record.notes:
+            self.notes_input.setPlainText(score_record.notes)
         self.notes_input.setFixedHeight(90)
         self.notes_input.setStyleSheet(INPUT_STYLE())
         layout.addWidget(self.notes_input)
@@ -2038,7 +2301,7 @@ class PerformanceScoreDialog(QDialog):
         cancel.setFixedHeight(40)
         cancel.setStyleSheet(btn_outline(40))
         cancel.clicked.connect(self.reject)
-        save = QPushButton("Save Review")
+        save = QPushButton("Update Review" if is_editing else "Save Review")
         save.setCursor(Qt.PointingHandCursor)
         save.setFixedHeight(40)
         save.setStyleSheet(btn_primary(40))
@@ -2046,6 +2309,12 @@ class PerformanceScoreDialog(QDialog):
         actions.addWidget(cancel)
         actions.addWidget(save)
         layout.addLayout(actions)
+
+    def _set_review_type(self, value):
+        for index, (_, data) in enumerate(self.review_type_input._items):
+            if data == value:
+                self.review_type_input.setCurrentIndex(index)
+                return
 
     def _sync_score_range(self):
         maximum = self.max_score_input.value()
@@ -2162,6 +2431,8 @@ class EmployeeProfileView(QWidget):
 
             tabs = QTabWidget()
             tabs.setStyleSheet(pill_tab_ss())
+            tabs.setMinimumHeight(650)
+            tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             tabs.addTab(self._details_tab(emp, sub_race), t("personal_details"))
             tabs.addTab(self._performance_tab(emp), "Performance")
             tabs.addTab(self._promotion_tab(emp, race, sub_race), t("promotion_history"))
@@ -2379,56 +2650,49 @@ class EmployeeProfileView(QWidget):
     def _performance_tab(self, emp):
         page = QWidget()
         page.setStyleSheet(f"background: {_page_bg()};")
+        page.setMinimumHeight(590)
+        page.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 12, 0, 0)
-        layout.setSpacing(14)
+        layout.setSpacing(16)
 
-        summary = QFrame()
-        summary.setObjectName("ProfileCard")
-        summary.setStyleSheet(PROFILE_CARD_SS())
-        summary_layout = QHBoxLayout(summary)
-        summary_layout.setContentsMargins(24, 20, 24, 20)
-        summary_layout.setSpacing(14)
+        scores = sorted(
+            list(getattr(emp, "performance_scores", []) or []),
+            key=lambda item: item.evaluation_date or datetime.min,
+            reverse=True,
+        )
+        latest = scores[0] if scores else None
 
+        header = QFrame()
+        header.setObjectName("ProfileCard")
+        header.setStyleSheet(PROFILE_CARD_SS())
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(24, 18, 24, 18)
+        header_layout.setSpacing(14)
         icon = QLabel()
         icon.setFixedSize(42, 42)
         icon.setAlignment(Qt.AlignCenter)
         icon.setStyleSheet(f"background: {tokens().success_soft}; border-radius: 8px;")
         icon.setPixmap(app_pixmap("fa5s.chart-line", color=race_color("eligible"), size=17))
-        summary_layout.addWidget(icon)
+        header_layout.addWidget(icon)
 
         text = QVBoxLayout()
         text.setSpacing(3)
         title = QLabel("Performance Reviews")
         title.setStyleSheet(f"font-size: 19px; font-weight: 800; color: {_text()}; background: transparent;")
-        subtitle = QLabel("Review history used for HR evaluation, promotion evidence, and anomaly checks.")
+        subtitle = QLabel("Rubric-based review history for HR evaluation, promotion evidence, and anomaly checks.")
         subtitle.setWordWrap(True)
         subtitle.setStyleSheet(f"font-size: 13px; color: {_muted()}; background: transparent;")
         text.addWidget(title)
         text.addWidget(subtitle)
-        summary_layout.addLayout(text, 1)
+        header_layout.addLayout(text, 1)
 
-        latest_wrap = QVBoxLayout()
-        latest_wrap.setSpacing(6)
-        latest = self._latest_performance(emp)
-        score_text = self._performance_summary(emp)
-        latest_score = QLabel(score_text)
-        latest_score.setAlignment(Qt.AlignCenter)
-        latest_score.setStyleSheet(
-            f"background: {tokens().surface_muted}; color: {_text()}; "
-            "border-radius: 8px; padding: 8px 12px; font-size: 13px; font-weight: 800;"
+        rule = QLabel("Max 1 review per type/period")
+        rule.setStyleSheet(
+            f"background: {tokens().surface_muted}; color: {_muted()}; "
+            "border-radius: 7px; padding: 7px 10px; font-size: 12px; font-weight: 700;"
         )
-        latest_wrap.addWidget(latest_score)
-        if latest:
-            bar = QProgressBar()
-            bar.setRange(0, 100)
-            bar.setValue(int(min(100, max(0, latest.percentage))))
-            bar.setFixedHeight(8)
-            bar.setTextVisible(False)
-            bar.setStyleSheet(race_progress_bar_ss("eligible", radius=4))
-            latest_wrap.addWidget(bar)
-        summary_layout.addLayout(latest_wrap, 0)
-
+        header_layout.addWidget(rule, 0, Qt.AlignTop)
         add_btn = QPushButton("  Add Review")
         add_btn.setIcon(app_icon("fa5s.plus", color=_primary_button_fg(), size=12))
         add_btn.setIconSize(QSize(12, 12))
@@ -2436,59 +2700,281 @@ class EmployeeProfileView(QWidget):
         add_btn.setFixedHeight(38)
         add_btn.setStyleSheet(btn_primary(38))
         add_btn.clicked.connect(lambda: self._open_performance_dialog(emp.id))
-        summary_layout.addWidget(add_btn, 0, Qt.AlignTop)
-        layout.addWidget(summary)
+        header_layout.addWidget(add_btn, 0, Qt.AlignTop)
+        layout.addWidget(header)
 
-        card = self._list_card("Performance Review History")
-        body = card.layout()
-        scores = list(getattr(emp, "performance_scores", []) or [])
-        if scores:
-            for score in scores:
-                evaluator = score.evaluator.full_name if score.evaluator else "-"
-                date_text = score.evaluation_date.strftime("%Y-%m-%d") if score.evaluation_date else "-"
-                review_type = (score.review_type or "review").replace("_", " ").title()
-                period = f" - {score.review_period}" if score.review_period else ""
-                band = performance_score_band(score.score, score.max_score)
-                breakdown = self._rubric_breakdown_text(score)
-                note_bits = [score.notes or f"{review_type}{period}; evaluator: {evaluator}"]
-                if breakdown:
-                    note_bits.append(breakdown)
-                note = " | ".join(note_bits)
-                body.addWidget(self._event_row(
-                    "fa5s.star",
-                    race_color("eligible"),
-                    f"{review_type}: {score.score:g}/{score.max_score:g} - {band}",
-                    f"{note} ({score.percentage:g}%)",
-                    date_text,
-                ))
-        else:
-            body.addWidget(self._empty_row("No performance reviews recorded yet."))
-        layout.addWidget(card)
+        visual_grid = QGridLayout()
+        visual_grid.setHorizontalSpacing(14)
+        visual_grid.setVerticalSpacing(14)
+        visual_grid.addWidget(self._score_gauge_card(latest), 0, 0)
+        visual_grid.addWidget(self._radar_card(latest), 0, 1)
+        visual_grid.addWidget(self._trend_card(scores), 0, 2)
+        visual_grid.setColumnStretch(0, 1)
+        visual_grid.setColumnStretch(1, 1)
+        visual_grid.setColumnStretch(2, 1)
+        layout.addLayout(visual_grid)
+
+        layout.addWidget(self._performance_history_card(scores))
         layout.addStretch()
         return page
 
-    def _open_performance_dialog(self, employee_id):
-        dialog = PerformanceScoreDialog(self)
-        if dialog.exec() != QDialog.Accepted:
-            return
-        data = dialog.values()
+    def _performance_visual_card(self, title, subtitle=None):
+        card = QFrame()
+        card.setObjectName("ProfileCard")
+        card.setStyleSheet(PROFILE_CARD_SS())
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(18, 16, 18, 14)
+        layout.setSpacing(12)
+        header = QVBoxLayout()
+        header.setSpacing(4)
+        label = QLabel(title)
+        label.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {_text()}; background: transparent;")
+        header.addWidget(label)
+        if subtitle:
+            sub = QLabel(subtitle)
+            sub.setWordWrap(True)
+            sub.setStyleSheet(f"font-size: 12px; color: {_muted()}; background: transparent;")
+            header.addWidget(sub)
+        layout.addLayout(header)
+        return card
+
+    def _score_gauge_card(self, latest):
+        card = self._performance_visual_card("Latest Score", "Most recent completed review.")
+        body = card.layout()
+        gauge = PerformanceGaugeWidget(latest)
+        body.addWidget(gauge, 1)
+        band = performance_score_band(latest.score, latest.max_score) if latest else "Not recorded"
+        chip = QLabel(band)
+        chip.setAlignment(Qt.AlignCenter)
+        chip.setStyleSheet(badge_ss(*_semantic_pair(_band_kind(latest) if latest else "muted"), radius=8, padding="7px 12px", font_size=13, weight=800))
+        body.addWidget(chip)
+        return card
+
+    def _radar_card(self, latest):
+        card = self._performance_visual_card("Rubric Profile", "Weighted dimensions used in the final score.")
+        body = card.layout()
+        body.addWidget(PerformanceRadarWidget(latest), 1)
+        return card
+
+    def _trend_card(self, scores):
+        ordered = sorted(
+            [score for score in scores if score.review_period],
+            key=lambda item: item.evaluation_date or datetime.min,
+        )
+        card = self._performance_visual_card("Performance Trend", "Score movement across review periods.")
+        card.layout().addWidget(PerformanceTrendWidget(ordered), 1)
+        return card
+
+    def _performance_history_card(self, scores):
+        card = QFrame()
+        card.setObjectName("ProfileCard")
+        card.setStyleSheet(PROFILE_CARD_SS())
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(12)
+
+        header = QHBoxLayout()
+        title = QLabel("Review History & Details")
+        title.setStyleSheet(f"font-size: 15px; font-weight: 800; color: {_text()}; background: transparent;")
+        header.addWidget(title)
+        header.addStretch()
+        for label, kind in [
+            ("Unsatisfactory", "danger"),
+            ("Needs Improvement", "warning"),
+            ("Meets/Exceeds", "success"),
+        ]:
+            header.addWidget(self._legend_item(label, kind))
+        layout.addLayout(header)
+
+        if not scores:
+            layout.addWidget(self._empty_row("No performance reviews recorded yet."))
+            return card
+
+        headers = ["Date", "Review Type", "Period", "Overall Score", "Rating Band", "Evaluator", "Audit", "Actions"]
+        table = QTableWidget(len(scores), len(headers))
+        table.setHorizontalHeaderLabels(headers)
+        table.verticalHeader().setVisible(False)
+        table.setShowGrid(False)
+        table.setAlternatingRowColors(False)
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.setSelectionMode(QTableWidget.SingleSelection)
+        table.setFocusPolicy(Qt.NoFocus)
+        table.setStyleSheet(table_style(header_height=38, row_font_size=12, item_padding=8))
+        table.horizontalHeader().setDefaultAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+        table.horizontalHeader().setStretchLastSection(False)
+        for col in range(table.columnCount()):
+            table.horizontalHeader().setSectionResizeMode(col, QHeaderView.Stretch)
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
+        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Fixed)
+        table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Fixed)
+        table.horizontalHeader().setSectionResizeMode(6, QHeaderView.Fixed)
+        table.horizontalHeader().setSectionResizeMode(7, QHeaderView.Fixed)
+        table.setColumnWidth(0, 124)
+        table.setColumnWidth(2, 118)
+        table.setColumnWidth(3, 164)
+        table.setColumnWidth(6, 88)
+        table.setColumnWidth(7, 92)
+        table.setMinimumHeight(min(304, 46 + len(scores) * 40))
+        table.setMaximumHeight(420)
+        for col, alignment in {
+            0: Qt.AlignCenter,
+            1: Qt.AlignVCenter | Qt.AlignLeft,
+            2: Qt.AlignCenter,
+            3: Qt.AlignCenter,
+            4: Qt.AlignCenter,
+            5: Qt.AlignVCenter | Qt.AlignLeft,
+            6: Qt.AlignCenter,
+            7: Qt.AlignCenter,
+        }.items():
+            header_item = table.horizontalHeaderItem(col)
+            if header_item:
+                header_item.setTextAlignment(alignment)
+
+        for row, score in enumerate(scores):
+            evaluator = score.evaluator.full_name if score.evaluator else "-"
+            date_text = score.evaluation_date.strftime("%Y-%m-%d") if score.evaluation_date else "-"
+            band = performance_score_band(score.score, score.max_score)
+            values = [
+                date_text,
+                _review_type_label(score.review_type),
+                score.review_period or "-",
+                f"{round(score.score):g}/{score.max_score:g}",
+                band,
+                evaluator,
+                "Saved",
+            ]
+            for col, value in enumerate(values):
+                item = QTableWidgetItem(value)
+                item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                if col in (0, 2, 3, 4, 6):
+                    item.setTextAlignment(Qt.AlignCenter)
+                else:
+                    item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+                table.setItem(row, col, item)
+            table.setCellWidget(row, 4, self._table_pill_widget(band, _band_kind(score)))
+            table.setCellWidget(row, 6, self._table_pill_widget("Saved", "muted"))
+            table.setCellWidget(row, 7, self._review_actions_widget(score.id))
+            table.setRowHeight(row, 40)
+        layout.addWidget(table)
+        return card
+
+    def _review_actions_widget(self, score_id):
+        wrap = QWidget()
+        wrap.setStyleSheet("background: transparent;")
+        layout = QHBoxLayout(wrap)
+        layout.setContentsMargins(4, 2, 4, 2)
+        layout.setSpacing(4)
+        layout.addStretch()
+
+        edit = QPushButton()
+        edit.setIcon(app_icon("fa5s.edit", color=tokens().brand, size=13))
+        edit.setIconSize(QSize(13, 13))
+        edit.setFixedSize(32, 32)
+        edit.setCursor(Qt.PointingHandCursor)
+        edit.setToolTip("Edit review")
+        edit.setStyleSheet(
+            f"QPushButton {{ background: {tokens().surface}; border: 1px solid {tokens().border_strong}; "
+            f"border-radius: 8px; color: {tokens().brand}; }}"
+            f"QPushButton:hover {{ background: {tokens().success_soft}; border-color: {tokens().brand}; }}"
+            f"QPushButton:pressed {{ background: {tokens().success_soft}; padding-top: 1px; padding-left: 1px; }}"
+        )
+        edit.clicked.connect(lambda _=False, sid=score_id: self._open_performance_dialog(self.employee_db_id, sid))
+        layout.addWidget(edit)
+        layout.addStretch()
+        return wrap
+
+    def _table_pill_widget(self, text, kind):
+        wrap = QWidget()
+        wrap.setStyleSheet("background: transparent;")
+        layout = QHBoxLayout(wrap)
+        layout.setContentsMargins(5, 4, 5, 4)
+        layout.setSpacing(0)
+        layout.addStretch()
+        pill = QLabel(text)
+        pill.setMinimumWidth(54)
+        pill.setAlignment(Qt.AlignCenter)
+        pill.setStyleSheet(badge_ss(*_semantic_pair(kind), radius=7, padding="4px 8px", font_size=11, weight=800))
+        layout.addWidget(pill)
+        layout.addStretch()
+        return wrap
+
+    def _legend_item(self, label, kind):
+        row = QHBoxLayout()
+        row.setSpacing(5)
+        dot = QLabel()
+        dot.setFixedSize(7, 7)
+        color = {
+            "success": tokens().success,
+            "warning": tokens().warning,
+            "danger": tokens().danger,
+        }.get(kind, tokens().text_muted)
+        dot.setStyleSheet(f"background: {color}; border-radius: 3px;")
+        text = QLabel(label)
+        text.setStyleSheet(f"font-size: 11px; color: {_muted()}; background: transparent;")
+        wrap = QWidget()
+        wrap.setStyleSheet("background: transparent;")
+        wrap.setLayout(row)
+        row.addWidget(dot)
+        row.addWidget(text)
+        return wrap
+
+    def _open_performance_dialog(self, employee_id, score_id=None):
         session = get_session()
         try:
-            result = record_performance_score(
-                employee_id=employee_id,
-                evaluator_id=self.user.id,
-                score=data["score"],
-                max_score=data["max_score"],
-                evaluation_date=data["evaluation_date"],
-                review_type=data["review_type"],
-                review_period=data["review_period"],
-                notes=data["notes"],
-                session=session,
-            )
+            score_record = None
+            if score_id:
+                score_record = (
+                    session.query(PerformanceScore)
+                    .filter_by(id=score_id, employee_id=employee_id)
+                    .first()
+                )
+                if not score_record:
+                    message_warning(self, t("warning"), "Performance review not found.")
+                    return
+
+            dialog = PerformanceScoreDialog(self, score_record=score_record)
+            if dialog.exec() != QDialog.Accepted:
+                return
+            data = dialog.values()
+
+            if score_id:
+                result = update_performance_score(
+                    record_id=score_id,
+                    evaluator_id=self.user.id,
+                    score=data["score"],
+                    max_score=data["max_score"],
+                    evaluation_date=data["evaluation_date"],
+                    review_type=data["review_type"],
+                    review_period=data["review_period"],
+                    goal_score=data["goal_score"],
+                    competency_score=data["competency_score"],
+                    conduct_score=data["conduct_score"],
+                    teamwork_score=data["teamwork_score"],
+                    notes=data["notes"],
+                    session=session,
+                )
+                success_message = "Performance review updated."
+            else:
+                result = record_performance_score(
+                    employee_id=employee_id,
+                    evaluator_id=self.user.id,
+                    score=data["score"],
+                    max_score=data["max_score"],
+                    evaluation_date=data["evaluation_date"],
+                    review_type=data["review_type"],
+                    review_period=data["review_period"],
+                    goal_score=data["goal_score"],
+                    competency_score=data["competency_score"],
+                    conduct_score=data["conduct_score"],
+                    teamwork_score=data["teamwork_score"],
+                    notes=data["notes"],
+                    session=session,
+                )
+                success_message = "Performance review recorded."
             if not result.get("success"):
                 message_warning(self, t("warning"), result.get("error", "Could not record performance review."))
                 return
-            message_information(self, "Performance", "Performance review recorded.")
+            message_information(self, "Performance", success_message)
             self.load(employee_id)
         except Exception as exc:
             session.rollback()
