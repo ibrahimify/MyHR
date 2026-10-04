@@ -1922,11 +1922,18 @@ class EmployeeProfileView(QWidget):
 
 
 class PerformanceScoreDialog(QDialog):
+    RUBRIC = [
+        ("goal_score", "Goal delivery", "Targets, project outcomes, quality of delivery", 40),
+        ("competency_score", "Role competencies", "Technical/role skills and growth in the role", 30),
+        ("conduct_score", "Conduct and reliability", "Attendance, compliance, ownership, professionalism", 20),
+        ("teamwork_score", "Teamwork and leadership", "Collaboration, mentoring, communication, initiative", 10),
+    ]
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Add Performance Review")
         self.setModal(True)
-        self.setMinimumWidth(420)
+        self.setMinimumWidth(560)
         self.setStyleSheet(f"QDialog {{ background: {_page_bg()}; font-family: 'Segoe UI'; }}" + TOOLTIP_SS)
 
         layout = QVBoxLayout(self)
@@ -1941,16 +1948,6 @@ class PerformanceScoreDialog(QDialog):
         hint.setWordWrap(True)
         hint.setStyleSheet(f"font-size: 13px; color: {_muted()}; background: transparent;")
         layout.addWidget(hint)
-
-        grid = QGridLayout()
-        grid.setHorizontalSpacing(12)
-        grid.setVerticalSpacing(10)
-
-        self.score_input = QSpinBox()
-        self.score_input.setRange(0, 100)
-        self.score_input.setValue(80)
-        self.score_input.setFixedHeight(40)
-        self.score_input.setStyleSheet(INPUT_STYLE())
 
         self.max_score_input = QSpinBox()
         self.max_score_input.setRange(1, 1000)
@@ -1981,31 +1978,47 @@ class PerformanceScoreDialog(QDialog):
         self.date_input.setFixedHeight(40)
         self.date_input.setStyleSheet(DATE_STYLE())
 
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(10)
         fields = [
             ("Review Type", self.review_type_input),
             ("Review Period", self.period_input),
-            ("Score", self.score_input),
-            ("Maximum", self.max_score_input),
             ("Evaluation Date", self.date_input),
+            ("Maximum Score", self.max_score_input),
         ]
         for row, (label_text, widget) in enumerate(fields):
             label = QLabel(label_text)
             label.setStyleSheet(f"font-size: 12px; font-weight: 700; color: {_text()}; background: transparent;")
-            grid.addWidget(label, row, 0)
-            grid.addWidget(widget, row, 1)
+            grid.addWidget(label, row // 2, (row % 2) * 2)
+            grid.addWidget(widget, row // 2, (row % 2) * 2 + 1)
         layout.addLayout(grid)
+
+        rubric_title = QLabel("Review Rubric")
+        rubric_title.setStyleSheet(f"font-size: 15px; font-weight: 800; color: {_text()}; background: transparent;")
+        layout.addWidget(rubric_title)
+
+        self.rubric_inputs = {}
+        rubric_card = QFrame()
+        rubric_card.setObjectName("ProfileCard")
+        rubric_card.setStyleSheet(PROFILE_CARD_SS())
+        rubric_layout = QVBoxLayout(rubric_card)
+        rubric_layout.setContentsMargins(14, 12, 14, 12)
+        rubric_layout.setSpacing(10)
+        for key, label, desc, weight in self.RUBRIC:
+            rubric_layout.addWidget(self._rubric_row(key, label, desc, weight))
+        layout.addWidget(rubric_card)
 
         self.band_preview = QLabel("")
         self.band_preview.setStyleSheet(
-            f"background: {tokens().surface_muted}; color: {_text()}; "
-            "border-radius: 8px; padding: 8px 10px; font-size: 12px; font-weight: 700;"
+            f"background: {tokens().success_soft}; color: {race_color('eligible')}; "
+            "border-radius: 8px; padding: 10px 12px; font-size: 13px; font-weight: 800;"
         )
         layout.addWidget(self.band_preview)
-        rubric = QLabel("Rubric: 90-100 Outstanding, 80-89 Exceeds expectations, 70-79 Meets expectations, 60-69 Needs improvement, below 60 Unsatisfactory.")
+        rubric = QLabel("Score bands: 90-100 Outstanding, 80-89 Exceeds Expectations, 70-79 Meets Expectations, 60-69 Needs Improvement, below 60 Unsatisfactory.")
         rubric.setWordWrap(True)
         rubric.setStyleSheet(f"font-size: 12px; color: {_muted()}; background: transparent;")
         layout.addWidget(rubric)
-        self.score_input.valueChanged.connect(self._update_band_preview)
         self.max_score_input.valueChanged.connect(self._update_band_preview)
         self._update_band_preview()
 
@@ -2035,22 +2048,69 @@ class PerformanceScoreDialog(QDialog):
         layout.addLayout(actions)
 
     def _sync_score_range(self):
-        self.score_input.setMaximum(self.max_score_input.value())
+        maximum = self.max_score_input.value()
+        for spin in self.rubric_inputs.values():
+            spin.setMaximum(maximum)
         self._update_band_preview()
 
     def _update_band_preview(self):
-        score = self.score_input.value()
         max_score = self.max_score_input.value()
+        score = self._calculated_score()
         pct = round((score / max_score) * 100) if max_score else 0
-        self.band_preview.setText(f"Rating: {performance_score_band(score, max_score)} ({pct}%)")
+        self.band_preview.setText(f"Calculated Review Score: {score:g}/{max_score:g} - {performance_score_band(score, max_score)} ({pct}%)")
+
+    def _calculated_score(self):
+        max_score = self.max_score_input.value()
+        total = 0.0
+        for key, _, _, weight in self.RUBRIC:
+            total += self.rubric_inputs[key].value() * (weight / 100)
+        return round(min(max_score, max(0, total)), 2)
+
+    def _rubric_row(self, key, label_text, description, weight):
+        row = QFrame()
+        row.setStyleSheet(
+            f"QFrame {{ background: {tokens().surface_muted}; border: none; border-radius: 8px; }}"
+            "QFrame QLabel { background: transparent; border: none; }"
+        )
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(12, 9, 12, 9)
+        layout.setSpacing(12)
+
+        text = QVBoxLayout()
+        text.setSpacing(2)
+        title = QLabel(f"{label_text} - {weight}%")
+        title.setStyleSheet(f"font-size: 13px; font-weight: 800; color: {_text()}; background: transparent;")
+        subtitle = QLabel(description)
+        subtitle.setWordWrap(True)
+        subtitle.setStyleSheet(f"font-size: 12px; color: {_muted()}; background: transparent;")
+        text.addWidget(title)
+        text.addWidget(subtitle)
+
+        spin = QSpinBox()
+        spin.setRange(0, self.max_score_input.value())
+        spin.setValue(80)
+        spin.setFixedWidth(86)
+        spin.setFixedHeight(38)
+        spin.setSuffix(" pts")
+        spin.setStyleSheet(INPUT_STYLE())
+        spin.valueChanged.connect(self._update_band_preview)
+        self.rubric_inputs[key] = spin
+
+        layout.addLayout(text, 1)
+        layout.addWidget(spin)
+        return row
 
     def values(self):
         qdate = self.date_input.date()
         return {
-            "score": self.score_input.value(),
+            "score": self._calculated_score(),
             "max_score": self.max_score_input.value(),
             "review_type": self.review_type_input.currentData(),
             "review_period": self.period_input.text().strip(),
+            "goal_score": self.rubric_inputs["goal_score"].value(),
+            "competency_score": self.rubric_inputs["competency_score"].value(),
+            "conduct_score": self.rubric_inputs["conduct_score"].value(),
+            "teamwork_score": self.rubric_inputs["teamwork_score"].value(),
             "evaluation_date": datetime(qdate.year(), qdate.month(), qdate.day()),
             "notes": self.notes_input.toPlainText().strip(),
         }
@@ -2303,6 +2363,19 @@ class EmployeeProfileView(QWidget):
         band = performance_score_band(latest.score, latest.max_score)
         return f"{latest.score:g}/{latest.max_score:g} - {band} - {period}{when}"
 
+    def _rubric_breakdown_text(self, score):
+        parts = []
+        for attr, label in [
+            ("goal_score", "Goals"),
+            ("competency_score", "Competencies"),
+            ("conduct_score", "Conduct"),
+            ("teamwork_score", "Teamwork"),
+        ]:
+            value = getattr(score, attr, None)
+            if value is not None:
+                parts.append(f"{label}: {value:g}")
+        return " | ".join(parts)
+
     def _performance_tab(self, emp):
         page = QWidget()
         page.setStyleSheet(f"background: {_page_bg()};")
@@ -2376,7 +2449,11 @@ class EmployeeProfileView(QWidget):
                 review_type = (score.review_type or "review").replace("_", " ").title()
                 period = f" - {score.review_period}" if score.review_period else ""
                 band = performance_score_band(score.score, score.max_score)
-                note = score.notes or f"{review_type}{period}; evaluator: {evaluator}"
+                breakdown = self._rubric_breakdown_text(score)
+                note_bits = [score.notes or f"{review_type}{period}; evaluator: {evaluator}"]
+                if breakdown:
+                    note_bits.append(breakdown)
+                note = " | ".join(note_bits)
                 body.addWidget(self._event_row(
                     "fa5s.star",
                     race_color("eligible"),

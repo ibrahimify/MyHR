@@ -16,7 +16,7 @@ The project aims to design and implement a standalone desktop application for ma
 | Design and implement organizational database | Done | Organization hierarchy model and hierarchy page. |
 | Employee management functions | Done | Add, edit, list, profile, import, export, search, filters. |
 | Department and organization management functions | Done | Organization -> Division -> Department -> Unit -> Team -> Position hierarchy. |
-| Performance evaluation records | Done | Performance review history records connected to employee profiles, audit logging, and future anomaly detection examples. |
+| Performance evaluation records | Done | Rubric-based performance review records connected to employee profiles, audit logging, and future anomaly detection examples. |
 | Commendation actions | Done | Issue and history workflows. |
 | Disciplinary actions | Done | Sanction issue, active/history, resolution, delay months. |
 | Rule-based promotion eligibility checks | Done | Promotion race engine with service time, commendation credits, sanction delay, and promotion history. |

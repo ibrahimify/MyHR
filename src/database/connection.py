@@ -78,6 +78,14 @@ def _migrate_schema():
                 conn.exec_driver_sql("ALTER TABLE performance_score ADD COLUMN review_type VARCHAR(50) NOT NULL DEFAULT 'annual'")
             if "review_period" not in perf_columns:
                 conn.exec_driver_sql("ALTER TABLE performance_score ADD COLUMN review_period VARCHAR(100)")
+            if "goal_score" not in perf_columns:
+                conn.exec_driver_sql("ALTER TABLE performance_score ADD COLUMN goal_score FLOAT")
+            if "competency_score" not in perf_columns:
+                conn.exec_driver_sql("ALTER TABLE performance_score ADD COLUMN competency_score FLOAT")
+            if "conduct_score" not in perf_columns:
+                conn.exec_driver_sql("ALTER TABLE performance_score ADD COLUMN conduct_score FLOAT")
+            if "teamwork_score" not in perf_columns:
+                conn.exec_driver_sql("ALTER TABLE performance_score ADD COLUMN teamwork_score FLOAT")
         for statement in [
             "CREATE INDEX IF NOT EXISTS ix_employee_status ON employee(status)",
             "CREATE INDEX IF NOT EXISTS ix_employee_employee_id ON employee(employee_id)",
@@ -789,6 +797,37 @@ def performance_score_band(score: float, max_score: float = 100.0) -> str:
     return "Unsatisfactory"
 
 
+PERFORMANCE_RUBRIC_WEIGHTS = {
+    "goal_score": 0.40,
+    "competency_score": 0.30,
+    "conduct_score": 0.20,
+    "teamwork_score": 0.10,
+}
+
+
+def calculate_performance_rubric_score(
+    goal_score=None,
+    competency_score=None,
+    conduct_score=None,
+    teamwork_score=None,
+    max_score: float = 100.0,
+):
+    """Return weighted performance score when all rubric dimensions are present."""
+    values = {
+        "goal_score": goal_score,
+        "competency_score": competency_score,
+        "conduct_score": conduct_score,
+        "teamwork_score": teamwork_score,
+    }
+    if any(value is None for value in values.values()):
+        return None
+    max_score = float(max_score)
+    weighted_pct = 0.0
+    for key, value in values.items():
+        weighted_pct += (float(value) / max_score) * PERFORMANCE_RUBRIC_WEIGHTS[key]
+    return round(weighted_pct * max_score, 2)
+
+
 def record_performance_score(
     employee_id: int,
     evaluator_id: int,
@@ -799,6 +838,10 @@ def record_performance_score(
     evaluation_date: datetime = None,
     review_type: str = "annual",
     review_period: str = "",
+    goal_score=None,
+    competency_score=None,
+    conduct_score=None,
+    teamwork_score=None,
     notes: str = "",
 ) -> dict:
     """
@@ -818,6 +861,24 @@ def record_performance_score(
         return {"success": False, "error": "Score must be numeric"}
     if max_score <= 0:
         return {"success": False, "error": "Maximum score must be greater than zero"}
+    rubric_values = {
+        "goal_score": goal_score,
+        "competency_score": competency_score,
+        "conduct_score": conduct_score,
+        "teamwork_score": teamwork_score,
+    }
+    for label, value in rubric_values.items():
+        if value is None:
+            continue
+        try:
+            rubric_values[label] = float(value)
+        except (TypeError, ValueError):
+            return {"success": False, "error": "Rubric scores must be numeric"}
+        if rubric_values[label] < 0 or rubric_values[label] > max_score:
+            return {"success": False, "error": f"Rubric scores must be between 0 and {max_score:g}"}
+    rubric_score = calculate_performance_rubric_score(max_score=max_score, **rubric_values)
+    if rubric_score is not None:
+        score = rubric_score
     if score < 0 or score > max_score:
         return {"success": False, "error": f"Score must be between 0 and {max_score:g}"}
     review_type = (review_type or "annual").strip() or "annual"
@@ -844,6 +905,10 @@ def record_performance_score(
         max_score=max_score,
         review_type=review_type,
         review_period=review_period,
+        goal_score=rubric_values["goal_score"],
+        competency_score=rubric_values["competency_score"],
+        conduct_score=rubric_values["conduct_score"],
+        teamwork_score=rubric_values["teamwork_score"],
         evaluation_date=evaluation_date or datetime.utcnow(),
         notes=notes.strip() or None,
     )
@@ -858,6 +923,7 @@ def record_performance_score(
         "band": performance_score_band(score, max_score),
         "review_type": record.review_type,
         "review_period": record.review_period,
+        "rubric": rubric_values,
         "evaluation_date": record.evaluation_date.isoformat(),
         "notes": record.notes,
     }

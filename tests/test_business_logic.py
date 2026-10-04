@@ -279,7 +279,10 @@ class PerformanceScoreTests(IsolatedDatabaseTestCase):
         latest = db.get_latest_performance_score(employee.id, self.session)
         self.assertEqual(latest.id, record.id)
 
-        audit = self.session.query(AuditLog).filter_by(action="performance_review.record").one()
+        audit = self.session.query(AuditLog).filter_by(
+            action="performance_review.record",
+            target_id=record.id,
+        ).one()
         self.assertEqual(audit.target_table, "performance_score")
         self.assertEqual(audit.target_id, record.id)
         self.assertIn("82", audit.description)
@@ -317,6 +320,31 @@ class PerformanceScoreTests(IsolatedDatabaseTestCase):
         self.assertFalse(second["success"])
         self.assertIn("already exists", second["error"])
         self.assertEqual(self.session.query(PerformanceScore).filter_by(employee_id=employee.id).count(), 1)
+
+    def test_performance_rubric_calculates_weighted_score(self):
+        employee = self.make_employee(join_months_ago=18)
+
+        result = db.record_performance_score(
+            employee.id,
+            self.admin.id,
+            0,
+            self.session,
+            review_type="promotion",
+            review_period="2026",
+            goal_score=90,
+            competency_score=80,
+            conduct_score=70,
+            teamwork_score=60,
+        )
+
+        self.assertTrue(result["success"])
+        record = self.session.query(PerformanceScore).filter_by(employee_id=employee.id).one()
+        self.assertEqual(record.score, 80)
+        self.assertEqual(record.goal_score, 90)
+        self.assertEqual(record.competency_score, 80)
+        self.assertEqual(record.conduct_score, 70)
+        self.assertEqual(record.teamwork_score, 60)
+        self.assertEqual(db.performance_score_band(record.score, record.max_score), "Exceeds Expectations")
 
 
 class ValidationTests(IsolatedDatabaseTestCase):
