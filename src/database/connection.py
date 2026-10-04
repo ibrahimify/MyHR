@@ -24,7 +24,7 @@ from src.core.i18n import t
 from src.database.models import (
     Base, SystemUser, Title, PromotionRule, Employee, OrgUnit,
     Commendation, CommendationEmployee, Sanction,
-    PromotionHistory, SalaryIncrementHistory, AuditLog
+    PromotionHistory, SalaryIncrementHistory, PerformanceScore, AuditLog
 )
 
 # Database path
@@ -69,6 +69,15 @@ def _migrate_schema():
               AND (performed_by_username IS NULL OR performed_by_username = '')
             """
         )
+        perf_columns = {
+            row[1]
+            for row in conn.exec_driver_sql("PRAGMA table_info(performance_score)").fetchall()
+        }
+        if perf_columns:
+            if "review_type" not in perf_columns:
+                conn.exec_driver_sql("ALTER TABLE performance_score ADD COLUMN review_type VARCHAR(50) NOT NULL DEFAULT 'annual'")
+            if "review_period" not in perf_columns:
+                conn.exec_driver_sql("ALTER TABLE performance_score ADD COLUMN review_period VARCHAR(100)")
         for statement in [
             "CREATE INDEX IF NOT EXISTS ix_employee_status ON employee(status)",
             "CREATE INDEX IF NOT EXISTS ix_employee_employee_id ON employee(employee_id)",
@@ -83,6 +92,7 @@ def _migrate_schema():
             "CREATE INDEX IF NOT EXISTS ix_commendation_issued_at ON commendation(issued_at)",
             "CREATE INDEX IF NOT EXISTS ix_sanction_employee_active_date ON sanction(employee_id, is_resolved, issued_at)",
             "CREATE INDEX IF NOT EXISTS ix_salary_increment_employee_date ON salary_increment_history(employee_id, applied_at)",
+            "CREATE INDEX IF NOT EXISTS ix_performance_score_employee_date ON performance_score(employee_id, evaluation_date)",
             "CREATE INDEX IF NOT EXISTS ix_audit_log_performed_at ON audit_log(performed_at)",
         ]:
             conn.exec_driver_sql(statement)
@@ -751,6 +761,117 @@ def apply_salary_increment(employee_id: int, approved_by_id: int, session: Sessi
 
     session.commit()
     return {"success": True, "salary_before": salary_before, "salary_after": salary_after}
+
+
+def get_latest_performance_score(employee_id: int, session: Session):
+    """Return the latest performance score for an employee, if one exists."""
+    return (
+        session.query(PerformanceScore)
+        .filter_by(employee_id=employee_id)
+        .order_by(PerformanceScore.evaluation_date.desc(), PerformanceScore.id.desc())
+        .first()
+    )
+
+
+def performance_score_band(score: float, max_score: float = 100.0) -> str:
+    """Map a performance score to a clear HR review band."""
+    if not max_score:
+        return "Not Rated"
+    pct = (float(score) / float(max_score)) * 100
+    if pct >= 90:
+        return "Outstanding"
+    if pct >= 80:
+        return "Exceeds Expectations"
+    if pct >= 70:
+        return "Meets Expectations"
+    if pct >= 60:
+        return "Needs Improvement"
+    return "Unsatisfactory"
+
+
+def record_performance_score(
+    employee_id: int,
+    evaluator_id: int,
+    score: float,
+    session: Session,
+    *,
+    max_score: float = 100.0,
+    evaluation_date: datetime = None,
+    review_type: str = "annual",
+    review_period: str = "",
+    notes: str = "",
+) -> dict:
+    """
+    Add a performance review record and audit it.
+    The score is evidence for review; it does not automatically approve promotions.
+    """
+    employee = session.query(Employee).filter_by(id=employee_id).first()
+    if not employee:
+        return {"success": False, "error": "Employee not found"}
+    evaluator = session.query(SystemUser).filter_by(id=evaluator_id).first()
+    if not evaluator:
+        return {"success": False, "error": "Evaluator not found"}
+    try:
+        score = float(score)
+        max_score = float(max_score)
+    except (TypeError, ValueError):
+        return {"success": False, "error": "Score must be numeric"}
+    if max_score <= 0:
+        return {"success": False, "error": "Maximum score must be greater than zero"}
+    if score < 0 or score > max_score:
+        return {"success": False, "error": f"Score must be between 0 and {max_score:g}"}
+    review_type = (review_type or "annual").strip() or "annual"
+    review_period = (review_period or "").strip() or str((evaluation_date or datetime.utcnow()).year)
+    existing = (
+        session.query(PerformanceScore)
+        .filter_by(
+            employee_id=employee_id,
+            review_type=review_type,
+            review_period=review_period,
+        )
+        .first()
+    )
+    if existing:
+        return {
+            "success": False,
+            "error": f"A {review_type.replace('_', ' ')} review already exists for {review_period}.",
+        }
+
+    record = PerformanceScore(
+        employee_id=employee_id,
+        evaluator_id=evaluator_id,
+        score=score,
+        max_score=max_score,
+        review_type=review_type,
+        review_period=review_period,
+        evaluation_date=evaluation_date or datetime.utcnow(),
+        notes=notes.strip() or None,
+    )
+    session.add(record)
+    session.flush()
+
+    payload = {
+        "employee_id": employee.employee_id,
+        "score": score,
+        "max_score": max_score,
+        "percentage": record.percentage,
+        "band": performance_score_band(score, max_score),
+        "review_type": record.review_type,
+        "review_period": record.review_period,
+        "evaluation_date": record.evaluation_date.isoformat(),
+        "notes": record.notes,
+    }
+    log_action(
+        session=session,
+        performed_by_id=evaluator_id,
+        action="performance_review.record",
+        target_table="performance_score",
+        target_id=record.id,
+        description=f"Performance review recorded for {employee.full_name}: {score:g}/{max_score:g}",
+        after_value=json.dumps(payload),
+    )
+    session.commit()
+    return {"success": True, "record_id": record.id, "percentage": record.percentage}
 
 
 # Audit log helper

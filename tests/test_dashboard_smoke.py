@@ -1019,6 +1019,7 @@ class DashboardSmokeTests(unittest.TestCase):
 
             self.assertIn("No promotion race assigned", labels)
             self.assertIn("Annual Increment Timeline", labels)
+            self.assertIn("Performance", tab_names)
             self.assertIn("Promotion History", tab_names)
             self.assertIn("Commendations", tab_names)
             self.assertIn("Sanctions", tab_names)

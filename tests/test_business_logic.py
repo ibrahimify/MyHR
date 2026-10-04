@@ -13,6 +13,7 @@ from src.database.models import (
     Commendation,
     CommendationEmployee,
     Employee,
+    PerformanceScore,
     PromotionHistory,
     SalaryIncrementHistory,
     Sanction,
@@ -249,6 +250,73 @@ class SalaryIncrementAndAuditTests(IsolatedDatabaseTestCase):
         unchanged_audit = self.session.query(AuditLog).filter_by(id=audit.id).one()
         self.assertEqual(unchanged_audit.performed_by_username, "hr_officer")
         self.assertEqual(unchanged_audit.performed_by_name, "HR Officer")
+
+
+class PerformanceScoreTests(IsolatedDatabaseTestCase):
+    def test_record_performance_score_creates_history_and_audit(self):
+        employee = self.make_employee(join_months_ago=18)
+
+        result = db.record_performance_score(
+            employee.id,
+            self.admin.id,
+            82,
+            self.session,
+            review_type="annual",
+            review_period="2026",
+            notes="Annual review",
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["percentage"], 82)
+        record = self.session.query(PerformanceScore).filter_by(employee_id=employee.id).one()
+        self.assertEqual(record.score, 82)
+        self.assertEqual(record.max_score, 100)
+        self.assertEqual(record.percentage, 82)
+        self.assertEqual(record.review_type, "annual")
+        self.assertEqual(record.review_period, "2026")
+        self.assertEqual(record.notes, "Annual review")
+
+        latest = db.get_latest_performance_score(employee.id, self.session)
+        self.assertEqual(latest.id, record.id)
+
+        audit = self.session.query(AuditLog).filter_by(action="performance_review.record").one()
+        self.assertEqual(audit.target_table, "performance_score")
+        self.assertEqual(audit.target_id, record.id)
+        self.assertIn("82", audit.description)
+        self.assertEqual(audit.performed_by_username, "admin")
+        self.assertEqual(db.performance_score_band(record.score, record.max_score), "Exceeds Expectations")
+
+    def test_record_performance_score_rejects_out_of_range_values(self):
+        employee = self.make_employee(join_months_ago=18)
+
+        result = db.record_performance_score(employee.id, self.admin.id, 120, self.session, max_score=100)
+
+        self.assertFalse(result["success"])
+        self.assertEqual(self.session.query(PerformanceScore).filter_by(employee_id=employee.id).count(), 0)
+
+    def test_record_performance_score_rejects_duplicate_review_period(self):
+        employee = self.make_employee(join_months_ago=18)
+        first = db.record_performance_score(
+            employee.id,
+            self.admin.id,
+            75,
+            self.session,
+            review_type="annual",
+            review_period="2026",
+        )
+        second = db.record_performance_score(
+            employee.id,
+            self.admin.id,
+            81,
+            self.session,
+            review_type="annual",
+            review_period="2026",
+        )
+
+        self.assertTrue(first["success"])
+        self.assertFalse(second["success"])
+        self.assertIn("already exists", second["error"])
+        self.assertEqual(self.session.query(PerformanceScore).filter_by(employee_id=employee.id).count(), 1)
 
 
 class ValidationTests(IsolatedDatabaseTestCase):

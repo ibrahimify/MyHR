@@ -16,7 +16,7 @@ The project aims to design and implement a standalone desktop application for ma
 | Design and implement organizational database | Done | Organization hierarchy model and hierarchy page. |
 | Employee management functions | Done | Add, edit, list, profile, import, export, search, filters. |
 | Department and organization management functions | Done | Organization -> Division -> Department -> Unit -> Team -> Position hierarchy. |
-| Performance evaluation records | Planned small addition | Add lightweight performance score/history records connected to promotion eligibility and anomaly detection examples. Avoid a large full performance-management module. |
+| Performance evaluation records | Done | Performance review history records connected to employee profiles, audit logging, and future anomaly detection examples. |
 | Commendation actions | Done | Issue and history workflows. |
 | Disciplinary actions | Done | Sanction issue, active/history, resolution, delay months. |
 | Rule-based promotion eligibility checks | Done | Promotion race engine with service time, commendation credits, sanction delay, and promotion history. |
@@ -30,19 +30,13 @@ The project aims to design and implement a standalone desktop application for ma
 
 ## Remaining thesis implementation work
 
-1. Add lightweight performance score/history support:
-   - score value, evaluation date, evaluator/admin, optional note;
-   - latest score visible on employee profile;
-   - create/edit/delete or append-only decision to be finalized;
-   - audit log for performance score changes;
-   - optional required performance score setting for research/anomaly examples.
-2. Run and record the full test suite in the intended virtual environment.
-3. Build/package the desktop app for Windows.
-4. Smoke test the packaged app:
+1. Build/package the desktop app for Windows.
+2. Smoke test the packaged app:
    - login;
    - dashboard;
    - employee CRUD;
    - employee profile;
+   - performance score recording and profile history;
    - org hierarchy pan/zoom/select/export;
    - promotion and annual increment workflows;
    - commendation and sanction workflows;
@@ -51,8 +45,8 @@ The project aims to design and implement a standalone desktop application for ma
    - audit export;
    - settings save/load;
    - light and dark mode.
-5. Update user and developer guides after the performance score feature and packaging are stable.
-6. Prepare thesis evidence:
+3. Update user and developer guides after packaging is stable.
+4. Prepare thesis evidence:
    - requirement traceability table;
    - screenshots;
    - architecture diagram;
@@ -64,13 +58,11 @@ The project aims to design and implement a standalone desktop application for ma
 
 ## Suggested implementation order
 
-1. Finish thesis-critical feature gap: performance score/history.
-2. Run regression tests and fix failures.
-3. Package the app.
-4. Perform packaged-app smoke test.
-5. Freeze a thesis demo database.
-6. Update documentation and screenshots.
-7. Start the detailed TDK research implementation on a separate branch.
+1. Package the app.
+2. Perform packaged-app smoke test.
+3. Freeze a thesis demo database.
+4. Update documentation and screenshots.
+5. Start the detailed TDK research implementation on a separate branch.
 
 ## Git workflow recommendation
 

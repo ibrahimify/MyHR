@@ -154,6 +154,7 @@ class Employee(Base):
     commendations = relationship("Commendation", secondary="commendation_employee", back_populates="employees")
     sanctions    = relationship("Sanction", back_populates="employee")
     salary_increments = relationship("SalaryIncrementHistory", back_populates="employee")
+    performance_scores = relationship("PerformanceScore", back_populates="employee", order_by="PerformanceScore.evaluation_date.desc()")
 
     @property
     def full_name(self):
@@ -318,7 +319,39 @@ class SalaryIncrementHistory(Base):
         return f"<SalaryIncrement emp={self.employee_id} {self.salary_before}->{self.salary_after}>"
 
 
-# 9. AuditLog: immutable activity trail
+# 9. PerformanceScore: performance review history
+class PerformanceScore(Base):
+    """
+    Performance review record.
+    Stores a compact review history that can support promotion eligibility,
+    HR review, and later anomaly detection.
+    """
+    __tablename__ = "performance_score"
+
+    id              = Column(Integer, primary_key=True, autoincrement=True)
+    employee_id     = Column(Integer, ForeignKey("employee.id"), nullable=False)
+    evaluator_id    = Column(Integer, ForeignKey("system_user.id"), nullable=False)
+    score           = Column(Float, nullable=False)
+    max_score       = Column(Float, nullable=False, default=100.0)
+    review_type     = Column(String(50), nullable=False, default="annual")
+    review_period   = Column(String(100), nullable=True)
+    evaluation_date = Column(DateTime, nullable=False, default=datetime.utcnow)
+    notes           = Column(Text, nullable=True)
+    created_at      = Column(DateTime, default=datetime.utcnow)
+    updated_at      = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    employee  = relationship("Employee", back_populates="performance_scores")
+    evaluator = relationship("SystemUser")
+
+    @property
+    def percentage(self):
+        return round((self.score / self.max_score) * 100, 2) if self.max_score else 0.0
+
+    def __repr__(self):
+        return f"<PerformanceScore emp={self.employee_id} {self.score}/{self.max_score}>"
+
+
+# 10. AuditLog: immutable activity trail
 class AuditLog(Base):
     """
     Every admin/HR action is logged automatically.
@@ -346,7 +379,7 @@ class AuditLog(Base):
         return f"<AuditLog {self.action} at {self.performed_at}>"
 
 
-# 10. SystemUser: Admin and HR Officer only
+# 11. SystemUser: Admin and HR Officer only
 class SystemUser(Base):
     """
     Only two roles: admin and hr_officer.

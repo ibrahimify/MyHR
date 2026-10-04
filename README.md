@@ -93,7 +93,7 @@ python -m unittest discover tests
 Latest verification before this README update:
 
 ```text
-Ran 34 tests in 101.648s
+Ran 36 tests in 113.102s
 OK
 ```
 
@@ -140,6 +140,7 @@ http://localhost:5173
 - Degree-based level assignment for BSc, MSc, and PhD employees
 - `Other` employee track for increment-only roles
 - Professional employee profile with employment, personal, promotion, commendation, and sanction records
+- Performance review history on employee profiles
 - Search, filtering, and pagination
 
 ### Organization Hierarchy

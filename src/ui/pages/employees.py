@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QFrame, QScrollArea, QLineEdit, QComboBox, QTableWidget,
     QTableWidgetItem, QHeaderView, QStackedWidget, QTabWidget,
     QTextEdit, QMessageBox, QDateEdit, QGridLayout, QListWidget,
-    QListWidgetItem, QSizePolicy, QProgressBar
+    QListWidgetItem, QSizePolicy, QProgressBar, QDialog, QSpinBox
 )
 from PySide6.QtCore import Qt, QDate, QSize, Signal, QTimer, QRectF
 from PySide6.QtGui import QColor, QBrush, QFont, QPainter, QPen
@@ -52,7 +52,7 @@ from src.database.connection import (
     degree_to_title_name, calculate_months_remaining, calculate_sub_race,
     display_title_name, ensure_others_org_unit, is_other_employee,
     is_other_title, valid_other_manager_ids, validate_salary_for_title,
-    OTHER_ORG_UNIT_NAME
+    performance_score_band, record_performance_score, OTHER_ORG_UNIT_NAME
 )
 from src.database.models import (
     Employee, Title, OrgUnit,
@@ -1921,6 +1921,141 @@ class EmployeeProfileView(QWidget):
         return card
 
 
+class PerformanceScoreDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Add Performance Review")
+        self.setModal(True)
+        self.setMinimumWidth(420)
+        self.setStyleSheet(f"QDialog {{ background: {_page_bg()}; font-family: 'Segoe UI'; }}" + TOOLTIP_SS)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 22, 24, 22)
+        layout.setSpacing(14)
+
+        title = QLabel("Add Performance Review")
+        title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {_text()}; background: transparent;")
+        layout.addWidget(title)
+
+        hint = QLabel("Record a reviewed performance result for HR history, promotion evidence, and later anomaly checks.")
+        hint.setWordWrap(True)
+        hint.setStyleSheet(f"font-size: 13px; color: {_muted()}; background: transparent;")
+        layout.addWidget(hint)
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(10)
+
+        self.score_input = QSpinBox()
+        self.score_input.setRange(0, 100)
+        self.score_input.setValue(80)
+        self.score_input.setFixedHeight(40)
+        self.score_input.setStyleSheet(INPUT_STYLE())
+
+        self.max_score_input = QSpinBox()
+        self.max_score_input.setRange(1, 1000)
+        self.max_score_input.setValue(100)
+        self.max_score_input.setFixedHeight(40)
+        self.max_score_input.setStyleSheet(INPUT_STYLE())
+        self.max_score_input.valueChanged.connect(self._sync_score_range)
+
+        self.review_type_input = CleanSelect()
+        for label, value in [
+            ("Annual Review", "annual"),
+            ("Mid-year Review", "mid_year"),
+            ("Probation Review", "probation"),
+            ("Promotion Review", "promotion"),
+            ("Corrective Review", "corrective"),
+        ]:
+            self.review_type_input.addItem(label, value)
+
+        self.period_input = QLineEdit()
+        self.period_input.setPlaceholderText("e.g. 2026, Q1 2026, Jan-Jun 2026")
+        self.period_input.setText(str(QDate.currentDate().year()))
+        self.period_input.setFixedHeight(40)
+        self.period_input.setStyleSheet(INPUT_STYLE())
+
+        self.date_input = ChevronDateEdit()
+        self.date_input.setCalendarPopup(True)
+        self.date_input.setDate(QDate.currentDate())
+        self.date_input.setFixedHeight(40)
+        self.date_input.setStyleSheet(DATE_STYLE())
+
+        fields = [
+            ("Review Type", self.review_type_input),
+            ("Review Period", self.period_input),
+            ("Score", self.score_input),
+            ("Maximum", self.max_score_input),
+            ("Evaluation Date", self.date_input),
+        ]
+        for row, (label_text, widget) in enumerate(fields):
+            label = QLabel(label_text)
+            label.setStyleSheet(f"font-size: 12px; font-weight: 700; color: {_text()}; background: transparent;")
+            grid.addWidget(label, row, 0)
+            grid.addWidget(widget, row, 1)
+        layout.addLayout(grid)
+
+        self.band_preview = QLabel("")
+        self.band_preview.setStyleSheet(
+            f"background: {tokens().surface_muted}; color: {_text()}; "
+            "border-radius: 8px; padding: 8px 10px; font-size: 12px; font-weight: 700;"
+        )
+        layout.addWidget(self.band_preview)
+        rubric = QLabel("Rubric: 90-100 Outstanding, 80-89 Exceeds expectations, 70-79 Meets expectations, 60-69 Needs improvement, below 60 Unsatisfactory.")
+        rubric.setWordWrap(True)
+        rubric.setStyleSheet(f"font-size: 12px; color: {_muted()}; background: transparent;")
+        layout.addWidget(rubric)
+        self.score_input.valueChanged.connect(self._update_band_preview)
+        self.max_score_input.valueChanged.connect(self._update_band_preview)
+        self._update_band_preview()
+
+        note_label = QLabel("Note")
+        note_label.setStyleSheet(f"font-size: 12px; font-weight: 700; color: {_text()}; background: transparent;")
+        layout.addWidget(note_label)
+        self.notes_input = QTextEdit()
+        self.notes_input.setPlaceholderText("Optional context for this evaluation")
+        self.notes_input.setFixedHeight(90)
+        self.notes_input.setStyleSheet(INPUT_STYLE())
+        layout.addWidget(self.notes_input)
+
+        actions = QHBoxLayout()
+        actions.addStretch()
+        cancel = QPushButton(t("cancel"))
+        cancel.setCursor(Qt.PointingHandCursor)
+        cancel.setFixedHeight(40)
+        cancel.setStyleSheet(btn_outline(40))
+        cancel.clicked.connect(self.reject)
+        save = QPushButton("Save Review")
+        save.setCursor(Qt.PointingHandCursor)
+        save.setFixedHeight(40)
+        save.setStyleSheet(btn_primary(40))
+        save.clicked.connect(self.accept)
+        actions.addWidget(cancel)
+        actions.addWidget(save)
+        layout.addLayout(actions)
+
+    def _sync_score_range(self):
+        self.score_input.setMaximum(self.max_score_input.value())
+        self._update_band_preview()
+
+    def _update_band_preview(self):
+        score = self.score_input.value()
+        max_score = self.max_score_input.value()
+        pct = round((score / max_score) * 100) if max_score else 0
+        self.band_preview.setText(f"Rating: {performance_score_band(score, max_score)} ({pct}%)")
+
+    def values(self):
+        qdate = self.date_input.date()
+        return {
+            "score": self.score_input.value(),
+            "max_score": self.max_score_input.value(),
+            "review_type": self.review_type_input.currentData(),
+            "review_period": self.period_input.text().strip(),
+            "evaluation_date": datetime(qdate.year(), qdate.month(), qdate.day()),
+            "notes": self.notes_input.toPlainText().strip(),
+        }
+
+
 # Figma-style profile view. This intentionally redefines the earlier class so
 # EmployeesPage gets the cleaner tabbed profile without disturbing form code above.
 class EmployeeProfileView(QWidget):
@@ -1968,6 +2103,7 @@ class EmployeeProfileView(QWidget):
             tabs = QTabWidget()
             tabs.setStyleSheet(pill_tab_ss())
             tabs.addTab(self._details_tab(emp, sub_race), t("personal_details"))
+            tabs.addTab(self._performance_tab(emp), "Performance")
             tabs.addTab(self._promotion_tab(emp, race, sub_race), t("promotion_history"))
             tabs.addTab(self._commendations_tab(emp), t("commendations"))
             tabs.addTab(self._sanctions_tab(emp), t("sanctions"))
@@ -2133,6 +2269,7 @@ class EmployeeProfileView(QWidget):
             (t("department"), emp.org_unit.name if emp.org_unit else "-"),
             (t("position"), emp.position),
             (t("level"), display_title_name(emp.title)),
+            ("Latest Performance", self._performance_summary(emp), "highlight"),
             (t("work_email"), emp.work_email or "-", "highlight"),
             (t("base_salary"), _salary_text(emp)),
             (t("reports_to"), emp.reports_to.full_name if emp.reports_to else "-", "highlight"),
@@ -2152,6 +2289,135 @@ class EmployeeProfileView(QWidget):
         layout.addLayout(info_row)
         layout.addStretch()
         return page
+
+    def _latest_performance(self, emp):
+        scores = list(getattr(emp, "performance_scores", []) or [])
+        return scores[0] if scores else None
+
+    def _performance_summary(self, emp):
+        latest = self._latest_performance(emp)
+        if not latest:
+            return "Not recorded"
+        when = latest.evaluation_date.strftime("%Y-%m-%d") if latest.evaluation_date else "-"
+        period = f"{latest.review_period} - " if getattr(latest, "review_period", None) else ""
+        band = performance_score_band(latest.score, latest.max_score)
+        return f"{latest.score:g}/{latest.max_score:g} - {band} - {period}{when}"
+
+    def _performance_tab(self, emp):
+        page = QWidget()
+        page.setStyleSheet(f"background: {_page_bg()};")
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(0, 12, 0, 0)
+        layout.setSpacing(14)
+
+        summary = QFrame()
+        summary.setObjectName("ProfileCard")
+        summary.setStyleSheet(PROFILE_CARD_SS())
+        summary_layout = QHBoxLayout(summary)
+        summary_layout.setContentsMargins(24, 20, 24, 20)
+        summary_layout.setSpacing(14)
+
+        icon = QLabel()
+        icon.setFixedSize(42, 42)
+        icon.setAlignment(Qt.AlignCenter)
+        icon.setStyleSheet(f"background: {tokens().success_soft}; border-radius: 8px;")
+        icon.setPixmap(app_pixmap("fa5s.chart-line", color=race_color("eligible"), size=17))
+        summary_layout.addWidget(icon)
+
+        text = QVBoxLayout()
+        text.setSpacing(3)
+        title = QLabel("Performance Reviews")
+        title.setStyleSheet(f"font-size: 19px; font-weight: 800; color: {_text()}; background: transparent;")
+        subtitle = QLabel("Review history used for HR evaluation, promotion evidence, and anomaly checks.")
+        subtitle.setWordWrap(True)
+        subtitle.setStyleSheet(f"font-size: 13px; color: {_muted()}; background: transparent;")
+        text.addWidget(title)
+        text.addWidget(subtitle)
+        summary_layout.addLayout(text, 1)
+
+        latest_wrap = QVBoxLayout()
+        latest_wrap.setSpacing(6)
+        latest = self._latest_performance(emp)
+        score_text = self._performance_summary(emp)
+        latest_score = QLabel(score_text)
+        latest_score.setAlignment(Qt.AlignCenter)
+        latest_score.setStyleSheet(
+            f"background: {tokens().surface_muted}; color: {_text()}; "
+            "border-radius: 8px; padding: 8px 12px; font-size: 13px; font-weight: 800;"
+        )
+        latest_wrap.addWidget(latest_score)
+        if latest:
+            bar = QProgressBar()
+            bar.setRange(0, 100)
+            bar.setValue(int(min(100, max(0, latest.percentage))))
+            bar.setFixedHeight(8)
+            bar.setTextVisible(False)
+            bar.setStyleSheet(race_progress_bar_ss("eligible", radius=4))
+            latest_wrap.addWidget(bar)
+        summary_layout.addLayout(latest_wrap, 0)
+
+        add_btn = QPushButton("  Add Review")
+        add_btn.setIcon(app_icon("fa5s.plus", color=_primary_button_fg(), size=12))
+        add_btn.setIconSize(QSize(12, 12))
+        add_btn.setCursor(Qt.PointingHandCursor)
+        add_btn.setFixedHeight(38)
+        add_btn.setStyleSheet(btn_primary(38))
+        add_btn.clicked.connect(lambda: self._open_performance_dialog(emp.id))
+        summary_layout.addWidget(add_btn, 0, Qt.AlignTop)
+        layout.addWidget(summary)
+
+        card = self._list_card("Performance Review History")
+        body = card.layout()
+        scores = list(getattr(emp, "performance_scores", []) or [])
+        if scores:
+            for score in scores:
+                evaluator = score.evaluator.full_name if score.evaluator else "-"
+                date_text = score.evaluation_date.strftime("%Y-%m-%d") if score.evaluation_date else "-"
+                review_type = (score.review_type or "review").replace("_", " ").title()
+                period = f" - {score.review_period}" if score.review_period else ""
+                band = performance_score_band(score.score, score.max_score)
+                note = score.notes or f"{review_type}{period}; evaluator: {evaluator}"
+                body.addWidget(self._event_row(
+                    "fa5s.star",
+                    race_color("eligible"),
+                    f"{review_type}: {score.score:g}/{score.max_score:g} - {band}",
+                    f"{note} ({score.percentage:g}%)",
+                    date_text,
+                ))
+        else:
+            body.addWidget(self._empty_row("No performance reviews recorded yet."))
+        layout.addWidget(card)
+        layout.addStretch()
+        return page
+
+    def _open_performance_dialog(self, employee_id):
+        dialog = PerformanceScoreDialog(self)
+        if dialog.exec() != QDialog.Accepted:
+            return
+        data = dialog.values()
+        session = get_session()
+        try:
+            result = record_performance_score(
+                employee_id=employee_id,
+                evaluator_id=self.user.id,
+                score=data["score"],
+                max_score=data["max_score"],
+                evaluation_date=data["evaluation_date"],
+                review_type=data["review_type"],
+                review_period=data["review_period"],
+                notes=data["notes"],
+                session=session,
+            )
+            if not result.get("success"):
+                message_warning(self, t("warning"), result.get("error", "Could not record performance review."))
+                return
+            message_information(self, "Performance", "Performance review recorded.")
+            self.load(employee_id)
+        except Exception as exc:
+            session.rollback()
+            message_critical(self, t("error"), str(exc))
+        finally:
+            session.close()
 
     def _edit_details_tab(self, emp):
         self.edit_fields = {}
