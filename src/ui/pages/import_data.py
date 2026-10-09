@@ -427,7 +427,7 @@ class ImportDataPage(QWidget):
 
     def _build_cleaning_card(self):
         card = QFrame()
-        card.setMinimumHeight(230)
+        card.setMinimumHeight(265)
         card.setStyleSheet(alert_ss("warning"))
         layout = QVBoxLayout(card)
         layout.setContentsMargins(24, 22, 24, 22)
@@ -444,6 +444,8 @@ class ImportDataPage(QWidget):
         layout.addLayout(head)
 
         for key in [
+            "import_clean_employee_ids",
+            "import_clean_managers",
             "import_clean_duplicates",
             "import_clean_emails",
             "import_clean_org_names",
