@@ -90,26 +90,165 @@ def _info_panel_ss(object_name):
     )
 
 
-def _promotion_evidence_text(evidence):
-    if not evidence or not evidence.get("success"):
-        return "Decision evidence: unavailable"
-    lines = [
-        "Decision evidence",
-        f"- Policy status: {'Eligible by race' if evidence.get('race_eligible') else 'Not eligible by race'}",
-        f"- Latest performance: {evidence.get('latest_score')} ({evidence.get('performance_band')})",
-        f"- Active sanctions: {evidence.get('active_sanctions')} (+{evidence.get('active_sanction_delay_months')} months)",
-        f"- Commendations in current role: {evidence.get('commendations_in_role')} (-{evidence.get('commendation_reduction')} months)",
-        f"- Recommendation: {evidence.get('recommendation_label')}",
-    ]
-    warnings = evidence.get("warnings") or []
-    strengths = evidence.get("strengths") or []
-    if warnings:
-        lines.append("Warnings:")
-        lines.extend(f"- {warning}" for warning in warnings)
-    if strengths:
-        lines.append("Supporting evidence:")
-        lines.extend(f"- {strength}" for strength in strengths)
-    return "\n".join(lines)
+def _promotion_evidence_colors(recommendation):
+    if recommendation == "clear":
+        return tokens().success_soft, tokens().success, "fa5s.check-circle"
+    if recommendation == "risk_flagged":
+        return tokens().danger_soft, tokens().danger, "fa5s.exclamation-triangle"
+    return tokens().warning_soft, tokens().warning, "fa5s.info-circle"
+
+
+class PromotionDecisionDialog(QDialog):
+    APPROVE = "approve"
+    REVIEW = "review"
+    CANCEL = "cancel"
+
+    def __init__(self, parent, *, employee, old_title, next_title, salary_before, salary_after, salary_pct, evidence, can_review):
+        super().__init__(parent)
+        self.action = self.CANCEL
+        self.evidence = evidence or {}
+        self.can_review = can_review
+        self.setWindowTitle(t("confirm_promotion"))
+        self.setModal(True)
+        self.setMinimumWidth(640)
+        self.setStyleSheet(
+            f"QDialog {{ background: {tokens().canvas}; color: {tokens().text}; font-family: 'Segoe UI'; }}"
+            f"QLabel {{ background: transparent; color: {tokens().text}; }}"
+        )
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 22, 24, 22)
+        layout.setSpacing(16)
+
+        header = QHBoxLayout()
+        icon = QLabel()
+        icon.setFixedSize(42, 42)
+        rec_bg, rec_fg, rec_icon = _promotion_evidence_colors(self.evidence.get("recommendation"))
+        icon.setAlignment(Qt.AlignCenter)
+        icon.setStyleSheet(f"background: {rec_bg}; border-radius: 10px;")
+        icon.setPixmap(app_pixmap(rec_icon, color=rec_fg, size=18))
+        header.addWidget(icon)
+
+        title_box = QVBoxLayout()
+        title_box.setSpacing(3)
+        title = QLabel(f"Promote {employee.full_name}")
+        title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {tokens().text};")
+        subtitle = QLabel(f"{old_title.name} to {next_title.name}")
+        subtitle.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted};")
+        title_box.addWidget(title)
+        title_box.addWidget(subtitle)
+        header.addLayout(title_box, 1)
+
+        badge = QLabel(self.evidence.get("recommendation_label", "Review"))
+        badge.setAlignment(Qt.AlignCenter)
+        badge.setStyleSheet(badge_ss(rec_bg, rec_fg, radius=7, padding="6px 10px", font_size=12, weight=800))
+        header.addWidget(badge, 0, Qt.AlignTop)
+        layout.addLayout(header)
+
+        salary = QFrame()
+        salary.setStyleSheet(
+            f"QFrame {{ background: {tokens().surface}; border: 1px solid {tokens().border}; border-radius: 8px; }}"
+            "QLabel { background: transparent; border: none; }"
+        )
+        salary_layout = QGridLayout(salary)
+        salary_layout.setContentsMargins(14, 12, 14, 12)
+        salary_layout.setHorizontalSpacing(12)
+        salary_layout.setVerticalSpacing(8)
+        self._add_metric(salary_layout, 0, 0, "Salary increase", f"{salary_pct:.1f}%")
+        self._add_metric(salary_layout, 0, 1, "Current salary", f"EUR {salary_before:,.2f}")
+        self._add_metric(salary_layout, 0, 2, "After promotion", f"EUR {salary_after:,.2f}")
+        layout.addWidget(salary)
+
+        evidence_card = QFrame()
+        evidence_card.setStyleSheet(
+            f"QFrame {{ background: {tokens().surface}; border: 1px solid {tokens().border}; border-radius: 8px; }}"
+            "QLabel { background: transparent; border: none; }"
+        )
+        evidence_layout = QVBoxLayout(evidence_card)
+        evidence_layout.setContentsMargins(14, 12, 14, 12)
+        evidence_layout.setSpacing(10)
+        heading = QLabel("Decision evidence")
+        heading.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {tokens().text};")
+        evidence_layout.addWidget(heading)
+        evidence_layout.addLayout(self._evidence_row("Policy status", "Eligible by race" if self.evidence.get("race_eligible") else "Not eligible by race", "fa5s.route"))
+        evidence_layout.addLayout(self._evidence_row("Latest performance", f"{self.evidence.get('latest_score')} · {self.evidence.get('performance_band')}", "fa5s.chart-line"))
+        evidence_layout.addLayout(self._evidence_row("Active sanctions", f"{self.evidence.get('active_sanctions')} · +{self.evidence.get('active_sanction_delay_months')} months", "fa5s.exclamation-triangle"))
+        evidence_layout.addLayout(self._evidence_row("Commendations", f"{self.evidence.get('commendations_in_role')} · -{self.evidence.get('commendation_reduction')} months", "fa5s.award"))
+        layout.addWidget(evidence_card)
+
+        notices = list(self.evidence.get("warnings") or self.evidence.get("strengths") or [])
+        if notices:
+            notice = QLabel("\n".join(notices[:3]))
+            notice.setWordWrap(True)
+            notice.setStyleSheet(
+                f"background: {rec_bg}; color: {rec_fg}; border-radius: 8px; "
+                "padding: 10px 12px; font-size: 12px; font-weight: 700;"
+            )
+            layout.addWidget(notice)
+
+        actions = QHBoxLayout()
+        actions.setSpacing(8)
+        if self.evidence.get("recommendation") != "clear" and can_review:
+            review = QPushButton("  Review Profile")
+            review.setIcon(app_icon("fa5s.eye", color=tokens().text, size=13))
+            review.setIconSize(QSize(13, 13))
+            review.setFixedHeight(40)
+            review.setCursor(Qt.PointingHandCursor)
+            review.setStyleSheet(btn_outline(40))
+            review.clicked.connect(self._review)
+            actions.addWidget(review)
+        actions.addStretch()
+        cancel = QPushButton(t("cancel"))
+        cancel.setFixedHeight(40)
+        cancel.setCursor(Qt.PointingHandCursor)
+        cancel.setStyleSheet(btn_outline(40))
+        cancel.clicked.connect(self.reject)
+        approve = QPushButton("  Approve Promotion")
+        approve.setIcon(app_icon("fa5s.check", color=primary_button_fg(), size=13))
+        approve.setIconSize(QSize(13, 13))
+        approve.setFixedHeight(40)
+        approve.setCursor(Qt.PointingHandCursor)
+        approve.setStyleSheet(btn_primary(40))
+        approve.clicked.connect(self._approve)
+        actions.addWidget(cancel)
+        actions.addWidget(approve)
+        layout.addLayout(actions)
+
+    def _add_metric(self, layout, row, col, label, value):
+        box = QVBoxLayout()
+        box.setSpacing(3)
+        top = QLabel(label)
+        top.setStyleSheet(f"font-size: 11px; color: {tokens().text_muted}; font-weight: 700;")
+        bottom = QLabel(value)
+        bottom.setStyleSheet(f"font-size: 14px; color: {tokens().text}; font-weight: 800;")
+        box.addWidget(top)
+        box.addWidget(bottom)
+        layout.addLayout(box, row, col)
+
+    def _evidence_row(self, label, value, icon_name):
+        row = QHBoxLayout()
+        row.setSpacing(10)
+        icon = QLabel()
+        icon.setFixedSize(22, 22)
+        icon.setAlignment(Qt.AlignCenter)
+        icon.setPixmap(app_pixmap(icon_name, color=tokens().text_muted, size=13))
+        row.addWidget(icon)
+        title = QLabel(label)
+        title.setMinimumWidth(130)
+        title.setStyleSheet(f"font-size: 12px; color: {tokens().text_muted};")
+        row.addWidget(title)
+        val = QLabel(value)
+        val.setStyleSheet(f"font-size: 12px; color: {tokens().text}; font-weight: 800;")
+        row.addWidget(val, 1)
+        return row
+
+    def _approve(self):
+        self.action = self.APPROVE
+        self.accept()
+
+    def _review(self):
+        self.action = self.REVIEW
+        self.accept()
 
 
 class PromotionsPage(QWidget):
@@ -573,20 +712,24 @@ class EligibleTab(QWidget):
             salary_before = emp.base_salary
             salary_pct = next_title.promotion_salary_increase_pct if next_title else 0
             salary_after = round(salary_before * (1 + salary_pct / 100), 2)
-            confirmation_body = t(
-                "confirm_promotion_body",
-                name=emp.full_name,
-                from_level=old_title.name,
-                to_level=next_title.name,
-                salary_pct=f"{salary_pct:.1f}",
-                salary_before=f"EUR {salary_before:,.2f}",
-                salary_after=f"EUR {salary_after:,.2f}",
+            dialog = PromotionDecisionDialog(
+                self,
+                employee=emp,
+                old_title=old_title,
+                next_title=next_title,
+                salary_before=salary_before,
+                salary_after=salary_after,
+                salary_pct=salary_pct,
+                evidence=evidence,
+                can_review=bool(self.navigate_to_employee),
             )
-            confirm = _question(
-                self, t("confirm_promotion"),
-                f"{confirmation_body}\n\n{_promotion_evidence_text(evidence)}",
-            )
-            if confirm != QMessageBox.Yes:
+            if dialog.exec() != QDialog.Accepted:
+                return
+            if dialog.action == PromotionDecisionDialog.REVIEW:
+                if self.navigate_to_employee:
+                    QTimer.singleShot(0, lambda eid=employee_id: self.navigate_to_employee(eid))
+                return
+            if dialog.action != PromotionDecisionDialog.APPROVE:
                 return
             emp.title_id = next_title.id
             emp.base_salary = salary_after

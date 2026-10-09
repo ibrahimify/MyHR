@@ -93,7 +93,7 @@ python -m unittest discover tests
 Latest verification before this README update:
 
 ```text
-Ran 42 tests in 108.839s
+Ran 42 tests in 70.647s
 OK
 ```
 
