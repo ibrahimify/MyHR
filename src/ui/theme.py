@@ -108,7 +108,8 @@ class ThemeManager(QObject):
     def __init__(self):
         super().__init__()
         self._settings = QSettings("MyHR", "MyHR")
-        self._theme = self._normalize(self._settings.value(_SETTINGS_KEY, THEME_LIGHT))
+        self._theme = THEME_LIGHT
+        self._settings.setValue(_SETTINGS_KEY, THEME_LIGHT)
 
     @staticmethod
     def _normalize(value) -> str:

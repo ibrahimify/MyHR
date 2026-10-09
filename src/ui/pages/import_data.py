@@ -25,11 +25,12 @@ from src.core.i18n import t
 from src.database.connection import (
     get_session, generate_employee_id, generate_commendation_ref,
     generate_sanction_ref, log_action, degree_to_title_name,
-    ensure_others_org_unit, validate_salary_for_title
+    ensure_others_org_unit, validate_salary_for_title,
+    calculate_performance_rubric_score
 )
 from src.database.models import (
     Employee, Title, OrgUnit, Commendation,
-    CommendationEmployee, Sanction
+    CommendationEmployee, Sanction, PerformanceScore
 )
 from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
@@ -55,13 +56,15 @@ REQUIRED_COLUMNS = [
 OPTIONAL_COLUMNS = [
     "division", "unit", "team", "work_email", "work_phone",
     "personal_email", "phone", "address", "status",
-    "manager_work_email", "commendation_months",
-    "active_sanction_months", "sanction_type"
+    "manager_employee_id", "manager_work_email", "commendation_months",
+    "active_sanction_months", "sanction_type", "latest_performance_score",
+    "performance_review_type", "performance_review_period",
+    "goal_score", "competency_score", "conduct_score", "teamwork_score"
 ]
 
-TEMPLATE_HEADERS = REQUIRED_COLUMNS + OPTIONAL_COLUMNS
+TEMPLATE_HEADERS = ["employee_id"] + REQUIRED_COLUMNS + OPTIONAL_COLUMNS
 
-STATUSES = {"active", "inactive", "on_leave"}
+STATUSES = {"active", "inactive", "on_leave", "terminated"}
 SANCTION_TYPES = {
     "verbal_warning": "verbal_warning",
     "verbal warning": "verbal_warning",
@@ -78,6 +81,10 @@ COLUMN_ALIASES = {
     "first_name": "first_name",
     "first_name_": "first_name",
     "first_name_required": "first_name",
+    "employee_id": "employee_id",
+    "employee_number": "employee_id",
+    "staff_id": "employee_id",
+    "worker_id": "employee_id",
     "last": "last_name",
     "lastname": "last_name",
     "last_name": "last_name",
@@ -110,6 +117,9 @@ COLUMN_ALIASES = {
     "address": "address",
     "status": "status",
     "manager_email": "manager_work_email",
+    "manager_id": "manager_employee_id",
+    "manager_employee_id": "manager_employee_id",
+    "reports_to_id": "manager_employee_id",
     "manager_work_email": "manager_work_email",
     "reports_to_email": "manager_work_email",
     "commendation_months": "commendation_months",
@@ -117,6 +127,18 @@ COLUMN_ALIASES = {
     "active_sanction_months": "active_sanction_months",
     "sanction_months": "active_sanction_months",
     "sanction_type": "sanction_type",
+    "latest_performance_score": "latest_performance_score",
+    "performance_score": "latest_performance_score",
+    "review_score": "latest_performance_score",
+    "performance_review_type": "performance_review_type",
+    "review_type": "performance_review_type",
+    "performance_review_period": "performance_review_period",
+    "review_period": "performance_review_period",
+    "goal_score": "goal_score",
+    "competency_score": "competency_score",
+    "role_competency_score": "competency_score",
+    "conduct_score": "conduct_score",
+    "teamwork_score": "teamwork_score",
 }
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -428,6 +450,7 @@ class ImportDataPage(QWidget):
             "import_clean_dates",
             "import_clean_commendations",
             "import_clean_sanctions",
+            "import_clean_performance",
         ]:
             layout.addWidget(_note_line(t(key), tokens().warning))
         return card
@@ -493,7 +516,9 @@ class ImportDataPage(QWidget):
                 return
 
             existing_emails = self._existing_work_emails()
+            existing_employee_ids = self._existing_employee_ids()
             seen_emails = set()
+            seen_employee_ids = set()
             rows = []
 
             for row_number, raw in enumerate(raw_rows, start=2):
@@ -501,7 +526,7 @@ class ImportDataPage(QWidget):
                 if not any(str(value).strip() for value in cleaned.values()):
                     continue
 
-                issues = self._validate_row(cleaned, row_number, seen_emails, existing_emails)
+                issues = self._validate_row(cleaned, row_number, seen_emails, existing_emails, seen_employee_ids, existing_employee_ids)
                 normalized = self._normalized_row(cleaned, row_number, issues)
                 rows.append(normalized)
 
@@ -627,11 +652,30 @@ class ImportDataPage(QWidget):
         finally:
             session.close()
 
-    def _validate_row(self, row, row_number, seen_emails, existing_emails):
+    def _existing_employee_ids(self):
+        session = get_session()
+        try:
+            values = session.query(Employee.employee_id).all()
+            return {employee_id.upper() for (employee_id,) in values if employee_id}
+        finally:
+            session.close()
+
+    def _validate_row(self, row, row_number, seen_emails, existing_emails, seen_employee_ids, existing_employee_ids):
         issues = []
         for column in REQUIRED_COLUMNS:
             if not _value(row.get(column)):
                 issues.append(f"Missing {_title_column(column)}")
+
+        employee_code = _value(row.get("employee_id")).upper()
+        if employee_code:
+            if len(employee_code) > 20:
+                issues.append("Employee ID must be 20 characters or fewer")
+            elif employee_code in existing_employee_ids:
+                issues.append("Employee ID already exists in MyHR")
+            elif employee_code in seen_employee_ids:
+                issues.append("Employee ID is duplicated in this file")
+            else:
+                seen_employee_ids.add(employee_code)
 
         degree = _normalize_degree(row.get("degree"))
         if _value(row.get("degree")) and not degree:
@@ -649,9 +693,9 @@ class ImportDataPage(QWidget):
         elif salary is not None and salary <= 0:
             issues.append("Base Salary must be greater than zero")
 
-        status = _value(row.get("status")) or "active"
+        status = (_value(row.get("status")) or "active").lower()
         if status and status not in STATUSES:
-            issues.append("Status must be active, inactive, or on_leave")
+            issues.append("Status must be active, inactive, on_leave, or terminated")
 
         work_email = _value(row.get("work_email")).lower()
         if work_email:
@@ -668,6 +712,10 @@ class ImportDataPage(QWidget):
         if manager_email and not EMAIL_RE.match(manager_email):
             issues.append("Manager Work Email format is invalid")
 
+        manager_employee_id = _value(row.get("manager_employee_id")).upper()
+        if manager_employee_id and employee_code and manager_employee_id == employee_code:
+            issues.append("Manager Employee ID cannot match the employee")
+
         comm_months = _parse_int(row.get("commendation_months"), default=0)
         if comm_months not in {0, 1, 3, 6}:
             issues.append("Commendation Months must be 0, 1, 3, or 6")
@@ -680,15 +728,29 @@ class ImportDataPage(QWidget):
         if sanction_months > 0 and sanction_type and sanction_type not in SANCTION_TYPES:
             issues.append("Sanction Type must be Verbal Warning, Written Warning, Suspension, or Final Warning")
 
+        performance_score = _parse_float(row.get("latest_performance_score"))
+        if _value(row.get("latest_performance_score")) and performance_score is None:
+            issues.append("Latest Performance Score must be a number")
+        elif performance_score is not None and (performance_score < 0 or performance_score > 100):
+            issues.append("Latest Performance Score must be between 0 and 100")
+
+        for column in ("goal_score", "competency_score", "conduct_score", "teamwork_score"):
+            value = _parse_float(row.get(column))
+            if _value(row.get(column)) and value is None:
+                issues.append(f"{_title_column(column)} must be a number")
+            elif value is not None and (value < 0 or value > 100):
+                issues.append(f"{_title_column(column)} must be between 0 and 100")
+
         return issues
 
     def _normalized_row(self, row, row_number, issues):
         degree = _normalize_degree(row.get("degree")) or _value(row.get("degree"))
-        status = _value(row.get("status")) or "active"
+        status = (_value(row.get("status")) or "active").lower()
         comm_months = _parse_int(row.get("commendation_months"), default=0)
         sanction_months = _parse_int(row.get("active_sanction_months"), default=0)
         return {
             "row": row_number,
+            "employee_id": _value(row.get("employee_id")).upper(),
             "first_name": _value(row.get("first_name")),
             "last_name": _value(row.get("last_name")),
             "department": _value(row.get("department")),
@@ -705,10 +767,18 @@ class ImportDataPage(QWidget):
             "personal_email": _value(row.get("personal_email")),
             "address": _value(row.get("address")),
             "status_value": status,
+            "manager_employee_id": _value(row.get("manager_employee_id")).upper(),
             "manager_work_email": _value(row.get("manager_work_email")),
             "commendation_months": comm_months,
             "active_sanction_months": sanction_months,
             "sanction_type": SANCTION_TYPES.get(_value(row.get("sanction_type")).lower(), "written_warning"),
+            "latest_performance_score": _parse_float(row.get("latest_performance_score")),
+            "performance_review_type": _value(row.get("performance_review_type")) or "imported",
+            "performance_review_period": _value(row.get("performance_review_period")),
+            "goal_score": _parse_float(row.get("goal_score")),
+            "competency_score": _parse_float(row.get("competency_score")),
+            "conduct_score": _parse_float(row.get("conduct_score")),
+            "teamwork_score": _parse_float(row.get("teamwork_score")),
             "status": "error" if issues else "valid",
             "issues": issues,
         }
@@ -836,7 +906,7 @@ class ImportDataPage(QWidget):
 
                     join_date = _parse_date(row["join_date"])
                     employee = Employee(
-                        employee_id=generate_employee_id(session),
+                        employee_id=row["employee_id"] or generate_employee_id(session),
                         first_name=row["first_name"],
                         last_name=row["last_name"],
                         degree=row["degree"],
@@ -886,18 +956,24 @@ class ImportDataPage(QWidget):
 
     def _wire_managers(self, session, created):
         email_lookup = {}
+        id_lookup = {}
         for employee, _ in created:
+            if employee.employee_id:
+                id_lookup[employee.employee_id.upper()] = employee
             if employee.work_email:
                 email_lookup[employee.work_email.lower()] = employee
 
-        existing = session.query(Employee).filter(Employee.work_email.isnot(None)).all()
+        existing = session.query(Employee).all()
         for employee in existing:
+            if employee.employee_id:
+                id_lookup.setdefault(employee.employee_id.upper(), employee)
             if employee.work_email:
                 email_lookup.setdefault(employee.work_email.lower(), employee)
 
         for employee, row in created:
+            manager_employee_id = row["manager_employee_id"].upper() if row["manager_employee_id"] else ""
             manager_email = row["manager_work_email"].lower() if row["manager_work_email"] else ""
-            manager = email_lookup.get(manager_email)
+            manager = id_lookup.get(manager_employee_id) or email_lookup.get(manager_email)
             if manager and manager.id != employee.id:
                 employee.reports_to_id = manager.id
 
@@ -933,6 +1009,30 @@ class ImportDataPage(QWidget):
                     is_resolved=False,
                 )
                 session.add(sanction)
+
+            if row["latest_performance_score"] is not None:
+                review_period = row["performance_review_period"] or str(datetime.utcnow().year)
+                rubric_score = calculate_performance_rubric_score(
+                    goal_score=row["goal_score"],
+                    competency_score=row["competency_score"],
+                    conduct_score=row["conduct_score"],
+                    teamwork_score=row["teamwork_score"],
+                )
+                performance = PerformanceScore(
+                    employee_id=employee.id,
+                    evaluator_id=self.user.id,
+                    score=rubric_score if rubric_score is not None else row["latest_performance_score"],
+                    max_score=100,
+                    review_type=row["performance_review_type"] or "imported",
+                    review_period=review_period,
+                    goal_score=row["goal_score"],
+                    competency_score=row["competency_score"],
+                    conduct_score=row["conduct_score"],
+                    teamwork_score=row["teamwork_score"],
+                    evaluation_date=issued_at,
+                    notes="Imported latest performance review.",
+                )
+                session.add(performance)
 
     def _org_unit_id(self, session, row):
         if row["degree"] == "Other":
@@ -985,23 +1085,26 @@ class ImportDataPage(QWidget):
                 writer = csv.writer(handle)
                 writer.writerow(TEMPLATE_HEADERS)
                 writer.writerow([
-                    "James", "Wilson", "Engineering", "BSc", "Software Engineer I",
-                    "2023-04-10", "3200", "Engineering", "API Unit", "Payments Team",
+                    "EMP-9001", "James", "Wilson", "Engineering", "BSc", "Software Engineer I",
+                    "2023-04-10", "3200", "Engineering Division", "Engineering", "API Unit", "Payments Team",
                     "james.wilson@company.com", "+36 20 110 2200",
                     "james.personal@example.com", "+36 30 110 2200", "Budapest",
-                    "active", "lead.engineer@company.com", "1", "0", ""
+                    "active", "EMP-9000", "lead.engineer@company.com", "1", "0", "",
+                    "84", "annual", "2026", "86", "82", "85", "80"
                 ])
                 writer.writerow([
-                    "Nora", "Szabo", "Human Resources", "MSc", "HR Business Partner",
-                    "2022-09-01", "3600", "Corporate Services", "People Operations", "Payroll Team",
+                    "EMP-9002", "Nora", "Szabo", "Human Resources", "MSc", "HR Business Partner",
+                    "2022-09-01", "3600", "Corporate Services", "Human Resources", "People Operations", "Payroll Team",
                     "nora.szabo@company.com", "+36 20 330 4400",
-                    "", "", "Budapest", "active", "", "0", "0", ""
+                    "", "", "Budapest", "active", "", "", "0", "0", "",
+                    "78", "annual", "2026", "80", "76", "79", "75"
                 ])
                 writer.writerow([
-                    "David", "Chen", "Quality Assurance", "BSc", "QA Engineer",
-                    "2021-02-15", "3000", "Product Delivery", "Automation QA", "Regression Team",
+                    "EMP-9003", "David", "Chen", "Quality Assurance", "BSc", "QA Engineer",
+                    "2021-02-15", "3000", "Product Delivery", "Quality Assurance", "Automation QA", "Regression Team",
                     "david.chen@company.com", "+36 20 550 6600",
-                    "", "", "Szeged", "active", "qa.manager@company.com", "0", "2", "verbal_warning"
+                    "", "", "Szeged", "active", "EMP-9004", "qa.manager@company.com", "0", "2", "verbal_warning",
+                    "66", "annual", "2026", "68", "65", "70", "60"
                 ])
             _information(self, t("success"), t("template_saved_to", path=path))
         except Exception as exc:
