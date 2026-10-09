@@ -90,6 +90,10 @@ python -m py_compile main.py src/ui/icons.py src/ui/pages/dashboard.py
 python -m unittest discover tests
 ```
 
+UI rule: new dropdowns must use `src.ui.components.app_select.AppSelect`.
+Do not add new `QComboBox` widgets or page-local custom dropdowns. This is
+documented in `docs/UI_RULES.md` and guarded by `tests/test_ui_component_policy.py`.
+
 Latest verification before this README update:
 
 ```text
@@ -340,6 +344,7 @@ Avoid `git reset --hard` unless you are completely sure you want to discard loca
 |---|---|
 | User Guide | `docs/guides/MyHR_User_Guide.docx` |
 | Developer Guide | `docs/guides/MyHR_Developer_Guide.docx` |
+| UI Rules | `docs/UI_RULES.md` |
 | Thesis Completion Plan | `docs/THESIS_COMPLETION_PLAN.md` |
 | UI Mockup | `MockUI/` |
 | Demo Dataset Script | `scripts/seed_demo_company.py` |
