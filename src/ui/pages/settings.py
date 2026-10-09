@@ -20,7 +20,7 @@ from PySide6.QtGui import QColor, QFont, QTextDocument, QPageLayout, QPageSize
 from PySide6.QtPrintSupport import QPrinter
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QPushButton,
-    QFrame, QScrollArea, QLineEdit, QComboBox, QMessageBox, QTabWidget,
+    QFrame, QScrollArea, QLineEdit, QMessageBox, QTabWidget,
     QSpinBox, QDoubleSpinBox, QFileDialog, QSizePolicy, QTableWidget,
     QTableWidgetItem, QHeaderView, QDialog, QFormLayout
 )
@@ -28,11 +28,12 @@ from PySide6.QtWidgets import (
 from src.core.i18n import t
 from src.core.app_settings import app_settings, company_name
 from src.ui.animations import animate_widget_entry, install_tab_transition
+from src.ui.components.app_select import AppSelect
 from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
     pill_tab_ss, enable_table_row_selection, prepare_table_cell_widget,
-    polish_combo_box, table_style, primary_button_fg, level_badge_colors,
-    alert_ss, badge_ss, card_ss, combo_style, input_style, message_box_icon_pixmap, message_box_ss,
+    table_style, primary_button_fg, level_badge_colors,
+    alert_ss, badge_ss, card_ss, input_style, message_box_icon_pixmap, message_box_ss,
     btn_danger_outline, btn_outline, btn_primary,
 )
 from src.ui.theme import THEME_DARK, tokens
@@ -69,12 +70,11 @@ CARD_SS = card_ss("QFrame#Card")
 NOTE_BLUE_SS = alert_ss("info")
 NOTE_YELLOW_SS = alert_ss("warning")
 INPUT_SS = input_style(44)
-COMBO_SS = combo_style(44)
 MESSAGE_BOX_SS = message_box_ss()
 
 
 def _refresh_theme_constants():
-    global PAGE_BG, TEXT, MUTED, BLACK, BLUE, CARD_SS, NOTE_BLUE_SS, NOTE_YELLOW_SS, INPUT_SS, COMBO_SS, MESSAGE_BOX_SS
+    global PAGE_BG, TEXT, MUTED, BLACK, BLUE, CARD_SS, NOTE_BLUE_SS, NOTE_YELLOW_SS, INPUT_SS, MESSAGE_BOX_SS
     PAGE_BG = tokens().canvas
     TEXT = tokens().text
     MUTED = tokens().text_muted
@@ -84,7 +84,6 @@ def _refresh_theme_constants():
     NOTE_BLUE_SS = alert_ss("info")
     NOTE_YELLOW_SS = alert_ss("warning")
     INPUT_SS = input_style(44)
-    COMBO_SS = combo_style(44)
     MESSAGE_BOX_SS = message_box_ss()
 
 
@@ -827,7 +826,7 @@ class AddLevelDialog(QDialog):
 
         self.level_name = _line_edit("Junior Specialist")
         self.level_label = _line_edit()
-        self.degree = QComboBox()
+        self.degree = AppSelect(height=44, max_visible_items=6)
         for value in ("any", "BSc", "MSc", "PhD"):
             self.degree.addItem(value, value)
         _style_combo(self.degree)
@@ -835,7 +834,7 @@ class AddLevelDialog(QDialog):
         self.currency = _line_edit(self._default_currency())
         self.salary_min = _money_spin()
         self.salary_max = _money_spin()
-        self.increment_type = QComboBox()
+        self.increment_type = AppSelect(height=44, max_visible_items=4)
         self.increment_type.addItem(t("increment_percentage"), "percentage")
         self.increment_type.addItem(t("increment_fixed"), "fixed")
         _style_combo(self.increment_type)
@@ -843,7 +842,7 @@ class AddLevelDialog(QDialog):
         self.increment_type.currentIndexChanged.connect(lambda *_: self._sync_increment_value_suffix())
         self.currency.textChanged.connect(lambda *_: self._sync_increment_value_suffix())
         self._sync_increment_value_suffix()
-        self.target_title = QComboBox()
+        self.target_title = AppSelect(height=44, max_visible_items=8)
         if self.is_edit:
             self.target_title.addItem(t("no_promotion_target"), None)
         for title in _titles():
@@ -1358,7 +1357,7 @@ class SettingsPromotionTab(QWidget):
         grid = QGridLayout()
         grid.setHorizontalSpacing(18)
         grid.setVerticalSpacing(8)
-        target_combo = QComboBox()
+        target_combo = AppSelect(height=44, max_visible_items=8)
         target_combo.addItem(t("no_promotion_target"), None)
         for target in row["target_titles"]:
             if target.id != row["from_id"]:
@@ -1506,7 +1505,7 @@ class IncrementTab(QWidget):
 
         fields = QGridLayout()
         fields.setHorizontalSpacing(16)
-        type_combo = QComboBox()
+        type_combo = AppSelect(height=44, max_visible_items=4)
         type_combo.addItem(t("increment_percentage"), "percentage")
         type_combo.addItem(t("increment_fixed"), "fixed")
         _style_combo(type_combo)
@@ -2064,7 +2063,7 @@ class DatabaseTab(QWidget):
         hint.setStyleSheet(f"font-size: 12px; font-weight: 500; color: {MUTED}; background: transparent;")
         filter_layout.addWidget(hint, 0, 0, 1, 3)
 
-        self.report_type = QComboBox()
+        self.report_type = AppSelect(height=40, max_visible_items=4)
         self.report_type.setFixedHeight(40)
         _style_report_filter_combo(self.report_type)
         self.report_type.addItem(t("report_type_full"), "full")
@@ -2073,7 +2072,7 @@ class DatabaseTab(QWidget):
         filter_layout.addWidget(_field_label(t("report_type")), 1, 0)
         filter_layout.addWidget(self.report_type, 2, 0)
 
-        self.report_year = QComboBox()
+        self.report_year = AppSelect(height=40, max_visible_items=6)
         self.report_year.setFixedHeight(40)
         _style_report_filter_combo(self.report_year)
         for year in available_report_years():
@@ -2081,7 +2080,7 @@ class DatabaseTab(QWidget):
         filter_layout.addWidget(_field_label(t("report_period_label")), 1, 1)
         filter_layout.addWidget(self.report_year, 2, 1)
 
-        self.report_status = QComboBox()
+        self.report_status = AppSelect(height=40, max_visible_items=6)
         self.report_status.setFixedHeight(40)
         _style_report_filter_combo(self.report_status)
         self.report_status.addItem(t("all_statuses"), None)
@@ -2090,10 +2089,10 @@ class DatabaseTab(QWidget):
         filter_layout.addWidget(_field_label(t("status")), 1, 2)
         filter_layout.addWidget(self.report_status, 2, 2)
 
-        self.report_department = QComboBox()
+        self.report_department = AppSelect(height=40, max_visible_items=8)
         self.report_department.setFixedHeight(40)
         _style_report_filter_combo(self.report_department)
-        self.report_level = QComboBox()
+        self.report_level = AppSelect(height=40, max_visible_items=8)
         self.report_level.setFixedHeight(40)
         _style_report_filter_combo(self.report_level)
         self._load_report_filter_options()
@@ -3038,52 +3037,13 @@ def _sync_increment_spin_suffix(combo, spin, currency):
 
 
 def _style_combo(combo):
-    combo.setStyleSheet(COMBO_SS)
-    combo.setFixedHeight(44)
-    polish_combo_box(combo)
+    if isinstance(combo, AppSelect):
+        return
 
 
 def _style_report_filter_combo(combo):
-    tkn = tokens()
-    field_bg = tkn.surface if tkn.name != THEME_DARK else "#121412"
-    hover_bg = "#fbfcfb" if tkn.name != THEME_DARK else "#171a17"
-    combo.setStyleSheet(f"""
-QComboBox {{
-    border: 1px solid {tkn.border_strong};
-    border-radius: 8px;
-    padding: 0 34px 0 12px;
-    font-size: 14px;
-    color: {tkn.text};
-    background: {field_bg};
-    min-height: 40px;
-    outline: none;
-}}
-QComboBox:hover {{
-    border-color: {tkn.text_soft};
-    background: {hover_bg};
-}}
-QComboBox:focus {{
-    border-color: {tkn.brand};
-    background: {field_bg};
-}}
-QComboBox::drop-down {{
-    width: 30px;
-    border: none;
-    background: transparent;
-}}
-QComboBox QAbstractItemView {{
-    background: {tkn.surface_raised};
-    color: {tkn.text};
-    border: 1px solid {tkn.border_strong};
-    border-radius: 8px;
-    selection-background-color: {tkn.brand};
-    selection-color: {primary_button_fg()};
-    outline: none;
-    padding: 4px;
-}}
-""")
-    combo.setFixedHeight(40)
-    polish_combo_box(combo)
+    if isinstance(combo, AppSelect):
+        return
 
 
 def _add_form_field(grid, row, col, label_text, widget):

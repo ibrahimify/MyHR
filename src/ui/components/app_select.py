@@ -1,6 +1,6 @@
 import shiboken6
 from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QRectF, QSize, Qt, Signal
-from PySide6.QtGui import QPainterPath, QRegion
+from PySide6.QtGui import QColor, QPainterPath, QRegion
 from PySide6.QtWidgets import (
     QFrame,
     QGraphicsOpacityEffect,
@@ -88,10 +88,15 @@ class AppSelect(QWidget):
         self.destroyed.connect(self._disconnect_theme_signal)
         self._apply_theme()
 
-    def addItem(self, text, data=None):
+    def addItem(self, text, data=None, *, enabled=True, tooltip=""):
         item = QListWidgetItem(text)
         item.setData(Qt.UserRole, data)
         item.setSizeHint(QSize(0, 34))
+        if tooltip:
+            item.setToolTip(tooltip)
+        if not enabled:
+            item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
+            item.setForeground(QColor(tokens().text_soft))
         self.list_widget.addItem(item)
         self._items.append((text, data))
         self._resize_popup_list()
@@ -118,8 +123,23 @@ class AppSelect(QWidget):
             return self._items[self._current_index][0]
         return ""
 
+    def currentIndex(self):
+        return self._current_index
+
+    def itemData(self, index):
+        if 0 <= index < len(self._items):
+            return self._items[index][1]
+        return None
+
+    def itemEnabled(self, index):
+        item = self.list_widget.item(index)
+        return bool(item and item.flags() & Qt.ItemIsEnabled)
+
     def setCurrentIndex(self, index):
         if index < 0 or index >= len(self._items):
+            return
+        item = self.list_widget.item(index)
+        if item and not (item.flags() & Qt.ItemIsEnabled):
             return
         self._current_index = index
         self.label.setText(self._items[index][0])
@@ -171,6 +191,8 @@ class AppSelect(QWidget):
         self.popup_opacity_animation.start()
 
     def _select_item(self, item):
+        if not (item.flags() & Qt.ItemIsEnabled):
+            return
         row = self.list_widget.row(item)
         self._current_index = row
         self.label.setText(item.text())

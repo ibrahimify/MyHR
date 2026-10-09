@@ -4,24 +4,23 @@ from PySide6.QtCore import Qt, QSize, QRectF, QPointF, QTimer
 from PySide6.QtGui import QColor, QPainter, QPen, QBrush, QFont, QPainterPath
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
-    QScrollArea, QDialog, QFormLayout, QLineEdit, QComboBox, QMessageBox,
+    QScrollArea, QDialog, QFormLayout, QLineEdit, QMessageBox,
     QTableWidget, QTableWidgetItem, QHeaderView, QGraphicsView, QGraphicsScene,
     QGraphicsItem, QGraphicsPathItem, QGridLayout, QMenu, QFileDialog
 )
 
 from src.core.i18n import t
+from src.ui.components.app_select import AppSelect
 from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
     btn_outline,
     btn_primary,
     card_ss,
-    combo_style,
     input_style,
     message_box_icon_pixmap,
     message_box_ss,
     table_style,
     enable_table_row_selection,
-    polish_combo_box,
     primary_button_fg,
 )
 from src.ui.theme import THEME_DARK, tokens
@@ -120,10 +119,6 @@ def _avatar_bg(unit_type):
 
 def INPUT_SS():
     return input_style(40)
-
-
-def COMBO_SS():
-    return combo_style(42)
 
 
 def MESSAGE_BOX_SS():
@@ -384,12 +379,9 @@ class HierarchyPage(QWidget):
         self.search.textChanged.connect(self._on_search_text_changed)
         tools.addWidget(self.search, 1)
 
-        self.division_filter = QComboBox()
-        self.division_filter.setFixedHeight(40)
+        self.division_filter = AppSelect(height=40, max_visible_items=8)
         self.division_filter.setMinimumWidth(124)
-        self.division_filter.setStyleSheet(COMBO_SS())
         self.division_filter.setToolTip("Division")
-        polish_combo_box(self.division_filter, max_visible_items=8, popup_min_width=180)
         self._load_division_filter()
         self.division_filter.currentIndexChanged.connect(lambda _: self._render_initial())
         tools.addWidget(self.division_filter)
@@ -1447,24 +1439,18 @@ class OrgUnitDialog(QDialog):
         self.name_input.setFixedHeight(42)
         self.name_input.setStyleSheet(INPUT_SS())
         form.addRow(_form_label(t("name") + " *"), self.name_input)
-        self.type_combo = QComboBox()
-        self.type_combo.setFixedHeight(42)
-        self.type_combo.setStyleSheet(COMBO_SS())
+        self.type_combo = AppSelect(height=42, max_visible_items=8)
+        self.type_combo.setMinimumWidth(390)
         self._load_types()
-        _prepare_combo(self.type_combo)
         form.addRow(_form_label(t("type") + " *"), self.type_combo)
-        self.parent_combo = QComboBox()
-        self.parent_combo.setFixedHeight(42)
-        self.parent_combo.setStyleSheet(COMBO_SS())
+        self.parent_combo = AppSelect(height=42, max_visible_items=8)
+        self.parent_combo.setMinimumWidth(390)
         self._load_parents()
-        _prepare_combo(self.parent_combo)
         form.addRow(_form_label("Parent Unit"), self.parent_combo)
-        self.head_combo = QComboBox()
-        self.head_combo.setFixedHeight(42)
-        self.head_combo.setStyleSheet(COMBO_SS())
+        self.head_combo = AppSelect(height=42, max_visible_items=8)
+        self.head_combo.setMinimumWidth(390)
         self.head_combo.addItem(t("none"), None)
         self._load_employees()
-        _prepare_combo(self.head_combo)
         form.addRow(_form_label("Head / In-Charge"), self.head_combo)
         layout.addLayout(form)
         if self.default_type:
@@ -1501,16 +1487,19 @@ class OrgUnitDialog(QDialog):
         self.type_combo.clear()
         session = get_session()
         try:
+            first_enabled = -1
             for unit_type in UNIT_TYPES:
-                self.type_combo.addItem(unit_type.title(), unit_type)
-                item = self.type_combo.model().item(self.type_combo.count() - 1)
                 allowed, _ = _type_can_be_selected(session, unit_type, self.unit_id)
-                if item and not allowed:
-                    item.setEnabled(False)
-                    item.setToolTip(_type_block_reason(unit_type))
+                self.type_combo.addItem(
+                    unit_type.title(),
+                    unit_type,
+                    enabled=allowed,
+                    tooltip="" if allowed else _type_block_reason(unit_type),
+                )
+                if allowed and first_enabled < 0:
+                    first_enabled = self.type_combo.count() - 1
             for index in range(self.type_combo.count()):
-                item = self.type_combo.model().item(index)
-                if item and item.isEnabled():
+                if self.type_combo.itemEnabled(index):
                     self.type_combo.setCurrentIndex(index)
                     break
         finally:
@@ -1933,13 +1922,6 @@ def _form_label(text):
     label.setMinimumWidth(122)
     label.setStyleSheet(f"font-size: 14px; color: {tokens().text}; background: transparent; border: none;")
     return label
-
-
-def _prepare_combo(combo):
-    combo.setMinimumWidth(390)
-    combo.view().setMinimumWidth(390)
-    combo.view().setTextElideMode(Qt.ElideNone)
-    polish_combo_box(combo, max_visible_items=8, popup_min_width=390)
 
 
 def _type_can_be_selected(session, unit_type, current_unit_id=None):

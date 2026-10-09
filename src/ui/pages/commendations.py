@@ -12,7 +12,7 @@ import math
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QTableWidget, QTableWidgetItem,
-    QHeaderView, QTabWidget, QLineEdit, QComboBox, QTextEdit,
+    QHeaderView, QTabWidget, QLineEdit, QTextEdit,
     QMessageBox, QCheckBox, QListWidget, QListWidgetItem
 )
 from PySide6.QtCore import Qt, QSize
@@ -21,6 +21,7 @@ from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
 from src.ui.animations import install_tab_transition
+from src.ui.components.app_select import AppSelect
 from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
     employee_picker_list_ss,
@@ -33,11 +34,9 @@ from src.ui.styles import (
     pager_button_ss,
     card_ss,
     input_style,
-    combo_style,
     message_box_icon_pixmap,
     message_box_ss,
     scroll_ss,
-    polish_combo_box,
     table_style,
     primary_button_fg,
     prepare_table_cell_widget,
@@ -116,10 +115,6 @@ def CARD_SS():
 
 def INPUT_SS():
     return input_style()
-
-
-def COMBO_SS():
-    return combo_style(40)
 
 
 def TABLE_SS():
@@ -266,10 +261,7 @@ class IssueCommendationTab(QWidget):
 
         cat_lbl = QLabel(t("commendation_category") + " *")
         cat_lbl.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {tokens().text}; background: transparent;")
-        self.cat_combo = QComboBox()
-        self.cat_combo.setFixedHeight(44)
-        self.cat_combo.setStyleSheet(COMBO_SS())
-        _polish_combo(self.cat_combo)
+        self.cat_combo = AppSelect(height=44, max_visible_items=5)
         self.cat_combo.addItem(t("select_category_tier"), None)
         for cat_id, cat in CATEGORIES.items():
             self.cat_combo.addItem(f"{_category_label(cat_id)} - {_impact_label(cat['months'])}", cat_id)
@@ -977,7 +969,3 @@ def _note_line(text, color):
     lbl.setWordWrap(True)
     lbl.setStyleSheet(f"font-size: 14px; color: {color}; background: transparent;")
     return lbl
-
-
-def _polish_combo(combo):
-    polish_combo_box(combo)

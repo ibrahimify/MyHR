@@ -10,7 +10,7 @@ Fixes:
 import math
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QFrame, QScrollArea, QLineEdit, QComboBox, QTableWidget,
+    QFrame, QScrollArea, QLineEdit, QTableWidget,
     QTableWidgetItem, QHeaderView, QStackedWidget, QTabWidget,
     QTextEdit, QMessageBox, QDateEdit, QGridLayout, QListWidget,
     QListWidgetItem, QSizePolicy, QProgressBar, QDialog, QSpinBox, QApplication
@@ -22,6 +22,7 @@ from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
 from src.ui.animations import animate_widget_entry, install_tab_transition
+from src.ui.components.app_select import AppSelect
 from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
     pill_tab_ss,
@@ -37,7 +38,6 @@ from src.ui.styles import (
     prepare_table_cell_widget,
     scroll_ss,
     table_style,
-    polish_combo_box,
     primary_button_fg,
     level_badge_colors,
     race_color,
@@ -72,10 +72,6 @@ def _title_sort_key(title):
     if name.startswith("L") and name[1:].isdigit():
         return (0, -int(name[1:]))
     return (1, name)
-
-
-def COMBO_STYLE():
-    return input_style(40)
 
 
 def INPUT_STYLE():
@@ -1748,10 +1744,8 @@ class EditEmployeeView(QWidget):
             oc.addWidget(t_lbl)
 
             oc.addWidget(self._small_lbl(t("org_unit")))
-            self.org_combo = QComboBox()
+            self.org_combo = AppSelect(height=36, max_visible_items=8)
             self.org_combo.setFixedHeight(36)
-            self.org_combo.setStyleSheet(COMBO_STYLE())
-            polish_combo_box(self.org_combo)
             if is_other_employee(emp):
                 others = ensure_others_org_unit(session)
                 session.flush()
@@ -1765,10 +1759,8 @@ class EditEmployeeView(QWidget):
             oc.addWidget(self.org_combo)
 
             oc.addWidget(self._small_lbl(t("reports_to")))
-            self.manager_combo = QComboBox()
+            self.manager_combo = AppSelect(height=36, max_visible_items=8)
             self.manager_combo.setFixedHeight(36)
-            self.manager_combo.setStyleSheet(COMBO_STYLE())
-            polish_combo_box(self.manager_combo)
             self.manager_combo.addItem(t("none"), None)
             manager_filter = valid_other_manager_ids(session) if is_other_employee(emp) else None
             for e in session.query(Employee).filter(Employee.id != employee_db_id).all():
@@ -1780,10 +1772,8 @@ class EditEmployeeView(QWidget):
             oc.addWidget(self.manager_combo)
 
             oc.addWidget(self._small_lbl(t("current_level_role")))
-            self.title_combo = QComboBox()
+            self.title_combo = AppSelect(height=36, max_visible_items=8)
             self.title_combo.setFixedHeight(36)
-            self.title_combo.setStyleSheet(COMBO_STYLE())
-            polish_combo_box(self.title_combo)
             for title in session.query(Title).order_by(Title.name.desc()).all():
                 self.title_combo.addItem(f"{display_title_name(title)} - {title.label}", title.id)
                 if emp.title_id == title.id:
@@ -1799,10 +1789,8 @@ class EditEmployeeView(QWidget):
             self.fields["base_salary"].textChanged.connect(self._update_edit_salary_warning)
 
             oc.addWidget(self._small_lbl(t("status")))
-            self.status_combo = QComboBox()
+            self.status_combo = AppSelect(height=36, max_visible_items=6)
             self.status_combo.setFixedHeight(36)
-            self.status_combo.setStyleSheet(COMBO_STYLE())
-            polish_combo_box(self.status_combo)
             for s in STATUS_OPTIONS:
                 self.status_combo.addItem(s.replace("_"," ").title(), s)
                 if emp.status == s:

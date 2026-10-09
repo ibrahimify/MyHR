@@ -13,7 +13,7 @@ from sqlalchemy import func
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QTableWidget, QTableWidgetItem,
-    QHeaderView, QTabWidget, QComboBox, QTextEdit, QLineEdit,
+    QHeaderView, QTabWidget, QTextEdit, QLineEdit,
     QListWidget, QListWidgetItem, QAbstractItemView,
     QMessageBox, QSizePolicy
 )
@@ -23,6 +23,7 @@ from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
 from src.ui.animations import install_tab_transition
+from src.ui.components.app_select import AppSelect
 from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
     employee_picker_list_ss,
@@ -34,12 +35,10 @@ from src.ui.styles import (
     btn_outline,
     card_ss,
     input_style,
-    combo_style,
     message_box_icon_pixmap,
     message_box_ss,
     scroll_ss,
     pager_button_ss,
-    polish_combo_box,
     table_style,
     primary_button_fg,
     badge_ss,
@@ -156,10 +155,6 @@ def CARD_SS():
 
 def FIELD_SS():
     return input_style()
-
-
-def COMBO_SS():
-    return combo_style(40)
 
 
 def TABLE_SS():
@@ -557,10 +552,6 @@ def _note_line(text, color):
     return lbl
 
 
-def _polish_combo(combo):
-    polish_combo_box(combo)
-
-
 # History Tab
 class SanctionHistoryTab(QWidget):
     def __init__(self, user):
@@ -825,10 +816,7 @@ class IssueSanctionTab(QWidget):
         # Type
         type_lbl = QLabel(t("sanction_type") + " *")
         type_lbl.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {tokens().text}; background: transparent;")
-        self.type_combo = QComboBox()
-        self.type_combo.setFixedHeight(44)
-        self.type_combo.setStyleSheet(COMBO_SS())
-        _polish_combo(self.type_combo)
+        self.type_combo = AppSelect(height=44, max_visible_items=6)
         self.type_combo.addItem(t("select_sanction_type"), None)
         for val, label, _, _ in _sanction_types():
             self.type_combo.addItem(t(label), val)
@@ -875,10 +863,7 @@ class IssueSanctionTab(QWidget):
         delay_col.setSpacing(6)
         delay_lbl = QLabel(t("promotion_delay_months") + " *")
         delay_lbl.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {tokens().text}; background: transparent;")
-        self.delay_combo = QComboBox()
-        self.delay_combo.setFixedHeight(44)
-        self.delay_combo.setStyleSheet(COMBO_SS())
-        _polish_combo(self.delay_combo)
+        self.delay_combo = AppSelect(height=44, max_visible_items=8)
         self.delay_combo.addItem(t("select_delay_months"), None)
         for month in range(1, 13):
             self.delay_combo.addItem(t("month_count", count=month), month)

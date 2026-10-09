@@ -27,6 +27,7 @@ from src.ui.styles import (
     enable_table_row_selection, prepare_table_cell_widget, primary_button_fg,
     race_color, race_soft_color, race_progress_bar_ss,
     alert_ss, badge_ss, btn_success_outline, empty_state_ss,
+    input_style,
 )
 from src.ui.chart_theme import chart_axis_color, chart_color, chart_grid_color, chart_soft_color
 from src.ui.icons import app_icon, app_pixmap
@@ -1664,38 +1665,70 @@ class DashboardPage(QWidget):
     def _choose_custom_range(self):
         dialog = QDialog(self)
         dialog.setWindowTitle(t("custom_date_range"))
-        dialog.setStyleSheet(f"background: {tokens().surface}; color: {tokens().text};")
-        dialog.setMinimumWidth(360)
+        dialog.setFixedWidth(430)
+        dialog.setStyleSheet(
+            f"QDialog {{ background: {tokens().surface}; color: {tokens().text}; font-family: 'Segoe UI'; }} "
+            "QLabel { background: transparent; border: none; }"
+        )
         layout = QVBoxLayout(dialog)
-        layout.setContentsMargins(24, 20, 24, 20)
-        layout.setSpacing(12)
+        layout.setContentsMargins(24, 22, 24, 22)
+        layout.setSpacing(14)
+
+        header = QHBoxLayout()
+        icon = QLabel()
+        icon.setFixedSize(42, 42)
+        icon.setAlignment(Qt.AlignCenter)
+        icon.setStyleSheet(f"background: {tokens().selected}; border-radius: 8px;")
+        icon.setPixmap(app_pixmap("fa5s.calendar-alt", color=tokens().brand, size=18))
+        header.addWidget(icon)
 
         title = QLabel(t("custom_date_range"))
-        title.setStyleSheet(f"font-size: 17px; font-weight: 700; color: {tokens().text};")
-        layout.addWidget(title)
+        title.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {tokens().text};")
+        subtitle = QLabel("Choose the exact date window for the promotion trend chart.")
+        subtitle.setWordWrap(True)
+        subtitle.setStyleSheet(f"font-size: 12px; color: {tokens().text_muted};")
+        title_box = QVBoxLayout()
+        title_box.setSpacing(3)
+        title_box.addWidget(title)
+        title_box.addWidget(subtitle)
+        header.addLayout(title_box, 1)
+        layout.addLayout(header)
 
         start_edit = QDateEdit()
         start_edit.setCalendarPopup(True)
         start_edit.setDisplayFormat("yyyy-MM-dd")
+        start_edit.setFixedHeight(44)
+        start_edit.setStyleSheet(input_style(44))
         end_edit = QDateEdit()
         end_edit.setCalendarPopup(True)
         end_edit.setDisplayFormat("yyyy-MM-dd")
+        end_edit.setFixedHeight(44)
+        end_edit.setStyleSheet(input_style(44))
 
         today = QDate.currentDate()
         default_start = today.addMonths(-1)
         start_edit.setDate(default_start)
         end_edit.setDate(today)
 
-        layout.addWidget(QLabel(t("start_date")))
+        start_label = QLabel(t("start_date"))
+        start_label.setStyleSheet(f"font-size: 12px; font-weight: 800; color: {tokens().text};")
+        layout.addWidget(start_label)
         layout.addWidget(start_edit)
-        layout.addWidget(QLabel(t("end_date")))
+        end_label = QLabel(t("end_date"))
+        end_label.setStyleSheet(f"font-size: 12px; font-weight: 800; color: {tokens().text};")
+        layout.addWidget(end_label)
         layout.addWidget(end_edit)
 
         row = QHBoxLayout()
+        row.setSpacing(10)
         apply_btn = QPushButton(t("apply"))
-        apply_btn.setStyleSheet(btn_primary(36))
+        apply_btn.setFixedSize(110, 40)
+        apply_btn.setCursor(Qt.PointingHandCursor)
+        apply_btn.setStyleSheet(btn_primary(40))
         cancel_btn = QPushButton(t("cancel"))
-        cancel_btn.setStyleSheet(btn_outline(36))
+        cancel_btn.setFixedSize(96, 40)
+        cancel_btn.setCursor(Qt.PointingHandCursor)
+        cancel_btn.setStyleSheet(btn_outline(40))
         apply_btn.clicked.connect(dialog.accept)
         cancel_btn.clicked.connect(dialog.reject)
         row.addStretch()
