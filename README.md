@@ -94,6 +94,10 @@ UI rule: new dropdowns must use `src.ui.components.app_select.AppSelect`.
 Do not add new `QComboBox` widgets or page-local custom dropdowns. This is
 documented in `docs/UI_RULES.md` and guarded by `tests/test_ui_component_policy.py`.
 
+Before packaging or a formal demo, use `docs/QA_CHECKLIST.md` as the manual
+go/no-go checklist. Architectural follow-up items are tracked in
+`docs/ARCHITECTURE_ROADMAP.md`.
+
 Latest verification before this README update:
 
 ```text
@@ -345,6 +349,8 @@ Avoid `git reset --hard` unless you are completely sure you want to discard loca
 | User Guide | `docs/guides/MyHR_User_Guide.docx` |
 | Developer Guide | `docs/guides/MyHR_Developer_Guide.docx` |
 | UI Rules | `docs/UI_RULES.md` |
+| QA Checklist | `docs/QA_CHECKLIST.md` |
+| Architecture Roadmap | `docs/ARCHITECTURE_ROADMAP.md` |
 | Thesis Completion Plan | `docs/THESIS_COMPLETION_PLAN.md` |
 | UI Mockup | `MockUI/` |
 | Demo Dataset Script | `scripts/seed_demo_company.py` |
