@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QFrame, QScrollArea, QLineEdit, QComboBox, QTableWidget,
     QTableWidgetItem, QHeaderView, QStackedWidget, QTabWidget,
     QTextEdit, QMessageBox, QDateEdit, QGridLayout, QListWidget,
-    QListWidgetItem, QSizePolicy, QProgressBar, QDialog, QSpinBox
+    QListWidgetItem, QSizePolicy, QProgressBar, QDialog, QSpinBox, QApplication
 )
 from PySide6.QtCore import Qt, QDate, QSize, Signal, QTimer, QRectF, QPointF
 from PySide6.QtGui import QColor, QBrush, QFont, QPainter, QPen, QPolygonF
@@ -2178,6 +2178,7 @@ class PerformanceScoreDialog(QDialog):
     def __init__(self, parent=None, score_record=None):
         super().__init__(parent)
         self.score_record = score_record
+        self._positioned = False
         is_editing = score_record is not None
         self.setWindowTitle("Edit Performance Review" if is_editing else "Add Performance Review")
         self.setModal(True)
@@ -2333,7 +2334,27 @@ class PerformanceScoreDialog(QDialog):
         actions.addWidget(cancel)
         actions.addWidget(save)
         outer.addWidget(footer)
-        self.resize(900, 820)
+        self.setFixedSize(900, 760)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not self._positioned:
+            self._positioned = True
+            QTimer.singleShot(0, self._center_on_parent)
+
+    def _center_on_parent(self):
+        parent = self.parentWidget()
+        if parent:
+            bounds = parent.window().frameGeometry()
+        else:
+            screen = QApplication.primaryScreen()
+            bounds = screen.availableGeometry() if screen else self.frameGeometry()
+        frame = self.frameGeometry()
+        frame.moveCenter(bounds.center())
+        top_left = frame.topLeft()
+        if hasattr(bounds, "top"):
+            top_left.setY(max(bounds.top() + 32, top_left.y()))
+        self.move(top_left)
 
     def _set_review_type(self, value):
         for index, (_, data) in enumerate(self.review_type_input._items):

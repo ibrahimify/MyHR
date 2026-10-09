@@ -236,9 +236,9 @@ QComboBox {{
     background: {t.input};
     border: 1px solid transparent;
     border-radius: 8px;
-    padding: 0 30px 0 12px;
+    padding: 0 34px 0 12px;
     min-height: 36px;
-    font-size: 13px;
+    font-size: 14px;
 }}
 QComboBox:focus {{
     border-color: {t.brand};
@@ -249,7 +249,7 @@ QComboBox:hover {{
 QComboBox::drop-down {{
     subcontrol-origin: padding;
     subcontrol-position: top right;
-    width: 28px;
+    width: 30px;
     border: none;
     background: transparent;
 }}

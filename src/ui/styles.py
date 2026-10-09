@@ -324,7 +324,7 @@ QTimeEdit:focus, QDateTimeEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {{
 QComboBox {{
     border: 1px solid transparent;
     border-radius: 8px;
-    padding: 0 32px 0 12px;
+    padding: 0 34px 0 12px;
     font-size: 14px;
     color: {t.text};
     background: {t.input};
@@ -339,7 +339,7 @@ QComboBox:hover {{
     background: {t.hover};
 }}
 QComboBox::drop-down {{
-    width: 28px;
+    width: 30px;
     border: none;
     background: transparent;
 }}
@@ -809,8 +809,8 @@ QComboBoxListView {{
 QAbstractItemView::item,
 QListView::item,
 QComboBoxListView::item {{
-    min-height: 30px;
-    padding: 6px 10px;
+    min-height: 34px;
+    padding: 8px 12px;
     background: {t.surface};
     color: {t.text};
     border-radius: 6px;
