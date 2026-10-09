@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - thesis-final-polish
+      - research/**
+  pull_request:
+    branches:
+      - master
+      - thesis-final-polish
+      - research/**
+
+jobs:
+  test:
+    name: Python tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      QT_QPA_PLATFORM: offscreen
+      PYTHONPATH: ${{ github.workspace }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Compile core modules
+        run: |
+          python -m py_compile main.py
+          python -m py_compile src/ui/icons.py
+          python -m py_compile src/ui/pages/dashboard.py
+          python -m py_compile src/services/anomaly_detection/*.py
+
+      - name: Run stable tests
+        run: |
+          python -m unittest tests.test_ui_component_policy
+          python -m unittest tests.test_anomaly_detection_skeleton
+          python -m unittest tests.test_business_logic
+          python -m unittest tests.test_scale_smoke
