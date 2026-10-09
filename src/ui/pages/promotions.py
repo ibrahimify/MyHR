@@ -98,6 +98,24 @@ def _promotion_evidence_colors(recommendation):
     return tokens().warning_soft, tokens().warning, "fa5s.info-circle"
 
 
+def _sanction_evidence_label(evidence):
+    count = int(evidence.get("active_sanctions") or 0)
+    delay = int(evidence.get("active_sanction_delay_months") or 0)
+    if count <= 0:
+        return "No active sanctions"
+    noun = "sanction" if count == 1 else "sanctions"
+    return f"{count} active {noun} (+{delay} months delay)"
+
+
+def _commendation_evidence_label(evidence):
+    count = int(evidence.get("commendations_in_role") or 0)
+    reduction = int(evidence.get("commendation_reduction") or 0)
+    if count <= 0:
+        return "No commendations applied"
+    noun = "commendation" if count == 1 else "commendations"
+    return f"{count} {noun} (-{reduction} months credit)"
+
+
 class PromotionDecisionDialog(QDialog):
     APPROVE = "approve"
     REVIEW = "review"
@@ -172,8 +190,8 @@ class PromotionDecisionDialog(QDialog):
         evidence_layout.addWidget(heading)
         evidence_layout.addLayout(self._evidence_row("Policy status", "Eligible by race" if self.evidence.get("race_eligible") else "Not eligible by race", "fa5s.route"))
         evidence_layout.addLayout(self._evidence_row("Latest performance", f"{self.evidence.get('latest_score')} · {self.evidence.get('performance_band')}", "fa5s.chart-line"))
-        evidence_layout.addLayout(self._evidence_row("Active sanctions", f"{self.evidence.get('active_sanctions')} · +{self.evidence.get('active_sanction_delay_months')} months", "fa5s.exclamation-triangle"))
-        evidence_layout.addLayout(self._evidence_row("Commendations", f"{self.evidence.get('commendations_in_role')} · -{self.evidence.get('commendation_reduction')} months", "fa5s.award"))
+        evidence_layout.addLayout(self._evidence_row("Active sanctions", _sanction_evidence_label(self.evidence), "fa5s.exclamation-triangle"))
+        evidence_layout.addLayout(self._evidence_row("Commendations", _commendation_evidence_label(self.evidence), "fa5s.award"))
         layout.addWidget(evidence_card)
 
         notices = list(self.evidence.get("warnings") or self.evidence.get("strengths") or [])
