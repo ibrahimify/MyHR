@@ -15,6 +15,7 @@ from src.ui.styles import (
     btn_outline,
     btn_primary,
     card_ss,
+    combo_style,
     input_style,
     message_box_icon_pixmap,
     message_box_ss,
@@ -122,7 +123,7 @@ def INPUT_SS():
 
 
 def COMBO_SS():
-    return input_style(40)
+    return combo_style(42)
 
 
 def MESSAGE_BOX_SS():
@@ -1431,6 +1432,10 @@ class OrgUnitDialog(QDialog):
         title = QLabel(t("edit_organization_unit") if self.unit_id else t("add_organization_unit"))
         title.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {tokens().text};")
         layout.addWidget(title)
+        hint = QLabel("Choose the unit type, parent, and in-charge employee. MyHR keeps the hierarchy order valid.")
+        hint.setWordWrap(True)
+        hint.setStyleSheet(f"font-size: 12px; color: {tokens().text_muted}; background: transparent;")
+        layout.addWidget(hint)
         form = QFormLayout()
         form.setHorizontalSpacing(22)
         form.setVerticalSpacing(14)
@@ -1475,11 +1480,17 @@ class OrgUnitDialog(QDialog):
                 self.parent_combo.setEnabled(False)
         self.type_combo.currentIndexChanged.connect(lambda _: self._load_parents())
         buttons = QHBoxLayout()
+        buttons.setSpacing(10)
         buttons.addStretch()
         cancel = QPushButton(t("cancel"))
+        cancel.setCursor(Qt.PointingHandCursor)
+        cancel.setFixedSize(104, 40)
         cancel.setStyleSheet(_outline_btn())
         cancel.clicked.connect(self.reject)
         save = QPushButton(t("save"))
+        save.setCursor(Qt.PointingHandCursor)
+        save.setFixedSize(124, 40)
+        save.setDefault(True)
         save.setStyleSheet(_primary_btn())
         save.clicked.connect(self._save)
         buttons.addWidget(cancel)

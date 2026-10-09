@@ -11,7 +11,7 @@ import json
 from collections import Counter
 from datetime import datetime, timedelta
 from html import escape
-from PySide6.QtCore import QMarginsF, Qt
+from PySide6.QtCore import QMarginsF, Qt, QSize
 from PySide6.QtGui import QColor, QFont, QPageLayout, QPageSize, QTextDocument
 from PySide6.QtPrintSupport import QPrinter
 from PySide6.QtWidgets import (
@@ -37,6 +37,7 @@ from src.ui.styles import (
     pager_button_ss,
     prepare_table_cell_widget,
     polish_combo_box,
+    scroll_ss,
     sync_table_widget_cells,
     table_style,
     badge_ss,
@@ -273,14 +274,16 @@ class AuditLogPage(QWidget):
         tl.setSpacing(0)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
+        self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([
-            t("timestamp"), t("user"), t("action"), t("target"), t("details"), t("category")
+            t("timestamp"), t("user"), t("action"), t("target"), t("details"), t("category"), t("view")
         ])
         self.table.setStyleSheet(TABLE_SS())
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
+        self.table.horizontalHeader().setSectionResizeMode(6, QHeaderView.Fixed)
         self.table.setColumnWidth(0, 190)
+        self.table.setColumnWidth(6, 82)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
@@ -594,6 +597,7 @@ class AuditLogPage(QWidget):
                 self.table.setItem(row_index, 4, details_item)
 
                 self.table.setCellWidget(row_index, 5, _category_badge(log["category"]))
+                self.table.setCellWidget(row_index, 6, _view_details_cell(lambda _=False, row=row_index: self._open_log_details(row, 0)))
             sync_table_widget_cells(self.table)
         finally:
             self.table.setUpdatesEnabled(True)
@@ -983,14 +987,27 @@ class AuditDetailDialog(QDialog):
     def __init__(self, log, parent=None):
         super().__init__(parent)
         self.setWindowTitle(t("audit_detail_title"))
-        self.setMinimumSize(760, 620)
+        self.setMinimumSize(760, 520)
+        self.resize(940, 760)
         self.setStyleSheet(
             f"QDialog {{ background: {tokens().surface}; color: {tokens().text}; }} "
             "QLabel { background: transparent; }"
         )
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(26, 24, 26, 24)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setStyleSheet(scroll_ss(tokens().surface))
+
+        content = QWidget()
+        content.setStyleSheet(f"background: {tokens().surface};")
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(26, 24, 26, 18)
         layout.setSpacing(16)
 
         header = QHBoxLayout()
@@ -1036,7 +1053,16 @@ class AuditDetailDialog(QDialog):
         changes.addWidget(_snapshot_box(t("after_value"), log["after"]))
         layout.addLayout(changes, 1)
 
-        footer = QHBoxLayout()
+        scroll.setWidget(content)
+        outer.addWidget(scroll, 1)
+
+        footer_frame = QFrame()
+        footer_frame.setStyleSheet(
+            f"QFrame {{ background: {tokens().surface}; border-top: 1px solid {tokens().border}; }}"
+            "QPushButton { margin: 0; }"
+        )
+        footer = QHBoxLayout(footer_frame)
+        footer.setContentsMargins(26, 14, 26, 18)
         footer.addStretch()
         close = QPushButton(t("close"))
         close.setFixedHeight(38)
@@ -1044,7 +1070,7 @@ class AuditDetailDialog(QDialog):
         close.setStyleSheet(btn_outline(38))
         close.clicked.connect(self.accept)
         footer.addWidget(close)
-        layout.addLayout(footer)
+        outer.addWidget(footer_frame)
 
 
 def _detail_line(label, value):
@@ -1551,6 +1577,23 @@ def _category_badge(category):
     badge.setStyleSheet(badge_ss(bg, fg, radius=7, padding="4px 10px", font_size=12, weight=800))
     badge.setToolTip(label)
     layout.addWidget(badge)
+    return cell
+
+
+def _view_details_cell(callback):
+    cell = prepare_table_cell_widget(QWidget())
+    layout = QHBoxLayout(cell)
+    layout.setContentsMargins(8, 8, 8, 8)
+    layout.setAlignment(Qt.AlignCenter)
+    button = QPushButton()
+    button.setToolTip(t("view_details"))
+    button.setIcon(app_icon("fa5s.eye", color=tokens().text_muted, size=13))
+    button.setIconSize(QSize(13, 13))
+    button.setFixedSize(34, 32)
+    button.setCursor(Qt.PointingHandCursor)
+    button.setStyleSheet(btn_outline(32))
+    button.clicked.connect(callback)
+    layout.addWidget(button)
     return cell
 
 

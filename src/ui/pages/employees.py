@@ -2181,10 +2181,22 @@ class PerformanceScoreDialog(QDialog):
         is_editing = score_record is not None
         self.setWindowTitle("Edit Performance Review" if is_editing else "Add Performance Review")
         self.setModal(True)
-        self.setMinimumWidth(560)
+        self.setMinimumWidth(900)
         self.setStyleSheet(f"QDialog {{ background: {_page_bg()}; font-family: 'Segoe UI'; }}" + TOOLTIP_SS)
 
-        layout = QVBoxLayout(self)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setStyleSheet(scroll_ss(_page_bg()))
+
+        content = QWidget()
+        content.setStyleSheet(f"background: {_page_bg()};")
+        layout = QVBoxLayout(content)
         layout.setContentsMargins(24, 22, 24, 22)
         layout.setSpacing(14)
 
@@ -2234,6 +2246,8 @@ class PerformanceScoreDialog(QDialog):
         grid = QGridLayout()
         grid.setHorizontalSpacing(12)
         grid.setVerticalSpacing(10)
+        grid.setColumnStretch(1, 1)
+        grid.setColumnStretch(3, 1)
         fields = [
             ("Review Type", self.review_type_input),
             ("Review Period", self.period_input),
@@ -2294,7 +2308,17 @@ class PerformanceScoreDialog(QDialog):
         self.notes_input.setStyleSheet(INPUT_STYLE())
         layout.addWidget(self.notes_input)
 
-        actions = QHBoxLayout()
+        scroll.setWidget(content)
+        outer.addWidget(scroll, 1)
+
+        footer = QFrame()
+        footer.setStyleSheet(
+            f"QFrame {{ background: {_page_bg()}; border-top: 1px solid {tokens().border}; }}"
+            "QPushButton { margin: 0; }"
+        )
+        actions = QHBoxLayout(footer)
+        actions.setContentsMargins(24, 14, 24, 18)
+        actions.setSpacing(10)
         actions.addStretch()
         cancel = QPushButton(t("cancel"))
         cancel.setCursor(Qt.PointingHandCursor)
@@ -2308,7 +2332,8 @@ class PerformanceScoreDialog(QDialog):
         save.clicked.connect(self.accept)
         actions.addWidget(cancel)
         actions.addWidget(save)
-        layout.addLayout(actions)
+        outer.addWidget(footer)
+        self.resize(900, 820)
 
     def _set_review_type(self, value):
         for index, (_, data) in enumerate(self.review_type_input._items):
