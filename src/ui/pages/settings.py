@@ -2347,19 +2347,121 @@ class DatabaseTab(QWidget):
                 ),
             )
             session.commit()
-            if integrity.lower() == "ok":
-                _information(
-                    self,
-                    t("success"),
-                    t("database_health_ok", employees=employee_count, users=user_count, levels=title_count),
-                )
-            else:
-                _warning(self, t("warning"), t("database_health_warning", result=integrity))
+            DatabaseHealthDialog(
+                integrity=integrity,
+                employees=employee_count,
+                users=user_count,
+                levels=title_count,
+                parent=self,
+            ).exec()
         except Exception as exc:
             session.rollback()
             _critical(self, t("error"), str(exc))
         finally:
             session.close()
+
+
+class DatabaseHealthDialog(QDialog):
+    def __init__(self, integrity, employees, users, levels, parent=None):
+        super().__init__(parent)
+        self.integrity = str(integrity or "").strip()
+        self.employees = employees
+        self.users = users
+        self.levels = levels
+        self.ok = self.integrity.lower() == "ok"
+        self.setWindowTitle(t("database_health_title"))
+        self.setFixedWidth(560)
+        self.setFont(QFont("Segoe UI", 10))
+        self.setStyleSheet(
+            f"QDialog {{ background: {tokens().surface}; color: {tokens().text}; font-family: 'Segoe UI', Arial; }} "
+            "QLabel { background: transparent; border: none; font-family: 'Segoe UI', Arial; }"
+        )
+        self._build()
+
+    def _build(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(28, 26, 28, 24)
+        layout.setSpacing(18)
+
+        header = QHBoxLayout()
+        header.setSpacing(16)
+        status_color = tokens().success if self.ok else tokens().warning
+        status_bg = tokens().success_soft if self.ok else tokens().warning_soft
+        icon = _badge_icon("fa5s.check-circle" if self.ok else "fa5s.exclamation-triangle", status_color, status_bg, 52, 22)
+        header.addWidget(icon, alignment=Qt.AlignTop)
+
+        text = QVBoxLayout()
+        text.setSpacing(5)
+        title = QLabel(t("database_health_passed") if self.ok else t("database_health_needs_attention"))
+        title.setStyleSheet(f"font-size: 22px; font-weight: 900; color: {tokens().text};")
+        subtitle = QLabel(t("database_health_subtitle"))
+        subtitle.setWordWrap(True)
+        subtitle.setStyleSheet(f"font-size: 13px; color: {tokens().text_muted}; line-height: 1.35;")
+        text.addWidget(title)
+        text.addWidget(subtitle)
+        header.addLayout(text, 1)
+        layout.addLayout(header)
+
+        explanation = QFrame()
+        explanation.setStyleSheet(alert_ss("info"))
+        explanation_layout = QVBoxLayout(explanation)
+        explanation_layout.setContentsMargins(16, 14, 16, 14)
+        explanation_layout.setSpacing(8)
+        for line in [
+            t("database_health_checks_integrity"),
+            t("database_health_checks_counts"),
+            t("database_health_checks_audit"),
+        ]:
+            explanation_layout.addWidget(_health_line("fa5s.check", line, tokens().brand))
+        layout.addWidget(explanation)
+
+        metrics = QGridLayout()
+        metrics.setHorizontalSpacing(10)
+        metrics.setVerticalSpacing(10)
+        metrics.addWidget(self._metric(t("database_integrity"), self.integrity.upper() if self.ok else self.integrity, status_color, status_bg), 0, 0)
+        metrics.addWidget(self._metric(t("employees"), str(self.employees), tokens().brand, tokens().selected), 0, 1)
+        metrics.addWidget(self._metric(t("system_users"), str(self.users), tokens().brand, tokens().selected), 1, 0)
+        metrics.addWidget(self._metric(t("levels"), str(self.levels), tokens().brand, tokens().selected), 1, 1)
+        layout.addLayout(metrics)
+
+        footer = QLabel(t("database_health_next_ok") if self.ok else t("database_health_next_warning"))
+        footer.setWordWrap(True)
+        footer.setStyleSheet(
+            f"font-size: 13px; color: {tokens().text_muted}; background: {tokens().surface_muted}; "
+            f"border: 1px solid {tokens().border}; border-radius: 8px; padding: 12px;"
+        )
+        layout.addWidget(footer)
+
+        buttons = QHBoxLayout()
+        buttons.addStretch()
+        close = QPushButton(t("close"))
+        close.setCursor(Qt.PointingHandCursor)
+        close.setFixedSize(120, 42)
+        close.setStyleSheet(_primary_button_ss())
+        close.clicked.connect(self.accept)
+        buttons.addWidget(close)
+        layout.addLayout(buttons)
+
+    def _metric(self, label, value, color, background):
+        card = QFrame()
+        card.setStyleSheet(
+            f"QFrame {{ background: {tokens().surface_raised}; border: 1px solid {tokens().border}; border-radius: 8px; }}"
+            "QLabel { border: none; background: transparent; }"
+        )
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(14, 12, 14, 12)
+        layout.setSpacing(6)
+        label_widget = QLabel(label)
+        label_widget.setStyleSheet(f"font-size: 12px; font-weight: 700; color: {tokens().text_muted};")
+        value_widget = QLabel(value)
+        value_widget.setStyleSheet(
+            f"font-size: 18px; font-weight: 900; color: {color}; background: {background}; "
+            "border-radius: 6px; padding: 6px 8px;"
+        )
+        value_widget.setAlignment(Qt.AlignCenter)
+        layout.addWidget(label_widget)
+        layout.addWidget(value_widget)
+        return card
 
 
 class YearlyReportPreviewDialog(QDialog):
@@ -3010,6 +3112,24 @@ def _badge_icon(icon_name, color, background, size=44, icon_size=20):
     label.setStyleSheet(f"background: {background}; border: none; border-radius: 8px;")
     label.setPixmap(app_pixmap(icon_name, color=color, size=icon_size))
     return label
+
+
+def _health_line(icon_name, text, color):
+    row = QHBoxLayout()
+    row.setSpacing(10)
+    icon = QLabel()
+    icon.setFixedSize(20, 20)
+    icon.setAlignment(Qt.AlignCenter)
+    icon.setPixmap(app_pixmap(icon_name, color=color, size=13))
+    label = QLabel(text)
+    label.setWordWrap(True)
+    label.setStyleSheet(f"font-size: 13px; color: {tokens().text}; background: transparent;")
+    wrapper = QFrame()
+    wrapper.setStyleSheet("background: transparent; border: none;")
+    row.addWidget(icon, alignment=Qt.AlignTop)
+    row.addWidget(label, 1)
+    wrapper.setLayout(row)
+    return wrapper
 
 
 def _titles():
