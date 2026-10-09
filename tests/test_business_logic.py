@@ -199,6 +199,50 @@ class PromotionRaceTests(IsolatedDatabaseTestCase):
         self.assertGreaterEqual(len(sub_race["steps"]), 3)
         self.assertEqual(sub_race["steps"][0]["label"], "Other.1")
 
+    def test_promotion_decision_evidence_clear_when_performance_supports_approval(self):
+        employee = self.make_employee(join_months_ago=40)
+        db.record_performance_score(
+            employee.id,
+            self.admin.id,
+            85,
+            self.session,
+            review_type="promotion",
+            review_period="2026",
+        )
+
+        evidence = db.get_promotion_decision_evidence(employee.id, self.session)
+
+        self.assertTrue(evidence["success"])
+        self.assertTrue(evidence["race_eligible"])
+        self.assertEqual(evidence["latest_score"], "85/100")
+        self.assertEqual(evidence["performance_band"], "Exceeds Expectations")
+        self.assertEqual(evidence["active_sanctions"], 0)
+        self.assertEqual(evidence["recommendation"], "clear")
+        self.assertIn("supports the promotion decision", evidence["strengths"][0])
+
+    def test_promotion_decision_evidence_flags_bad_performance_and_active_sanctions(self):
+        employee = self.make_employee(join_months_ago=50)
+        self.add_sanction(employee, delay_months=2, resolved=False)
+        db.record_performance_score(
+            employee.id,
+            self.admin.id,
+            55,
+            self.session,
+            review_type="promotion",
+            review_period="2026",
+        )
+
+        evidence = db.get_promotion_decision_evidence(employee.id, self.session)
+
+        self.assertTrue(evidence["success"])
+        self.assertTrue(evidence["race_eligible"])
+        self.assertEqual(evidence["performance_band"], "Unsatisfactory")
+        self.assertEqual(evidence["active_sanctions"], 1)
+        self.assertEqual(evidence["active_sanction_delay_months"], 2)
+        self.assertEqual(evidence["recommendation"], "risk_flagged")
+        self.assertTrue(any("below the acceptable" in warning for warning in evidence["warnings"]))
+        self.assertTrue(any("active sanction" in warning for warning in evidence["warnings"]))
+
 
 class SalaryIncrementAndAuditTests(IsolatedDatabaseTestCase):
     def test_increment_due_and_apply_records_history_and_audit_snapshot(self):

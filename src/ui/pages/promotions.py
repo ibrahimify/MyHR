@@ -14,7 +14,8 @@ from sqlalchemy.orm import joinedload
 from src.core.i18n import t
 from src.database.connection import (
     get_session, log_action, calculate_months_remaining,
-    calculate_months_remaining_batch, calculate_sub_race, display_title_name
+    calculate_months_remaining_batch, calculate_sub_race, display_title_name,
+    get_promotion_decision_evidence
 )
 from src.database.models import Employee, Title, PromotionRule, PromotionHistory, SalaryIncrementHistory
 from src.ui.animations import install_tab_transition
@@ -87,6 +88,28 @@ def _info_panel_ss(object_name):
         f"QFrame#{object_name} {{ background: {tokens().selected}; border-radius: 8px; border: 1px solid {tokens().brand}; }}"
         f"QFrame#{object_name} QLabel {{ background: transparent; border: none; }}"
     )
+
+
+def _promotion_evidence_text(evidence):
+    if not evidence or not evidence.get("success"):
+        return "Decision evidence: unavailable"
+    lines = [
+        "Decision evidence",
+        f"- Policy status: {'Eligible by race' if evidence.get('race_eligible') else 'Not eligible by race'}",
+        f"- Latest performance: {evidence.get('latest_score')} ({evidence.get('performance_band')})",
+        f"- Active sanctions: {evidence.get('active_sanctions')} (+{evidence.get('active_sanction_delay_months')} months)",
+        f"- Commendations in current role: {evidence.get('commendations_in_role')} (-{evidence.get('commendation_reduction')} months)",
+        f"- Recommendation: {evidence.get('recommendation_label')}",
+    ]
+    warnings = evidence.get("warnings") or []
+    strengths = evidence.get("strengths") or []
+    if warnings:
+        lines.append("Warnings:")
+        lines.extend(f"- {warning}" for warning in warnings)
+    if strengths:
+        lines.append("Supporting evidence:")
+        lines.extend(f"- {strength}" for strength in strengths)
+    return "\n".join(lines)
 
 
 class PromotionsPage(QWidget):
@@ -545,21 +568,23 @@ class EligibleTab(QWidget):
                 return
             sub_race = calculate_sub_race(emp, session)
             next_title = session.query(Title).filter_by(id=race["next_title_id"]).first()
+            evidence = get_promotion_decision_evidence(employee_id, session)
             old_title  = emp.title
             salary_before = emp.base_salary
             salary_pct = next_title.promotion_salary_increase_pct if next_title else 0
             salary_after = round(salary_before * (1 + salary_pct / 100), 2)
+            confirmation_body = t(
+                "confirm_promotion_body",
+                name=emp.full_name,
+                from_level=old_title.name,
+                to_level=next_title.name,
+                salary_pct=f"{salary_pct:.1f}",
+                salary_before=f"EUR {salary_before:,.2f}",
+                salary_after=f"EUR {salary_after:,.2f}",
+            )
             confirm = _question(
                 self, t("confirm_promotion"),
-                t(
-                    "confirm_promotion_body",
-                    name=emp.full_name,
-                    from_level=old_title.name,
-                    to_level=next_title.name,
-                    salary_pct=f"{salary_pct:.1f}",
-                    salary_before=f"EUR {salary_before:,.2f}",
-                    salary_after=f"EUR {salary_after:,.2f}",
-                ),
+                f"{confirmation_body}\n\n{_promotion_evidence_text(evidence)}",
             )
             if confirm != QMessageBox.Yes:
                 return

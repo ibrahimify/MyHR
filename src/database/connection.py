@@ -889,6 +889,87 @@ def performance_score_band(score: float, max_score: float = 100.0) -> str:
     return "Unsatisfactory"
 
 
+def get_promotion_decision_evidence(employee_id: int, session: Session) -> dict:
+    """
+    Return review evidence for a manual promotion decision.
+    Eligibility is still decided by promotion policy; this flags HR review risks.
+    """
+    employee = session.query(Employee).filter_by(id=employee_id).first()
+    if not employee:
+        return {"success": False, "error": "Employee not found"}
+
+    race = calculate_months_remaining(employee, session)
+    latest_score = get_latest_performance_score(employee_id, session)
+    active_sanctions = (
+        session.query(Sanction)
+        .filter(
+            Sanction.employee_id == employee_id,
+            Sanction.is_resolved == False,
+        )
+        .order_by(Sanction.issued_at.desc(), Sanction.id.desc())
+        .all()
+    )
+    commendation_count = count_commendations_in_current_role(employee, session)
+
+    performance_pct = None
+    performance_band = "Not Rated"
+    latest_score_text = "No review recorded"
+    if latest_score:
+        performance_pct = round((latest_score.score / latest_score.max_score) * 100, 1) if latest_score.max_score else None
+        performance_band = performance_score_band(latest_score.score, latest_score.max_score)
+        latest_score_text = f"{latest_score.score:g}/{latest_score.max_score:g}"
+
+    warnings = []
+    strengths = []
+    if not race.get("eligible"):
+        warnings.append("Promotion race is not complete.")
+    if latest_score is None:
+        warnings.append("No performance review is recorded.")
+    elif performance_pct is not None and performance_pct < 60:
+        warnings.append("Latest performance review is below the acceptable band.")
+    elif performance_pct is not None and performance_pct < 70:
+        warnings.append("Latest performance review needs improvement.")
+    elif performance_pct is not None and performance_pct >= 80:
+        strengths.append("Latest performance review supports the promotion decision.")
+
+    if active_sanctions:
+        warnings.append(f"{len(active_sanctions)} active sanction(s) require HR review.")
+    if commendation_count:
+        strengths.append(f"{commendation_count} commendation(s) support the employee record.")
+
+    if any("below the acceptable" in warning for warning in warnings) or active_sanctions:
+        recommendation = "risk_flagged"
+        recommendation_label = "Manual review required"
+    elif warnings:
+        recommendation = "review_recommended"
+        recommendation_label = "Review recommended"
+    else:
+        recommendation = "clear"
+        recommendation_label = "Clear to approve"
+
+    return {
+        "success": True,
+        "employee_id": employee.employee_id,
+        "employee_name": employee.full_name,
+        "race_eligible": bool(race.get("eligible")),
+        "months_remaining": race.get("months_remaining"),
+        "months_elapsed": race.get("months_elapsed"),
+        "base_months": race.get("base_months"),
+        "commendation_reduction": race.get("commendation_reduction", 0),
+        "sanction_addition": race.get("sanction_addition", 0),
+        "latest_score": latest_score_text,
+        "latest_score_pct": performance_pct,
+        "performance_band": performance_band,
+        "active_sanctions": len(active_sanctions),
+        "active_sanction_delay_months": sum(s.delay_months for s in active_sanctions),
+        "commendations_in_role": commendation_count,
+        "recommendation": recommendation,
+        "recommendation_label": recommendation_label,
+        "warnings": warnings,
+        "strengths": strengths,
+    }
+
+
 PERFORMANCE_RUBRIC_WEIGHTS = {
     "goal_score": 0.40,
     "competency_score": 0.30,
