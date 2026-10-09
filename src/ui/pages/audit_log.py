@@ -29,14 +29,12 @@ from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
     btn_outline,
     card_ss,
-    combo_style,
     enable_table_row_selection,
     input_style,
     message_box_icon_pixmap,
     message_box_ss,
     pager_button_ss,
     prepare_table_cell_widget,
-    polish_combo_box,
     scroll_ss,
     sync_table_widget_cells,
     table_style,
@@ -123,9 +121,6 @@ def CARD_SS():
 def INPUT_SS():
     return input_style(40)
 
-
-def COMBO_SS():
-    return combo_style(40)
 
 def TABLE_SS():
     return table_style()
@@ -1579,7 +1574,6 @@ def _category_badge(category):
     layout.addWidget(badge)
     return cell
 
-
 def _view_details_cell(callback):
     cell = prepare_table_cell_widget(QWidget())
     layout = QHBoxLayout(cell)
@@ -1595,7 +1589,3 @@ def _view_details_cell(callback):
     button.clicked.connect(callback)
     layout.addWidget(button)
     return cell
-
-
-def _polish_combo(combo):
-    polish_combo_box(combo)

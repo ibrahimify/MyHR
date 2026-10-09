@@ -58,10 +58,10 @@ class AppSelect(QWidget):
         self.popup_opacity.setOpacity(1)
         self.popup.setGraphicsEffect(self.popup_opacity)
         self.popup_pos_animation = QPropertyAnimation(self.popup, b"pos", self)
-        self.popup_pos_animation.setDuration(120)
+        self.popup_pos_animation.setDuration(140)
         self.popup_pos_animation.setEasingCurve(QEasingCurve.OutCubic)
         self.popup_opacity_animation = QPropertyAnimation(self.popup_opacity, b"opacity", self)
-        self.popup_opacity_animation.setDuration(100)
+        self.popup_opacity_animation.setDuration(120)
         self.popup_opacity_animation.setEasingCurve(QEasingCurve.OutCubic)
 
         popup_layout = QVBoxLayout(self.popup)

@@ -555,157 +555,18 @@ class PerformanceTrendWidget(QWidget):
             painter.drawText(QRectF(point.x() - 45, rect.bottom() + 10, 90, 18), Qt.AlignCenter, label)
 
 
-class CleanSelect(QWidget):
-    currentIndexChanged = Signal(int)
+class CleanSelect(AppSelect):
     currentTextChanged = Signal(str)
     valueChanged = Signal(object)
 
     def __init__(self):
-        super().__init__()
-        self._items = []
-        self._current_index = -1
-        self.setFixedHeight(44)
+        super().__init__(height=44, max_visible_items=8)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.currentIndexChanged.connect(self._emit_compat_signals)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        self.trigger = QFrame()
-        self.trigger.setCursor(Qt.PointingHandCursor)
-        self.trigger.setFixedHeight(44)
-
-        trigger_layout = QHBoxLayout(self.trigger)
-        trigger_layout.setContentsMargins(12, 0, 12, 0)
-        trigger_layout.setSpacing(8)
-
-        self.label = QLabel("")
-        self.arrow = QLabel()
-        self.arrow.setFixedSize(16, 16)
-        self.arrow.setAlignment(Qt.AlignCenter)
-
-        trigger_layout.addWidget(self.label, 1)
-        trigger_layout.addWidget(self.arrow)
-        layout.addWidget(self.trigger)
-
-        self.popup = QFrame()
-        self.popup.hide()
-        self.popup.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint)
-        self.popup.setAttribute(Qt.WA_TranslucentBackground, True)
-        popup_layout = QVBoxLayout(self.popup)
-        popup_layout.setContentsMargins(0, 0, 0, 0)
-
-        self.popup_box = QFrame()
-        box_layout = QVBoxLayout(self.popup_box)
-        box_layout.setContentsMargins(4, 4, 4, 4)
-
-        self.list_widget = QListWidget()
-        self.list_widget.setFrameShape(QFrame.NoFrame)
-        self.list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.list_widget.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.apply_theme()
-        box_layout.addWidget(self.list_widget)
-        popup_layout.addWidget(self.popup_box)
-
-        self.trigger.mousePressEvent = self._toggle_popup
-        self.list_widget.itemClicked.connect(self._select_item)
-
-    def apply_theme(self):
-        tkn = tokens()
-        self.trigger.setStyleSheet(f"""
-            QFrame {{
-                background: {tkn.input};
-                border: 1px solid {tkn.border};
-                border-radius: 8px;
-            }}
-            QFrame:hover {{ background: {tkn.hover}; }}
-        """)
-        self.label.setStyleSheet(f"font-size: 14px; color: {tkn.text}; background: transparent; border: none;")
-        self.arrow.setPixmap(app_pixmap("fa5s.chevron-down", color=tkn.text_muted, size=12))
-        self.popup_box.setStyleSheet(f"""
-            QFrame {{
-                background: {tkn.surface};
-                border: 1px solid {tkn.border_strong};
-                border-radius: 8px;
-            }}
-        """)
-        self.list_widget.setStyleSheet(f"""
-            QListWidget {{
-                background: transparent;
-                border: none;
-                outline: none;
-            }}
-            QListWidget::item {{
-                padding: 8px 12px;
-                border-radius: 6px;
-                color: {tkn.text};
-                font-size: 14px;
-            }}
-            QListWidget::item:hover {{ background: {tkn.hover}; }}
-            QListWidget::item:selected {{
-                background: {tkn.selected};
-                color: {tkn.brand};
-            }}
-        """)
-
-    def addItem(self, label, value=None):
-        self._items.append((label, value))
-        item = QListWidgetItem(label)
-        item.setData(Qt.UserRole, value)
-        item.setSizeHint(QSize(0, 34))
-        self.list_widget.addItem(item)
-        self._resize_popup()
-        if self._current_index == -1:
-            self.setCurrentIndex(0)
-
-    def clear(self):
-        self._items.clear()
-        self._current_index = -1
-        self.label.setText("")
-        self.list_widget.clear()
-        self._resize_popup()
-
-    def currentData(self):
-        if 0 <= self._current_index < len(self._items):
-            return self._items[self._current_index][1]
-        return None
-
-    def currentText(self):
-        if 0 <= self._current_index < len(self._items):
-            return self._items[self._current_index][0]
-        return ""
-
-    def count(self):
-        return len(self._items)
-
-    def setCurrentIndex(self, index):
-        if not 0 <= index < len(self._items):
-            return
-        self._current_index = index
-        text, value = self._items[index]
-        self.label.setText(text)
-        self.list_widget.setCurrentRow(index)
-        if not self.signalsBlocked():
-            self.currentIndexChanged.emit(index)
-            self.currentTextChanged.emit(text)
-            self.valueChanged.emit(value)
-
-    def _resize_popup(self):
-        visible_items = min(max(self.list_widget.count(), 1), 8)
-        self.list_widget.setFixedHeight((34 * visible_items) + 2)
-
-    def _toggle_popup(self, event):
-        if self.popup.isVisible():
-            self.popup.hide()
-            return
-        pos = self.mapToGlobal(self.rect().bottomLeft())
-        self.popup.setFixedWidth(self.width())
-        self.popup.move(pos.x(), pos.y() + 4)
-        self.popup.show()
-
-    def _select_item(self, item):
-        self.setCurrentIndex(self.list_widget.row(item))
-        self.popup.hide()
+    def _emit_compat_signals(self, _index):
+        self.currentTextChanged.emit(self.currentText())
+        self.valueChanged.emit(self.currentData())
 
 
 class ChevronDateEdit(QDateEdit):
