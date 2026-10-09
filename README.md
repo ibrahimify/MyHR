@@ -96,7 +96,8 @@ documented in `docs/UI_RULES.md` and guarded by `tests/test_ui_component_policy.
 
 Before packaging or a formal demo, use `docs/QA_CHECKLIST.md` as the manual
 go/no-go checklist. Architectural follow-up items are tracked in
-`docs/ARCHITECTURE_ROADMAP.md`.
+`docs/ARCHITECTURE_ROADMAP.md`. SaaS launch-audit insights are converted into
+project-specific actions in `docs/LAUNCH_AUDIT_ACTIONS.md`.
 
 Latest verification before this README update:
 
@@ -351,6 +352,7 @@ Avoid `git reset --hard` unless you are completely sure you want to discard loca
 | UI Rules | `docs/UI_RULES.md` |
 | QA Checklist | `docs/QA_CHECKLIST.md` |
 | Architecture Roadmap | `docs/ARCHITECTURE_ROADMAP.md` |
+| Launch Audit Actions | `docs/LAUNCH_AUDIT_ACTIONS.md` |
 | Thesis Completion Plan | `docs/THESIS_COMPLETION_PLAN.md` |
 | UI Mockup | `MockUI/` |
 | Demo Dataset Script | `scripts/seed_demo_company.py` |
