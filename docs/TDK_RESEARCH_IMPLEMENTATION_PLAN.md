@@ -67,7 +67,7 @@ No research claim may be written into the paper unless it is supported by a repr
 ## Implementation Order
 
 1. Add CI and research package skeleton.
-2. Define synthetic data contract and anomaly taxonomy.
+2. Define synthetic data contract and anomaly taxonomy. See `docs/TDK_SYNTHETIC_DATA_CONTRACT.md`.
 3. Implement deterministic checks.
 4. Implement raw and policy-aware feature extraction.
 5. Add statistical baselines.

@@ -1,7 +1,20 @@
 import unittest
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
-from src.services.anomaly_detection import ExperimentConfig, PromotionPolicy, confusion_counts, split_indices
+from src.services.anomaly_detection import (
+    AdministrativeEvent,
+    AdministrativeEventType,
+    AnomalyType,
+    DatasetSplit,
+    EmployeeIdentity,
+    EmploymentTrack,
+    ExperimentConfig,
+    PromotionPolicy,
+    WorkforceHistoryRecord,
+    anomaly_taxonomy,
+    confusion_counts,
+    split_indices,
+)
 from src.services.anomaly_detection.deterministic_checks import date_is_not_after, has_duplicate_identifier
 from src.services.anomaly_detection.duplicate_detection import normalized_similarity
 from src.services.anomaly_detection.experiment_runner import describe_experiment
@@ -72,6 +85,75 @@ class AnomalyDetectionSkeletonTests(unittest.TestCase):
 
     def test_declares_raw_and_policy_aware_feature_sets(self):
         self.assertEqual(supported_feature_sets(), ("raw", "policy_aware"))
+
+    def test_anomaly_taxonomy_documents_clean_errors_and_rare_legitimate_cases(self):
+        taxonomy = anomaly_taxonomy()
+        anomaly_types = {entry.anomaly_type for entry in taxonomy}
+
+        self.assertIn(AnomalyType.CLEAN, anomaly_types)
+        self.assertIn(AnomalyType.INCONSISTENT_DATES, anomaly_types)
+        self.assertIn(AnomalyType.FREQUENT_PROMOTIONS, anomaly_types)
+        self.assertIn(AnomalyType.EXCESSIVE_SANCTIONS, anomaly_types)
+        self.assertIn(AnomalyType.DUPLICATE_RECORD, anomaly_types)
+        self.assertIn(AnomalyType.UNUSUAL_ADMIN_INTERVAL, anomaly_types)
+        self.assertIn(AnomalyType.POLICY_LEGITIMATE_RARE_CASE, anomaly_types)
+
+        rare_case = next(entry for entry in taxonomy if entry.anomaly_type is AnomalyType.POLICY_LEGITIMATE_RARE_CASE)
+        self.assertFalse(rare_case.ground_truth_label)
+        self.assertIn("policy-aware", rare_case.expected_signal)
+
+    def test_workforce_history_record_marks_legitimate_rare_case_as_non_anomalous(self):
+        record = WorkforceHistoryRecord(
+            identity=EmployeeIdentity(
+                employee_id="EMP-1052",
+                full_name="Ibrahim Shoeb",
+                date_of_birth=date(1985, 3, 12),
+            ),
+            split=DatasetSplit.TEST,
+            employment_track=EmploymentTrack.PROMOTION,
+            current_level="L5",
+            department="Engineering",
+            role="Software Engineer",
+            hire_date=date(2020, 1, 1),
+            events=(
+                AdministrativeEvent(
+                    event_type=AdministrativeEventType.COMMENDATION,
+                    event_date=date(2023, 6, 1),
+                    source_id="COM-1",
+                    category=2,
+                ),
+            ),
+            anomaly_labels=(AnomalyType.POLICY_LEGITIMATE_RARE_CASE,),
+        )
+
+        self.assertFalse(record.has_anomaly)
+
+    def test_workforce_history_record_marks_injected_error_as_anomalous(self):
+        record = WorkforceHistoryRecord(
+            identity=EmployeeIdentity(
+                employee_id="EMP-1258",
+                full_name="Ibrahim",
+                date_of_birth=date(1985, 3, 12),
+            ),
+            split=DatasetSplit.VALIDATION,
+            employment_track=EmploymentTrack.PROMOTION,
+            current_level="L6",
+            department="Operations",
+            role="Officer",
+            hire_date=date(2024, 1, 1),
+            events=(
+                AdministrativeEvent(
+                    event_type=AdministrativeEventType.PROMOTION,
+                    event_date=date(2023, 1, 1),
+                    source_id="PROM-1",
+                    level_before="L7",
+                    level_after="L6",
+                ),
+            ),
+            anomaly_labels=(AnomalyType.INCONSISTENT_DATES,),
+        )
+
+        self.assertTrue(record.has_anomaly)
 
 
 if __name__ == "__main__":

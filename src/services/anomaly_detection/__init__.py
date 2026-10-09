@@ -7,12 +7,33 @@ checks, baselines, model experiments, duplicate detection, and metrics.
 
 from .metrics import BinaryClassificationMetrics, confusion_counts
 from .policy_model import PromotionPolicy
-from .synthetic_data import ExperimentConfig, split_indices
+from .synthetic_data import (
+    AdministrativeEvent,
+    AdministrativeEventType,
+    AnomalyDefinition,
+    AnomalyType,
+    DatasetSplit,
+    EmployeeIdentity,
+    EmploymentTrack,
+    ExperimentConfig,
+    WorkforceHistoryRecord,
+    anomaly_taxonomy,
+    split_indices,
+)
 
 __all__ = [
+    "AdministrativeEvent",
+    "AdministrativeEventType",
+    "AnomalyDefinition",
+    "AnomalyType",
     "BinaryClassificationMetrics",
+    "DatasetSplit",
+    "EmployeeIdentity",
+    "EmploymentTrack",
     "ExperimentConfig",
     "PromotionPolicy",
+    "WorkforceHistoryRecord",
+    "anomaly_taxonomy",
     "confusion_counts",
     "split_indices",
 ]
