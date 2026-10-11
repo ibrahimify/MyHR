@@ -84,7 +84,7 @@ The first statistical baselines are intentionally simple:
 
 These baselines are not expected to be the strongest possible methods. They provide transparent comparison points before Isolation Forest is evaluated.
 
-Isolation Forest is represented by an explicit experiment boundary. The code can run the model when scikit-learn is installed, but scikit-learn is not yet added to the application dependency list. This keeps the research dependency decision separate from the packaged desktop application.
+Isolation Forest is represented by an explicit experiment boundary. Research dependencies are listed in `requirements-research.txt`, while desktop runtime dependencies remain in `requirements.txt`. This keeps the research environment reproducible without automatically increasing the packaged desktop application's dependency footprint.
 
 Every method evaluation must report:
 

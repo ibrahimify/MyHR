@@ -68,6 +68,13 @@ pip install -r requirements.txt
 python main.py
 ```
 
+Research experiments use a separate dependency file so the packaged desktop app
+does not automatically inherit ML and plotting libraries:
+
+```bash
+pip install -r requirements.txt -r requirements-research.txt
+```
+
 Default credentials:
 
 | Role | Username | Password |
@@ -355,6 +362,7 @@ Avoid `git reset --hard` unless you are completely sure you want to discard loca
 | Launch Audit Actions | `docs/LAUNCH_AUDIT_ACTIONS.md` |
 | Thesis Completion Plan | `docs/THESIS_COMPLETION_PLAN.md` |
 | TDK Synthetic Data Contract | `docs/TDK_SYNTHETIC_DATA_CONTRACT.md` |
+| TDK Research Verification | `docs/TDK_RESEARCH_VERIFICATION.md` |
 | UI Mockup | `MockUI/` |
 | Demo Dataset Script | `scripts/seed_demo_company.py` |
 

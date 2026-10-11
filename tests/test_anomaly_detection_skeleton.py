@@ -211,6 +211,15 @@ class AnomalyDetectionSkeletonTests(unittest.TestCase):
         source_ids = {record.identity.employee_id for record in dataset.records}
         self.assertTrue(all(record.duplicate_of_employee_id in source_ids for record in duplicates))
 
+    def test_synthetic_dataset_spreads_labels_across_splits_when_possible(self):
+        config = ExperimentConfig(seed=2026, employee_count=120, anomaly_rate=0.10, rare_legitimate_rate=0.05)
+        dataset = generate_synthetic_dataset(config)
+
+        for split in DatasetSplit:
+            split_records = [record for record in dataset.records if record.split is split]
+            self.assertTrue(any(record.has_anomaly for record in split_records))
+            self.assertTrue(any(AnomalyType.POLICY_LEGITIMATE_RARE_CASE in record.anomaly_labels for record in split_records))
+
     def test_deterministic_validation_explains_inconsistent_dates(self):
         record = WorkforceHistoryRecord(
             identity=EmployeeIdentity(

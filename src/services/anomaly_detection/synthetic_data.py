@@ -6,6 +6,7 @@ from datetime import date
 from enum import Enum
 from hashlib import sha256
 from random import Random
+from typing import Callable
 
 
 class DatasetSplit(str, Enum):
@@ -275,7 +276,7 @@ def generate_synthetic_dataset(config: ExperimentConfig) -> SyntheticDataset:
     config.validate()
     rng = seeded_random(config)
     split_by_index = _split_by_index(config.employee_count, config)
-    label_plan = _label_plan(config, rng)
+    label_plan = _label_plan(config, rng, split_by_index)
 
     records: list[WorkforceHistoryRecord] = []
     for index in range(config.employee_count):
@@ -315,7 +316,11 @@ def _split_by_index(count: int, config: ExperimentConfig) -> dict[int, DatasetSp
     return by_index
 
 
-def _label_plan(config: ExperimentConfig, rng: Random) -> dict[int, AnomalyType]:
+def _label_plan(
+    config: ExperimentConfig,
+    rng: Random,
+    split_by_index: dict[int, DatasetSplit],
+) -> dict[int, AnomalyType]:
     plan = {index: AnomalyType.CLEAN for index in range(config.employee_count)}
     indices = list(range(config.employee_count))
     rng.shuffle(indices)
@@ -338,7 +343,59 @@ def _label_plan(config: ExperimentConfig, rng: Random) -> dict[int, AnomalyType]
     rare_start = anomaly_count
     for index in indices[rare_start:rare_start + rare_count]:
         plan[index] = AnomalyType.POLICY_LEGITIMATE_RARE_CASE
+    if anomaly_count >= len(DatasetSplit):
+        _spread_label_group_across_splits(plan, split_by_index, _is_true_anomaly)
+    if rare_count >= len(DatasetSplit):
+        _spread_label_group_across_splits(
+            plan,
+            split_by_index,
+            lambda label: label is AnomalyType.POLICY_LEGITIMATE_RARE_CASE,
+        )
     return plan
+
+
+def _spread_label_group_across_splits(
+    plan: dict[int, AnomalyType],
+    split_by_index: dict[int, DatasetSplit],
+    predicate: Callable[[AnomalyType], bool],
+) -> None:
+    for split in DatasetSplit:
+        split_indices_for_label = [
+            index for index, label in plan.items()
+            if split_by_index[index] is split and predicate(label)
+        ]
+        if split_indices_for_label:
+            continue
+
+        target_indices = [
+            index for index, label in plan.items()
+            if split_by_index[index] is split and label is AnomalyType.CLEAN
+        ]
+        source_indices = [
+            index for index, label in plan.items()
+            if predicate(label)
+            and _count_labels_in_split(plan, split_by_index, split_by_index[index], predicate) > 1
+        ]
+        if target_indices and source_indices:
+            target_index = min(target_indices)
+            source_index = min(source_indices)
+            plan[target_index], plan[source_index] = plan[source_index], plan[target_index]
+
+
+def _is_true_anomaly(label: AnomalyType) -> bool:
+    return label not in (AnomalyType.CLEAN, AnomalyType.POLICY_LEGITIMATE_RARE_CASE)
+
+
+def _count_labels_in_split(
+    plan: dict[int, AnomalyType],
+    split_by_index: dict[int, DatasetSplit],
+    split: DatasetSplit,
+    predicate: Callable[[AnomalyType], bool],
+) -> int:
+    return sum(
+        1 for index, label in plan.items()
+        if split_by_index[index] is split and predicate(label)
+    )
 
 
 def _base_record(index: int, split: DatasetSplit, rng: Random) -> WorkforceHistoryRecord:
