@@ -363,6 +363,7 @@ Avoid `git reset --hard` unless you are completely sure you want to discard loca
 | Thesis Completion Plan | `docs/THESIS_COMPLETION_PLAN.md` |
 | TDK Synthetic Data Contract | `docs/TDK_SYNTHETIC_DATA_CONTRACT.md` |
 | TDK Research Verification | `docs/TDK_RESEARCH_VERIFICATION.md` |
+| Licensing And IP Note | `docs/LICENSING_AND_IP.md` |
 | UI Mockup | `MockUI/` |
 | Demo Dataset Script | `scripts/seed_demo_company.py` |
 
@@ -371,6 +372,23 @@ are intentionally ignored by Git until they are cleaned for public release.
 
 ---
 
+## Repository Governance
+
+- Security policy: `SECURITY.md`
+- Contribution guide: `CONTRIBUTING.md`
+- Code of conduct: `CODE_OF_CONDUCT.md`
+- Support notes: `SUPPORT.md`
+- Citation metadata: `CITATION.cff`
+- Issue and pull request templates: `.github/`
+- Dependency monitoring: `.github/dependabot.yml`
+
+No permissive open-source license is added yet. See `docs/LICENSING_AND_IP.md`
+before choosing MIT, Apache-2.0, GPL, proprietary, or another licensing path.
+
+---
+
 ## License
 
 Academic project for Budapest University of Technology and Economics, 2025-2026.
+
+License decision pending; see `docs/LICENSING_AND_IP.md`.
