@@ -14,6 +14,9 @@ from src.services.anomaly_detection import (
     WorkforceHistoryRecord,
     anomaly_taxonomy,
     confusion_counts,
+    extract_features,
+    extract_policy_aware_features,
+    extract_raw_features,
     generate_synthetic_dataset,
     serialize_dataset,
     split_indices,
@@ -250,6 +253,45 @@ class AnomalyDetectionSkeletonTests(unittest.TestCase):
         findings = validate_dataset(dataset)
 
         self.assertEqual(findings, ())
+
+    def test_raw_features_capture_policy_agnostic_counts_and_intervals(self):
+        config = ExperimentConfig(seed=2026, employee_count=80, anomaly_rate=0.15, rare_legitimate_rate=0.02)
+        dataset = generate_synthetic_dataset(config)
+        record = next(record for record in dataset.records if AnomalyType.FREQUENT_PROMOTIONS in record.anomaly_labels)
+
+        features = extract_raw_features(record)
+
+        self.assertEqual(features.feature_set, "raw")
+        self.assertEqual(features.values["employment_track_is_promotion"], 1.0)
+        self.assertGreaterEqual(features.values["promotion_count"], 2.0)
+        self.assertLess(features.values["min_promotion_interval_months"], 12.0)
+
+    def test_policy_aware_features_explain_rare_legitimate_promotion_case(self):
+        config = ExperimentConfig(seed=2026, employee_count=80, anomaly_rate=0.15, rare_legitimate_rate=0.02)
+        dataset = generate_synthetic_dataset(config)
+        record = next(record for record in dataset.records if AnomalyType.POLICY_LEGITIMATE_RARE_CASE in record.anomaly_labels)
+
+        raw = extract_raw_features(record)
+        policy_aware = extract_policy_aware_features(record)
+
+        self.assertEqual(policy_aware.feature_set, "policy_aware")
+        self.assertLess(
+            policy_aware.values["latest_promotion_observed_service_months"],
+            policy_aware.values["latest_promotion_required_service_months"],
+        )
+        self.assertGreater(policy_aware.values["policy_commendation_credit_months"], 0.0)
+        self.assertEqual(policy_aware.values["policy_service_deficit_months"], 0.0)
+        self.assertEqual(policy_aware.values["policy_explains_short_promotion"], 1.0)
+        self.assertEqual(raw.values["has_duplicate_source"], 0.0)
+
+    def test_feature_dispatch_rejects_unknown_feature_sets(self):
+        config = ExperimentConfig(seed=5, employee_count=5, anomaly_rate=0.0, rare_legitimate_rate=0.0)
+        record = generate_synthetic_dataset(config).records[0]
+
+        self.assertEqual(extract_features(record, "raw").feature_set, "raw")
+        self.assertEqual(extract_features(record, "policy_aware").feature_set, "policy_aware")
+        with self.assertRaises(ValueError):
+            extract_features(record, "made_up")
 
 
 if __name__ == "__main__":

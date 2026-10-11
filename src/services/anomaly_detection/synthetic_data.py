@@ -535,6 +535,10 @@ def _apply_label(
             )
         )
     elif label is AnomalyType.POLICY_LEGITIMATE_RARE_CASE:
+        events = [
+            event for event in events
+            if event.event_type is not AdministrativeEventType.PROMOTION
+        ]
         events.extend(
             (
                 AdministrativeEvent(
@@ -543,6 +547,13 @@ def _apply_label(
                     source_id=f"RARE-COM-{employee_id}",
                     category=3,
                     note="Rare legitimate case: high commendation credit",
+                ),
+                AdministrativeEvent(
+                    event_type=AdministrativeEventType.COMMENDATION,
+                    event_date=_safe_date(record.hire_date.year + 1, min(record.hire_date.month + 6, 12), record.hire_date.day),
+                    source_id=f"RARE-COM-2-{employee_id}",
+                    category=3,
+                    note="Rare legitimate case: second valid commendation credit",
                 ),
                 AdministrativeEvent(
                     event_type=AdministrativeEventType.PROMOTION,

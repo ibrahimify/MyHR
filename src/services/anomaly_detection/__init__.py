@@ -25,6 +25,13 @@ from .synthetic_data import (
     split_indices,
 )
 from .deterministic_checks import ValidationFinding, ValidationSeverity, summarize_findings, validate_dataset, validate_record
+from .features import (
+    FeatureVector,
+    extract_features,
+    extract_policy_aware_features,
+    extract_raw_features,
+    supported_feature_sets,
+)
 
 __all__ = [
     "AdministrativeEvent",
@@ -36,6 +43,7 @@ __all__ = [
     "EmployeeIdentity",
     "EmploymentTrack",
     "ExperimentConfig",
+    "FeatureVector",
     "PromotionPolicy",
     "SyntheticDataset",
     "SyntheticDatasetMetadata",
@@ -44,9 +52,13 @@ __all__ = [
     "WorkforceHistoryRecord",
     "anomaly_taxonomy",
     "confusion_counts",
+    "extract_features",
+    "extract_policy_aware_features",
+    "extract_raw_features",
     "generate_synthetic_dataset",
     "serialize_dataset",
     "summarize_findings",
+    "supported_feature_sets",
     "split_indices",
     "validate_dataset",
     "validate_record",
