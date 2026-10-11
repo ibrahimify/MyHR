@@ -73,3 +73,23 @@ This creates a run-specific folder under `research_outputs/<run_id>/` containing
 - `README.md`: short explanation of the run.
 
 The `research_outputs/` folder is ignored by Git by default. Commit or archive selected outputs only after they are reviewed and intentionally chosen for the paper.
+
+## Multi-Seed Stability Check
+
+Run several seeds and aggregate the results:
+
+```bash
+python scripts/run_tdk_research_multiseed.py --seeds 2026,2027,2028,2029,2030 --employee-count 1000
+```
+
+This creates a folder under `research_outputs/multi_seed/` containing:
+
+- `per_seed_method_metrics.csv`;
+- `aggregate_method_metrics.csv`;
+- `per_seed_duplicate_metrics.csv`;
+- `aggregate_duplicate_metrics.csv`;
+- `method_comparisons.csv`.
+
+Use `method_comparisons.csv` to check whether policy-aware features consistently improve over raw features across seeds. A single seed is not enough for a strong TDK claim.
+
+Small employee counts are useful for checking that the pipeline runs. Final paper evidence should use larger datasets and reviewed seeds because small test splits make precision and recall unstable.

@@ -75,4 +75,5 @@ No research claim may be written into the paper unless it is supported by a repr
 7. Add Isolation Forest experiments after approving the research dependency boundary.
 8. Add duplicate detection experiment as a secondary comparison with exact, normalized exact, and similarity methods.
 9. Generate reproducible result artifacts for paper tables and later plots.
-10. Draft methodology and results sections from actual outputs.
+10. Run multi-seed stability checks and aggregate mean/std results.
+11. Draft methodology and results sections from actual outputs.
