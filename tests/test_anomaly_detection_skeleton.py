@@ -10,12 +10,16 @@ from src.services.anomaly_detection import (
     EmploymentTrack,
     ExperimentConfig,
     PromotionPolicy,
+    ValidationSeverity,
     WorkforceHistoryRecord,
     anomaly_taxonomy,
     confusion_counts,
     generate_synthetic_dataset,
     serialize_dataset,
     split_indices,
+    summarize_findings,
+    validate_dataset,
+    validate_record,
 )
 from src.services.anomaly_detection.deterministic_checks import date_is_not_after, has_duplicate_identifier
 from src.services.anomaly_detection.duplicate_detection import normalized_similarity
@@ -194,6 +198,58 @@ class AnomalyDetectionSkeletonTests(unittest.TestCase):
         self.assertTrue(all(record.duplicate_of_employee_id for record in duplicates))
         source_ids = {record.identity.employee_id for record in dataset.records}
         self.assertTrue(all(record.duplicate_of_employee_id in source_ids for record in duplicates))
+
+    def test_deterministic_validation_explains_inconsistent_dates(self):
+        record = WorkforceHistoryRecord(
+            identity=EmployeeIdentity(
+                employee_id="EMP-9001",
+                full_name="Date Broken",
+                date_of_birth=date(1990, 1, 1),
+            ),
+            split=DatasetSplit.TEST,
+            employment_track=EmploymentTrack.PROMOTION,
+            current_level="L6",
+            department="Operations",
+            role="Officer",
+            hire_date=date(2024, 1, 1),
+            events=(
+                AdministrativeEvent(
+                    event_type=AdministrativeEventType.HIRE,
+                    event_date=date(2024, 1, 1),
+                    source_id="HIRE-9001",
+                ),
+                AdministrativeEvent(
+                    event_type=AdministrativeEventType.PROMOTION,
+                    event_date=date(2023, 1, 1),
+                    source_id="PROM-BEFORE-HIRE",
+                    level_before="L7",
+                    level_after="L6",
+                ),
+            ),
+        )
+
+        findings = validate_record(record)
+
+        self.assertEqual(findings[0].severity, ValidationSeverity.ERROR)
+        self.assertIn("event_before_hire_date", {finding.code for finding in findings})
+        self.assertTrue(any(finding.event_source_id == "PROM-BEFORE-HIRE" for finding in findings))
+
+    def test_deterministic_validation_flags_short_promotion_and_increment_intervals(self):
+        config = ExperimentConfig(seed=2026, employee_count=80, anomaly_rate=0.15, rare_legitimate_rate=0.02)
+        dataset = generate_synthetic_dataset(config)
+        findings = validate_dataset(dataset)
+        summary = summarize_findings(findings)
+
+        self.assertGreaterEqual(summary.get("promotion_interval_too_short", 0), 1)
+        self.assertGreaterEqual(summary.get("salary_increment_interval_too_short", 0), 1)
+
+    def test_deterministic_validation_does_not_flag_clean_records(self):
+        config = ExperimentConfig(seed=5, employee_count=20, anomaly_rate=0.0, rare_legitimate_rate=0.0)
+        dataset = generate_synthetic_dataset(config)
+
+        findings = validate_dataset(dataset)
+
+        self.assertEqual(findings, ())
 
 
 if __name__ == "__main__":

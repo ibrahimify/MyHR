@@ -51,3 +51,17 @@ The generator must keep these tracks separate because forcing every employee int
 - Metadata records the split counts and label counts.
 - Duplicate records must link back to a source employee ID.
 - The generator creates HR-like histories only for experimentation; it is not a claim about real employee distributions.
+
+## Deterministic Validation Baseline
+
+The deterministic checker is the first non-ML baseline. It reports explainable findings for explicit administrative inconsistencies, including:
+
+- missing hire events;
+- events before the recorded hire date;
+- promotion events on employees outside the promotion track;
+- invalid promotion level order;
+- promotion intervals below the deterministic 12-month minimum;
+- salary increment intervals below the deterministic 300-day minimum;
+- exact duplicate employee IDs or national IDs.
+
+These checks are intentionally conservative. They are designed to catch directly checkable problems, not to replace statistical anomaly detection or policy-aware machine-learning features.

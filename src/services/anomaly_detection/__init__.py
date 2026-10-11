@@ -24,6 +24,7 @@ from .synthetic_data import (
     serialize_dataset,
     split_indices,
 )
+from .deterministic_checks import ValidationFinding, ValidationSeverity, summarize_findings, validate_dataset, validate_record
 
 __all__ = [
     "AdministrativeEvent",
@@ -38,10 +39,15 @@ __all__ = [
     "PromotionPolicy",
     "SyntheticDataset",
     "SyntheticDatasetMetadata",
+    "ValidationFinding",
+    "ValidationSeverity",
     "WorkforceHistoryRecord",
     "anomaly_taxonomy",
     "confusion_counts",
     "generate_synthetic_dataset",
     "serialize_dataset",
+    "summarize_findings",
     "split_indices",
+    "validate_dataset",
+    "validate_record",
 ]

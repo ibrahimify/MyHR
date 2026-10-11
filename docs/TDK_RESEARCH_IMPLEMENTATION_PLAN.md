@@ -69,7 +69,7 @@ No research claim may be written into the paper unless it is supported by a repr
 1. Add CI and research package skeleton.
 2. Define synthetic data contract and anomaly taxonomy. See `docs/TDK_SYNTHETIC_DATA_CONTRACT.md`.
 3. Implement the reproducible synthetic dataset generator.
-4. Implement deterministic checks.
+4. Implement deterministic checks. These provide the non-ML baseline for explicit administrative inconsistencies.
 5. Implement raw and policy-aware feature extraction.
 6. Add statistical baselines.
 7. Add Isolation Forest experiments.
