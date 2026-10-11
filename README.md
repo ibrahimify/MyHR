@@ -361,6 +361,7 @@ Avoid `git reset --hard` unless you are completely sure you want to discard loca
 | Architecture Roadmap | `docs/ARCHITECTURE_ROADMAP.md` |
 | Launch Audit Actions | `docs/LAUNCH_AUDIT_ACTIONS.md` |
 | Thesis Completion Plan | `docs/THESIS_COMPLETION_PLAN.md` |
+| Scope Audit | `docs/SCOPE_AUDIT.md` |
 | TDK Synthetic Data Contract | `docs/TDK_SYNTHETIC_DATA_CONTRACT.md` |
 | TDK Research Verification | `docs/TDK_RESEARCH_VERIFICATION.md` |
 | Licensing And IP Note | `docs/LICENSING_AND_IP.md` |
