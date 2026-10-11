@@ -49,6 +49,7 @@ The generator must keep these tracks separate because forcing every employee int
 - The run ID is derived from the generation configuration.
 - Dataset partitions are train, validation, and test.
 - Metadata records the split counts and label counts.
+- True anomalies and rare legitimate policy cases are distributed across train, validation, and test splits when counts allow.
 - Duplicate records must link back to a source employee ID.
 - The generator creates HR-like histories only for experimentation; it is not a claim about real employee distributions.
 

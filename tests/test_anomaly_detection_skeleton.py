@@ -228,6 +228,31 @@ class AnomalyDetectionSkeletonTests(unittest.TestCase):
             self.assertTrue(any(record.has_anomaly for record in split_records))
             self.assertTrue(any(AnomalyType.POLICY_LEGITIMATE_RARE_CASE in record.anomaly_labels for record in split_records))
 
+    def test_synthetic_dataset_distributes_labels_proportionally_across_splits(self):
+        config = ExperimentConfig(seed=2026, employee_count=1000, anomaly_rate=0.10, rare_legitimate_rate=0.05)
+        dataset = generate_synthetic_dataset(config)
+
+        records_by_split = {
+            split: [record for record in dataset.records if record.split is split]
+            for split in DatasetSplit
+        }
+
+        self.assertEqual(sum(record.has_anomaly for record in records_by_split[DatasetSplit.TRAIN]), 60)
+        self.assertEqual(sum(record.has_anomaly for record in records_by_split[DatasetSplit.VALIDATION]), 20)
+        self.assertEqual(sum(record.has_anomaly for record in records_by_split[DatasetSplit.TEST]), 20)
+        self.assertEqual(
+            sum(AnomalyType.POLICY_LEGITIMATE_RARE_CASE in record.anomaly_labels for record in records_by_split[DatasetSplit.TRAIN]),
+            30,
+        )
+        self.assertEqual(
+            sum(AnomalyType.POLICY_LEGITIMATE_RARE_CASE in record.anomaly_labels for record in records_by_split[DatasetSplit.VALIDATION]),
+            10,
+        )
+        self.assertEqual(
+            sum(AnomalyType.POLICY_LEGITIMATE_RARE_CASE in record.anomaly_labels for record in records_by_split[DatasetSplit.TEST]),
+            10,
+        )
+
     def test_deterministic_validation_explains_inconsistent_dates(self):
         record = WorkforceHistoryRecord(
             identity=EmployeeIdentity(
