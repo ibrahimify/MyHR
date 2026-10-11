@@ -42,3 +42,12 @@ The generator must keep these tracks separate because forcing every employee int
 - Experiments must report false positives on rare legitimate cases separately.
 - No synthetic result is valid unless the seed, generation configuration, split, anomaly counts, and run ID are saved with the output.
 - The paper must distinguish deterministic policy violations from statistical anomalies.
+
+## Generator Rules
+
+- The generator is deterministic for a fixed `ExperimentConfig`.
+- The run ID is derived from the generation configuration.
+- Dataset partitions are train, validation, and test.
+- Metadata records the split counts and label counts.
+- Duplicate records must link back to a source employee ID.
+- The generator creates HR-like histories only for experimentation; it is not a claim about real employee distributions.

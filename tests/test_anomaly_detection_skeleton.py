@@ -13,6 +13,8 @@ from src.services.anomaly_detection import (
     WorkforceHistoryRecord,
     anomaly_taxonomy,
     confusion_counts,
+    generate_synthetic_dataset,
+    serialize_dataset,
     split_indices,
 )
 from src.services.anomaly_detection.deterministic_checks import date_is_not_after, has_duplicate_identifier
@@ -154,6 +156,44 @@ class AnomalyDetectionSkeletonTests(unittest.TestCase):
         )
 
         self.assertTrue(record.has_anomaly)
+
+    def test_synthetic_dataset_generation_is_reproducible(self):
+        config = ExperimentConfig(seed=99, employee_count=40, anomaly_rate=0.10, rare_legitimate_rate=0.05)
+
+        first = serialize_dataset(generate_synthetic_dataset(config))
+        second = serialize_dataset(generate_synthetic_dataset(config))
+
+        self.assertEqual(first, second)
+        self.assertEqual(first["metadata"]["run_id"], config.run_id())
+        self.assertEqual(first["metadata"]["employee_count"], 40)
+
+    def test_synthetic_dataset_metadata_tracks_splits_and_labels(self):
+        config = ExperimentConfig(seed=123, employee_count=50, anomaly_rate=0.10, rare_legitimate_rate=0.04)
+        dataset = generate_synthetic_dataset(config)
+
+        self.assertEqual(len(dataset.records), 50)
+        self.assertEqual(sum(dataset.metadata.split_counts.values()), 50)
+        self.assertEqual(dataset.metadata.split_counts["train"], 30)
+        self.assertEqual(dataset.metadata.split_counts["validation"], 10)
+        self.assertEqual(dataset.metadata.split_counts["test"], 10)
+
+        true_anomaly_count = sum(record.has_anomaly for record in dataset.records)
+        self.assertEqual(true_anomaly_count, 5)
+        self.assertEqual(dataset.metadata.label_counts[AnomalyType.POLICY_LEGITIMATE_RARE_CASE.value], 2)
+
+    def test_synthetic_dataset_duplicate_records_keep_source_link(self):
+        config = ExperimentConfig(seed=2026, employee_count=80, anomaly_rate=0.15, rare_legitimate_rate=0.02)
+        dataset = generate_synthetic_dataset(config)
+
+        duplicates = [
+            record for record in dataset.records
+            if AnomalyType.DUPLICATE_RECORD in record.anomaly_labels
+        ]
+
+        self.assertGreaterEqual(len(duplicates), 1)
+        self.assertTrue(all(record.duplicate_of_employee_id for record in duplicates))
+        source_ids = {record.identity.employee_id for record in dataset.records}
+        self.assertTrue(all(record.duplicate_of_employee_id in source_ids for record in duplicates))
 
 
 if __name__ == "__main__":
