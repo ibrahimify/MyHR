@@ -55,3 +55,21 @@ The output includes:
 Smoke output proves that the pipeline runs. It does not prove the final research claim.
 
 Final paper claims must come only from documented experiment runs with fixed configuration, saved outputs, and reviewed methodology.
+
+## Artifact Generation
+
+Generate reviewable result artifacts:
+
+```bash
+python scripts/run_tdk_research_experiment.py --seed 2026 --employee-count 1000
+```
+
+This creates a run-specific folder under `research_outputs/<run_id>/` containing:
+
+- `metadata.json`: configuration, seed, run ID, split counts, and label counts;
+- `method_metrics.csv`: anomaly-detection metrics for statistical baselines and Isolation Forest;
+- `duplicate_metrics.csv`: duplicate-detection metrics;
+- `duplicate_candidates.csv`: duplicate candidate pairs with field-level evidence;
+- `README.md`: short explanation of the run.
+
+The `research_outputs/` folder is ignored by Git by default. Commit or archive selected outputs only after they are reviewed and intentionally chosen for the paper.
