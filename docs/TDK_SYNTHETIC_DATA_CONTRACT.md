@@ -74,3 +74,23 @@ The experiments compare two feature representations for the same employee histor
 - Policy-aware features: raw features plus explicit progression context, including required service months, commendation credit months, sanction delay months, policy-adjusted service months, remaining service deficit, and whether policy explains a raw short-promotion signal.
 
 The key comparison is not whether a model can flag unusual histories in general. The key comparison is whether policy-aware features reduce false positives on rare but legitimate histories without hiding injected administrative errors.
+
+## Statistical Baseline And Model Boundary
+
+The first statistical baselines are intentionally simple:
+
+- z-score boundary: flags a record if any selected feature is outside the training mean by a configured number of standard deviations;
+- IQR boundary: flags a record if any selected feature is outside the interquartile range boundary.
+
+These baselines are not expected to be the strongest possible methods. They provide transparent comparison points before Isolation Forest is evaluated.
+
+Isolation Forest is represented by an explicit experiment boundary. The code can run the model when scikit-learn is installed, but scikit-learn is not yet added to the application dependency list. This keeps the research dependency decision separate from the packaged desktop application.
+
+Every method evaluation must report:
+
+- method name;
+- feature set;
+- feature names;
+- precision, recall, F1 score, and false-positive rate;
+- predicted positive count;
+- false positives on rare legitimate policy cases.

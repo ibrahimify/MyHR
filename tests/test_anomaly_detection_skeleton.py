@@ -14,11 +14,14 @@ from src.services.anomaly_detection import (
     WorkforceHistoryRecord,
     anomaly_taxonomy,
     confusion_counts,
+    evaluate_statistical_baseline,
     extract_features,
     extract_policy_aware_features,
     extract_raw_features,
     generate_synthetic_dataset,
+    run_isolation_forest,
     serialize_dataset,
+    sklearn_is_available,
     split_indices,
     summarize_findings,
     validate_dataset,
@@ -28,6 +31,12 @@ from src.services.anomaly_detection.deterministic_checks import date_is_not_afte
 from src.services.anomaly_detection.duplicate_detection import normalized_similarity
 from src.services.anomaly_detection.experiment_runner import describe_experiment
 from src.services.anomaly_detection.features import supported_feature_sets
+from src.services.anomaly_detection.isolation_forest import IsolationForestUnavailableError
+from src.services.anomaly_detection.statistical_baselines import (
+    fit_iqr_baseline,
+    fit_z_score_baseline,
+    predict_baseline,
+)
 
 
 class AnomalyDetectionSkeletonTests(unittest.TestCase):
@@ -292,6 +301,61 @@ class AnomalyDetectionSkeletonTests(unittest.TestCase):
         self.assertEqual(extract_features(record, "policy_aware").feature_set, "policy_aware")
         with self.assertRaises(ValueError):
             extract_features(record, "made_up")
+
+    def test_statistical_baseline_models_predict_outliers(self):
+        config = ExperimentConfig(seed=2026, employee_count=80, anomaly_rate=0.15, rare_legitimate_rate=0.02)
+        dataset = generate_synthetic_dataset(config)
+        vectors = tuple(extract_raw_features(record) for record in dataset.records if record.split is DatasetSplit.TRAIN)
+        feature_names = ("promotion_count", "sanction_count", "min_salary_increment_interval_days")
+
+        z_model = fit_z_score_baseline(vectors, feature_names, threshold=2.0)
+        iqr_model = fit_iqr_baseline(vectors, feature_names)
+        z_predictions = predict_baseline(z_model, vectors)
+        iqr_predictions = predict_baseline(iqr_model, vectors)
+
+        self.assertEqual(z_model.method, "z_score")
+        self.assertEqual(iqr_model.method, "iqr")
+        self.assertEqual(len(z_predictions), len(vectors))
+        self.assertEqual(len(iqr_predictions), len(vectors))
+
+    def test_evaluate_statistical_baseline_returns_metrics_and_rare_case_count(self):
+        config = ExperimentConfig(seed=2026, employee_count=120, anomaly_rate=0.15, rare_legitimate_rate=0.05)
+        dataset = generate_synthetic_dataset(config)
+
+        raw_result = evaluate_statistical_baseline(dataset, "raw", "iqr")
+        policy_result = evaluate_statistical_baseline(dataset, "policy_aware", "iqr")
+
+        self.assertEqual(raw_result.method, "iqr")
+        self.assertEqual(policy_result.feature_set, "policy_aware")
+        self.assertGreaterEqual(raw_result.metrics.true_positives + raw_result.metrics.false_positives, 0)
+        self.assertGreaterEqual(policy_result.rare_legitimate_false_positives, 0)
+        self.assertGreaterEqual(policy_result.predicted_positive_count, 0)
+
+    def test_isolation_forest_boundary_is_explicit_about_optional_dependency(self):
+        config = ExperimentConfig(seed=5, employee_count=20, anomaly_rate=0.1, rare_legitimate_rate=0.0)
+        dataset = generate_synthetic_dataset(config)
+        train_vectors = tuple(extract_raw_features(record) for record in dataset.records if record.split is DatasetSplit.TRAIN)
+        test_vectors = tuple(extract_raw_features(record) for record in dataset.records if record.split is DatasetSplit.TEST)
+
+        if sklearn_is_available():
+            result = run_isolation_forest(
+                train_vectors=train_vectors,
+                test_vectors=test_vectors,
+                feature_names=("promotion_count", "sanction_count"),
+                contamination=0.1,
+                random_state=5,
+            )
+            self.assertEqual(len(result.predictions), len(test_vectors))
+            self.assertEqual(len(result.scores), len(test_vectors))
+        else:
+            with self.assertRaises(IsolationForestUnavailableError):
+                run_isolation_forest(
+                    train_vectors=train_vectors,
+                    test_vectors=test_vectors,
+                    feature_names=("promotion_count", "sanction_count"),
+                    contamination=0.1,
+                    random_state=5,
+                )
 
 
 if __name__ == "__main__":
