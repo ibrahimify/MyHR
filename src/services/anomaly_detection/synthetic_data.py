@@ -562,7 +562,7 @@ def _apply_label(
             full_name=_shorten_name(source.identity.full_name),
             date_of_birth=source.identity.date_of_birth,
             national_id=_drop_leading_zeroes(source.identity.national_id),
-            email=source.identity.email,
+            email=_variant_email(source.identity.email),
         )
         return replace(
             record,
@@ -688,3 +688,11 @@ def _drop_leading_zeroes(value: str | None) -> str | None:
         return None
     prefix, _, suffix = value.partition("-")
     return f"{prefix}-{suffix.lstrip('0') or '0'}" if suffix else value.lstrip("0")
+
+
+def _variant_email(value: str | None) -> str | None:
+    if value is None or "@" not in value:
+        return value
+    local, _, domain = value.partition("@")
+    local = local.replace(".", "")
+    return f"{local}@{domain}"

@@ -23,6 +23,7 @@ from src.services.anomaly_detection import (
     confusion_counts,
     evaluate_statistical_baseline,
     extract_features,
+    evaluate_duplicate_detection,
     generate_synthetic_dataset,
     run_isolation_forest,
     sklearn_is_available,
@@ -65,6 +66,11 @@ def main() -> None:
             _evaluation_to_dict(evaluate_statistical_baseline(dataset, "policy_aware", "z_score")),
         ],
         "isolation_forest": [],
+        "duplicate_detection": [
+            _duplicate_evaluation_to_dict(evaluate_duplicate_detection(dataset, "exact")),
+            _duplicate_evaluation_to_dict(evaluate_duplicate_detection(dataset, "normalized_exact")),
+            _duplicate_evaluation_to_dict(evaluate_duplicate_detection(dataset, "similarity", threshold=0.70)),
+        ],
     }
 
     if sklearn_is_available():
@@ -125,6 +131,24 @@ def _isolation_forest_to_dict(
         "predicted_positive_count": int(sum(bool(prediction) for prediction in predictions)),
         "rare_legitimate_false_positives": rare_false_positives,
         "metrics": _metrics_to_dict(confusion_counts(y_true, predictions)),
+    }
+
+
+def _duplicate_evaluation_to_dict(evaluation: Any) -> dict[str, Any]:
+    return {
+        "method": evaluation.method,
+        "threshold": evaluation.threshold,
+        "candidate_count": len(evaluation.candidates),
+        "metrics": _metrics_to_dict(evaluation.metrics),
+        "sample_candidates": [
+            {
+                "left_employee_id": candidate.left_employee_id,
+                "right_employee_id": candidate.right_employee_id,
+                "score": float(candidate.score),
+                "evidence": candidate.evidence,
+            }
+            for candidate in evaluation.candidates[:3]
+        ],
     }
 
 

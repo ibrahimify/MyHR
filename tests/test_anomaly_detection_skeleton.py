@@ -14,6 +14,7 @@ from src.services.anomaly_detection import (
     WorkforceHistoryRecord,
     anomaly_taxonomy,
     confusion_counts,
+    evaluate_duplicate_detection,
     evaluate_statistical_baseline,
     extract_features,
     extract_policy_aware_features,
@@ -28,7 +29,13 @@ from src.services.anomaly_detection import (
     validate_record,
 )
 from src.services.anomaly_detection.deterministic_checks import date_is_not_after, has_duplicate_identifier
-from src.services.anomaly_detection.duplicate_detection import normalized_similarity
+from src.services.anomaly_detection.duplicate_detection import (
+    find_exact_duplicate_candidates,
+    find_normalized_exact_duplicate_candidates,
+    find_similarity_duplicate_candidates,
+    normalize_identifier,
+    normalized_similarity,
+)
 from src.services.anomaly_detection.experiment_runner import describe_experiment
 from src.services.anomaly_detection.features import supported_feature_sets
 from src.services.anomaly_detection.isolation_forest import IsolationForestUnavailableError
@@ -100,6 +107,7 @@ class AnomalyDetectionSkeletonTests(unittest.TestCase):
     def test_duplicate_similarity_is_normalized(self):
         self.assertEqual(normalized_similarity("Ibrahim", "ibrahim"), 1.0)
         self.assertGreater(normalized_similarity("Ibrahim", "Ibrahim Shoeb"), 0.6)
+        self.assertEqual(normalize_identifier("NID-0001258"), "nid-1258")
 
     def test_declares_raw_and_policy_aware_feature_sets(self):
         self.assertEqual(supported_feature_sets(), ("raw", "policy_aware"))
@@ -365,6 +373,42 @@ class AnomalyDetectionSkeletonTests(unittest.TestCase):
                     contamination=0.1,
                     random_state=5,
                 )
+
+    def test_duplicate_detection_compares_exact_normalized_and_similarity_methods(self):
+        config = ExperimentConfig(seed=2026, employee_count=80, anomaly_rate=0.15, rare_legitimate_rate=0.02)
+        dataset = generate_synthetic_dataset(config)
+
+        exact = evaluate_duplicate_detection(dataset, "exact")
+        normalized = evaluate_duplicate_detection(dataset, "normalized_exact")
+        similarity = evaluate_duplicate_detection(dataset, "similarity", threshold=0.70)
+
+        self.assertEqual(exact.method, "exact")
+        self.assertEqual(normalized.method, "normalized_exact")
+        self.assertEqual(similarity.method, "similarity")
+        self.assertGreaterEqual(normalized.metrics.recall, exact.metrics.recall)
+        self.assertGreaterEqual(similarity.metrics.recall, normalized.metrics.recall)
+
+    def test_duplicate_detection_candidates_include_review_evidence(self):
+        config = ExperimentConfig(seed=2026, employee_count=80, anomaly_rate=0.15, rare_legitimate_rate=0.02)
+        dataset = generate_synthetic_dataset(config)
+
+        candidates = find_similarity_duplicate_candidates(dataset.records, threshold=0.70)
+
+        self.assertGreaterEqual(len(candidates), 1)
+        first = candidates[0]
+        self.assertIn("name_similarity", first.evidence)
+        self.assertIn("date_of_birth_match", first.evidence)
+        self.assertIn("national_id_similarity", first.evidence)
+        self.assertGreaterEqual(first.score, 0.70)
+
+    def test_duplicate_detection_baselines_are_available_separately(self):
+        config = ExperimentConfig(seed=2026, employee_count=80, anomaly_rate=0.15, rare_legitimate_rate=0.02)
+        dataset = generate_synthetic_dataset(config)
+
+        exact = find_exact_duplicate_candidates(dataset.records)
+        normalized = find_normalized_exact_duplicate_candidates(dataset.records)
+
+        self.assertGreaterEqual(len(normalized), len(exact))
 
 
 if __name__ == "__main__":

@@ -94,3 +94,13 @@ Every method evaluation must report:
 - precision, recall, F1 score, and false-positive rate;
 - predicted positive count;
 - false positives on rare legitimate policy cases.
+
+## Duplicate-Record Detection
+
+Duplicate detection is a secondary experiment. It compares:
+
+- raw exact matching on unchanged identifiers;
+- normalized exact matching on normalized national IDs and emails;
+- weighted similarity matching across name, date of birth, national ID, and email.
+
+Similarity candidates must include field-level evidence so a human reviewer can see why a pair was suggested. This keeps duplicate detection as decision support, not an automatic merge operation.

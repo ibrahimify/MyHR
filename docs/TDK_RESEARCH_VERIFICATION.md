@@ -48,6 +48,7 @@ The output includes:
 - raw and policy-aware feature-set metrics;
 - Isolation Forest metrics when scikit-learn is installed;
 - false positives on rare legitimate policy cases.
+- duplicate-detection metrics and sample candidate evidence.
 
 ## Interpretation Rule
 

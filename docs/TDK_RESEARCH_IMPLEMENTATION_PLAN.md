@@ -73,6 +73,6 @@ No research claim may be written into the paper unless it is supported by a repr
 5. Implement raw and policy-aware feature extraction. This is the central representation comparison for the TDK research question.
 6. Add statistical baselines and evaluation reporting.
 7. Add Isolation Forest experiments after approving the research dependency boundary.
-8. Add duplicate detection experiment.
+8. Add duplicate detection experiment as a secondary comparison with exact, normalized exact, and similarity methods.
 9. Generate result tables and plots.
 10. Draft methodology and results sections from actual outputs.
