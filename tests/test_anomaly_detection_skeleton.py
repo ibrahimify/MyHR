@@ -36,7 +36,7 @@ from src.services.anomaly_detection.duplicate_detection import (
     normalize_identifier,
     normalized_similarity,
 )
-from src.services.anomaly_detection.experiment_runner import describe_experiment
+from src.services.anomaly_detection.experiment_runner import DEFAULT_POLICY_AWARE_FEATURES, describe_experiment
 from src.services.anomaly_detection.features import supported_feature_sets
 from src.services.anomaly_detection.isolation_forest import IsolationForestUnavailableError
 from src.services.anomaly_detection.statistical_baselines import (
@@ -332,8 +332,17 @@ class AnomalyDetectionSkeletonTests(unittest.TestCase):
         )
         self.assertGreater(policy_aware.values["policy_commendation_credit_months"], 0.0)
         self.assertEqual(policy_aware.values["policy_service_deficit_months"], 0.0)
+        self.assertEqual(policy_aware.values["policy_service_deficit_ratio"], 0.0)
+        self.assertEqual(policy_aware.values["policy_unexplained_short_promotion"], 0.0)
         self.assertEqual(policy_aware.values["policy_explains_short_promotion"], 1.0)
         self.assertEqual(raw.values["has_duplicate_source"], 0.0)
+
+    def test_policy_aware_experiment_features_use_policy_residuals(self):
+        self.assertIn("policy_service_deficit_months", DEFAULT_POLICY_AWARE_FEATURES)
+        self.assertIn("policy_service_deficit_ratio", DEFAULT_POLICY_AWARE_FEATURES)
+        self.assertIn("policy_unexplained_short_promotion", DEFAULT_POLICY_AWARE_FEATURES)
+        self.assertNotIn("min_promotion_interval_months", DEFAULT_POLICY_AWARE_FEATURES)
+        self.assertNotIn("policy_explains_short_promotion", DEFAULT_POLICY_AWARE_FEATURES)
 
     def test_feature_dispatch_rejects_unknown_feature_sets(self):
         config = ExperimentConfig(seed=5, employee_count=5, anomaly_rate=0.0, rare_legitimate_rate=0.0)

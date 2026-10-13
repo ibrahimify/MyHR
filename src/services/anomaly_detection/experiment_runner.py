@@ -39,12 +39,13 @@ DEFAULT_BASELINE_FEATURES = (
     "min_salary_increment_interval_days",
 )
 
-DEFAULT_POLICY_AWARE_FEATURES = DEFAULT_BASELINE_FEATURES + (
-    "policy_commendation_credit_months",
-    "policy_sanction_delay_months",
-    "policy_adjusted_service_months",
+DEFAULT_POLICY_AWARE_FEATURES = (
+    "promotion_count",
+    "sanction_count",
+    "min_salary_increment_interval_days",
     "policy_service_deficit_months",
-    "policy_explains_short_promotion",
+    "policy_service_deficit_ratio",
+    "policy_unexplained_short_promotion",
 )
 
 

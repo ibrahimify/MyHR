@@ -72,7 +72,7 @@ These checks are intentionally conservative. They are designed to catch directly
 The experiments compare two feature representations for the same employee histories:
 
 - Raw features: policy-agnostic counts and intervals, such as promotion count, sanction count, commendation count, performance review count, minimum promotion interval, and minimum salary-increment interval.
-- Policy-aware features: raw features plus explicit progression context, including required service months, commendation credit months, sanction delay months, policy-adjusted service months, remaining service deficit, and whether policy explains a raw short-promotion signal.
+- Policy-aware features: policy-conditioned residual signals rather than raw short-promotion intervals. The default experiment uses core event signals plus remaining service deficit, deficit ratio, and whether a short promotion remains unexplained after commendation credits and sanction delays.
 
 The key comparison is not whether a model can flag unusual histories in general. The key comparison is whether policy-aware features reduce false positives on rare but legitimate histories without hiding injected administrative errors.
 

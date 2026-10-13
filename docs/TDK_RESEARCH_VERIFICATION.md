@@ -93,3 +93,5 @@ This creates a folder under `research_outputs/multi_seed/` containing:
 Use `method_comparisons.csv` to check whether policy-aware features consistently improve over raw features across seeds. A single seed is not enough for a strong TDK claim.
 
 Small employee counts are useful for checking that the pipeline runs. Final paper evidence should use larger datasets and reviewed seeds because small test splits make precision and recall unstable.
+
+Current implementation note: the default policy-aware Isolation Forest feature set intentionally uses policy residuals instead of the raw minimum-promotion-interval feature. This keeps the experiment aligned with the research question: whether policy context reduces false positives on rare legitimate histories without hiding true administrative errors.

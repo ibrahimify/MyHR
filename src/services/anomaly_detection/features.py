@@ -97,6 +97,10 @@ def _promotion_service_context(
             "policy_sanction_delay_months": 0.0,
             "policy_adjusted_service_months": 0.0,
             "policy_service_deficit_months": 0.0,
+            "policy_raw_service_deficit_months": 0.0,
+            "policy_adjusted_service_ratio": 0.0,
+            "policy_service_deficit_ratio": 0.0,
+            "policy_unexplained_short_promotion": 0.0,
             "policy_explains_short_promotion": 0.0,
         }
 
@@ -108,6 +112,7 @@ def _promotion_service_context(
     adjusted_service = observed_months + credit_months - delay_months
     service_deficit = max(required_months - adjusted_service, 0)
     raw_deficit = max(required_months - observed_months, 0)
+    required_months_denominator = required_months or 1
 
     return {
         "latest_promotion_observed_service_months": float(observed_months),
@@ -116,6 +121,10 @@ def _promotion_service_context(
         "policy_sanction_delay_months": float(delay_months),
         "policy_adjusted_service_months": float(adjusted_service),
         "policy_service_deficit_months": float(service_deficit),
+        "policy_raw_service_deficit_months": float(raw_deficit),
+        "policy_adjusted_service_ratio": float(adjusted_service / required_months_denominator),
+        "policy_service_deficit_ratio": float(service_deficit / required_months_denominator),
+        "policy_unexplained_short_promotion": 1.0 if service_deficit > 0 else 0.0,
         "policy_explains_short_promotion": 1.0 if raw_deficit > 0 and service_deficit == 0 else 0.0,
     }
 
