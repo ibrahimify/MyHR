@@ -2,9 +2,11 @@
 
 from dataclasses import dataclass
 from difflib import SequenceMatcher
+from itertools import combinations
 from string import digits
+from typing import Callable, Iterable
 
-from .metrics import BinaryClassificationMetrics, confusion_counts
+from .metrics import BinaryClassificationMetrics
 from .synthetic_data import SyntheticDataset, WorkforceHistoryRecord
 
 
@@ -68,24 +70,14 @@ def find_exact_duplicate_candidates(
 ) -> tuple[DuplicateCandidate, ...]:
     """Find duplicates using raw exact ID fields only."""
 
-    candidates: list[DuplicateCandidate] = []
-    for left, right in _record_pairs(records):
-        same_national_id = bool(left.identity.national_id and left.identity.national_id == right.identity.national_id)
-        same_email = bool(left.identity.email and left.identity.email == right.identity.email)
-        if same_national_id or same_email:
-            candidates.append(
-                DuplicateCandidate(
-                    left_employee_id=left.identity.employee_id,
-                    right_employee_id=right.identity.employee_id,
-                    method="exact",
-                    score=1.0,
-                    evidence={
-                        "same_national_id": same_national_id,
-                        "same_email": same_email,
-                    },
-                )
-            )
-    return tuple(candidates)
+    return _grouped_exact_candidates(
+        records=records,
+        method="exact",
+        field_specs=(
+            ("same_national_id", lambda record: normalize_text(record.identity.national_id)),
+            ("same_email", lambda record: normalize_email(record.identity.email)),
+        ),
+    )
 
 
 def find_normalized_exact_duplicate_candidates(
@@ -93,30 +85,14 @@ def find_normalized_exact_duplicate_candidates(
 ) -> tuple[DuplicateCandidate, ...]:
     """Find duplicates after basic field normalization."""
 
-    candidates: list[DuplicateCandidate] = []
-    for left, right in _record_pairs(records):
-        same_national_id = (
-            bool(left.identity.national_id and right.identity.national_id)
-            and normalize_identifier(left.identity.national_id) == normalize_identifier(right.identity.national_id)
-        )
-        same_email = (
-            bool(left.identity.email and right.identity.email)
-            and normalize_email(left.identity.email) == normalize_email(right.identity.email)
-        )
-        if same_national_id or same_email:
-            candidates.append(
-                DuplicateCandidate(
-                    left_employee_id=left.identity.employee_id,
-                    right_employee_id=right.identity.employee_id,
-                    method="normalized_exact",
-                    score=1.0,
-                    evidence={
-                        "same_normalized_national_id": same_national_id,
-                        "same_normalized_email": same_email,
-                    },
-                )
-            )
-    return tuple(candidates)
+    return _grouped_exact_candidates(
+        records=records,
+        method="normalized_exact",
+        field_specs=(
+            ("same_normalized_national_id", lambda record: normalize_identifier(record.identity.national_id)),
+            ("same_normalized_email", lambda record: normalize_email(record.identity.email)),
+        ),
+    )
 
 
 def find_similarity_duplicate_candidates(
@@ -128,7 +104,7 @@ def find_similarity_duplicate_candidates(
     if not 0 <= threshold <= 1:
         raise ValueError("threshold must be in the range [0, 1]")
     candidates: list[DuplicateCandidate] = []
-    for left, right in _record_pairs(records):
+    for left, right in _blocked_similarity_pairs(records):
         name_score = normalized_similarity(left.identity.full_name, right.identity.full_name)
         dob_match = left.identity.date_of_birth == right.identity.date_of_birth
         national_id_score = _identifier_similarity(left.identity.national_id, right.identity.national_id)
@@ -177,29 +153,94 @@ def evaluate_duplicate_detection(
     else:
         raise ValueError(f"Unsupported duplicate detection method: {method}")
 
-    all_pairs = tuple(_record_pairs(records))
     predicted_pairs = {_pair_key(candidate.left_employee_id, candidate.right_employee_id) for candidate in candidates}
     true_pairs = {
         _pair_key(record.identity.employee_id, record.duplicate_of_employee_id)
         for record in records
         if record.duplicate_of_employee_id
     }
-    y_true = [_pair_key(left.identity.employee_id, right.identity.employee_id) in true_pairs for left, right in all_pairs]
-    y_pred = [_pair_key(left.identity.employee_id, right.identity.employee_id) in predicted_pairs for left, right in all_pairs]
+    true_positives = len(predicted_pairs & true_pairs)
+    false_positives = len(predicted_pairs - true_pairs)
+    false_negatives = len(true_pairs - predicted_pairs)
+    total_pairs = len(records) * (len(records) - 1) // 2
+    true_negatives = total_pairs - true_positives - false_positives - false_negatives
     return DuplicateEvaluation(
         method=method,
         threshold=threshold_used,
         candidates=candidates,
-        metrics=confusion_counts(y_true, y_pred),
+        metrics=BinaryClassificationMetrics(
+            true_positives=true_positives,
+            false_positives=false_positives,
+            true_negatives=true_negatives,
+            false_negatives=false_negatives,
+        ),
     )
 
 
-def _record_pairs(records: tuple[WorkforceHistoryRecord, ...]) -> tuple[tuple[WorkforceHistoryRecord, WorkforceHistoryRecord], ...]:
-    pairs: list[tuple[WorkforceHistoryRecord, WorkforceHistoryRecord]] = []
+def _record_pairs(records: tuple[WorkforceHistoryRecord, ...]) -> Iterable[tuple[WorkforceHistoryRecord, WorkforceHistoryRecord]]:
     for left_index, left in enumerate(records):
         for right in records[left_index + 1:]:
-            pairs.append((left, right))
-    return tuple(pairs)
+            yield left, right
+
+
+def _grouped_exact_candidates(
+    records: tuple[WorkforceHistoryRecord, ...],
+    method: str,
+    field_specs: tuple[tuple[str, Callable[[WorkforceHistoryRecord], str]], ...],
+) -> tuple[DuplicateCandidate, ...]:
+    candidate_evidence: dict[tuple[str, str], dict[str, bool]] = {}
+    records_by_id = {record.identity.employee_id: record for record in records}
+    for evidence_name, key_fn in field_specs:
+        groups: dict[str, list[str]] = {}
+        for record in records:
+            key = key_fn(record)
+            if key:
+                groups.setdefault(key, []).append(record.identity.employee_id)
+        for employee_ids in groups.values():
+            if len(employee_ids) < 2:
+                continue
+            for left_id, right_id in combinations(employee_ids, 2):
+                key = _pair_key(left_id, right_id)
+                candidate_evidence.setdefault(key, {})[evidence_name] = True
+
+    candidates: list[DuplicateCandidate] = []
+    for left_id, right_id in sorted(candidate_evidence):
+        evidence = {
+            evidence_name: bool(candidate_evidence[(left_id, right_id)].get(evidence_name, False))
+            for evidence_name, _ in field_specs
+        }
+        candidates.append(
+            DuplicateCandidate(
+                left_employee_id=records_by_id[left_id].identity.employee_id,
+                right_employee_id=records_by_id[right_id].identity.employee_id,
+                method=method,
+                score=1.0,
+                evidence=evidence,
+            )
+        )
+    return tuple(candidates)
+
+
+def _blocked_similarity_pairs(
+    records: tuple[WorkforceHistoryRecord, ...],
+) -> Iterable[tuple[WorkforceHistoryRecord, WorkforceHistoryRecord]]:
+    """Return reviewable candidate pairs without scanning every unrelated employee."""
+
+    pairs: set[tuple[str, str]] = set()
+    records_by_id = {record.identity.employee_id: record for record in records}
+    groups: dict[object, list[str]] = {}
+    for record in records:
+        groups.setdefault(("dob", record.identity.date_of_birth), []).append(record.identity.employee_id)
+        normalized_id = normalize_identifier(record.identity.national_id)
+        if normalized_id:
+            groups.setdefault(("national_id", normalized_id), []).append(record.identity.employee_id)
+    for employee_ids in groups.values():
+        if len(employee_ids) < 2:
+            continue
+        for left_id, right_id in combinations(employee_ids, 2):
+            pairs.add(_pair_key(left_id, right_id))
+    for left_id, right_id in sorted(pairs):
+        yield records_by_id[left_id], records_by_id[right_id]
 
 
 def _pair_key(left_employee_id: str, right_employee_id: str | None) -> tuple[str, str]:
