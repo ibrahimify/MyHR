@@ -134,4 +134,6 @@ The runner refuses `--run-purpose holdout`. Each write-once artifact contains:
 
 Development and validation outputs remain diagnostics until the supervisor reviews the scenario assumptions and protocol. Do not copy their most favorable rows into the paper as final evidence.
 
+The verified 30-scenario development and validation diagnostics are summarized in `TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md`, including exact denominators, uncertainty intervals, controls, conditional utility findings, and remaining weaknesses.
+
 Two deterministic rows are intentional. `deterministic_rules` contains policy-agnostic administrative checks. `deterministic_policy_rules` additionally applies the assigned promotion policy. The `policy_rules_plus_isolation_forest` rows measure whether ML adds ranking value after those explicit policy violations are already handled.

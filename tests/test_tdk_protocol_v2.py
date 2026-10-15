@@ -1,4 +1,6 @@
+import ast
 import unittest
+from pathlib import Path
 
 from src.services.anomaly_detection.features import extract_policy_aware_features
 from src.services.anomaly_detection.deterministic_checks import validate_record_with_policy
@@ -21,7 +23,27 @@ from src.services.anomaly_detection.synthetic_data import (
 )
 
 
+def _imported_modules(source: str) -> set[str]:
+    modules = set()
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            modules.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            prefix = "." * node.level
+            modules.add(f"{prefix}{node.module or ''}")
+    return modules
+
+
 class SharedPolicyContractTests(unittest.TestCase):
+    def test_application_database_does_not_import_research_package(self):
+        source = Path("src/database/connection.py").read_text(encoding="utf-8")
+        imported_modules = _imported_modules(source)
+
+        self.assertFalse(any(
+            module.startswith("src.services.anomaly_detection")
+            for module in imported_modules
+        ))
+
     def test_race_contract_applies_commendations_and_active_sanctions(self):
         outcome = calculate_promotion_race(PromotionRaceInput(
             has_next_level=True,
@@ -52,6 +74,20 @@ class SharedPolicyContractTests(unittest.TestCase):
 
 
 class ScenarioGenerationTests(unittest.TestCase):
+    def test_generator_does_not_import_detection_or_feature_modules(self):
+        source = Path(
+            "src/services/anomaly_detection/scenario_generation.py"
+        ).read_text(encoding="utf-8")
+        forbidden_modules = {
+            ".deterministic_checks",
+            ".features",
+            ".isolation_forest",
+            ".protocol_evaluation",
+            ".statistical_baselines",
+        }
+
+        self.assertTrue(forbidden_modules.isdisjoint(_imported_modules(source)))
+
     def test_development_and_validation_seed_ranges_are_disjoint(self):
         development = scenario_matrix("development", count=30, employee_count=120)
         validation = scenario_matrix("validation", count=30, employee_count=120)
@@ -90,6 +126,11 @@ class ScenarioGenerationTests(unittest.TestCase):
                 {config.rare_pattern for config in policy_configs},
                 {"credit_mix", "credit_with_delay", "boundary_case"},
             )
+        factorial = {
+            (config.policy_profile, config.population_profile, config.anomaly_mechanism)
+            for config in configs[:27]
+        }
+        self.assertEqual(len(factorial), 27)
 
     def test_generation_is_reproducible(self):
         config = scenario_matrix("development", count=1, employee_count=120)[0]
