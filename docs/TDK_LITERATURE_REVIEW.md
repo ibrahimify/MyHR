@@ -59,15 +59,15 @@ The final system should retain this order:
 
 ### 4. Evaluation Must Separate Ranking From Operating Decisions
 
-The literature exposes two complementary facts. PR curves are informative for rare positive classes, while F1 and average precision can shift with class prevalence and evaluation construction. MyHR should therefore keep PR-AUC but never report it without anomaly prevalence, denominators, and paired scenario context.
+The literature exposes two complementary facts. Precision-recall analysis is informative for rare positive classes, while F1 and average precision can shift with class prevalence and evaluation construction. MyHR should therefore report average precision but never without anomaly prevalence, denominators, and paired scenario context.
 
-Issue #10 correctly adds continuous-score PR-AUC, validation-only thresholds, equal top-10% review budgets, target-FPR analysis, and explicit counts. It also avoids passing known test contamination to Isolation Forest. These choices directly address the documented evaluation risks.
+Issue #10 correctly adds continuous-score average precision, validation-only thresholds, equal top-10% review budgets, target-FPR analysis, and explicit counts. It also avoids passing known test contamination to Isolation Forest. These choices directly address the documented evaluation risks.
 
 One improvement should be agreed before protocol freeze: name one primary comparison and one primary endpoint. Recommended primary estimand:
 
 > Paired difference in rare-legitimate flag rate between policy-aware and raw Isolation Forest at an equal 10% review budget, evaluated across independently generated validation or holdout scenarios.
 
-PR-AUC, F1, anomaly-class recall, total false positives, and cost sensitivity remain important secondary outcomes. Secondary hypothesis tests should be labelled exploratory or adjusted with Holm's procedure. This prevents a large table of favorable p-values from becoming accidental cherry-picking.
+F1, anomaly-class recall, total false positives, and cost sensitivity remain important secondary outcomes. Secondary hypothesis tests should be labelled exploratory or adjusted with Holm's procedure. This prevents a large table of favorable p-values from becoming accidental cherry-picking.
 
 ### 5. Synthetic Ground Truth Is Necessary But Not Sufficient
 
@@ -102,7 +102,7 @@ If DIFFI or another explainer is added, test explanation stability and correctne
 
 Entity-resolution literature treats candidate generation, or blocking, separately from pair scoring. Measuring all possible pairs can make false-positive rates look artificially small because most pairs are easy nonmatches.
 
-The existing protocol is correct to require entity-disjoint splits, hard nonduplicates, corruption families, validation-selected thresholds, blocking recall, reduction ratio, candidate workload, PR-AUC, runtime, and memory. Duplicate detection is useful product functionality and a secondary TDK experiment; it should not be mixed into progression-anomaly labels or the main title claim.
+The existing protocol is correct to require entity-disjoint splits, hard nonduplicates, corruption families, validation-selected thresholds, blocking recall, reduction ratio, candidate workload, average precision, runtime, and memory. Duplicate detection is useful product functionality and a secondary TDK experiment; it should not be mixed into progression-anomaly labels or the main title claim.
 
 ## Comparison With Existing MyHR Research Work
 
@@ -110,7 +110,7 @@ The existing protocol is correct to require entity-disjoint splits, hard nondupl
 | --- | --- | --- |
 | Validation-only thresholds | Implemented in Issue #10 | Keep |
 | Equal review-budget comparison | Implemented at top 10% | Keep as primary operating point |
-| PR-AUC plus explicit prevalence | Implemented with denominators | Keep; avoid cross-prevalence interpretation |
+| Average precision plus explicit prevalence | Implemented with denominators | Keep; avoid cross-prevalence interpretation |
 | Rules-only and rules-plus-ML baselines | Implemented | Keep; center the paper on incremental value |
 | Wrong-policy, shuffled-policy, and ablation controls | Implemented | Keep all unfavorable results |
 | Independent scenario units and paired uncertainty | Implemented across 30 scenarios | Keep; scenario, not employee, is the independent unit |
@@ -138,7 +138,7 @@ These are proposals from the review. They have not changed `docs/TDK_EXPERIMENT_
 - Rules-first, ML-second architecture.
 - Raw versus policy-aware Isolation Forest at equal review capacity.
 - Rules-only, statistical, wrong-policy, shuffled-policy, and ablation controls.
-- PR-AUC, fixed-budget precision/recall, explicit denominators, and per-class recall.
+- Average precision, fixed-budget precision/recall, explicit denominators, and per-class recall.
 - Paired uncertainty across independent scenarios.
 - Operational utility expressed as reviews and false escalations, not only model scores.
 - Human review for every personnel-relevant finding.

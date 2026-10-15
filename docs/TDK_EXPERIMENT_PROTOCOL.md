@@ -84,7 +84,7 @@ Feature families must be frozen before the holdout is opened. Unfavorable ablati
 
 Isolation Forest produces continuous anomaly scores. Results must include:
 
-1. PR-AUC without selecting a test threshold.
+1. Average precision (AP) without selecting a test threshold.
 2. Precision and recall at a fixed top-10% review budget for both representations.
 3. A threshold selected on validation data for a predeclared target false-positive rate.
 4. Validation-maximized F1 as a secondary analysis, using the same search budget for both representations.
@@ -101,7 +101,7 @@ For every method and scenario, save:
 - true anomaly count and non-anomaly count;
 - alert count and alert rate;
 - true positives, false positives, true negatives, and false negatives;
-- precision, recall, F1, false-positive rate, and PR-AUC;
+- precision, recall, F1, false-positive rate, and average precision;
 - rare-legitimate count, flagged count, and flagged rate;
 - ordinary-clean count, flagged count, and flagged rate;
 - recall per anomaly class;
@@ -137,7 +137,7 @@ No single cost ratio may be presented as universally correct.
 - Include typos, transpositions, missing fields, aliases, diacritics, date errors, identifier errors, and conflicting fields.
 - Include hard nonduplicates such as similar names, shared birthdays, relatives, shared contacts, and near-identical identifiers.
 - Select similarity threshold on validation only.
-- Report blocking recall, reduction ratio, precision, recall, F1, PR-AUC, candidates per 1,000 records, false matches per 1,000 records, runtime, and memory.
+- Report blocking recall, reduction ratio, precision, recall, F1, average precision, candidates per 1,000 records, false matches per 1,000 records, runtime, and memory.
 
 ## Artifact Requirements
 
@@ -184,7 +184,7 @@ The v2 implementation currently provides:
 - raw and policy-matched Isolation Forest representations;
 - single-feature policy ablations, a raw no-commendation ablation, wrong-policy control, and shuffled-policy control;
 - continuous Isolation Forest scores fitted with `contamination="auto"`;
-- PR-AUC, equal review-budget evaluation, validation-F1 thresholds, and validation target-FPR thresholds;
+- average precision, equal review-budget evaluation, validation-F1 thresholds, and validation target-FPR thresholds;
 - policy-agnostic deterministic checks, full deterministic policy checks, IQR, and z-score comparisons;
 - a policy-rules-plus-ML cascade that retains every explicit policy finding and uses ML only to fill the remaining nominal review capacity;
 - paired bootstrap intervals, paired sign-flip tests, operational workload measures, and cost sensitivity;

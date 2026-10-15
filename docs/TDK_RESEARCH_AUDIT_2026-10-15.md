@@ -81,7 +81,7 @@ Correction: the ground-truth-derived feature was removed.
 
 ### Unfair Threshold Comparison
 
-Raw and policy-aware models used their own Isolation Forest decision thresholds and produced different alert volumes. No validation-selected threshold, matched alert budget, matched false-positive rate, or PR-AUC was reported.
+Raw and policy-aware models used their own Isolation Forest decision thresholds and produced different alert volumes. No validation-selected threshold, matched alert budget, matched false-positive rate, or continuous-score average precision was reported.
 
 Required response: implement the comparison modes specified in `TDK_EXPERIMENT_PROTOCOL.md`.
 

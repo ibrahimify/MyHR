@@ -27,14 +27,14 @@ from src.services.anomaly_detection.scenario_generation import (
 )
 
 
-PROTOCOL_VERSION = "draft-v2.2-2026-10-16"
+PROTOCOL_VERSION = "draft-v2.3-2026-10-16"
 PROTOCOL_STATUS = "draft_validation_holdout_locked"
 SUMMARY_METRICS = (
     "precision",
     "recall",
     "f1",
     "false_positive_rate",
-    "pr_auc",
+    "average_precision",
     "alert_rate",
     "rare_legitimate_flagged_rate",
     "ordinary_clean_flagged_rate",
@@ -212,7 +212,7 @@ def _paired_comparisons(rows: list[dict[str, object]]) -> list[dict[str, object]
                 "recall",
                 "f1",
                 "false_positive_rate",
-                "pr_auc",
+                "average_precision",
                 "alert_rate",
                 "rare_legitimate_flagged_rate",
                 "ordinary_clean_flagged_rate",

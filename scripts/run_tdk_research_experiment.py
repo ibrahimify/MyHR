@@ -49,6 +49,8 @@ PROVENANCE_SOURCE_PATHS = (
     "src/services/anomaly_detection/features.py",
     "src/services/anomaly_detection/isolation_forest.py",
     "src/services/anomaly_detection/metrics.py",
+    "src/services/anomaly_detection/deterministic_checks.py",
+    "src/services/anomaly_detection/statistical_baselines.py",
     "src/services/anomaly_detection/experiment_runner.py",
     "src/services/anomaly_detection/duplicate_detection.py",
     "src/services/anomaly_detection/scenario_generation.py",

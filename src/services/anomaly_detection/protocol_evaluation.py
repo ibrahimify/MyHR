@@ -522,7 +522,7 @@ def _evaluation_output(
         "recall": metrics.recall,
         "f1": metrics.f1,
         "false_positive_rate": metrics.false_positive_rate,
-        "pr_auc": _average_precision(y_true, scores),
+        "average_precision": _average_precision(y_true, scores),
         "rare_legitimate_count": rare_count,
         "rare_legitimate_flagged": rare_flagged,
         "rare_legitimate_flagged_rate": _ratio(rare_flagged, rare_count),
