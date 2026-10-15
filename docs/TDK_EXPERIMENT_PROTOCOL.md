@@ -91,6 +91,8 @@ Isolation Forest produces continuous anomaly scores. Results must include:
 
 The configured anomaly prevalence must not be passed directly as a known test threshold. No threshold may be selected from holdout labels.
 
+For the rules-plus-ML cascade, every deterministic policy finding is mandatory. ML may fill unused capacity up to the nominal 10% budget, but the cascade must not discard deterministic findings when their count exceeds that budget. Raw and policy-aware cascades receive the same scenario-specific capacity floor.
+
 ## Metrics And Denominators
 
 For every method and scenario, save:
@@ -184,7 +186,7 @@ The v2 implementation currently provides:
 - continuous Isolation Forest scores fitted with `contamination="auto"`;
 - PR-AUC, equal review-budget evaluation, validation-F1 thresholds, and validation target-FPR thresholds;
 - policy-agnostic deterministic checks, full deterministic policy checks, IQR, and z-score comparisons;
-- a policy-rules-plus-ML cascade that measures incremental ranking value after explicit violations are handled;
+- a policy-rules-plus-ML cascade that retains every explicit policy finding and uses ML only to fill the remaining nominal review capacity;
 - paired bootstrap intervals, paired sign-flip tests, operational workload measures, and cost sensitivity;
 - write-once artifacts containing per-record predictions, provenance, and SHA-256 checksums.
 

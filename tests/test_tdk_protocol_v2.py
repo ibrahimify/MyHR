@@ -6,6 +6,8 @@ from src.services.anomaly_detection.features import extract_policy_aware_feature
 from src.services.anomaly_detection.deterministic_checks import validate_record_with_policy
 from src.services.anomaly_detection.policy_model import PromotionRaceInput, calculate_promotion_race
 from src.services.anomaly_detection.protocol_evaluation import (
+    _rules_first_budget_predictions,
+    _select_cascade_threshold,
     _select_threshold,
     _top_budget_predictions,
     evaluate_scenario,
@@ -215,6 +217,35 @@ class ValidationProtocolTests(unittest.TestCase):
         self.assertEqual(selection.validation_metrics.false_positive_rate, 0.0)
         self.assertEqual(selection.validation_metrics.recall, 1.0)
 
+    def test_rules_first_budget_never_drops_rule_findings(self):
+        predictions = _rules_first_budget_predictions(
+            (1.0, 1.0, 1.0, 0.0, 0.0),
+            (0.1, 0.2, 0.3, 0.9, 0.8),
+            0.20,
+        )
+
+        self.assertEqual(predictions, [True, True, True, False, False])
+
+    def test_rules_first_budget_uses_ml_only_for_remaining_capacity(self):
+        predictions = _rules_first_budget_predictions(
+            (1.0, 0.0, 0.0, 0.0, 0.0),
+            (0.1, 0.2, 0.8, 0.9, 0.7),
+            0.40,
+        )
+
+        self.assertEqual(predictions, [True, False, False, True, False])
+
+    def test_cascade_threshold_cannot_remove_rule_findings(self):
+        selection = _select_cascade_threshold(
+            [True, False, True, False],
+            (1.0, 0.0, 1.0, 0.0),
+            (0.1, 0.9, 0.2, 0.8),
+            "validation_f1",
+        )
+
+        self.assertEqual(selection.validation_metrics.recall, 1.0)
+        self.assertGreaterEqual(selection.validation_alert_count, 2)
+
     def test_evaluation_reports_fair_budget_denominators_and_controls(self):
         scenario = generate_scenario_dataset(
             scenario_matrix("development", count=1, employee_count=120)[0]
@@ -248,7 +279,24 @@ class ValidationProtocolTests(unittest.TestCase):
         self.assertIn("shuffled_policy_control", representations)
         self.assertTrue(any(row["method"] == "deterministic_rules" for row in result.metric_rows))
         self.assertTrue(any(row["method"] == "deterministic_policy_rules" for row in result.metric_rows))
-        self.assertTrue(any(row["method"] == "policy_rules_plus_isolation_forest" for row in result.metric_rows))
+        cascade_rows = [
+            row for row in result.metric_rows
+            if row["method"] == "policy_rules_plus_isolation_forest"
+        ]
+        self.assertTrue(cascade_rows)
+        self.assertTrue(any(
+            row["operating_point"] == "rules_first_budget_floor"
+            for row in cascade_rows
+        ))
+        rule_alerts = next(
+            int(row["alert_count"])
+            for row in result.metric_rows
+            if row["method"] == "deterministic_policy_rules"
+        )
+        self.assertTrue(all(
+            int(row["alert_count"]) >= rule_alerts
+            for row in cascade_rows
+        ))
 
 
 if __name__ == "__main__":

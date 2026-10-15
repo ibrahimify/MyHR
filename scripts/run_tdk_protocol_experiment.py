@@ -27,7 +27,7 @@ from src.services.anomaly_detection.scenario_generation import (
 )
 
 
-PROTOCOL_VERSION = "draft-v2.1-2026-10-15"
+PROTOCOL_VERSION = "draft-v2.2-2026-10-16"
 PROTOCOL_STATUS = "draft_validation_holdout_locked"
 SUMMARY_METRICS = (
     "precision",

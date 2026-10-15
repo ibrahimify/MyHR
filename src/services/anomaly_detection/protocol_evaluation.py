@@ -269,23 +269,33 @@ def evaluate_scenario(
         validation_scores = _cascade_scores(policy_rule_validation_scores, validation_iforest)
         test_scores = _cascade_scores(policy_rule_scores, test_iforest)
         selections = (
-            _select_threshold(validation_truth, validation_scores, "validation_f1"),
-            _select_threshold(
+            _select_cascade_threshold(
                 validation_truth,
-                validation_scores,
+                policy_rule_validation_scores,
+                validation_iforest,
+                "validation_f1",
+            ),
+            _select_cascade_threshold(
+                validation_truth,
+                policy_rule_validation_scores,
+                validation_iforest,
                 "validation_target_fpr",
                 target_fpr=target_validation_fpr,
             ),
         )
         for operating_point, selection in (
-            ("fixed_review_budget", None),
+            ("rules_first_budget_floor", None),
             ("validation_f1", selections[0]),
             ("validation_target_fpr", selections[1]),
         ):
             predictions = (
-                _top_budget_predictions(test_scores, review_budget)
+                _rules_first_budget_predictions(policy_rule_scores, test_iforest, review_budget)
                 if selection is None
-                else [score >= selection.threshold for score in test_scores]
+                else [
+                    rule_score > 0
+                    or (rule_score <= 0 and model_score >= selection.threshold)
+                    for rule_score, model_score in zip(policy_rule_scores, test_iforest)
+                ]
             )
             row, records = _evaluation_output(
                 scenario,
@@ -380,6 +390,76 @@ def _top_budget_predictions(scores: tuple[float, ...], fraction: float) -> list[
     ranked = sorted(range(len(scores)), key=lambda index: (-scores[index], index))
     selected = set(ranked[:alert_count])
     return [index in selected for index in range(len(scores))]
+
+
+def _rules_first_budget_predictions(
+    deterministic_scores: tuple[float, ...],
+    model_scores: tuple[float, ...],
+    fraction: float,
+) -> list[bool]:
+    """Keep every rule finding and use ML only to fill remaining capacity."""
+
+    if len(deterministic_scores) != len(model_scores) or not model_scores:
+        raise ValueError("cascade score inputs must be non-empty and aligned")
+    rule_indices = {
+        index for index, score in enumerate(deterministic_scores) if score > 0
+    }
+    nominal_budget = max(1, ceil(len(model_scores) * fraction))
+    target_alert_count = max(nominal_budget, len(rule_indices))
+    residual_ranked = sorted(
+        (index for index in range(len(model_scores)) if index not in rule_indices),
+        key=lambda index: (-model_scores[index], index),
+    )
+    selected = rule_indices | set(
+        residual_ranked[:target_alert_count - len(rule_indices)]
+    )
+    return [index in selected for index in range(len(model_scores))]
+
+
+def _select_cascade_threshold(
+    y_true: list[bool],
+    deterministic_scores: tuple[float, ...],
+    model_scores: tuple[float, ...],
+    mode: str,
+    target_fpr: float = 0.05,
+) -> ThresholdSelection:
+    """Select an ML threshold while deterministic rule findings remain mandatory."""
+
+    if (
+        len(y_true) != len(deterministic_scores)
+        or len(y_true) != len(model_scores)
+        or not y_true
+    ):
+        raise ValueError("cascade validation inputs must be non-empty and aligned")
+    residual_scores = [
+        model_score
+        for rule_score, model_score in zip(deterministic_scores, model_scores)
+        if rule_score <= 0
+    ]
+    candidates = [inf, *sorted(set(residual_scores), reverse=True)]
+    selections = []
+    for threshold in candidates:
+        predictions = [
+            rule_score > 0
+            or (rule_score <= 0 and model_score >= threshold)
+            for rule_score, model_score in zip(deterministic_scores, model_scores)
+        ]
+        metrics = confusion_counts(y_true, predictions)
+        selections.append((threshold, metrics, sum(predictions)))
+    if mode == "validation_f1":
+        threshold, metrics, alerts = max(
+            selections,
+            key=lambda item: (item[1].f1, item[1].precision, item[1].recall, -item[2], item[0]),
+        )
+    elif mode == "validation_target_fpr":
+        feasible = [item for item in selections if item[1].false_positive_rate <= target_fpr + 1e-12]
+        threshold, metrics, alerts = max(
+            feasible,
+            key=lambda item: (item[1].recall, item[1].precision, -item[2], item[0]),
+        )
+    else:
+        raise ValueError(f"unsupported threshold mode: {mode}")
+    return ThresholdSelection(mode, threshold, metrics, alerts)
 
 
 def _cascade_scores(
