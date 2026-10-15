@@ -42,6 +42,8 @@ The generator must keep these tracks separate because forcing every employee int
 - Experiments must report false positives on rare legitimate cases separately.
 - No synthetic result is valid unless the seed, generation configuration, split, anomaly counts, and run ID are saved with the output.
 - The paper must distinguish deterministic policy violations from statistical anomalies.
+- Progression-anomaly evaluation excludes `duplicate_record`; duplicate identity matching is a separate pairwise task.
+- Ground-truth-only fields such as `duplicate_of_employee_id` must never be exposed as model features.
 
 ## Generator Rules
 
@@ -95,6 +97,7 @@ Every method evaluation must report:
 - precision, recall, F1 score, and false-positive rate;
 - predicted positive count;
 - false positives on rare legitimate policy cases.
+- rare-legitimate and ordinary-clean denominators and false-positive rates.
 
 ## Duplicate-Record Detection
 

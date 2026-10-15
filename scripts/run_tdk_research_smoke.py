@@ -18,6 +18,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src.services.anomaly_detection import (
+    AnomalyType,
     DatasetSplit,
     ExperimentConfig,
     confusion_counts,
@@ -94,8 +95,20 @@ def _evaluation_to_dict(evaluation: Any) -> dict[str, Any]:
         "method": evaluation.method,
         "feature_set": evaluation.feature_set,
         "feature_names": list(evaluation.feature_names),
+        "evaluation_count": int(evaluation.evaluation_count),
         "predicted_positive_count": int(evaluation.predicted_positive_count),
+        "rare_legitimate_count": int(evaluation.rare_legitimate_count),
         "rare_legitimate_false_positives": int(evaluation.rare_legitimate_false_positives),
+        "rare_legitimate_false_positive_rate": _safe_rate(
+            evaluation.rare_legitimate_false_positives,
+            evaluation.rare_legitimate_count,
+        ),
+        "clean_count": int(evaluation.clean_count),
+        "clean_false_positives": int(evaluation.clean_false_positives),
+        "clean_false_positive_rate": _safe_rate(
+            evaluation.clean_false_positives,
+            evaluation.clean_count,
+        ),
         "metrics": _metrics_to_dict(metrics),
     }
 
@@ -106,8 +119,16 @@ def _isolation_forest_to_dict(
     feature_names: tuple[str, ...],
     seed: int,
 ) -> dict[str, Any]:
-    train_records = tuple(record for record in dataset.records if record.split is DatasetSplit.TRAIN)
-    test_records = tuple(record for record in dataset.records if record.split is DatasetSplit.TEST)
+    train_records = tuple(
+        record for record in dataset.records
+        if record.split is DatasetSplit.TRAIN
+        and AnomalyType.DUPLICATE_RECORD not in record.anomaly_labels
+    )
+    test_records = tuple(
+        record for record in dataset.records
+        if record.split is DatasetSplit.TEST
+        and AnomalyType.DUPLICATE_RECORD not in record.anomaly_labels
+    )
     train_vectors = tuple(extract_features(record, feature_set) for record in train_records)
     test_vectors = tuple(extract_features(record, feature_set) for record in test_records)
     result = run_isolation_forest(
@@ -117,21 +138,44 @@ def _isolation_forest_to_dict(
         contamination=0.10,
         random_state=seed,
     )
-    y_true = [record.has_anomaly for record in test_records]
+    y_true = [record.has_progression_anomaly for record in test_records]
     predictions = list(result.predictions)
+    rare_legitimate_count = sum(
+        AnomalyType.POLICY_LEGITIMATE_RARE_CASE in record.anomaly_labels
+        for record in test_records
+    )
     rare_false_positives = int(sum(
         1
         for record, predicted in zip(test_records, predictions)
-        if predicted and "policy_legitimate_rare_case" in [label.value for label in record.anomaly_labels]
+        if predicted and AnomalyType.POLICY_LEGITIMATE_RARE_CASE in record.anomaly_labels
     ))
+    clean_count = sum(AnomalyType.CLEAN in record.anomaly_labels for record in test_records)
+    clean_false_positives = sum(
+        1
+        for record, predicted in zip(test_records, predictions)
+        if predicted and AnomalyType.CLEAN in record.anomaly_labels
+    )
     return {
         "method": result.method,
         "feature_set": feature_set,
         "feature_names": list(feature_names),
+        "evaluation_count": len(test_records),
         "predicted_positive_count": int(sum(bool(prediction) for prediction in predictions)),
+        "rare_legitimate_count": rare_legitimate_count,
         "rare_legitimate_false_positives": rare_false_positives,
+        "rare_legitimate_false_positive_rate": _safe_rate(
+            rare_false_positives,
+            rare_legitimate_count,
+        ),
+        "clean_count": clean_count,
+        "clean_false_positives": clean_false_positives,
+        "clean_false_positive_rate": _safe_rate(clean_false_positives, clean_count),
         "metrics": _metrics_to_dict(confusion_counts(y_true, predictions)),
     }
+
+
+def _safe_rate(numerator: int, denominator: int) -> float:
+    return numerator / denominator if denominator else 0.0
 
 
 def _duplicate_evaluation_to_dict(evaluation: Any) -> dict[str, Any]:

@@ -6,6 +6,10 @@ Research title:
 
 This page is for supervisors, reviewers, and future maintainers who want to verify that the research pipeline is wired correctly. It is not the final paper result page.
 
+## Research Status
+
+Seeds `2026-2030` are development-only because their outputs influenced feature design. Existing artifacts from those seeds must not be used as untouched holdout evidence. See `TDK_RESEARCH_AUDIT_2026-10-15.md` for the audit findings and `TDK_EXPERIMENT_PROTOCOL.md` for the holdout rules.
+
 ## Environments
 
 Desktop app runtime:
@@ -90,8 +94,8 @@ This creates a folder under `research_outputs/multi_seed/` containing:
 - `aggregate_duplicate_metrics.csv`;
 - `method_comparisons.csv`.
 
-Use `method_comparisons.csv` to check whether policy-aware features consistently improve over raw features across seeds. A single seed is not enough for a strong TDK claim.
+Use `method_comparisons.csv` for development diagnostics only. A final claim requires the frozen protocol, independent scenarios, validation-selected thresholds, uncertainty estimates, and an untouched holdout.
 
 Small employee counts are useful for checking that the pipeline runs. Final paper evidence should use larger datasets and reviewed seeds because small test splits make precision and recall unstable.
 
-Current implementation note: the default policy-aware Isolation Forest feature set intentionally uses policy residuals instead of the raw minimum-promotion-interval feature. This keeps the experiment aligned with the research question: whether policy context reduces false positives on rare legitimate histories without hiding true administrative errors.
+Current implementation note: the default policy-aware Isolation Forest feature set uses policy residuals instead of the raw minimum-promotion-interval feature. This representation is not yet validated as non-circular and remains subject to the matched ablation protocol.

@@ -41,7 +41,6 @@ def extract_raw_features(record: WorkforceHistoryRecord) -> FeatureVector:
         "salary_increment_count": float(len(increments)),
         "performance_review_count": float(len(reviews)),
         "employment_track_is_promotion": 1.0 if record.employment_track is EmploymentTrack.PROMOTION else 0.0,
-        "has_duplicate_source": 1.0 if record.duplicate_of_employee_id else 0.0,
         "months_since_hire": float(_months_between(record.hire_date, _last_event_date(events, record.hire_date))),
         "min_promotion_interval_months": float(_min_month_interval(promotions)),
         "min_salary_increment_interval_days": float(_min_day_interval(increments)),

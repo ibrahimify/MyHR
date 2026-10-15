@@ -364,6 +364,8 @@ Avoid `git reset --hard` unless you are completely sure you want to discard loca
 | Scope Audit | `docs/SCOPE_AUDIT.md` |
 | TDK Synthetic Data Contract | `docs/TDK_SYNTHETIC_DATA_CONTRACT.md` |
 | TDK Research Verification | `docs/TDK_RESEARCH_VERIFICATION.md` |
+| TDK Research Audit | `docs/TDK_RESEARCH_AUDIT_2026-10-15.md` |
+| TDK Experiment Protocol | `docs/TDK_EXPERIMENT_PROTOCOL.md` |
 | Licensing And IP Note | `docs/LICENSING_AND_IP.md` |
 | UI Mockup | `MockUI/` |
 | Demo Dataset Script | `scripts/seed_demo_company.py` |

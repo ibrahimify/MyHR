@@ -2,7 +2,7 @@
 
 from collections import Counter
 from dataclasses import asdict, dataclass, replace
-from datetime import date
+from datetime import date, timedelta
 from enum import Enum
 from hashlib import sha256
 from random import Random
@@ -138,6 +138,16 @@ class WorkforceHistoryRecord:
     def has_anomaly(self) -> bool:
         non_anomalous_labels = {AnomalyType.CLEAN, AnomalyType.POLICY_LEGITIMATE_RARE_CASE}
         return any(label not in non_anomalous_labels for label in self.anomaly_labels)
+
+    @property
+    def has_progression_anomaly(self) -> bool:
+        progression_labels = {
+            AnomalyType.INCONSISTENT_DATES,
+            AnomalyType.FREQUENT_PROMOTIONS,
+            AnomalyType.EXCESSIVE_SANCTIONS,
+            AnomalyType.UNUSUAL_ADMIN_INTERVAL,
+        }
+        return any(label in progression_labels for label in self.anomaly_labels)
 
 
 @dataclass(frozen=True)
@@ -348,9 +358,18 @@ def _label_plan(
             plan[index] = true_anomalies[anomaly_offset % len(true_anomalies)]
             anomaly_offset += 1
 
+    rare_candidates = {
+        split: [
+            index for index in split_indices[split]
+            if _employment_track_for_index(index) is EmploymentTrack.PROMOTION
+        ]
+        for split in DatasetSplit
+    }
+    if any(len(rare_candidates[split]) < rare_allocations[split] for split in DatasetSplit):
+        raise ValueError("rare_legitimate_rate exceeds available promotion-track records")
     for split in DatasetSplit:
         for _ in range(rare_allocations[split]):
-            index = split_indices[split].pop()
+            index = rare_candidates[split].pop()
             plan[index] = AnomalyType.POLICY_LEGITIMATE_RARE_CASE
 
     if plan.get(0) is AnomalyType.DUPLICATE_RECORD and config.employee_count > 1:
@@ -400,7 +419,7 @@ def _base_record(index: int, split: DatasetSplit, rng: Random) -> WorkforceHisto
     first_name = FIRST_NAMES[index % len(FIRST_NAMES)]
     last_name = LAST_NAMES[(index // len(FIRST_NAMES)) % len(LAST_NAMES)]
     full_name = f"{first_name} {last_name}"
-    track = EmploymentTrack.PROMOTION if index % 5 != 0 else EmploymentTrack.OTHER
+    track = _employment_track_for_index(index)
     department = DEPARTMENTS[index % len(DEPARTMENTS)]
     hire_year = rng.randint(2014, 2024)
     hire_month = rng.randint(1, 12)
@@ -472,10 +491,17 @@ def _base_record(index: int, split: DatasetSplit, rng: Random) -> WorkforceHisto
             )
         )
     if rng.random() < 0.10:
+        promotion_dates = [
+            event.event_date
+            for event in events
+            if event.event_type is AdministrativeEventType.PROMOTION
+        ]
+        last_promotion_date = max(promotion_dates, default=hire_date)
+        sanction_date = min(last_promotion_date + timedelta(days=1), date(2026, 12, 31))
         events.append(
             AdministrativeEvent(
                 event_type=AdministrativeEventType.SANCTION,
-                event_date=_safe_date(max(hire_year + 1, 2022), rng.randint(1, 12), rng.randint(1, 28)),
+                event_date=sanction_date,
                 source_id=f"SAN-{employee_number:04d}-1",
                 category=rng.choice((1, 2)),
                 note="Synthetic sanction",
@@ -498,6 +524,10 @@ def _base_record(index: int, split: DatasetSplit, rng: Random) -> WorkforceHisto
         hire_date=hire_date,
         events=tuple(sorted(events, key=lambda event: (event.event_date, event.source_id))),
     )
+
+
+def _employment_track_for_index(index: int) -> EmploymentTrack:
+    return EmploymentTrack.PROMOTION if index % 5 != 0 else EmploymentTrack.OTHER
 
 
 def _apply_label(
@@ -591,7 +621,10 @@ def _apply_label(
     elif label is AnomalyType.POLICY_LEGITIMATE_RARE_CASE:
         events = [
             event for event in events
-            if event.event_type is not AdministrativeEventType.PROMOTION
+            if event.event_type not in (
+                AdministrativeEventType.PROMOTION,
+                AdministrativeEventType.SANCTION,
+            )
         ]
         events.extend(
             (

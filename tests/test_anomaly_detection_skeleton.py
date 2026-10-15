@@ -44,9 +44,20 @@ from src.services.anomaly_detection.statistical_baselines import (
     fit_z_score_baseline,
     predict_baseline,
 )
+from scripts.run_tdk_research_multiseed import _bootstrap_mean_ci, _paired_sign_flip_pvalue
 
 
 class AnomalyDetectionSkeletonTests(unittest.TestCase):
+    def test_paired_uncertainty_helpers_are_deterministic(self):
+        values = [-1.0, -1.0, -1.0, -1.0, -1.0]
+
+        first_interval = _bootstrap_mean_ci(values, seed=20261015, samples=1000)
+        second_interval = _bootstrap_mean_ci(values, seed=20261015, samples=1000)
+
+        self.assertEqual(first_interval, second_interval)
+        self.assertEqual(first_interval, (-1.0, -1.0))
+        self.assertEqual(_paired_sign_flip_pvalue(values, seed=20261015), 0.0625)
+
     def test_experiment_config_has_stable_run_id(self):
         first = ExperimentConfig(seed=42, employee_count=100)
         second = ExperimentConfig(seed=42, employee_count=100)
@@ -216,6 +227,8 @@ class AnomalyDetectionSkeletonTests(unittest.TestCase):
 
         self.assertGreaterEqual(len(duplicates), 1)
         self.assertTrue(all(record.duplicate_of_employee_id for record in duplicates))
+        self.assertTrue(all(record.has_anomaly for record in duplicates))
+        self.assertTrue(all(not record.has_progression_anomaly for record in duplicates))
         source_ids = {record.identity.employee_id for record in dataset.records}
         self.assertTrue(all(record.duplicate_of_employee_id in source_ids for record in duplicates))
 
@@ -227,6 +240,32 @@ class AnomalyDetectionSkeletonTests(unittest.TestCase):
             split_records = [record for record in dataset.records if record.split is split]
             self.assertTrue(any(record.has_anomaly for record in split_records))
             self.assertTrue(any(AnomalyType.POLICY_LEGITIMATE_RARE_CASE in record.anomaly_labels for record in split_records))
+
+    def test_rare_legitimate_promotions_only_use_promotion_track(self):
+        config = ExperimentConfig(seed=2026, employee_count=1000, anomaly_rate=0.10, rare_legitimate_rate=0.05)
+        dataset = generate_synthetic_dataset(config)
+        rare_records = [
+            record for record in dataset.records
+            if AnomalyType.POLICY_LEGITIMATE_RARE_CASE in record.anomaly_labels
+        ]
+
+        self.assertEqual(len(rare_records), 50)
+        self.assertTrue(all(record.employment_track is EmploymentTrack.PROMOTION for record in rare_records))
+        rare_ids = {record.identity.employee_id for record in rare_records}
+        rare_findings = [finding for finding in validate_dataset(dataset) if finding.employee_id in rare_ids]
+        self.assertEqual(rare_findings, [])
+
+    def test_clean_and_rare_histories_have_no_policy_service_deficit(self):
+        config = ExperimentConfig(seed=2026, employee_count=1000, anomaly_rate=0.10, rare_legitimate_rate=0.05)
+        dataset = generate_synthetic_dataset(config)
+        expected_valid = [record for record in dataset.records if not record.has_anomaly]
+
+        deficits = {
+            record.identity.employee_id: extract_policy_aware_features(record).values["policy_service_deficit_months"]
+            for record in expected_valid
+        }
+
+        self.assertTrue(all(deficit == 0.0 for deficit in deficits.values()))
 
     def test_synthetic_dataset_distributes_labels_proportionally_across_splits(self):
         config = ExperimentConfig(seed=2026, employee_count=1000, anomaly_rate=0.10, rare_legitimate_rate=0.05)
@@ -335,7 +374,7 @@ class AnomalyDetectionSkeletonTests(unittest.TestCase):
         self.assertEqual(policy_aware.values["policy_service_deficit_ratio"], 0.0)
         self.assertEqual(policy_aware.values["policy_unexplained_short_promotion"], 0.0)
         self.assertEqual(policy_aware.values["policy_explains_short_promotion"], 1.0)
-        self.assertEqual(raw.values["has_duplicate_source"], 0.0)
+        self.assertNotIn("has_duplicate_source", raw.values)
 
     def test_policy_aware_experiment_features_use_policy_residuals(self):
         self.assertIn("policy_service_deficit_months", DEFAULT_POLICY_AWARE_FEATURES)
@@ -375,9 +414,24 @@ class AnomalyDetectionSkeletonTests(unittest.TestCase):
 
         raw_result = evaluate_statistical_baseline(dataset, "raw", "iqr")
         policy_result = evaluate_statistical_baseline(dataset, "policy_aware", "iqr")
+        progression_test_records = [
+            record for record in dataset.records
+            if record.split is DatasetSplit.TEST
+            and AnomalyType.DUPLICATE_RECORD not in record.anomaly_labels
+        ]
 
         self.assertEqual(raw_result.method, "iqr")
         self.assertEqual(policy_result.feature_set, "policy_aware")
+        self.assertEqual(raw_result.evaluation_count, len(progression_test_records))
+        self.assertEqual(
+            raw_result.ground_truth_positive_count + raw_result.ground_truth_negative_count,
+            raw_result.evaluation_count,
+        )
+        self.assertEqual(
+            raw_result.rare_legitimate_count,
+            sum(AnomalyType.POLICY_LEGITIMATE_RARE_CASE in record.anomaly_labels for record in progression_test_records),
+        )
+        self.assertEqual(raw_result.clean_count, sum(AnomalyType.CLEAN in record.anomaly_labels for record in progression_test_records))
         self.assertGreaterEqual(raw_result.metrics.true_positives + raw_result.metrics.false_positives, 0)
         self.assertGreaterEqual(policy_result.rare_legitimate_false_positives, 0)
         self.assertGreaterEqual(policy_result.predicted_positive_count, 0)
@@ -443,6 +497,15 @@ class AnomalyDetectionSkeletonTests(unittest.TestCase):
         normalized = find_normalized_exact_duplicate_candidates(dataset.records)
 
         self.assertGreaterEqual(len(normalized), len(exact))
+
+    def test_duplicate_ground_truth_includes_sibling_pairs(self):
+        config = ExperimentConfig(seed=2027, employee_count=1000, anomaly_rate=0.10, rare_legitimate_rate=0.05)
+        dataset = generate_synthetic_dataset(config)
+
+        normalized = evaluate_duplicate_detection(dataset, "normalized_exact")
+
+        self.assertEqual(normalized.metrics.false_positives, 0)
+        self.assertEqual(normalized.metrics.recall, 1.0)
 
 
 if __name__ == "__main__":

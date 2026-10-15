@@ -27,7 +27,13 @@ class MethodEvaluation:
     feature_set: str
     feature_names: tuple[str, ...]
     metrics: BinaryClassificationMetrics
+    evaluation_count: int
+    ground_truth_positive_count: int
+    ground_truth_negative_count: int
+    rare_legitimate_count: int
     rare_legitimate_false_positives: int
+    clean_count: int
+    clean_false_positives: int
     predicted_positive_count: int
 
 
@@ -62,21 +68,37 @@ def evaluate_statistical_baseline(
     feature_names = feature_names or (
         DEFAULT_POLICY_AWARE_FEATURES if feature_set == POLICY_AWARE_FEATURE_SET else DEFAULT_BASELINE_FEATURES
     )
-    train_records = _records_for_split(dataset, DatasetSplit.TRAIN)
-    test_records = _records_for_split(dataset, DatasetSplit.TEST)
+    train_records = _progression_records_for_split(dataset, DatasetSplit.TRAIN)
+    test_records = _progression_records_for_split(dataset, DatasetSplit.TEST)
     train_vectors = tuple(extract_features(record, feature_set) for record in train_records)
     test_vectors = tuple(extract_features(record, feature_set) for record in test_records)
 
     model = _fit_baseline(method, train_vectors, feature_names)
     predictions = predict_baseline(model, test_vectors)
-    y_true = [record.has_anomaly for record in test_records]
+    y_true = [record.has_progression_anomaly for record in test_records]
     metrics = confusion_counts(y_true, predictions)
+    rare_legitimate_count, rare_legitimate_false_positives = _label_false_positive_counts(
+        test_records,
+        predictions,
+        AnomalyType.POLICY_LEGITIMATE_RARE_CASE,
+    )
+    clean_count, clean_false_positives = _label_false_positive_counts(
+        test_records,
+        predictions,
+        AnomalyType.CLEAN,
+    )
     return MethodEvaluation(
         method=method,
         feature_set=feature_set,
         feature_names=feature_names,
         metrics=metrics,
-        rare_legitimate_false_positives=_rare_legitimate_false_positives(test_records, predictions),
+        evaluation_count=len(test_records),
+        ground_truth_positive_count=sum(y_true),
+        ground_truth_negative_count=len(y_true) - sum(y_true),
+        rare_legitimate_count=rare_legitimate_count,
+        rare_legitimate_false_positives=rare_legitimate_false_positives,
+        clean_count=clean_count,
+        clean_false_positives=clean_false_positives,
         predicted_positive_count=sum(predictions),
     )
 
@@ -97,12 +119,29 @@ def _records_for_split(dataset: SyntheticDataset, split: DatasetSplit) -> tuple[
     return tuple(record for record in dataset.records if record.split is split)
 
 
-def _rare_legitimate_false_positives(
+def _progression_records_for_split(
+    dataset: SyntheticDataset,
+    split: DatasetSplit,
+) -> tuple[WorkforceHistoryRecord, ...]:
+    return tuple(
+        record
+        for record in _records_for_split(dataset, split)
+        if AnomalyType.DUPLICATE_RECORD not in record.anomaly_labels
+    )
+
+
+def _label_false_positive_counts(
     records: tuple[WorkforceHistoryRecord, ...],
     predictions: list[bool],
-) -> int:
-    return sum(
-        1
+    label: AnomalyType,
+) -> tuple[int, int]:
+    matching = [
+        (record, predicted)
         for record, predicted in zip(records, predictions)
-        if predicted and AnomalyType.POLICY_LEGITIMATE_RARE_CASE in record.anomaly_labels
+        if label in record.anomaly_labels
+    ]
+    return len(matching), sum(
+        1
+        for _, predicted in matching
+        if predicted
     )

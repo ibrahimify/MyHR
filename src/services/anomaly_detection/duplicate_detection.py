@@ -74,8 +74,8 @@ def find_exact_duplicate_candidates(
         records=records,
         method="exact",
         field_specs=(
-            ("same_national_id", lambda record: normalize_text(record.identity.national_id)),
-            ("same_email", lambda record: normalize_email(record.identity.email)),
+            ("same_national_id", lambda record: record.identity.national_id or ""),
+            ("same_email", lambda record: record.identity.email or ""),
         ),
     )
 
@@ -154,11 +154,7 @@ def evaluate_duplicate_detection(
         raise ValueError(f"Unsupported duplicate detection method: {method}")
 
     predicted_pairs = {_pair_key(candidate.left_employee_id, candidate.right_employee_id) for candidate in candidates}
-    true_pairs = {
-        _pair_key(record.identity.employee_id, record.duplicate_of_employee_id)
-        for record in records
-        if record.duplicate_of_employee_id
-    }
+    true_pairs = _true_duplicate_pairs(records)
     true_positives = len(predicted_pairs & true_pairs)
     false_positives = len(predicted_pairs - true_pairs)
     false_negatives = len(true_pairs - predicted_pairs)
@@ -181,6 +177,31 @@ def _record_pairs(records: tuple[WorkforceHistoryRecord, ...]) -> Iterable[tuple
     for left_index, left in enumerate(records):
         for right in records[left_index + 1:]:
             yield left, right
+
+
+def _true_duplicate_pairs(records: tuple[WorkforceHistoryRecord, ...]) -> set[tuple[str, str]]:
+    source_by_id: dict[str, str] = {}
+    for record in records:
+        if record.duplicate_of_employee_id:
+            source_by_id[record.identity.employee_id] = record.duplicate_of_employee_id
+    clusters: dict[str, list[str]] = {}
+    for record in records:
+        employee_id = record.identity.employee_id
+        root_id = employee_id
+        visited: set[str] = set()
+        while root_id in source_by_id:
+            if root_id in visited:
+                raise ValueError("duplicate source links must not contain cycles")
+            visited.add(root_id)
+            root_id = source_by_id[root_id]
+        clusters.setdefault(root_id, []).append(employee_id)
+
+    return {
+        _pair_key(left_id, right_id)
+        for employee_ids in clusters.values()
+        if len(employee_ids) > 1
+        for left_id, right_id in combinations(employee_ids, 2)
+    }
 
 
 def _grouped_exact_candidates(

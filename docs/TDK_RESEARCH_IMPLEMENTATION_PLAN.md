@@ -40,6 +40,8 @@ No research claim may be written into the paper unless it is supported by a repr
 - metrics;
 - timestamp or run identifier.
 
+The scientific audit dated 2026-10-15 supersedes any interpretation of the first five-seed outputs as final evidence. Seeds `2026-2030` are development-only. The untouched holdout remains locked under `docs/TDK_EXPERIMENT_PROTOCOL.md`.
+
 ## Evaluation Metrics
 
 - Precision.
