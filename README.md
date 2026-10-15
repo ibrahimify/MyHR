@@ -75,6 +75,8 @@ does not automatically inherit ML and plotting libraries:
 pip install -r requirements.txt -r requirements-research.txt
 ```
 
+Verified research artifacts record exact package versions. The matching development environment is captured in `requirements-research-lock.txt`; validate it in a clean environment before any frozen holdout run.
+
 Default credentials:
 
 | Role | Username | Password |
@@ -367,10 +369,17 @@ Avoid `git reset --hard` unless you are completely sure you want to discard loca
 | TDK Research Audit | `docs/TDK_RESEARCH_AUDIT_2026-10-15.md` |
 | TDK Experiment Protocol | `docs/TDK_EXPERIMENT_PROTOCOL.md` |
 | TDK Protocol V2 Development and Validation Report | `docs/TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md` |
+| TDK Methodology Review | `docs/TDK_METHODOLOGY_REVIEW_2026-10-16.md` |
+| TDK Independent Scenario Specification | `docs/TDK_INDEPENDENT_SCENARIO_SPEC.md` |
+| TDK Protocol Change Proposals | `docs/TDK_PROTOCOL_CHANGE_PROPOSALS.md` |
+| TDK Supervisor Review Package | `docs/TDK_SUPERVISOR_REVIEW_PACKAGE.md` |
+| TDK Autonomous Research Roadmap | `docs/TDK_AUTONOMOUS_RESEARCH_ROADMAP.md` |
 | TDK Literature Workflow | `docs/TDK_LITERATURE_WORKFLOW.md` |
 | TDK Literature Review | `docs/TDK_LITERATURE_REVIEW.md` |
 | TDK Verified Bibliography | `docs/TDK_REFERENCES.bib` |
 | TDK Protocol V2 Runner | `scripts/run_tdk_protocol_experiment.py` |
+| TDK Independent Development Runner | `scripts/run_tdk_independent_development.py` |
+| TDK Artifact Auditor | `scripts/audit_tdk_protocol_artifact.py` |
 | Licensing And IP Note | `docs/LICENSING_AND_IP.md` |
 | UI Mockup | `MockUI/` |
 | Demo Dataset Script | `scripts/seed_demo_company.py` |

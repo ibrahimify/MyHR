@@ -63,11 +63,11 @@ The literature exposes two complementary facts. Precision-recall analysis is inf
 
 Issue #10 correctly adds continuous-score average precision, validation-only thresholds, equal top-10% review budgets, target-FPR analysis, and explicit counts. It also avoids passing known test contamination to Isolation Forest. These choices directly address the documented evaluation risks.
 
-One improvement should be agreed before protocol freeze: name one primary comparison and one primary endpoint. Recommended primary estimand:
+The later independent methodology audit showed that rare-legitimate reduction alone can move false alerts to ordinary-clean records without improving total precision. The current proposed primary estimand is therefore:
 
-> Paired difference in rare-legitimate flag rate between policy-aware and raw Isolation Forest at an equal 10% review budget, evaluated across independently generated validation or holdout scenarios.
+> Paired scenario-level difference in average precision between policy-aware and raw Isolation Forest among rule-negative records from independently generated residual-error scenarios.
 
-F1, anomaly-class recall, total false positives, and cost sensitivity remain important secondary outcomes. Secondary hypothesis tests should be labelled exploratory or adjusted with Holm's procedure. This prevents a large table of favorable p-values from becoming accidental cherry-picking.
+Rare-legitimate and ordinary-clean flag rates, F1, anomaly-class recall, total false positives, and cost sensitivity remain important secondary outcomes. Secondary hypothesis tests should be labelled exploratory and adjusted with Holm's procedure. The proposal remains subject to supervisor approval.
 
 ### 5. Synthetic Ground Truth Is Necessary But Not Sufficient
 
@@ -160,7 +160,7 @@ These are proposals from the review. They have not changed `docs/TDK_EXPERIMENT_
 
 ## Supervisor Review Questions
 
-1. Is rare-legitimate flag reduction at a fixed 10% review budget an acceptable primary endpoint?
+1. Is rule-negative average precision an acceptable primary endpoint, with rare-legitimate and ordinary-clean flag rates as paired secondary outcomes?
 2. Which policy profiles and administrative histories are realistic enough to include in the independently designed scenario family?
 3. Can the supervisor or another domain expert review a blinded sample of generated histories before protocol freeze?
 4. Should secondary p-values use Holm adjustment, or should they remain descriptive with confidence intervals only?
