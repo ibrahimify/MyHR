@@ -3,7 +3,8 @@
 from dataclasses import dataclass
 from datetime import date
 
-from .policy_model import PromotionPolicy, PromotionRaceInput, calculate_promotion_race
+from .policy_history import PromotionPolicyAssessment, assess_promotion_history
+from .policy_model import PromotionPolicy
 from .synthetic_data import AdministrativeEvent, AdministrativeEventType, EmploymentTrack, WorkforceHistoryRecord
 
 RAW_FEATURE_SET = "raw"
@@ -57,9 +58,8 @@ def extract_policy_aware_features(
     policy = policy or PromotionPolicy()
     raw = extract_raw_features(record).values
     events = _sorted_events(record)
-    promotions = _events_of_type(events, AdministrativeEventType.PROMOTION)
-    latest_promotion = promotions[-1] if promotions else None
-    service_context = _promotion_service_context(record, events, latest_promotion, policy)
+    assessments = assess_promotion_history(record, policy)
+    service_context = _promotion_service_context(assessments)
 
     values = dict(raw)
     values.update(service_context)
@@ -83,12 +83,9 @@ def extract_features(
 
 
 def _promotion_service_context(
-    record: WorkforceHistoryRecord,
-    events: tuple[AdministrativeEvent, ...],
-    latest_promotion: AdministrativeEvent | None,
-    policy: PromotionPolicy,
+    assessments: tuple[PromotionPolicyAssessment, ...],
 ) -> dict[str, float]:
-    if latest_promotion is None or latest_promotion.level_before is None:
+    if not assessments:
         return {
             "latest_promotion_observed_service_months": 0.0,
             "latest_promotion_required_service_months": 0.0,
@@ -103,85 +100,32 @@ def _promotion_service_context(
             "policy_explains_short_promotion": 0.0,
         }
 
-    previous_date = _previous_level_start(record, events, latest_promotion)
-    observed_months = _months_between(previous_date, latest_promotion.event_date)
-    required_months = policy.required_service_months(latest_promotion.level_before) or 0
-    credit_months = _commendation_credit_between(events, previous_date, latest_promotion.event_date, policy)
-    delay_months = _active_sanction_delay_between(events, previous_date, latest_promotion.event_date, policy)
-    race = calculate_promotion_race(PromotionRaceInput(
-        has_next_level=required_months > 0,
-        base_months=required_months or None,
-        months_elapsed=max(observed_months, 0),
-        commendation_credit_months=credit_months,
-        active_sanction_delay_months=delay_months,
-    ))
-    adjusted_service = race.adjusted_service_months
-    service_deficit = race.months_remaining or 0
-    raw_deficit = max(required_months - observed_months, 0)
-    required_months_denominator = required_months or 1
+    latest = assessments[-1]
+    max_deficit = max(assessments, key=lambda item: item.service_deficit_months)
+    max_raw_deficit = max(assessments, key=lambda item: item.raw_service_deficit_months)
+    unexplained = any(item.service_deficit_months > 0 for item in assessments)
+    explained = any(
+        item.raw_service_deficit_months > 0 and item.service_deficit_months == 0
+        for item in assessments
+    )
 
     return {
-        "latest_promotion_observed_service_months": float(observed_months),
-        "latest_promotion_required_service_months": float(required_months),
-        "policy_commendation_credit_months": float(credit_months),
-        "policy_sanction_delay_months": float(delay_months),
-        "policy_adjusted_service_months": float(adjusted_service),
-        "policy_service_deficit_months": float(service_deficit),
-        "policy_raw_service_deficit_months": float(raw_deficit),
-        "policy_adjusted_service_ratio": float(adjusted_service / required_months_denominator),
-        "policy_service_deficit_ratio": float(service_deficit / required_months_denominator),
-        "policy_unexplained_short_promotion": 1.0 if service_deficit > 0 else 0.0,
-        "policy_explains_short_promotion": 1.0 if raw_deficit > 0 and service_deficit == 0 else 0.0,
+        "latest_promotion_observed_service_months": float(latest.observed_service_months),
+        "latest_promotion_required_service_months": float(latest.required_service_months),
+        "policy_commendation_credit_months": float(latest.commendation_credit_months),
+        "policy_sanction_delay_months": float(latest.sanction_delay_months),
+        "policy_adjusted_service_months": float(latest.adjusted_service_months),
+        "policy_service_deficit_months": float(max_deficit.service_deficit_months),
+        "policy_raw_service_deficit_months": float(max_raw_deficit.raw_service_deficit_months),
+        "policy_adjusted_service_ratio": float(
+            latest.adjusted_service_months / latest.required_service_denominator
+        ),
+        "policy_service_deficit_ratio": float(
+            max_deficit.service_deficit_months / max_deficit.required_service_denominator
+        ),
+        "policy_unexplained_short_promotion": 1.0 if unexplained else 0.0,
+        "policy_explains_short_promotion": 1.0 if explained else 0.0,
     }
-
-
-def _previous_level_start(
-    record: WorkforceHistoryRecord,
-    events: tuple[AdministrativeEvent, ...],
-    latest_promotion: AdministrativeEvent,
-) -> date:
-    previous_promotions = [
-        event for event in events
-        if event.event_type is AdministrativeEventType.PROMOTION
-        and event.event_date < latest_promotion.event_date
-    ]
-    if previous_promotions:
-        return previous_promotions[-1].event_date
-    return record.hire_date
-
-
-def _commendation_credit_between(
-    events: tuple[AdministrativeEvent, ...],
-    start: date,
-    cutoff: date,
-    policy: PromotionPolicy,
-) -> int:
-    credits = [
-        policy.commendation_credit(int(event.category))
-        for event in events
-        if event.event_type is AdministrativeEventType.COMMENDATION
-        and event.event_date >= start
-        and event.event_date <= cutoff
-        and isinstance(event.category, int)
-    ]
-    return sum(sorted(credits, reverse=True)[:policy.max_commendations_per_role])
-
-
-def _active_sanction_delay_between(
-    events: tuple[AdministrativeEvent, ...],
-    start: date,
-    cutoff: date,
-    policy: PromotionPolicy,
-) -> int:
-    return sum(
-        policy.sanction_delay(int(event.category))
-        for event in events
-        if event.event_type is AdministrativeEventType.SANCTION
-        and event.event_date >= start
-        and event.event_date <= cutoff
-        and (not event.is_resolved or event.resolved_date is None or event.resolved_date > cutoff)
-        and isinstance(event.category, int)
-    )
 
 
 def _sorted_events(record: WorkforceHistoryRecord) -> tuple[AdministrativeEvent, ...]:

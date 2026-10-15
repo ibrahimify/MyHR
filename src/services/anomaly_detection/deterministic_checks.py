@@ -110,18 +110,20 @@ def validate_record_with_policy(
 ) -> tuple[ValidationFinding, ...]:
     """Add explicit policy violations to the policy-agnostic checks."""
 
-    from .features import extract_policy_aware_features
+    from .policy_history import assess_promotion_history
 
     findings = list(validate_record(record))
-    values = extract_policy_aware_features(record, policy).values
-    if values["policy_service_deficit_months"] > 0:
+    for assessment in assess_promotion_history(record, policy):
+        if assessment.service_deficit_months <= 0:
+            continue
         findings.append(ValidationFinding(
             code="promotion_policy_service_deficit",
             severity=ValidationSeverity.ERROR,
             employee_id=record.identity.employee_id,
+            event_source_id=assessment.event_source_id,
             message=(
                 "Completed promotion lacks "
-                f"{int(values['policy_service_deficit_months'])} required service month(s) "
+                f"{assessment.service_deficit_months} required service month(s) "
                 "after policy credits and delays."
             ),
             expected_anomaly_type=AnomalyType.FREQUENT_PROMOTIONS,

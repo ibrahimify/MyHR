@@ -187,7 +187,9 @@ The v2 implementation currently provides:
 - average precision, equal review-budget evaluation, validation-F1 thresholds, and validation target-FPR thresholds;
 - policy-agnostic deterministic checks, full deterministic policy checks, IQR, and z-score comparisons;
 - a policy-rules-plus-ML cascade that retains every explicit policy finding and uses ML only to fill the remaining nominal review capacity;
+- a rule-negative residual experiment that fits and evaluates ML only after deterministic policy findings are removed;
 - paired bootstrap intervals, paired sign-flip tests, operational workload measures, and cost sensitivity;
+- Holm-adjusted exploratory p-values across the generated comparison family;
 - write-once artifacts containing per-record predictions, provenance, and SHA-256 checksums.
 
 Implementation does not change the protocol status. The holdout remains locked until the checklist above is reviewed and the protocol is explicitly frozen with supervisor approval.

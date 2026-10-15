@@ -109,6 +109,20 @@ def evaluate_scenario(
     test = _records(scenario, DatasetSplit.TEST)
     validation_truth = [record.has_progression_anomaly for record in validation]
     test_truth = [record.has_progression_anomaly for record in test]
+    policy_rule_started = perf_counter()
+    policy_rule_train_scores = tuple(
+        float(len(validate_record_with_policy(record, scenario.policy)))
+        for record in train
+    )
+    policy_rule_validation_scores = tuple(
+        float(len(validate_record_with_policy(record, scenario.policy)))
+        for record in validation
+    )
+    policy_rule_scores = tuple(
+        float(len(validate_record_with_policy(record, scenario.policy)))
+        for record in test
+    )
+    policy_rule_runtime_ms = (perf_counter() - policy_rule_started) * 1000
     metric_rows: list[dict[str, object]] = []
     prediction_rows: list[dict[str, object]] = []
     iforest_scores: dict[str, tuple[tuple[float, ...], tuple[float, ...], float]] = {}
@@ -138,7 +152,11 @@ def evaluate_scenario(
                 target_fpr=target_validation_fpr,
             ),
         )
-        fixed_predictions = _top_budget_predictions(test_scores, review_budget)
+        fixed_predictions = _top_budget_predictions(
+            test_scores,
+            review_budget,
+            tuple(record.identity.employee_id for record in test),
+        )
         row, records = _evaluation_output(
             scenario,
             test,
@@ -196,7 +214,11 @@ def evaluate_scenario(
                 ),
             ):
                 predictions = (
-                    _top_budget_predictions(test_scores, review_budget)
+                    _top_budget_predictions(
+                        test_scores,
+                        review_budget,
+                        tuple(record.identity.employee_id for record in test),
+                    )
                     if selection is None
                     else [score >= selection.threshold for score in test_scores]
                 )
@@ -237,16 +259,6 @@ def evaluate_scenario(
     metric_rows.append(row)
     prediction_rows.extend(records)
 
-    started = perf_counter()
-    policy_rule_validation_scores = tuple(
-        float(len(validate_record_with_policy(record, scenario.policy)))
-        for record in validation
-    )
-    policy_rule_scores = tuple(
-        float(len(validate_record_with_policy(record, scenario.policy)))
-        for record in test
-    )
-    policy_rule_runtime_ms = (perf_counter() - started) * 1000
     policy_rule_predictions = [score > 0 for score in policy_rule_scores]
     row, records = _evaluation_output(
         scenario,
@@ -263,6 +275,81 @@ def evaluate_scenario(
     )
     metric_rows.append(row)
     prediction_rows.extend(records)
+
+    representations = {item.name: item for item in feature_representations()}
+    for representation_name in ("raw_matched", "policy_matched"):
+        representation = representations[representation_name]
+        residual_train = tuple(
+            record for record, score in zip(train, policy_rule_train_scores)
+            if score <= 0
+        )
+        residual_validation = tuple(
+            record for record, score in zip(validation, policy_rule_validation_scores)
+            if score <= 0
+        )
+        residual_test = tuple(
+            record for record, score in zip(test, policy_rule_scores)
+            if score <= 0
+        )
+        residual_validation_truth = [
+            record.has_progression_anomaly for record in residual_validation
+        ]
+        residual_test_truth = [record.has_progression_anomaly for record in residual_test]
+        train_vectors = _vectors(residual_train, representation, scenario)
+        validation_vectors = _vectors(residual_validation, representation, scenario)
+        test_vectors = _vectors(residual_test, representation, scenario)
+        started = perf_counter()
+        residual_scores = score_isolation_forest(
+            train_vectors,
+            validation_vectors + test_vectors,
+            representation.feature_names,
+            scenario.config.model_seed,
+        ).scores
+        residual_validation_scores = residual_scores[:len(validation_vectors)]
+        residual_test_scores = residual_scores[len(validation_vectors):]
+        runtime_ms = (perf_counter() - started) * 1000 + policy_rule_runtime_ms
+        selections = (
+            _select_threshold(
+                residual_validation_truth,
+                residual_validation_scores,
+                "validation_f1",
+            ),
+            _select_threshold(
+                residual_validation_truth,
+                residual_validation_scores,
+                "validation_target_fpr",
+                target_fpr=target_validation_fpr,
+            ),
+        )
+        for operating_point, selection in (
+            ("fixed_review_budget", None),
+            ("validation_f1", selections[0]),
+            ("validation_target_fpr", selections[1]),
+        ):
+            predictions = (
+                _top_budget_predictions(
+                    residual_test_scores,
+                    review_budget,
+                    tuple(record.identity.employee_id for record in residual_test),
+                )
+                if selection is None
+                else [score >= selection.threshold for score in residual_test_scores]
+            )
+            row, records = _evaluation_output(
+                scenario,
+                residual_test,
+                residual_test_truth,
+                residual_test_scores,
+                predictions,
+                method="rule_negative_isolation_forest",
+                representation=representation_name,
+                operating_point=operating_point,
+                threshold=None if selection is None else selection.threshold,
+                validation_selection=selection,
+                runtime_ms=runtime_ms,
+            )
+            metric_rows.append(row)
+            prediction_rows.extend(records)
 
     for representation in ("raw_matched", "policy_matched"):
         validation_iforest, test_iforest, iforest_runtime_ms = iforest_scores[representation]
@@ -289,7 +376,12 @@ def evaluate_scenario(
             ("validation_target_fpr", selections[1]),
         ):
             predictions = (
-                _rules_first_budget_predictions(policy_rule_scores, test_iforest, review_budget)
+                _rules_first_budget_predictions(
+                    policy_rule_scores,
+                    test_iforest,
+                    review_budget,
+                    tuple(record.identity.employee_id for record in test),
+                )
                 if selection is None
                 else [
                     rule_score > 0
@@ -385,9 +477,19 @@ def _select_threshold(
     return ThresholdSelection(mode, threshold, metrics, alerts)
 
 
-def _top_budget_predictions(scores: tuple[float, ...], fraction: float) -> list[bool]:
+def _top_budget_predictions(
+    scores: tuple[float, ...],
+    fraction: float,
+    tie_keys: tuple[str, ...] | None = None,
+) -> list[bool]:
     alert_count = max(1, ceil(len(scores) * fraction))
-    ranked = sorted(range(len(scores)), key=lambda index: (-scores[index], index))
+    if tie_keys is not None and len(tie_keys) != len(scores):
+        raise ValueError("tie keys and scores must be aligned")
+    keys = tie_keys or tuple(str(index) for index in range(len(scores)))
+    ranked = sorted(
+        range(len(scores)),
+        key=lambda index: (-scores[index], sha256(keys[index].encode("utf-8")).digest()),
+    )
     selected = set(ranked[:alert_count])
     return [index in selected for index in range(len(scores))]
 
@@ -396,11 +498,15 @@ def _rules_first_budget_predictions(
     deterministic_scores: tuple[float, ...],
     model_scores: tuple[float, ...],
     fraction: float,
+    tie_keys: tuple[str, ...] | None = None,
 ) -> list[bool]:
     """Keep every rule finding and use ML only to fill remaining capacity."""
 
     if len(deterministic_scores) != len(model_scores) or not model_scores:
         raise ValueError("cascade score inputs must be non-empty and aligned")
+    if tie_keys is not None and len(tie_keys) != len(model_scores):
+        raise ValueError("tie keys and scores must be aligned")
+    keys = tie_keys or tuple(str(index) for index in range(len(model_scores)))
     rule_indices = {
         index for index, score in enumerate(deterministic_scores) if score > 0
     }
@@ -408,7 +514,10 @@ def _rules_first_budget_predictions(
     target_alert_count = max(nominal_budget, len(rule_indices))
     residual_ranked = sorted(
         (index for index in range(len(model_scores)) if index not in rule_indices),
-        key=lambda index: (-model_scores[index], index),
+        key=lambda index: (
+            -model_scores[index],
+            sha256(keys[index].encode("utf-8")).digest(),
+        ),
     )
     selected = rule_indices | set(
         residual_ranked[:target_alert_count - len(rule_indices)]

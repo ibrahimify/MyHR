@@ -1,10 +1,15 @@
 import ast
 import unittest
+from datetime import date
 from pathlib import Path
 
 from src.services.anomaly_detection.features import extract_policy_aware_features
 from src.services.anomaly_detection.deterministic_checks import validate_record_with_policy
-from src.services.anomaly_detection.policy_model import PromotionRaceInput, calculate_promotion_race
+from src.services.anomaly_detection.policy_model import (
+    PromotionPolicy,
+    PromotionRaceInput,
+    calculate_promotion_race,
+)
 from src.services.anomaly_detection.protocol_evaluation import (
     _rules_first_budget_predictions,
     _select_cascade_threshold,
@@ -18,11 +23,16 @@ from src.services.anomaly_detection.scenario_generation import (
     scenario_matrix,
 )
 from src.services.anomaly_detection.synthetic_data import (
+    AdministrativeEvent,
+    AdministrativeEventType,
     AnomalyType,
     DatasetSplit,
+    EmployeeIdentity,
     EmploymentTrack,
+    WorkforceHistoryRecord,
     serialize_dataset,
 )
+from scripts.run_tdk_protocol_experiment import _holm_adjusted_pvalues
 
 
 def _imported_modules(source: str) -> set[str]:
@@ -73,6 +83,50 @@ class SharedPolicyContractTests(unittest.TestCase):
         self.assertIsNone(outcome.months_remaining)
         self.assertFalse(outcome.eligible)
         self.assertEqual(outcome.progress_pct, 0)
+
+    def test_policy_history_detects_invalid_earlier_promotion(self):
+        record = WorkforceHistoryRecord(
+            identity=EmployeeIdentity(
+                employee_id="HISTORY-1",
+                full_name="History Test",
+                date_of_birth=date(1990, 1, 1),
+            ),
+            split=DatasetSplit.TEST,
+            employment_track=EmploymentTrack.PROMOTION,
+            current_level="L5",
+            department="Research",
+            role="Engineer",
+            hire_date=date(2020, 1, 1),
+            events=(
+                AdministrativeEvent(
+                    AdministrativeEventType.PROMOTION,
+                    date(2021, 9, 1),
+                    "PROM-INVALID",
+                    level_before="L7",
+                    level_after="L6",
+                ),
+                AdministrativeEvent(
+                    AdministrativeEventType.PROMOTION,
+                    date(2024, 9, 1),
+                    "PROM-VALID",
+                    level_before="L6",
+                    level_after="L5",
+                ),
+            ),
+            anomaly_labels=(AnomalyType.FREQUENT_PROMOTIONS,),
+        )
+
+        findings = validate_record_with_policy(record, PromotionPolicy())
+        policy_findings = [
+            finding for finding in findings
+            if finding.code == "promotion_policy_service_deficit"
+        ]
+        features = extract_policy_aware_features(record, PromotionPolicy()).values
+
+        self.assertEqual(len(policy_findings), 1)
+        self.assertEqual(policy_findings[0].event_source_id, "PROM-INVALID")
+        self.assertEqual(features["policy_service_deficit_months"], 16.0)
+        self.assertEqual(features["policy_unexplained_short_promotion"], 1.0)
 
 
 class ScenarioGenerationTests(unittest.TestCase):
@@ -194,6 +248,21 @@ class ValidationProtocolTests(unittest.TestCase):
         self.assertEqual(sum(predictions), 2)
         self.assertTrue(predictions[-1])
         self.assertTrue(predictions[-2])
+
+    def test_fixed_budget_tie_breaking_is_order_independent_with_stable_ids(self):
+        first_ids = ("E1", "E2", "E3", "E4")
+        first = _top_budget_predictions((1.0, 1.0, 1.0, 1.0), 0.50, first_ids)
+        selected_first = {item for item, chosen in zip(first_ids, first) if chosen}
+        second_ids = tuple(reversed(first_ids))
+        second = _top_budget_predictions((1.0, 1.0, 1.0, 1.0), 0.50, second_ids)
+        selected_second = {item for item, chosen in zip(second_ids, second) if chosen}
+
+        self.assertEqual(selected_first, selected_second)
+
+    def test_holm_adjustment_controls_one_declared_family(self):
+        adjusted = _holm_adjusted_pvalues([0.01, 0.03, 0.04])
+
+        self.assertEqual(adjusted, [0.03, 0.06, 0.06])
 
     def test_validation_f1_threshold_is_selected_only_from_supplied_validation_data(self):
         selection = _select_threshold(

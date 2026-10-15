@@ -27,7 +27,7 @@ from src.services.anomaly_detection.scenario_generation import (
 )
 
 
-PROTOCOL_VERSION = "draft-v2.3-2026-10-16"
+PROTOCOL_VERSION = "draft-v2.4-2026-10-16"
 PROTOCOL_STATUS = "draft_validation_holdout_locked"
 SUMMARY_METRICS = (
     "precision",
@@ -235,6 +235,17 @@ def _paired_comparisons(rows: list[dict[str, object]]) -> list[dict[str, object]
                     seed=_stable_seed("sign", method, operating_point, metric),
                 )
             comparisons.append(item)
+    pvalue_locations = [
+        (item, key)
+        for item in comparisons
+        for key in item
+        if key.endswith("_delta_sign_flip_p")
+    ]
+    adjusted = _holm_adjusted_pvalues([
+        float(item[key]) for item, key in pvalue_locations
+    ])
+    for (item, key), adjusted_pvalue in zip(pvalue_locations, adjusted):
+        item[key.replace("_sign_flip_p", "_holm_all_p")] = adjusted_pvalue
     return comparisons
 
 
@@ -285,6 +296,7 @@ def _utility_sensitivity(rows: list[dict[str, object]]) -> list[dict[str, object
     output = []
     for row in rows:
         for name, review_cost, miss_cost, rare_escalation_cost in cost_profiles:
+            alerts = int(row["alert_count"])
             fp = int(row["false_positives"])
             fn = int(row["false_negatives"])
             rare = int(row["rare_legitimate_flagged"])
@@ -297,12 +309,13 @@ def _utility_sensitivity(rows: list[dict[str, object]]) -> list[dict[str, object
                 "review_cost": review_cost,
                 "miss_cost": miss_cost,
                 "rare_escalation_cost": rare_escalation_cost,
+                "review_count": alerts,
                 "false_positive_count": fp,
                 "false_negative_count": fn,
                 "rare_legitimate_flagged_count": rare,
-                "total_cost": fp * review_cost + fn * miss_cost + rare * rare_escalation_cost,
+                "total_cost": alerts * review_cost + fn * miss_cost + rare * rare_escalation_cost,
                 "cost_per_1000_employees": 1000 * (
-                    fp * review_cost + fn * miss_cost + rare * rare_escalation_cost
+                    alerts * review_cost + fn * miss_cost + rare * rare_escalation_cost
                 ) / int(row["evaluation_count"]),
             })
     return output
@@ -353,6 +366,21 @@ def _paired_sign_flip_pvalue(
     statistics = np.abs(signs @ magnitudes)
     extreme = int(np.count_nonzero(statistics >= observed - 1e-15))
     return (extreme + 1) / (samples + 1)
+
+
+def _holm_adjusted_pvalues(pvalues: list[float]) -> list[float]:
+    """Return Holm-adjusted p-values for one declared comparison family."""
+
+    if any(value < 0 or value > 1 for value in pvalues):
+        raise ValueError("p-values must be between zero and one")
+    order = sorted(range(len(pvalues)), key=lambda index: pvalues[index])
+    adjusted = [1.0] * len(pvalues)
+    running_max = 0.0
+    total = len(pvalues)
+    for rank, index in enumerate(order):
+        running_max = max(running_max, min(1.0, (total - rank) * pvalues[index]))
+        adjusted[index] = running_max
+    return adjusted
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:

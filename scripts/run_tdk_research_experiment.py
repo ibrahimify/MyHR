@@ -46,6 +46,7 @@ PROVENANCE_SOURCE_PATHS = (
     "src/services/promotion_policy.py",
     "src/services/anomaly_detection/synthetic_data.py",
     "src/services/anomaly_detection/policy_model.py",
+    "src/services/anomaly_detection/policy_history.py",
     "src/services/anomaly_detection/features.py",
     "src/services/anomaly_detection/isolation_forest.py",
     "src/services/anomaly_detection/metrics.py",
