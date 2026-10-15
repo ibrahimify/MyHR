@@ -56,9 +56,12 @@ PROVENANCE_SOURCE_PATHS = (
     "src/services/anomaly_detection/duplicate_detection.py",
     "src/services/anomaly_detection/scenario_generation.py",
     "src/services/anomaly_detection/protocol_evaluation.py",
+    "src/research/independent_scenarios.py",
+    "src/research/independent_scenario_adapter.py",
     "scripts/run_tdk_research_experiment.py",
     "scripts/run_tdk_research_multiseed.py",
     "scripts/run_tdk_protocol_experiment.py",
+    "scripts/run_tdk_independent_development.py",
 )
 
 

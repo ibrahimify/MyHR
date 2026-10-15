@@ -50,9 +50,11 @@ jobs:
           python -m py_compile src/ui/pages/dashboard.py
           python -m py_compile src/services/anomaly_detection/*.py
           python -m py_compile src/research/literature.py
+          python -m py_compile src/research/independent_scenarios.py src/research/independent_scenario_adapter.py
           python -m py_compile scripts/refresh_tdk_literature.py scripts/fetch_tdk_fulltext.py
           python -m py_compile scripts/build_tdk_citation_network.py scripts/verify_literature_artifact.py
           python -m py_compile scripts/audit_tdk_protocol_artifact.py
+          python -m py_compile scripts/run_tdk_independent_development.py
 
       - name: Run stable tests
         run: |
@@ -61,5 +63,6 @@ jobs:
           python -m unittest tests.test_tdk_protocol_v2
           python -m unittest tests.test_literature_workflow
           python -m unittest tests.test_protocol_artifact_audit
+          python -m unittest tests.test_independent_scenarios
           python -m unittest tests.test_business_logic
           python -m unittest tests.test_scale_smoke
