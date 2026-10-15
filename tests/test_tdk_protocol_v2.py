@@ -315,6 +315,19 @@ class ValidationProtocolTests(unittest.TestCase):
         self.assertEqual(selection.validation_metrics.recall, 1.0)
         self.assertGreaterEqual(selection.validation_alert_count, 2)
 
+    def test_cascade_reports_infeasible_target_fpr_without_dropping_rules(self):
+        selection = _select_cascade_threshold(
+            [False, False, True, False],
+            (1.0, 0.0, 1.0, 0.0),
+            (0.1, 0.9, 0.2, 0.8),
+            "validation_target_fpr",
+            target_fpr=0.0,
+        )
+
+        self.assertFalse(selection.constraint_satisfied)
+        self.assertEqual(selection.validation_alert_count, 2)
+        self.assertEqual(selection.validation_metrics.false_positive_rate, 1 / 3)
+
     def test_evaluation_reports_fair_budget_denominators_and_controls(self):
         scenario = generate_scenario_dataset(
             scenario_matrix("development", count=1, employee_count=120)[0]

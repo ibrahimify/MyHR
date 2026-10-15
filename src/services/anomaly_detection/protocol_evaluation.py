@@ -49,6 +49,7 @@ class ThresholdSelection:
     threshold: float
     validation_metrics: BinaryClassificationMetrics
     validation_alert_count: int
+    constraint_satisfied: bool = True
 
 
 @dataclass(frozen=True)
@@ -468,13 +469,27 @@ def _select_threshold(
         )
     elif mode == "validation_target_fpr":
         feasible = [item for item in selections if item[1].false_positive_rate <= target_fpr + 1e-12]
-        threshold, metrics, alerts = max(
-            feasible,
-            key=lambda item: (item[1].recall, item[1].precision, -item[2], item[0]),
-        )
+        if feasible:
+            threshold, metrics, alerts = max(
+                feasible,
+                key=lambda item: (item[1].recall, item[1].precision, -item[2], item[0]),
+            )
+            constraint_satisfied = True
+        else:
+            threshold, metrics, alerts = min(
+                selections,
+                key=lambda item: (item[1].false_positive_rate, item[2], -item[0]),
+            )
+            constraint_satisfied = False
     else:
         raise ValueError(f"unsupported threshold mode: {mode}")
-    return ThresholdSelection(mode, threshold, metrics, alerts)
+    return ThresholdSelection(
+        mode,
+        threshold,
+        metrics,
+        alerts,
+        constraint_satisfied if mode == "validation_target_fpr" else True,
+    )
 
 
 def _top_budget_predictions(
@@ -562,13 +577,27 @@ def _select_cascade_threshold(
         )
     elif mode == "validation_target_fpr":
         feasible = [item for item in selections if item[1].false_positive_rate <= target_fpr + 1e-12]
-        threshold, metrics, alerts = max(
-            feasible,
-            key=lambda item: (item[1].recall, item[1].precision, -item[2], item[0]),
-        )
+        if feasible:
+            threshold, metrics, alerts = max(
+                feasible,
+                key=lambda item: (item[1].recall, item[1].precision, -item[2], item[0]),
+            )
+            constraint_satisfied = True
+        else:
+            threshold, metrics, alerts = min(
+                selections,
+                key=lambda item: (item[1].false_positive_rate, item[2], -item[0]),
+            )
+            constraint_satisfied = False
     else:
         raise ValueError(f"unsupported threshold mode: {mode}")
-    return ThresholdSelection(mode, threshold, metrics, alerts)
+    return ThresholdSelection(
+        mode,
+        threshold,
+        metrics,
+        alerts,
+        constraint_satisfied if mode == "validation_target_fpr" else True,
+    )
 
 
 def _cascade_scores(
@@ -646,6 +675,9 @@ def _evaluation_output(
         "validation_precision": "" if validation_selection is None else validation_selection.validation_metrics.precision,
         "validation_recall": "" if validation_selection is None else validation_selection.validation_metrics.recall,
         "validation_fpr": "" if validation_selection is None else validation_selection.validation_metrics.false_positive_rate,
+        "validation_constraint_satisfied": (
+            "" if validation_selection is None else validation_selection.constraint_satisfied
+        ),
     }
     for anomaly_type in (
         AnomalyType.INCONSISTENT_DATES,
