@@ -1,0 +1,214 @@
+import unittest
+
+from src.services.anomaly_detection.features import extract_policy_aware_features
+from src.services.anomaly_detection.deterministic_checks import validate_record_with_policy
+from src.services.anomaly_detection.policy_model import PromotionRaceInput, calculate_promotion_race
+from src.services.anomaly_detection.protocol_evaluation import (
+    _select_threshold,
+    _top_budget_predictions,
+    evaluate_scenario,
+    feature_representations,
+)
+from src.services.anomaly_detection.scenario_generation import (
+    generate_scenario_dataset,
+    scenario_matrix,
+)
+from src.services.anomaly_detection.synthetic_data import (
+    AnomalyType,
+    DatasetSplit,
+    EmploymentTrack,
+    serialize_dataset,
+)
+
+
+class SharedPolicyContractTests(unittest.TestCase):
+    def test_race_contract_applies_commendations_and_active_sanctions(self):
+        outcome = calculate_promotion_race(PromotionRaceInput(
+            has_next_level=True,
+            base_months=36,
+            months_elapsed=30,
+            commendation_credit_months=3,
+            active_sanction_delay_months=2,
+        ))
+
+        self.assertEqual(outcome.adjusted_service_months, 31)
+        self.assertEqual(outcome.months_remaining, 5)
+        self.assertFalse(outcome.eligible)
+        self.assertEqual(outcome.progress_pct, 86)
+
+    def test_other_track_has_no_promotion_result(self):
+        outcome = calculate_promotion_race(PromotionRaceInput(
+            has_next_level=False,
+            base_months=None,
+            months_elapsed=48,
+            commendation_credit_months=12,
+            active_sanction_delay_months=6,
+        ))
+
+        self.assertFalse(outcome.has_next_level)
+        self.assertIsNone(outcome.months_remaining)
+        self.assertFalse(outcome.eligible)
+        self.assertEqual(outcome.progress_pct, 0)
+
+
+class ScenarioGenerationTests(unittest.TestCase):
+    def test_development_and_validation_seed_ranges_are_disjoint(self):
+        development = scenario_matrix("development", count=30, employee_count=120)
+        validation = scenario_matrix("validation", count=30, employee_count=120)
+
+        self.assertFalse({item.dataset_seed for item in development} & {item.dataset_seed for item in validation})
+        self.assertFalse({item.split_seed for item in development} & {item.split_seed for item in validation})
+        self.assertFalse({item.model_seed for item in development} & {item.model_seed for item in validation})
+
+    def test_holdout_scenario_generation_is_locked(self):
+        with self.assertRaisesRegex(ValueError, "holdout"):
+            scenario_matrix("holdout", count=1, employee_count=120)
+
+    def test_matrix_covers_all_predeclared_scenario_dimensions(self):
+        configs = scenario_matrix("development", count=30, employee_count=120)
+
+        self.assertEqual({config.policy_profile for config in configs}, {"standard", "accelerated", "conservative"})
+        self.assertEqual(
+            {config.population_profile for config in configs},
+            {"balanced", "experienced", "mixed_workforce"},
+        )
+        self.assertEqual(
+            {config.anomaly_mechanism for config in configs},
+            {"mixed_calendar", "mixed_process", "mixed_density"},
+        )
+        self.assertEqual(
+            {config.rare_pattern for config in configs},
+            {"credit_mix", "credit_with_delay", "boundary_case"},
+        )
+        for policy in {config.policy_profile for config in configs}:
+            policy_configs = [config for config in configs if config.policy_profile == policy]
+            self.assertEqual(
+                {config.anomaly_mechanism for config in policy_configs},
+                {"mixed_calendar", "mixed_process", "mixed_density"},
+            )
+            self.assertEqual(
+                {config.rare_pattern for config in policy_configs},
+                {"credit_mix", "credit_with_delay", "boundary_case"},
+            )
+
+    def test_generation_is_reproducible(self):
+        config = scenario_matrix("development", count=1, employee_count=120)[0]
+
+        first = generate_scenario_dataset(config)
+        second = generate_scenario_dataset(config)
+
+        self.assertEqual(serialize_dataset(first.dataset), serialize_dataset(second.dataset))
+
+    def test_clean_and_rare_histories_satisfy_assigned_policy(self):
+        for config in scenario_matrix("development", count=6, employee_count=120):
+            scenario = generate_scenario_dataset(config)
+            for record in scenario.dataset.records:
+                if record.has_progression_anomaly or record.employment_track is EmploymentTrack.OTHER:
+                    continue
+                features = extract_policy_aware_features(record, scenario.policy).values
+                self.assertEqual(
+                    features["policy_service_deficit_months"],
+                    0.0,
+                    msg=f"{config.scenario_id}:{record.identity.employee_id}",
+                )
+
+    def test_rare_cases_exist_in_each_split_and_only_on_promotion_track(self):
+        scenario = generate_scenario_dataset(
+            scenario_matrix("validation", count=1, employee_count=300)[0]
+        )
+        rare = [
+            record for record in scenario.dataset.records
+            if AnomalyType.POLICY_LEGITIMATE_RARE_CASE in record.anomaly_labels
+        ]
+
+        self.assertEqual({record.split for record in rare}, set(DatasetSplit))
+        self.assertTrue(all(record.employment_track is EmploymentTrack.PROMOTION for record in rare))
+
+    def test_policy_rules_separate_unexplained_and_legitimate_short_promotions(self):
+        scenario = generate_scenario_dataset(
+            scenario_matrix("validation", count=1, employee_count=300)[0]
+        )
+        frequent = next(
+            record for record in scenario.dataset.records
+            if AnomalyType.FREQUENT_PROMOTIONS in record.anomaly_labels
+        )
+        rare = next(
+            record for record in scenario.dataset.records
+            if AnomalyType.POLICY_LEGITIMATE_RARE_CASE in record.anomaly_labels
+        )
+
+        frequent_codes = {finding.code for finding in validate_record_with_policy(frequent, scenario.policy)}
+        rare_codes = {finding.code for finding in validate_record_with_policy(rare, scenario.policy)}
+
+        self.assertIn("promotion_policy_service_deficit", frequent_codes)
+        self.assertNotIn("promotion_policy_service_deficit", rare_codes)
+
+
+class ValidationProtocolTests(unittest.TestCase):
+    def test_fixed_review_budget_has_exact_alert_count(self):
+        predictions = _top_budget_predictions(tuple(float(value) for value in range(20)), 0.10)
+
+        self.assertEqual(sum(predictions), 2)
+        self.assertTrue(predictions[-1])
+        self.assertTrue(predictions[-2])
+
+    def test_validation_f1_threshold_is_selected_only_from_supplied_validation_data(self):
+        selection = _select_threshold(
+            [False, False, True, True],
+            (0.1, 0.2, 0.8, 0.9),
+            "validation_f1",
+        )
+
+        self.assertEqual(selection.validation_metrics.f1, 1.0)
+        self.assertEqual(selection.validation_alert_count, 2)
+        self.assertGreater(selection.threshold, 0.2)
+
+    def test_target_fpr_selection_respects_validation_constraint(self):
+        selection = _select_threshold(
+            [False, False, False, True, True],
+            (0.1, 0.2, 0.3, 0.7, 0.9),
+            "validation_target_fpr",
+            target_fpr=0.0,
+        )
+
+        self.assertEqual(selection.validation_metrics.false_positive_rate, 0.0)
+        self.assertEqual(selection.validation_metrics.recall, 1.0)
+
+    def test_evaluation_reports_fair_budget_denominators_and_controls(self):
+        scenario = generate_scenario_dataset(
+            scenario_matrix("development", count=1, employee_count=120)[0]
+        )
+        result = evaluate_scenario(scenario)
+        fixed_iforest = [
+            row for row in result.metric_rows
+            if row["method"] == "isolation_forest"
+            and row["operating_point"] == "fixed_review_budget"
+        ]
+        representations = {row["representation"] for row in fixed_iforest}
+        alert_counts = {int(row["alert_count"]) for row in fixed_iforest}
+        evaluation_counts = {int(row["evaluation_count"]) for row in fixed_iforest}
+
+        self.assertEqual(representations, {item.name for item in feature_representations()})
+        self.assertEqual(len(alert_counts), 1)
+        self.assertEqual(len(evaluation_counts), 1)
+        for row in result.metric_rows:
+            self.assertEqual(
+                int(row["positive_count"]) + int(row["negative_count"]),
+                int(row["evaluation_count"]),
+            )
+            self.assertEqual(
+                int(row["true_positives"])
+                + int(row["false_positives"])
+                + int(row["true_negatives"])
+                + int(row["false_negatives"]),
+                int(row["evaluation_count"]),
+            )
+        self.assertIn("wrong_policy_control", representations)
+        self.assertIn("shuffled_policy_control", representations)
+        self.assertTrue(any(row["method"] == "deterministic_rules" for row in result.metric_rows))
+        self.assertTrue(any(row["method"] == "deterministic_policy_rules" for row in result.metric_rows))
+        self.assertTrue(any(row["method"] == "policy_rules_plus_isolation_forest" for row in result.metric_rows))
+
+
+if __name__ == "__main__":
+    unittest.main()

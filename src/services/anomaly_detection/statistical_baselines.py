@@ -94,6 +94,22 @@ def predict_baseline(model: BaselineModel, feature_vectors: tuple[FeatureVector,
     return predictions
 
 
+def score_baseline(model: BaselineModel, feature_vectors: tuple[FeatureVector, ...]) -> tuple[float, ...]:
+    """Return continuous maximum-boundary exceedance scores."""
+
+    scores = []
+    for vector in feature_vectors:
+        feature_scores = []
+        for name in model.feature_names:
+            spread = model.spread[name] or 1.0
+            value = vector.values[name]
+            upper = (value - model.upper_bounds[name]) / spread
+            lower = (model.lower_bounds[name] - value) / spread
+            feature_scores.append(max(upper, lower))
+        scores.append(max(feature_scores))
+    return tuple(scores)
+
+
 def _columns(feature_vectors: tuple[FeatureVector, ...], feature_names: tuple[str, ...]) -> dict[str, list[float]]:
     if not feature_vectors:
         raise ValueError("feature_vectors must not be empty")

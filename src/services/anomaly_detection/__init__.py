@@ -6,7 +6,12 @@ checks, baselines, model experiments, duplicate detection, and metrics.
 """
 
 from .metrics import BinaryClassificationMetrics, confusion_counts
-from .policy_model import PromotionPolicy
+from .policy_model import (
+    PromotionPolicy,
+    PromotionRaceInput,
+    PromotionRaceOutcome,
+    calculate_promotion_race,
+)
 from .synthetic_data import (
     AdministrativeEvent,
     AdministrativeEventType,
@@ -24,7 +29,14 @@ from .synthetic_data import (
     serialize_dataset,
     split_indices,
 )
-from .deterministic_checks import ValidationFinding, ValidationSeverity, summarize_findings, validate_dataset, validate_record
+from .deterministic_checks import (
+    ValidationFinding,
+    ValidationSeverity,
+    summarize_findings,
+    validate_dataset,
+    validate_record,
+    validate_record_with_policy,
+)
 from .duplicate_detection import (
     DuplicateCandidate,
     DuplicateEvaluation,
@@ -46,8 +58,10 @@ from .features import (
 from .experiment_runner import MethodEvaluation, evaluate_statistical_baseline
 from .isolation_forest import (
     IsolationForestResult,
+    IsolationForestScores,
     IsolationForestUnavailableError,
     run_isolation_forest,
+    score_isolation_forest,
     sklearn_is_available,
 )
 from .statistical_baselines import (
@@ -55,6 +69,23 @@ from .statistical_baselines import (
     fit_iqr_baseline,
     fit_z_score_baseline,
     predict_baseline,
+    score_baseline,
+)
+from .scenario_generation import (
+    PopulationProfile,
+    ScenarioConfig,
+    ScenarioDataset,
+    generate_scenario_dataset,
+    policy_profiles,
+    population_profiles,
+    scenario_matrix,
+)
+from .protocol_evaluation import (
+    FeatureRepresentation,
+    ScenarioEvaluation,
+    ThresholdSelection,
+    evaluate_scenario,
+    feature_representations,
 )
 
 __all__ = [
@@ -72,18 +103,29 @@ __all__ = [
     "ExperimentConfig",
     "FeatureVector",
     "IsolationForestResult",
+    "IsolationForestScores",
     "IsolationForestUnavailableError",
     "MethodEvaluation",
     "PromotionPolicy",
+    "PromotionRaceInput",
+    "PromotionRaceOutcome",
+    "PopulationProfile",
+    "ScenarioConfig",
+    "ScenarioDataset",
+    "ScenarioEvaluation",
+    "FeatureRepresentation",
+    "ThresholdSelection",
     "SyntheticDataset",
     "SyntheticDatasetMetadata",
     "ValidationFinding",
     "ValidationSeverity",
     "WorkforceHistoryRecord",
     "anomaly_taxonomy",
+    "calculate_promotion_race",
     "confusion_counts",
     "evaluate_duplicate_detection",
     "evaluate_statistical_baseline",
+    "evaluate_scenario",
     "extract_features",
     "extract_policy_aware_features",
     "extract_raw_features",
@@ -93,16 +135,24 @@ __all__ = [
     "find_normalized_exact_duplicate_candidates",
     "find_similarity_duplicate_candidates",
     "generate_synthetic_dataset",
+    "generate_scenario_dataset",
     "normalize_identifier",
     "normalize_text",
     "normalized_similarity",
     "predict_baseline",
+    "policy_profiles",
+    "population_profiles",
     "run_isolation_forest",
+    "score_baseline",
+    "score_isolation_forest",
+    "scenario_matrix",
     "serialize_dataset",
     "sklearn_is_available",
     "summarize_findings",
     "supported_feature_sets",
+    "feature_representations",
     "split_indices",
     "validate_dataset",
     "validate_record",
+    "validate_record_with_policy",
 ]

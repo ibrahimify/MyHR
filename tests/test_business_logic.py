@@ -1,7 +1,7 @@
 import os
 import tempfile
 import unittest
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -18,6 +18,15 @@ from src.database.models import (
     SalaryIncrementHistory,
     Sanction,
     SystemUser,
+)
+from src.services.anomaly_detection import (
+    AdministrativeEvent,
+    AdministrativeEventType,
+    DatasetSplit,
+    EmployeeIdentity,
+    EmploymentTrack,
+    WorkforceHistoryRecord,
+    extract_policy_aware_features,
 )
 
 
@@ -109,6 +118,87 @@ class IsolatedDatabaseTestCase(unittest.TestCase):
 
 
 class PromotionRaceTests(IsolatedDatabaseTestCase):
+    def test_application_and_research_policy_math_match_golden_history(self):
+        employee = self.make_employee(join_months_ago=0)
+        employee.join_date = datetime(2023, 1, 15)
+        commendation = Commendation(
+            commendation_ref=db.generate_commendation_ref(self.session),
+            title="Golden commendation",
+            description="Shared policy fixture",
+            category=2,
+            months_impact=-3,
+            issued_by_id=self.admin.id,
+            issued_at=datetime(2024, 6, 15),
+        )
+        sanction = Sanction(
+            sanction_ref=db.generate_sanction_ref(self.session),
+            employee_id=employee.id,
+            sanction_type="written_warning",
+            reason="Shared policy fixture",
+            delay_months=3,
+            issued_by_id=self.admin.id,
+            issued_at=datetime(2025, 2, 15),
+            is_resolved=False,
+        )
+        self.session.add_all((commendation, sanction))
+        self.session.flush()
+        self.session.add(CommendationEmployee(
+            commendation_id=commendation.id,
+            employee_id=employee.id,
+        ))
+        self.session.flush()
+
+        as_of = datetime(2026, 1, 15)
+        app_result = db.calculate_months_remaining(employee, self.session, as_of=as_of)
+        research_record = WorkforceHistoryRecord(
+            identity=EmployeeIdentity(
+                employee_id=employee.employee_id,
+                full_name=employee.full_name,
+                date_of_birth=date(1990, 1, 1),
+            ),
+            split=DatasetSplit.VALIDATION,
+            employment_track=EmploymentTrack.PROMOTION,
+            current_level="L6",
+            department="Golden",
+            role="Golden",
+            hire_date=date(2023, 1, 15),
+            events=(
+                AdministrativeEvent(
+                    AdministrativeEventType.HIRE,
+                    date(2023, 1, 15),
+                    "GOLDEN-HIRE",
+                    level_after="L7",
+                ),
+                AdministrativeEvent(
+                    AdministrativeEventType.COMMENDATION,
+                    date(2024, 6, 15),
+                    "GOLDEN-COM",
+                    category=2,
+                ),
+                AdministrativeEvent(
+                    AdministrativeEventType.SANCTION,
+                    date(2025, 2, 15),
+                    "GOLDEN-SAN",
+                    category=1,
+                ),
+                AdministrativeEvent(
+                    AdministrativeEventType.PROMOTION,
+                    date(2026, 1, 15),
+                    "GOLDEN-PROM",
+                    level_before="L7",
+                    level_after="L6",
+                ),
+            ),
+        )
+        research = extract_policy_aware_features(research_record).values
+
+        self.assertEqual(app_result["months_elapsed"], research["latest_promotion_observed_service_months"])
+        self.assertEqual(app_result["base_months"], research["latest_promotion_required_service_months"])
+        self.assertEqual(app_result["commendation_reduction"], research["policy_commendation_credit_months"])
+        self.assertEqual(app_result["sanction_addition"], research["policy_sanction_delay_months"])
+        self.assertEqual(app_result["months_remaining"], research["policy_service_deficit_months"])
+        self.assertEqual(app_result["eligible"], research["policy_unexplained_short_promotion"] == 0.0)
+
     def test_promotion_math_uses_commendations_and_only_active_sanctions(self):
         employee = self.make_employee(join_months_ago=30)
         self.add_commendation(employee, months_impact=-3)

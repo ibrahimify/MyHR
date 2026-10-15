@@ -1,5 +1,6 @@
 # Research-only dependencies for the TDK anomaly-detection pipeline.
 # Keep these separate from requirements.txt so the packaged desktop app can stay lighter.
 scikit-learn>=1.5,<2.0
+numpy>=2.0,<3.0
 pandas>=2.2,<3.0
 matplotlib>=3.9,<4.0

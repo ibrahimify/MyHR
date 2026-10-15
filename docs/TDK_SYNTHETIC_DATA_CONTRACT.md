@@ -55,6 +55,20 @@ The generator must keep these tracks separate because forcing every employee int
 - Duplicate records must link back to a source employee ID.
 - The generator creates HR-like histories only for experimentation; it is not a claim about real employee distributions.
 
+### V2 Independent Scenario Families
+
+The original `tdk-synthetic-v1` generator is retained only for historical development diagnostics. Protocol v2 uses `tdk-scenario-v2`, which:
+
+- uses separate dataset, split, and model seeds;
+- varies policy, workforce composition, anomaly prevalence, rare-case prevalence, and injection mechanisms;
+- generates records without calling feature extraction or model code;
+- gives ordinary clean histories overlapping commendation and sanction patterns;
+- allocates rare legitimate cases only to promotion-track employees;
+- verifies that every clean and rare-legitimate completed promotion satisfies its assigned policy;
+- defines development and validation matrices but deliberately defines no holdout matrix while the protocol is draft.
+
+The v2 scenario families are synthetic stress tests. They do not establish external validity for a real organization.
+
 ## Deterministic Validation Baseline
 
 The deterministic checker is the first non-ML baseline. It reports explainable findings for explicit administrative inconsistencies, including:
@@ -68,6 +82,8 @@ The deterministic checker is the first non-ML baseline. It reports explainable f
 - exact duplicate employee IDs or national IDs.
 
 These checks are intentionally conservative. They are designed to catch directly checkable problems, not to replace statistical anomaly detection or policy-aware machine-learning features.
+
+Protocol v2 also evaluates `deterministic_policy_rules`, which adds an explicit service-deficit check under the scenario's true policy. This stronger baseline prevents a policy-aware ML representation from receiving credit merely for reconstructing a rule that can be evaluated exactly.
 
 ## Feature Representations
 
@@ -88,6 +104,8 @@ The first statistical baselines are intentionally simple:
 These baselines are not expected to be the strongest possible methods. They provide transparent comparison points before Isolation Forest is evaluated.
 
 Isolation Forest is represented by an explicit experiment boundary. Research dependencies are listed in `requirements-research.txt`, while desktop runtime dependencies remain in `requirements.txt`. This keeps the research environment reproducible without automatically increasing the packaged desktop application's dependency footprint.
+
+Protocol v2 fits Isolation Forest with `contamination="auto"` and treats the model output as a continuous ranking score. It does not pass the synthetic anomaly prevalence into the model threshold. Thresholds are selected on validation data, while the equal-budget comparison alerts the same number of test records for every representation.
 
 Every method evaluation must report:
 

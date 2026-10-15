@@ -99,3 +99,39 @@ Use `method_comparisons.csv` for development diagnostics only. A final claim req
 Small employee counts are useful for checking that the pipeline runs. Final paper evidence should use larger datasets and reviewed seeds because small test splits make precision and recall unstable.
 
 Current implementation note: the default policy-aware Isolation Forest feature set uses policy residuals instead of the raw minimum-promotion-interval feature. This representation is not yet validated as non-circular and remains subject to the matched ablation protocol.
+
+## Protocol V2 Verification
+
+Run the dedicated protocol tests:
+
+```bash
+python -m unittest tests.test_tdk_protocol_v2
+```
+
+Generate the complete development matrix:
+
+```bash
+python scripts/run_tdk_protocol_experiment.py --run-purpose development --scenario-count 30 --employee-count 600
+```
+
+Generate the independently seeded validation matrix:
+
+```bash
+python scripts/run_tdk_protocol_experiment.py --run-purpose validation --scenario-count 30 --employee-count 600
+```
+
+The runner refuses `--run-purpose holdout`. Each write-once artifact contains:
+
+- `metadata.json`: protocol status, exact command, Git state, source hashes, Python and package versions;
+- `scenario_configs.csv`: policy, population, mechanism, rates, and all three seeds;
+- `scenario_metrics.csv`: per-scenario metrics with explicit denominators and per-class recall;
+- `record_predictions.csv`: every test-record score, prediction, and ground-truth label;
+- `aggregate_metrics.csv`: descriptive summaries and bootstrap intervals;
+- `paired_comparisons.csv`: policy-minus-raw paired differences, intervals, and sign-flip tests;
+- `robustness_slices.csv`: results grouped by policy, population, mechanism, prevalence, and rare-case family;
+- `utility_sensitivity.csv`: review, missed-error, and rare-escalation cost scenarios;
+- `manifest.json`: SHA-256 checksums for every other artifact file.
+
+Development and validation outputs remain diagnostics until the supervisor reviews the scenario assumptions and protocol. Do not copy their most favorable rows into the paper as final evidence.
+
+Two deterministic rows are intentional. `deterministic_rules` contains policy-agnostic administrative checks. `deterministic_policy_rules` additionally applies the assigned promotion policy. The `policy_rules_plus_isolation_forest` rows measure whether ML adds ranking value after those explicit policy violations are already handled.

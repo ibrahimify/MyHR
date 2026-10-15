@@ -169,3 +169,23 @@ The holdout remains locked until all items are true:
 - supervisor approves the protocol.
 
 After unlocking, the holdout is run once. Any later change creates a new protocol version and a new holdout family; the original result remains archived.
+
+## Implemented Draft Protocol Boundary
+
+The v2 implementation currently provides:
+
+- separate development and validation seed ranges with no holdout seed definition;
+- three policy profiles, three population profiles, three anomaly-mechanism families, and three rare-legitimate patterns;
+- independent dataset, split, and model seeds;
+- a pure promotion-race calculation shared by the desktop business logic and research features;
+- golden-history parity tests between SQL-backed application behavior and research records;
+- raw and policy-matched Isolation Forest representations;
+- single-feature policy ablations, a raw no-commendation ablation, wrong-policy control, and shuffled-policy control;
+- continuous Isolation Forest scores fitted with `contamination="auto"`;
+- PR-AUC, equal review-budget evaluation, validation-F1 thresholds, and validation target-FPR thresholds;
+- policy-agnostic deterministic checks, full deterministic policy checks, IQR, and z-score comparisons;
+- a policy-rules-plus-ML cascade that measures incremental ranking value after explicit violations are handled;
+- paired bootstrap intervals, paired sign-flip tests, operational workload measures, and cost sensitivity;
+- write-once artifacts containing per-record predictions, provenance, and SHA-256 checksums.
+
+Implementation does not change the protocol status. The holdout remains locked until the checklist above is reviewed and the protocol is explicitly frozen with supervisor approval.

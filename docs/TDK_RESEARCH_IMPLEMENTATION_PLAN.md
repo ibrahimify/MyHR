@@ -79,3 +79,9 @@ The scientific audit dated 2026-10-15 supersedes any interpretation of the first
 9. Generate reproducible result artifacts for paper tables and later plots.
 10. Run multi-seed stability checks and aggregate mean/std results.
 11. Draft methodology and results sections from actual outputs.
+
+## Issue 10 Milestone
+
+The draft v2 framework adds independent scenario families, shared policy arithmetic, golden-history parity tests, validation-selected thresholds, equal-budget comparisons, PR-AUC, feature ablations, negative policy controls, deterministic rules-only comparisons, paired uncertainty, utility sensitivity, and checksummed write-once artifacts.
+
+The remaining gate is methodological review, not metric optimization. Development and validation matrices must be examined in full, including negative findings, before asking the supervisor to approve a frozen protocol. Holdout generation remains prohibited.

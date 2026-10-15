@@ -43,6 +43,7 @@ from src.services.anomaly_detection.experiment_runner import (
 PROTOCOL_VERSION = "draft-v2-2026-10-15"
 PROTOCOL_STATUS = "draft_holdout_locked"
 PROVENANCE_SOURCE_PATHS = (
+    "src/services/promotion_policy.py",
     "src/services/anomaly_detection/synthetic_data.py",
     "src/services/anomaly_detection/policy_model.py",
     "src/services/anomaly_detection/features.py",
@@ -50,8 +51,11 @@ PROVENANCE_SOURCE_PATHS = (
     "src/services/anomaly_detection/metrics.py",
     "src/services/anomaly_detection/experiment_runner.py",
     "src/services/anomaly_detection/duplicate_detection.py",
+    "src/services/anomaly_detection/scenario_generation.py",
+    "src/services/anomaly_detection/protocol_evaluation.py",
     "scripts/run_tdk_research_experiment.py",
     "scripts/run_tdk_research_multiseed.py",
+    "scripts/run_tdk_protocol_experiment.py",
 )
 
 

@@ -116,6 +116,8 @@ class AdministrativeEvent:
     value_before: float | int | str | None = None
     value_after: float | int | str | None = None
     category: int | str | None = None
+    is_resolved: bool = False
+    resolved_date: date | None = None
     note: str = ""
 
 

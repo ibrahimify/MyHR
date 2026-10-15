@@ -117,3 +117,7 @@ Required response: write-once artifact directories with Git revision, source has
 ## Required Next Step
 
 Freeze and implement the non-circular experimental protocol before changing another model feature. In particular, create independent scenario generation, validation-based thresholding, matched-budget comparisons, and an untouched holdout. Until then, all numerical results are development diagnostics.
+
+## Implementation Follow-Up
+
+Issue #10 implements the draft v2 framework described in `TDK_EXPERIMENT_PROTOCOL.md`. This addresses the mechanical gaps identified here, but it does not retroactively validate old outputs and does not establish external validity. The protocol remains draft and the holdout remains locked pending full development/validation review and supervisor approval.

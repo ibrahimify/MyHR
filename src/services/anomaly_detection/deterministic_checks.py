@@ -13,6 +13,7 @@ from .synthetic_data import (
     SyntheticDataset,
     WorkforceHistoryRecord,
 )
+from .policy_model import PromotionPolicy
 
 
 class ValidationSeverity(str, Enum):
@@ -100,6 +101,31 @@ def validate_record(record: WorkforceHistoryRecord) -> tuple[ValidationFinding, 
 
     findings.extend(_validate_promotion_sequence(record, events))
     findings.extend(_validate_salary_increment_intervals(record, events))
+    return tuple(findings)
+
+
+def validate_record_with_policy(
+    record: WorkforceHistoryRecord,
+    policy: PromotionPolicy,
+) -> tuple[ValidationFinding, ...]:
+    """Add explicit policy violations to the policy-agnostic checks."""
+
+    from .features import extract_policy_aware_features
+
+    findings = list(validate_record(record))
+    values = extract_policy_aware_features(record, policy).values
+    if values["policy_service_deficit_months"] > 0:
+        findings.append(ValidationFinding(
+            code="promotion_policy_service_deficit",
+            severity=ValidationSeverity.ERROR,
+            employee_id=record.identity.employee_id,
+            message=(
+                "Completed promotion lacks "
+                f"{int(values['policy_service_deficit_months'])} required service month(s) "
+                "after policy credits and delays."
+            ),
+            expected_anomaly_type=AnomalyType.FREQUENT_PROMOTIONS,
+        ))
     return tuple(findings)
 
 

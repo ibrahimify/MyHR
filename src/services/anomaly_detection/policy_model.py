@@ -6,6 +6,12 @@ a stable representation of policy context for experiments and explainability.
 
 from dataclasses import dataclass, field
 
+from src.services.promotion_policy import (
+    PromotionRaceInput,
+    PromotionRaceOutcome,
+    calculate_promotion_race,
+)
+
 
 @dataclass(frozen=True)
 class PromotionPolicy:
@@ -43,3 +49,4 @@ class PromotionPolicy:
 
     def is_promotion_track(self, level: str | None) -> bool:
         return bool(level and level in self.service_months_by_level)
+
