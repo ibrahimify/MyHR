@@ -367,6 +367,9 @@ Avoid `git reset --hard` unless you are completely sure you want to discard loca
 | TDK Research Audit | `docs/TDK_RESEARCH_AUDIT_2026-10-15.md` |
 | TDK Experiment Protocol | `docs/TDK_EXPERIMENT_PROTOCOL.md` |
 | TDK Protocol V2 Development and Validation Report | `docs/TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md` |
+| TDK Literature Workflow | `docs/TDK_LITERATURE_WORKFLOW.md` |
+| TDK Literature Review | `docs/TDK_LITERATURE_REVIEW.md` |
+| TDK Verified Bibliography | `docs/TDK_REFERENCES.bib` |
 | TDK Protocol V2 Runner | `scripts/run_tdk_protocol_experiment.py` |
 | Licensing And IP Note | `docs/LICENSING_AND_IP.md` |
 | UI Mockup | `MockUI/` |
