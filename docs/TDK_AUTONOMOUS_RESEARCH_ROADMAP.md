@@ -22,7 +22,7 @@ Completed evidence is summarized in `TDK_METHODOLOGY_REVIEW_2026-10-16.md`, `TDK
 - Future independent development artifacts write normalized `record_truth.csv`, `administrative_events.csv`, and `policy_epochs.csv` sidecars. Nominal and realized mechanisms remain separate; complete event fields and observed-versus-omitted causal status are preserved; the auditor enforces causal joins; and truth-only fields are prohibited from prediction rows.
 - Three residual-design alternatives are documented as proposals only. No design is approved or implemented, and existing write-once artifacts remain unchanged.
 - A fresh hostile code review found incomplete event provenance and metric-key completeness checks. Both blockers were corrected with adversarial tests rather than waived.
-- Local verification passed all 134 tests after these changes. GitHub CI evidence will be recorded after the verified commit is pushed.
+- Local verification passed all 134 tests. Commit `414a5b7` passed both GitHub Python test jobs and GitGuardian security checks.
 
 ## 1. Supervisor Methodology Decision
 
