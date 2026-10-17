@@ -12,6 +12,7 @@ Completed evidence is summarized in `TDK_METHODOLOGY_REVIEW_2026-10-16.md`, `TDK
 - Literature artifacts `20261017T215024Z_f79f81f2c2b1` and `20261017T215119Z_4b354b03c1af` passed checksum, credential, paid-service, and holdout checks. Semantic Scholar was rate-limited; OpenAlex and arXiv completed.
 - A blinded expert-review packet and traceable methods draft are prepared but not approved or distributed.
 - Deprecated `datetime.utcnow()` calls were replaced by a tested naive-UTC compatibility helper; the database timestamp contract is unchanged.
+- Local verification passed all 125 tests. Commit `ad7c543` passed push CI, pull-request CI, and GitGuardian checks before this roadmap evidence update.
 - The holdout was not generated, inspected, scored, or unlocked.
 
 ## 1. Supervisor Methodology Decision
