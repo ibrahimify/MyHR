@@ -1,61 +1,69 @@
 # MyHR TDK Supervisor Decision Sheet
 
-**NOTHING BELOW IS APPROVED UNTIL A HUMAN RESPONDS. AI agents and automated reviewers cannot approve protocol decisions. The holdout remains locked.**
+**NOTHING IS APPROVED UNTIL A HUMAN RESPONDS. AI agents cannot approve protocol decisions. The holdout remains locked.**
 
-Date reviewed: __________  Human reviewer: ____________________
+Date: __________  Human reviewer: ____________________
 
 ## 1. Primary Hypothesis
 
-**Options:** A. Keep the current rule-negative policy-aware comparison. B. Retain the research question but redesign the residual features and scenarios before freeze. C. Make the end-to-end rules-plus-ML cascade the primary claim.
+**Options:** A. Keep the current residual comparison. B. Redesign residual features and scenarios. C. Make the end-to-end rules-plus-ML queue primary.
 
-**Evidence:** Independent development found policy AP `0.3621` and raw AP `0.3616`, but the hostile review proved all three policy-specific residual features are constant zero. Literature supports scenario-specific, protected evaluation, not this representation.
+**Evidence/objection:** All three policy-specific residual features are constant zero, so current AP differences cannot be attributed to policy context.
 
-**Reviewer objection:** Current results cannot be attributed to policy context. **Recommendation:** B; preserve the current run only as development evidence.
+**Recommendation:** B. Preserve the current run only as development evidence.
 
-Decision: [ ] Yes, B  [ ] No  [ ] Modify: ______________________________
+[ ] Yes, B  [ ] No  [ ] Modify: _________________________________
 
 ## 2. Primary Endpoint
 
-**Options:** A. Scenario-level average precision (AP). B. Precision/recall or utility at fixed review capacity. C. Co-primary AP and capacity metrics.
+**Options:** A. Scenario-level AP. B. Fixed-capacity precision/recall or utility. C. Co-primary endpoints.
 
-**Evidence:** PR measures suit imbalance and AP evaluates rankings without selecting a test threshold, but AP depends on prevalence. Six current scenarios have no residual positives, making AP undefined; storing zero distorted the mean and interval.
+**Evidence/objection:** AP suits imbalanced ranking but depends on prevalence. Six scenarios have no residual positives and were incorrectly assigned AP zero.
 
-**Reviewer objection:** The current 12-scenario interval is not valid for the proposed eligibility rule. **Recommendation:** A only for predeclared eligible scenarios containing residual positives; report fixed-capacity outcomes as secondary operational evidence with full denominators.
+**Recommendation:** A only when scenario families are predeclared to contain residual positives by construction. Never select or exclude scenarios after inspection. Otherwise choose B or redefine the estimand.
 
-Decision: [ ] Yes  [ ] No  [ ] Modify: _________________________________
+[ ] Yes  [ ] No  [ ] Modify: ____________________________________
 
-## 3. Review-Capacity Rule
+## 3. Review Capacity
 
-**Options:** A. Mandatory deterministic findings plus ML up to a nominal 10% total floor. B. Cap all alerts at 10%, even if rules are dropped. C. Report two queues: all deterministic findings, then an equal fixed ML budget among rule-negative histories.
+**Options:** A. Mandatory rules plus ML to a nominal 10% floor. B. Cap all alerts at 10%. C. Report all deterministic findings, then an equal fixed ML budget among rule-negative histories.
 
-**Evidence:** Dropping explicit findings is operationally unsafe; a rising floor complicates equal-budget ML comparison. **Reviewer objection:** The current independent artifact does not isolate valid incremental policy information. **Recommendation:** C for scientific comparison and product transparency.
+**Evidence/objection:** Dropping explicit findings is unsafe, while a rising capacity floor prevents a clean equal-budget ML comparison.
 
-Decision: [ ] Yes  [ ] No  [ ] Modify: _________________________________
+**Recommendation:** C.
+
+[ ] Yes  [ ] No  [ ] Modify: ____________________________________
 
 ## 4. Historical Policy Model
 
-**Options:** A. Apply the current policy to all history. B. Store policy version and effective period only. C. Store policy version, jurisdiction, valid/effective time, recorded/transaction time, recognized service, and correction provenance.
+**Options:** A. Apply current policy to all history. B. Store version and effective period. C. Also store jurisdiction, effective time, recorded time, recognized service, and correction provenance.
 
-**Evidence:** Current-policy replay flagged `39/72` rare histories and, by source regeneration, `39/39` realized transition histories. Bitemporal literature distinguishes when a fact is true from when it is recorded. **Reviewer objection:** The count is a constructed specification failure, not a real-world prevalence estimate. **Recommendation:** C.
+**Evidence/objection:** Current-policy replay flagged `39/72` rare histories; source regeneration found `39/39` realized transition histories flagged. This proves a constructed specification failure, not real-world prevalence.
 
-Decision: [ ] Yes  [ ] No  [ ] Modify: _________________________________
+**Recommendation:** C.
+
+[ ] Yes  [ ] No  [ ] Modify: ____________________________________
 
 ## 5. Expert Realism Review
 
-**Options:** A. No expert review. B. Two independent blinded reviewers plus recorded agreement and adjudication. C. One supervisor review only.
+**Options:** A. None. B. Two independent blinded reviewers with agreement and adjudication. C. One supervisor review.
 
-**Evidence:** Synthetic fidelity does not establish administrative realism. Human-in-the-loop and reliability research support independent instructions, preserved disagreement, and explicit agreement analysis. **Reviewer objection:** Reviewer qualifications, sample size, and acceptance rule are not yet defined. **Recommendation:** B using the draft 48-case packet, after human approval of assumptions.
+**Evidence/objection:** Synthetic correctness does not establish realism. Reviewer qualifications, sample size, and acceptance criteria remain undecided.
 
-Decision: [ ] Yes  [ ] No  [ ] Modify: _________________________________
+**Recommendation:** B, using the draft packet only after human approval.
 
-## 6. Holdout Generation
+[ ] Yes  [ ] No  [ ] Modify: ____________________________________
 
-**Options:** A. Reuse the current development generator. B. Freeze an independently implemented scenario matrix with repeated seeds, positive residual cases, per-record causal truth, and no detector-derived shortcuts. C. Use authorized external data as the only holdout.
+## 6. Holdout Design
 
-**Evidence:** Current source-code independence is useful, but scenarios lack varying policy residual signal, six have zero positives, and mechanism truth is incomplete in artifacts. Recent benchmarking work recommends scenario diversity, repeated random factors, and protected evaluation data. **Recommendation:** B; use lawful external data only as a separately labelled secondary validation if available.
+**Options:** A. Reuse the development generator. B. Freeze a conceptually independent matrix with repeated seeds and per-record causal truth. C. Use authorized external data only.
 
-Decision: [ ] Yes  [ ] No  [ ] Modify: _________________________________
+**Evidence/objection:** Current scenarios have constant policy residuals, six zero-positive cases, and incomplete truth in the existing artifact.
 
-**Protocol freeze approved:** [ ] No  [ ] Yes, after recorded modifications
+**Recommendation:** B with predeclared residual-positive families. Use lawful external data only as secondary validation.
+
+[ ] Yes  [ ] No  [ ] Modify: ____________________________________
+
+**Protocol freeze:** [ ] No  [ ] Yes, after recorded modifications
 
 Signature: ______________________________  Date: __________________

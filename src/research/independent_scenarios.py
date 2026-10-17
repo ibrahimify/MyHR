@@ -116,7 +116,10 @@ class IndependentTruthEntry:
     employee_id: str
     category: TruthCategory
     mechanism: str
+    realized_mechanism: str
     evidence: str
+    track: IndependentTrack
+    causal_events: tuple[IndependentEvent, ...]
 
 
 @dataclass(frozen=True)
@@ -181,19 +184,29 @@ def generate_independent_world(spec: IndependentScenarioSpec) -> IndependentWorl
         employee = _base_employee(index, split_by_index[index], spec, policies, rng)
         category = truth_plan[index]
         mechanism = "none"
+        realized_mechanism = "none"
         evidence = "No injected administrative discrepancy."
+        causal_events: tuple[IndependentEvent, ...] = ()
         if category is TruthCategory.RARE_LEGITIMATE:
-            employee, evidence = _apply_rare_case(employee, spec.rare_pattern, policies, rng)
             mechanism = spec.rare_pattern
+            employee, evidence, realized_mechanism, causal_events = _apply_rare_case(
+                employee, spec.rare_pattern, policies, rng
+            )
         elif category is not TruthCategory.ORDINARY_LEGITIMATE:
-            employee, evidence = _apply_error(employee, spec.mechanism, policies, rng)
+            employee, evidence, causal_events = _apply_error(
+                employee, spec.mechanism, policies, rng
+            )
             mechanism = spec.mechanism
+            realized_mechanism = spec.mechanism
         employees.append(employee)
         truth.append(IndependentTruthEntry(
             employee_id=employee.employee_id,
             category=category,
             mechanism=mechanism,
+            realized_mechanism=realized_mechanism,
             evidence=evidence,
+            track=employee.track,
+            causal_events=causal_events,
         ))
     return IndependentWorld(spec, policies, tuple(employees), tuple(truth))
 
@@ -319,47 +332,57 @@ def _apply_error(
     mechanism: str,
     policies: tuple[IndependentPolicyCard, ...],
     rng: Random,
-) -> tuple[IndependentEmployeeLedger, str]:
+) -> tuple[IndependentEmployeeLedger, str, tuple[IndependentEvent, ...]]:
     events = list(employee.events)
+    causal_events = []
     if mechanism == "wrong_employee_link":
         start = max(employee.hire_date, date(2024, 1, 1))
         for offset in range(5):
-            events.append(_event(
+            injected = _event(
                 rng.randint(1, 1_000_000), offset, len(events), IndependentEventKind.SANCTION,
                 start + timedelta(days=offset * 45), "reform-2023", category=1,
-            ))
+            )
+            events.append(injected)
+            causal_events.append(injected)
         evidence = "Five sanction events from another employee were linked during migration."
     elif mechanism == "missing_increment_import":
         increments = [event for event in events if event.kind is IndependentEventKind.SALARY_INCREMENT]
         if len(increments) >= 3:
             removed = increments[len(increments) // 2]
             events.remove(removed)
+            causal_events.append(removed)
         else:
-            events.append(_event(
+            injected = _event(
                 rng.randint(1, 1_000_000), 1, len(events), IndependentEventKind.SALARY_INCREMENT,
                 min(REFERENCE_DATE, _add_months(employee.hire_date, 30)), "reform-2023",
-            ))
+            )
+            events.append(injected)
+            causal_events.append(injected)
         evidence = "One approved annual increment was omitted from an imported history."
     elif mechanism == "approval_bypass":
         events = [event for event in events if event.kind is not IndependentEventKind.PROMOTION]
-        events.append(_event(
+        injected = _event(
             rng.randint(1, 1_000_000), 2, len(events), IndependentEventKind.PROMOTION,
             _add_months(employee.hire_date, 14), "reform-2023",
             level_before="L7", level_after="L6",
-        ))
+        )
+        events.append(injected)
+        causal_events.append(injected)
         evidence = "A promotion was recorded after an approval workflow was bypassed."
     elif mechanism == "batch_retry":
         increments = [event for event in events if event.kind is IndependentEventKind.SALARY_INCREMENT]
         anchor = increments[-1] if increments else events[0]
-        events.append(_event(
+        injected = _event(
             rng.randint(1, 1_000_000), 3, len(events), IndependentEventKind.SALARY_INCREMENT,
             anchor.effective_date, anchor.policy_id,
             correction_of_event_id=anchor.event_id,
-        ))
+        )
+        events.append(injected)
+        causal_events.append(injected)
         evidence = "A retried import batch created a second increment record."
     else:
         raise ValueError(f"unsupported mechanism: {mechanism}")
-    return _replace_events(employee, events), evidence
+    return _replace_events(employee, events), evidence, tuple(causal_events)
 
 
 def _apply_rare_case(
@@ -367,36 +390,47 @@ def _apply_rare_case(
     pattern: str,
     policies: tuple[IndependentPolicyCard, ...],
     rng: Random,
-) -> tuple[IndependentEmployeeLedger, str]:
+) -> tuple[IndependentEmployeeLedger, str, str, tuple[IndependentEvent, ...]]:
     events = list(employee.events)
     if pattern == "grandfathered_policy" and employee.track is IndependentTrack.PROGRESSION:
         events = [event for event in events if event.kind is not IndependentEventKind.PROMOTION]
-        events.append(_event(
+        injected = _event(
             rng.randint(1, 1_000_000), 4, len(events), IndependentEventKind.PROMOTION,
             _add_months(employee.hire_date, 30), "legacy-2018",
             level_before="L7", level_after="L6",
-        ))
+        )
+        events.append(injected)
         evidence = "A documented grandfathering clause retained the earlier service requirement."
+        mechanism = pattern
+        causal_events = (injected,)
     elif pattern == "recognized_prior_service" and employee.track is IndependentTrack.PROGRESSION:
         events = [event for event in events if event.kind is not IndependentEventKind.PROMOTION]
-        events.append(_event(
+        injected = _event(
             rng.randint(1, 1_000_000), 5, len(events), IndependentEventKind.PROMOTION,
             _add_months(employee.hire_date, 24), "reform-2023",
             level_before="L7", level_after="L6",
-        ))
+        )
+        events.append(injected)
         evidence = "Twelve months of prior public service were formally recognized."
+        mechanism = pattern
+        causal_events = (injected,)
     else:
         delayed = []
+        causal_events_list = []
         for event in events:
             if event.kind is IndependentEventKind.SALARY_INCREMENT:
-                delayed.append(IndependentEvent(
+                delayed_event = IndependentEvent(
                     **{**event.__dict__, "recorded_date": event.effective_date + timedelta(days=120)}
-                ))
+                )
+                delayed.append(delayed_event)
+                causal_events_list.append(delayed_event)
             else:
                 delayed.append(event)
         events = delayed
         evidence = "A documented administrative backlog delayed recording without changing effective dates."
-    return _replace_events(employee, events), evidence
+        mechanism = "delayed_bulk_recording"
+        causal_events = tuple(causal_events_list)
+    return _replace_events(employee, events), evidence, mechanism, causal_events
 
 
 def _replace_events(

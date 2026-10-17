@@ -2,6 +2,10 @@
 
 Research title: **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**
 
+## Superseding Methodological Correction - 2026-10-18
+
+The 2026-10-17 independent review found that deterministic filtering forces all three policy-specific residual features to zero. The residual AP comparison below is retained as development history, but it cannot test incremental policy context. Six of twelve independent scenarios also contain no residual positives and were assigned AP zero under the implemented convention. No residual superiority, equivalence, or mechanism-specific policy effect may be inferred from these values.
+
 Status: **Development and validation diagnostics only. The holdout remains locked.**
 
 ## Supersession Notice
@@ -60,13 +64,13 @@ Among the 759 rule-negative records, 42 anomalies remained:
 | Raw IF | 81 | 26 | 55 | 16 | 0.304 | 0.3616 |
 | Policy-aware IF | 81 | 25 | 56 | 17 | 0.298 | 0.3621 |
 
-The paired AP difference is `+0.0005`, 95% interval `[-0.1173, 0.1079]`, sign-flip `p = 1.0`, and Holm-adjusted `p = 1.0`. Policy-aware features performed better on wrong-employee sanction links and worse on missing-increment imports. No overall advantage is established.
+The stored paired AP difference is `+0.0005`, 95% interval `[-0.1173, 0.1079]`, sign-flip `p = 1.0`, and Holm-adjusted `p = 1.0`. These values are arithmetically reproducible but scientifically vacuous for policy context because the policy-specific features are constant. Apparent mechanism differences cannot be attributed to policy information.
 
 ## Conclusions Supported Today
 
 - Deterministic policy checks are valuable for explicit inconsistencies, but they require correct policy-version context.
-- Policy-aware features strongly fit the original generator, but that advantage does not transfer consistently to the independent development simulator.
-- On independently designed residual errors, raw and policy-aware Isolation Forest perform similarly overall.
+- Policy-aware features strongly fit the original generator, which is evidence of generator-detector coupling rather than transferable advantage.
+- The independent residual design does not contain varying policy-specific signal after rule filtering, so it cannot establish similarity, superiority, or inferiority.
 - Reducing rare-legitimate alerts can merely move false alerts to ordinary-clean records when total capacity is fixed.
 - Isolation Forest is a supplementary triage method, not a replacement for deterministic validation or human review.
 
@@ -82,4 +86,4 @@ The paired AP difference is `+0.0005`, 95% interval `[-0.1173, 0.1079]`, sign-fl
 
 ## Readiness
 
-Implementation confidence is high for the tested mechanics and artifact audit. Internal validity has improved, but the central policy-aware advantage is statistically unresolved and externally unvalidated. The protocol is ready for supervisor methodological review, not protocol freeze, holdout execution, or publication claims.
+Implementation confidence is high for the tested mechanics and artifact integrity. Internal validity of the central residual comparison is insufficient because the intended policy signal is absent. The work is ready for supervisor methodological redesign, not protocol freeze, holdout execution, or publication claims.

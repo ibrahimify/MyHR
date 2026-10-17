@@ -15,6 +15,15 @@ Completed evidence is summarized in `TDK_METHODOLOGY_REVIEW_2026-10-16.md`, `TDK
 - Local verification passed all 125 tests. Commit `ad7c543` passed push CI, pull-request CI, and GitGuardian checks before this roadmap evidence update.
 - The holdout was not generated, inspected, scored, or unlocked.
 
+## Unblocked Defensibility Work - 2026-10-18
+
+- Supervisor-facing documents now state that the residual experiment was structurally unable to test policy-aware value; they no longer present the AP values as a tie or merely inconclusive evidence.
+- The development artifact auditor now independently recomputes AP from stored scores, operational rates, paired scenario differences, bootstrap intervals, sign-flip tests, and Holm adjustments. The unchanged artifact `e342bd4acf39b06b` passed the strengthened audit across 636 metric rows and 15 paired-comparison rows.
+- Future independent development artifacts write normalized `record_truth.csv`, `administrative_events.csv`, and `policy_epochs.csv` sidecars. Nominal and realized mechanisms remain separate; complete event fields and observed-versus-omitted causal status are preserved; the auditor enforces causal joins; and truth-only fields are prohibited from prediction rows.
+- Three residual-design alternatives are documented as proposals only. No design is approved or implemented, and existing write-once artifacts remain unchanged.
+- A fresh hostile code review found incomplete event provenance and metric-key completeness checks. Both blockers were corrected with adversarial tests rather than waived.
+- Local verification passed all 134 tests after these changes. GitHub CI evidence will be recorded after the verified commit is pushed.
+
 ## 1. Supervisor Methodology Decision
 
 - **Scientific objective:** Approve or revise the primary hypothesis, rule-negative AP endpoint, scenario eligibility, and inference plan.
@@ -25,7 +34,7 @@ Completed evidence is summarized in `TDK_METHODOLOGY_REVIEW_2026-10-16.md`, `TDK
 - **Required validation:** Documentation cross-check against artifacts and literature.
 - **Dependencies and blockers:** Requires supervisor approval.
 - **Status:** Blocked on supervisor review.
-- **Outcome:** Decision options and recommendations are ready; no option is approved.
+- **Outcome:** Corrected decision options, three design alternatives, and recommendations are ready; no option is approved.
 
 ## 2. Blinded Domain-Realism Review
 
@@ -49,7 +58,7 @@ Completed evidence is summarized in `TDK_METHODOLOGY_REVIEW_2026-10-16.md`, `TDK
 - **Required validation:** SQL/research parity, historical-policy tests, transition-boundary tests, and full CI.
 - **Dependencies and blockers:** Requires Tasks 1 and 2 to avoid encoding unreviewed assumptions.
 - **Status:** Blocked on domain approval.
-- **Outcome:** Bitemporal modelling evidence is documented; the application schema is unchanged pending human approval.
+- **Outcome:** Bitemporal modelling evidence is documented. Development-only artifact sidecars preserve literal policy epochs and event times, while the application schema and policy interpretation remain unchanged pending human approval.
 
 ## 4. Protocol Freeze And Reproducible Environment Lock
 

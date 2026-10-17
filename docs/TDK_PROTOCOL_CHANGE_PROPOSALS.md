@@ -43,9 +43,9 @@ Charge review cost to every alert, missed-error cost to false negatives, and add
 
 Options for human review:
 
-1. redefine deterministic rules so they remove only explicit contradictions while retaining graded policy residuals;
-2. define non-overlapping policy-context features that remain variable after rule filtering;
-3. abandon a residual policy-aware primary comparison and use a different, predeclared estimand.
+1. **Explicit-contradictions residual design:** deterministic rules remove only mechanically provable contradictions, while graded policy deviations remain available to both raw and policy-aware residual models. Benefit: preserves a residual research question. Risk: changing the rule boundary may create overlap or weaken product validation.
+2. **Counterfactual policy-context design:** retain deterministic findings, then compare features derived from the applicable historical policy against matched raw timing features on separately designed ambiguous histories. Benefit: tests genuinely varying policy context. Risk: requires an approved policy-version and bitemporal contract before implementation.
+3. **End-to-end review-queue design:** make the transparent rules-plus-ML workflow the primary operational estimand and treat residual model comparisons as exploratory. Benefit: aligns with the product workflow. Risk: makes the isolated causal contribution of policy-aware ML harder to identify.
 
 Any selected option requires new development scenarios and tests. Existing inspected artifacts remain development evidence and cannot become confirmatory evidence.
 

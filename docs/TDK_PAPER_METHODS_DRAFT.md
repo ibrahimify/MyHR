@@ -46,7 +46,9 @@ The proposed realism review uses blinded fictional histories with no model resul
 
 ## Reproducibility And Audit
 
-Experiment directories are write-once and contain a SHA-256 manifest. The independent artifact audit verifies file integrity, source hashes, provenance, confusion counts, selected rates, and aggregate consistency. The 2026-10-17 review showed that it does not yet recompute AP, paired intervals, randomization tests, or multiplicity adjustments. Therefore a passing audit proves artifact integrity and selected arithmetic, not complete statistical validity.
+Experiment directories are write-once and contain a SHA-256 manifest. The independent artifact audit verifies file integrity, source hashes, provenance, confusion counts, rates, average precision from stored scores, aggregate consistency, paired differences, bootstrap intervals, sign-flip tests, and Holm adjustments. The strengthened auditor successfully rechecked the existing independent development artifact without changing it. A passing audit establishes reproducibility of the implemented arithmetic, not validity of the estimand or exchangeability assumptions.
+
+Future independent development artifacts also write normalized truth, administrative-event, and policy-epoch sidecars. They preserve the generated employee context, complete event fields, nominal and realized mechanisms, causal explanation, policy identifier, effective and recorded dates, and whether each causal event was observed or intentionally omitted. The independent auditor enforces one-to-one event joins and prohibits truth-only fields in detector inputs. Existing write-once artifacts remain unchanged and therefore do not independently support the `39/39` mechanism attribution.
 
 ## Traceability Matrix
 

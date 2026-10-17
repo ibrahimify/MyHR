@@ -1,5 +1,9 @@
 # Independent Methodology Review - 2026-10-16
 
+## Superseding Note - 2026-10-18
+
+The later independent hostile review found that the proposed rule-negative comparison cannot test policy-aware value in its current form because all three policy-specific features are constant after deterministic filtering. The hypothesis and endpoint below are retained as historical proposals only. They require human-approved redesign and must not be treated as an accepted confirmatory plan.
+
 ## Review Question
 
 What could make the present conclusion wrong, and what is the strongest permissible test before holdout access?
