@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
+from src.core.time import utc_now
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -253,12 +254,12 @@ class DashboardSmokeTests(unittest.TestCase):
         try:
             invalid_currency_dialog.level_name.setText("L9")
             invalid_currency_dialog.level_label.setText("Temporary Track")
-            invalid_currency_dialog.currency.setText("$$$")
             invalid_currency_dialog.salary_min.setValue(100)
             invalid_currency_dialog.salary_max.setValue(200)
             l7_index = invalid_currency_dialog.target_title.findData(ids["l7"])
             self.assertGreaterEqual(l7_index, 0)
             invalid_currency_dialog.target_title.setCurrentIndex(l7_index)
+            invalid_currency_dialog.currency.setText("$$$")
             with patch("src.ui.pages.settings._warning", return_value=None) as warning:
                 invalid_currency_dialog._save()
             warning.assert_called_once()
@@ -373,7 +374,7 @@ class DashboardSmokeTests(unittest.TestCase):
             session.add(org)
             session.flush()
             employees = []
-            now = datetime.utcnow()
+            now = utc_now()
             old_join_date = now.replace(year=now.year - 5)
             for index in range(65):
                 employee = Employee(
@@ -456,7 +457,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 last_name="Smoke",
                 degree="BSc",
                 position="Analyst",
-                join_date=datetime.utcnow(),
+                join_date=utc_now(),
                 base_salary=2400,
                 status="active",
                 title_id=title.id,
@@ -637,7 +638,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 description="Audit export current item",
                 before_value='{"status": "inactive"}',
                 after_value='{"status": "active"}',
-                performed_at=datetime.utcnow(),
+                performed_at=utc_now(),
             ))
             session.add(AuditLog(
                 performed_by_id=admin.id,
@@ -647,7 +648,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 target_table="employee",
                 target_id=502,
                 description="Audit export old item",
-                performed_at=datetime.utcnow() - timedelta(days=60),
+                performed_at=utc_now() - timedelta(days=60),
             ))
             session.commit()
             user = SimpleNamespace(id=admin.id, username=admin.username, role=admin.role, full_name=admin.full_name)
@@ -744,7 +745,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 target_id=title.id,
                 description="Level target smoke active",
                 after_value=f'{{"name": "{title.name}", "label": "{title.label}"}}',
-                performed_at=datetime.utcnow(),
+                performed_at=utc_now(),
             ))
             session.add(AuditLog(
                 performed_by_id=admin.id,
@@ -755,7 +756,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 target_id=99001,
                 description="Level target smoke deleted",
                 before_value='{"name": "S8", "label": "Interns"}',
-                performed_at=datetime.utcnow(),
+                performed_at=utc_now(),
             ))
             session.add(AuditLog(
                 performed_by_id=admin.id,
@@ -764,7 +765,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 action="settings.database_health_check",
                 description="Level target smoke database check",
                 after_value='{"integrity": "ok"}',
-                performed_at=datetime.utcnow(),
+                performed_at=utc_now(),
             ))
             session.add(AuditLog(
                 performed_by_id=admin.id,
@@ -773,7 +774,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 action="settings.export_yearly_report",
                 description="Level target smoke report exported: 2026",
                 after_value='{"year": 2026}',
-                performed_at=datetime.utcnow(),
+                performed_at=utc_now(),
             ))
             session.commit()
             user = SimpleNamespace(id=admin.id, username=admin.username, role=admin.role, full_name=admin.full_name)
@@ -883,7 +884,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 degree="BSc",
                 work_email="sarah.canvas@example.test",
                 position="Backend Lead",
-                join_date=datetime.utcnow(),
+                join_date=utc_now(),
                 base_salary=2400,
                 status="active",
                 title_id=title.id,
@@ -896,7 +897,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 degree="BSc",
                 work_email="report.canvas@example.test",
                 position="Engineer",
-                join_date=datetime.utcnow(),
+                join_date=utc_now(),
                 base_salary=2400,
                 status="active",
                 title_id=title.id,
@@ -910,7 +911,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 degree="Other",
                 work_email="other.head@example.test",
                 position="Other Employees Head",
-                join_date=datetime.utcnow(),
+                join_date=utc_now(),
                 base_salary=2200,
                 status="active",
                 title_id=title.id,
@@ -923,7 +924,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 degree="Other",
                 work_email="leaf.janitor@example.test",
                 position="Janitor",
-                join_date=datetime.utcnow(),
+                join_date=utc_now(),
                 base_salary=2000,
                 status="active",
                 title_id=title.id,
@@ -999,7 +1000,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 degree="Other",
                 work_email="increment.only@example.test",
                 position="Facilities Assistant",
-                join_date=datetime.utcnow(),
+                join_date=utc_now(),
                 base_salary=2200,
                 status="active",
                 title_id=other_title.id,

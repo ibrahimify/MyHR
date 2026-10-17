@@ -88,6 +88,36 @@
       "expected_title": "Towards Universal Dense Blocking for Entity Resolution",
       "pdf_url": "https://arxiv.org/pdf/2404.14831",
       "access_basis": "arXiv author submission"
+    },
+    {
+      "id": "sorbo2024_metric_maze",
+      "doi": "10.1007/s10618-023-00988-8",
+      "arxiv_id": "2303.01272",
+      "expected_title": "Navigating the Metric Maze: A Taxonomy of Evaluation Metrics for Anomaly Detection in Time Series",
+      "pdf_url": "https://arxiv.org/pdf/2303.01272",
+      "access_basis": "arXiv author submission"
+    },
+    {
+      "id": "rochner2025_rethink_benchmarking",
+      "arxiv_id": "2507.15584",
+      "expected_title": "We Need to Rethink Benchmarking in Anomaly Detection",
+      "pdf_url": "https://arxiv.org/pdf/2507.15584",
+      "access_basis": "arXiv author submission"
+    },
+    {
+      "id": "neelamegam2026_bitemporal",
+      "doi": "10.1007/s42488-026-00162-x",
+      "expected_title": "Comprehensive insights into bitemporal databases: a PRISMA-guided systematic literature review",
+      "pdf_url": "https://www.open-access.bcu.ac.uk/17171/1/s42488-026-00162-x.pdf",
+      "access_basis": "Publisher article deposited under Creative Commons Attribution"
+    },
+    {
+      "id": "deng2026_hilad",
+      "doi": "10.1145/3778167",
+      "arxiv_id": "2405.03234",
+      "expected_title": "A Reliable Framework for Human-in-the-Loop Anomaly Detection in Time Series",
+      "pdf_url": "https://arxiv.org/pdf/2405.03234",
+      "access_basis": "arXiv author submission"
     }
   ]
 }

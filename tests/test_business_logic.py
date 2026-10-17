@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 from datetime import date, datetime
+from src.core.time import utc_now
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -75,7 +76,7 @@ class IsolatedDatabaseTestCase(unittest.TestCase):
             degree=degree,
             work_email=f"test{suffix}@example.test",
             position="Analyst",
-            join_date=db._add_months(datetime.utcnow(), -join_months_ago),
+            join_date=db._add_months(utc_now(), -join_months_ago),
             base_salary=salary,
             status=status,
             title=title,
@@ -92,7 +93,7 @@ class IsolatedDatabaseTestCase(unittest.TestCase):
             category=2,
             months_impact=months_impact,
             issued_by_id=self.admin.id,
-            issued_at=db._add_months(datetime.utcnow(), -issued_months_ago),
+            issued_at=db._add_months(utc_now(), -issued_months_ago),
         )
         self.session.add(commendation)
         self.session.flush()
@@ -108,9 +109,9 @@ class IsolatedDatabaseTestCase(unittest.TestCase):
             reason="Regression sanction",
             delay_months=delay_months,
             issued_by_id=self.admin.id,
-            issued_at=db._add_months(datetime.utcnow(), -issued_months_ago),
+            issued_at=db._add_months(utc_now(), -issued_months_ago),
             is_resolved=resolved,
-            resolved_at=datetime.utcnow() if resolved else None,
+            resolved_at=utc_now() if resolved else None,
         )
         self.session.add(sanction)
         self.session.flush()
@@ -242,7 +243,7 @@ class PromotionRaceTests(IsolatedDatabaseTestCase):
             approved_by_id=self.admin.id,
             basis="time_based",
             months_taken=36,
-            promoted_at=db._add_months(datetime.utcnow(), -12),
+            promoted_at=db._add_months(utc_now(), -12),
         )
         employee.title = new_title
         self.session.add(promotion)
@@ -265,7 +266,7 @@ class PromotionRaceTests(IsolatedDatabaseTestCase):
             approved_by_id=self.admin.id,
             basis="time_based",
             months_taken=36,
-            promoted_at=db._add_months(datetime.utcnow(), -12),
+            promoted_at=db._add_months(utc_now(), -12),
         )
         employee.title = new_title
         self.session.add(promotion)

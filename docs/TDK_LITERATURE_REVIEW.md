@@ -4,13 +4,13 @@ Research title:
 
 **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**
 
-Review date: 2026-10-15
+Review date: 2026-10-17
 
 Status: development literature synthesis for supervisor review. No holdout data was generated or inspected, and no experiment protocol was silently changed.
 
 ## Review Method
 
-Eight predeclared searches covered recent work from 2022-2026 plus foundational papers. OpenAlex and arXiv returned 174 source records and 170 merged discovery records. The full-text synthesis used a curated set of 12 legally accessible papers totaling 336 pages. PDF headers, extracted text, identifiers, titles, and SHA-256 checksums were verified. DOI papers were resolved through OpenAlex; arXiv-only papers were resolved through the arXiv API.
+Thirteen predeclared searches covered recent work from 2022-2026 plus foundational papers. The 2026-10-17 OpenAlex and arXiv refresh returned 240 source records and 231 merged discovery records. The full-text synthesis used a curated set of 16 legally accessible papers totaling 428 pages. PDF headers, extracted text, identifiers, titles, and SHA-256 checksums were verified. DOI papers were resolved through OpenAlex; arXiv-only papers were resolved through the arXiv API. Semantic Scholar remains part of the free workflow, but its anonymous shared pool returned HTTP 429 during this refresh; no credential or paid service was introduced.
 
 Discovery was intentionally broad, while inclusion required direct methodological relevance to at least one MyHR research component. Citation counts supported discovery only and were not treated as evidence of correctness.
 
@@ -157,6 +157,25 @@ These are proposals from the review. They have not changed `docs/TDK_EXPERIMENT_
 - Workforce-progression anomaly research appears sparse, so adjacent evidence comes from general anomaly detection, contextual detection, HR analytics, and entity resolution.
 - Utility costs are sensitivity assumptions rather than observed organizational costs.
 - A 30-scenario matrix supports paired internal inference but does not prove generalization to arbitrary organizations.
+
+## Targeted Decision Review - 2026-10-17
+
+This update addresses only the open supervisor decisions. It does not approve or alter the protocol. Full text was reviewed for Saito and Rehmsmeier, Demsar, Steinbuss and Boehm, Hansen et al., Sorbo and Ruocco, Rochner et al., Neelamegam et al., and Deng et al. DOI metadata was independently resolved through OpenAlex; arXiv identifiers were resolved through the arXiv API.
+
+| Decision | Established by the reviewed evidence | Still uncertain for MyHR |
+| --- | --- | --- |
+| Primary endpoint | Precision-recall measures are more informative than ROC summaries under severe imbalance, and continuous-score metrics avoid choosing a test threshold. Average precision remains prevalence-sensitive, so each value needs its positive count and scenario context. | Literature does not designate AP as universally optimal. Whether scenario-mean AP is the correct primary estimand is a domain decision. The current residual AP comparison is invalid because policy features are constant after filtering. |
+| Paired inference and multiplicity | Methods should be paired on the same independent experimental units. One predeclared primary test avoids a multiplicity family. Holm controls family-wise error without the conservatism of single-step Bonferroni and is defensible for a small confirmatory secondary family. | A sign-flip test requires an exchangeable or sign-symmetric null interpretation. A scenario bootstrap requires a defensible scenario population. With only six informative development scenarios, neither procedure supplies strong evidence. Exploratory outcomes may be better reported with intervals and explicit labels rather than inferential claims. |
+| Synthetic validation and circularity | Synthetic evaluation should test downstream utility, multiple data profiles, and detector behavior across scenarios. Recent anomaly-benchmarking work warns that repeatedly inspected benchmarks encourage overfitting and recommends scenario-specific objectives, repeated random factors, intervals, and protected evaluation data. | Source-code separation alone does not establish conceptual independence. Domain experts must assess scenario realism, and the generator must not encode the detector's decisive residual by construction. No literature result can certify the current generator as realistic. |
+| Policy versions over time | Bitemporal research distinguishes valid time, when a fact or rule applies in the modeled world, from transaction time, when it is stored. Preserving both supports historical reconstruction, corrections, and auditability. | The exact MyHR schema, policy epochs, jurisdictions, recognized-service rules, and migration behavior require human domain approval. The literature supports the temporal distinction, not a particular HR policy. |
+| Expert review of anomaly ground truth | Human-in-the-loop anomaly work treats expert validation as a separate workflow rather than automatic truth. Reliability literature requires independent coding rules and agreement assessment; disagreement must be retained and adjudication documented. | No universal reviewer count or agreement threshold applies to workforce progression. Reviewer qualifications, sample size, acceptable agreement, and adjudication rules must be chosen before cases are reviewed. |
+| Holdout generation | Protected, untouched evaluation data and frozen analysis choices reduce benchmark overfitting. Scenario diversity and repeated random realizations are needed to separate mechanisms from single random draws. | The holdout scenario matrix, feature representation, and residual definition are not ready to freeze. The independent review found zero-positive scenarios and constant policy features, so generating a holdout now would lock in an invalid estimand. |
+
+### Evidence-Based Recommendation Pending Human Approval
+
+Use one primary ranking endpoint only after a human approves a residual representation with genuinely varying policy information and primary-eligible scenarios with positive residual cases. Pair raw and policy-aware methods within the same independently generated scenario seed, report scenario-level and pooled denominators separately, and reserve Holm adjustment for a small predeclared family of genuinely inferential secondary outcomes. Treat all other analyses as descriptive or exploratory.
+
+For historical policy, store both effective and recorded times and retain the policy version applied to each administrative decision. For expert review, provide blinded histories without model scores or generated labels, collect independent ratings and reasons, calculate agreement, and preserve disagreement before adjudication. These are recommendations, not approved protocol decisions.
 
 ## Supervisor Review Questions
 

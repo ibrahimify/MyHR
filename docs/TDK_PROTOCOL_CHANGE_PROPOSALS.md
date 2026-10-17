@@ -1,6 +1,8 @@
 # TDK Protocol Change Proposals
 
-Status: **Pending supervisor approval. None of these proposals unlocks the holdout.**
+Status: **PENDING HUMAN APPROVAL. None of these proposals is approved, and none unlocks the holdout.**
+
+An AI agent or automated reviewer cannot approve any item in this document.
 
 ## 1. Primary Confirmatory Question
 
@@ -35,6 +37,24 @@ Keep validation-F1 and target-FPR thresholds secondary. Compare organization-spe
 
 Charge review cost to every alert, missed-error cost to false negatives, and additional escalation harm to rare-legitimate false alerts. Report multiple cost profiles without declaring one correct.
 
+## 8. Residual Feature Validity
+
+**PENDING HUMAN APPROVAL.** The 2026-10-17 independent review found that the current rule-negative filter forces every policy-specific feature in `policy_matched` to zero. The saved residual comparison therefore does not estimate incremental policy-context value.
+
+Options for human review:
+
+1. redefine deterministic rules so they remove only explicit contradictions while retaining graded policy residuals;
+2. define non-overlapping policy-context features that remain variable after rule filtering;
+3. abandon a residual policy-aware primary comparison and use a different, predeclared estimand.
+
+Any selected option requires new development scenarios and tests. Existing inspected artifacts remain development evidence and cannot become confirmatory evidence.
+
+## 9. Eligible Scenario And Truth Contract
+
+**PENDING HUMAN APPROVAL.** Six of twelve independent development scenarios contain no rule-negative positives. Their AP values were stored as zero, although AP is undefined in that case. Before protocol freeze, the human decision must specify whether primary scenarios are required to contain positive residual cases by design and how ineligible scenarios are reported without entering paired inference.
+
+The per-record truth contract should also store the realized rare mechanism, policy epoch, employee track, effective date, recorded date, and causal evidence. This is necessary to audit mechanism-specific statements without regenerating data.
+
 ## Decisions Required
 
 1. Approve or revise the primary hypothesis and AP endpoint.
@@ -42,5 +62,7 @@ Charge review cost to every alert, missed-error cost to false negatives, and add
 3. Approve independent scenario cards and policy-version assumptions.
 4. Approve the expert-review method and reviewers.
 5. Decide whether authorized external calibration data are available.
+6. Select or reject a residual-feature redesign after reviewing the 2026-10-17 independent report.
+7. Approve scenario eligibility and per-record causal truth requirements.
 
 Until these decisions are recorded, the protocol remains draft and the holdout remains locked.

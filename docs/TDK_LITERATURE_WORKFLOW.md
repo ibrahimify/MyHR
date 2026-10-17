@@ -109,15 +109,17 @@ Every run directory is timestamped and write-once. It stores configuration hashe
 
 `config/tdk_fulltext_selection.json` is a human-reviewed subset. A paper enters the full-text corpus only when its title and identifier can be verified and its PDF is legally accessible from arXiv, the publisher, or an author-controlled page.
 
-## Verification Status On 2026-10-15
+## Verification Status On 2026-10-17
 
-- OpenAlex live search: passed with real Isolation Forest results.
+- OpenAlex live search: passed across 13 targeted queries, producing 130 source records.
 - OpenAlex DOI resolution: passed for every DOI-bearing paper in the curated corpus.
-- arXiv live search: passed with real results.
+- arXiv live search: passed across the same query set, producing 110 source records.
 - arXiv exact-ID resolution: passed for every arXiv-only paper in the curated corpus.
-- Curated full-text run: 12 papers, 336 pages, PDF validation, text extraction, and checksums passed.
+- Curated full-text run: 16 papers, 428 pages, PDF validation, text extraction, DOI/arXiv resolution, and checksums passed.
+- Literature metadata artifact `20261017T215024Z_f79f81f2c2b1`: 240 source records, 231 merged records, manifest and credential scan passed.
+- Full-text artifact `20261017T215119Z_4b354b03c1af`: 16 papers, manifest and credential scan passed.
 - OpenAlex citation-network run: passed for all six DOI-bearing core papers, including outgoing reference IDs and bounded incoming citing works.
-- Semantic Scholar DOI resolution: one live request succeeded, but anonymous discovery subsequently returned HTTP `429` from the shared pool. The client and key handling pass automated tests; reliable live discovery remains a one-time user setup item requiring the free key.
+- Semantic Scholar DOI resolution previously succeeded, but the anonymous shared pool returned HTTP `429` during the 2026-10-17 refresh. The client and key handling pass automated tests; reliable live discovery remains an optional setup item requiring a free key.
 
 This is an integration limitation, not missing research evidence: OpenAlex, arXiv, DOI metadata, and the paper PDFs independently verify the tracked core references.
 

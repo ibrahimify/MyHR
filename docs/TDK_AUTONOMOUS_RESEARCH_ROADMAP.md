@@ -2,45 +2,53 @@
 
 Research title: **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**
 
-Current boundary: the authorized audit, corrections, independent scenario prototype, and adversarial development run are complete. The protocol remains draft, the final holdout remains undefined and locked, and the research PR remains unmerged.
+Current boundary: the authorized audit, corrections, independent scenario prototype, adversarial development run, independent hostile review, and targeted literature check are complete. The hostile review found that the current residual comparison does not isolate policy context because its three policy-specific features are constant after rule filtering. The protocol remains draft, the final holdout remains undefined and locked, and the research PR remains unmerged.
 
-Completed evidence is summarized in `TDK_METHODOLOGY_REVIEW_2026-10-16.md`, `TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md`, and `TDK_INDEPENDENT_SCENARIO_SPEC.md`.
+Completed evidence is summarized in `TDK_METHODOLOGY_REVIEW_2026-10-16.md`, `TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md`, `TDK_INDEPENDENT_SCENARIO_SPEC.md`, and `TDK_INDEPENDENT_REVIEW_2026-10-17.md`. Pending human choices are condensed in `TDK_SUPERVISOR_DECISION_SHEET.md`.
+
+## Verified Unblocked Work - 2026-10-18
+
+- Independent review re-derived the stored residual AP values, paired interval, and `39/72` false-alert count without changing code or protocol.
+- Literature artifacts `20261017T215024Z_f79f81f2c2b1` and `20261017T215119Z_4b354b03c1af` passed checksum, credential, paid-service, and holdout checks. Semantic Scholar was rate-limited; OpenAlex and arXiv completed.
+- A blinded expert-review packet and traceable methods draft are prepared but not approved or distributed.
+- Deprecated `datetime.utcnow()` calls were replaced by a tested naive-UTC compatibility helper; the database timestamp contract is unchanged.
+- The holdout was not generated, inspected, scored, or unlocked.
 
 ## 1. Supervisor Methodology Decision
 
 - **Scientific objective:** Approve or revise the primary hypothesis, rule-negative AP endpoint, scenario eligibility, and inference plan.
 - **Why it matters:** The original generator is circular and its residual count is too small; independent development evidence is inconclusive.
-- **Evidence motivating it:** Corrected v2.4 artifacts and independent artifact `e342bd4acf39b06b`.
+- **Evidence motivating it:** Corrected v2.4 artifacts, independent artifact `e342bd4acf39b06b`, and the critical feature-validity finding in the independent review.
 - **Files/components involved:** `TDK_PROTOCOL_CHANGE_PROPOSALS.md`, `TDK_SUPERVISOR_REVIEW_PACKAGE.md`, the experiment protocol, and Issue #10.
 - **Acceptance criteria:** A dated supervisor decision records the endpoint, independent unit, capacity rule, and allowed scenario families.
 - **Required validation:** Documentation cross-check against artifacts and literature.
 - **Dependencies and blockers:** Requires supervisor approval.
 - **Status:** Blocked on supervisor review.
-- **Outcome:** Pending.
+- **Outcome:** Decision options and recommendations are ready; no option is approved.
 
 ## 2. Blinded Domain-Realism Review
 
 - **Scientific objective:** Assess whether fictional policy and administrative histories are plausible without model scores or labels.
 - **Why it matters:** Synthetic correctness does not establish organizational realism.
 - **Evidence motivating it:** Independent scenarios reveal policy-version false alerts absent from the original generator.
-- **Files/components involved:** independent scenario cards, truth taxonomy, and a blinded review form.
+- **Files/components involved:** `TDK_EXPERT_REVIEW_PACKET.md`, independent scenario cards, truth taxonomy, and a blinded review form.
 - **Acceptance criteria:** 40 to 60 histories, two reviewers, realism ratings, classifications, reasons, agreement statistic, and documented adjudication.
 - **Required validation:** Reviewer identities and protocol recorded; no case changed to improve metrics.
 - **Dependencies and blockers:** Requires supervisor-approved assumptions and external reviewers.
 - **Status:** Blocked on supervisor and reviewer availability.
-- **Outcome:** Pending.
+- **Outcome:** The result-blind questionnaire is drafted. Distribution and acceptance rules remain blocked.
 
 ## 3. Policy-Version And Administrative-Evidence Contract
 
 - **Scientific objective:** Represent policy epochs, jurisdiction, recognized service, effective versus recorded dates, and corrections.
 - **Why it matters:** A single-current-policy model falsely flags lawful grandfathered and recognized-service histories.
-- **Evidence motivating it:** Independent rules produced 39 rare-legitimate false alerts among 72 rare histories.
+- **Evidence motivating it:** Independent rules produced 39 rare-legitimate false alerts among 72 rare histories. Source regeneration identified all 39 realized transition histories as flagged, but this mechanism label is not preserved per record in the stored artifact.
 - **Files/components involved:** research record contract, adapter, policy history, features, golden histories, and parity tests.
 - **Acceptance criteria:** Approved fields, migration design, backward compatibility, multi-policy golden histories, and no application regression.
 - **Required validation:** SQL/research parity, historical-policy tests, transition-boundary tests, and full CI.
 - **Dependencies and blockers:** Requires Tasks 1 and 2 to avoid encoding unreviewed assumptions.
 - **Status:** Blocked on domain approval.
-- **Outcome:** Pending.
+- **Outcome:** Bitemporal modelling evidence is documented; the application schema is unchanged pending human approval.
 
 ## 4. Protocol Freeze And Reproducible Environment Lock
 

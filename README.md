@@ -373,7 +373,11 @@ Avoid `git reset --hard` unless you are completely sure you want to discard loca
 | TDK Independent Scenario Specification | `docs/TDK_INDEPENDENT_SCENARIO_SPEC.md` |
 | TDK Protocol Change Proposals | `docs/TDK_PROTOCOL_CHANGE_PROPOSALS.md` |
 | TDK Supervisor Review Package | `docs/TDK_SUPERVISOR_REVIEW_PACKAGE.md` |
+| TDK Supervisor Decision Sheet | `docs/TDK_SUPERVISOR_DECISION_SHEET.md` |
 | TDK Autonomous Research Roadmap | `docs/TDK_AUTONOMOUS_RESEARCH_ROADMAP.md` |
+| TDK Independent Review | `docs/TDK_INDEPENDENT_REVIEW_2026-10-17.md` |
+| TDK Expert Review Packet | `docs/TDK_EXPERT_REVIEW_PACKET.md` |
+| TDK Paper Methods Draft | `docs/TDK_PAPER_METHODS_DRAFT.md` |
 | TDK Literature Workflow | `docs/TDK_LITERATURE_WORKFLOW.md` |
 | TDK Literature Review | `docs/TDK_LITERATURE_REVIEW.md` |
 | TDK Verified Bibliography | `docs/TDK_REFERENCES.bib` |
