@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - thesis-final-polish
+      - research/**
+  pull_request:
+    branches:
+      - master
+      - thesis-final-polish
+      - research/**
+
+jobs:
+  test:
+    name: Python tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      QT_QPA_PLATFORM: offscreen
+      PYTHONPATH: ${{ github.workspace }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Qt runtime libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install -r requirements-research.txt
+
+      - name: Compile core modules
+        run: |
+          python -m py_compile main.py
+          python -m py_compile src/ui/icons.py
+          python -m py_compile src/ui/pages/dashboard.py
+          python -m py_compile src/services/anomaly_detection/*.py
+          python -m py_compile src/research/literature.py
+          python -m py_compile src/research/independent_scenarios.py src/research/independent_scenario_adapter.py
+          python -m py_compile scripts/refresh_tdk_literature.py scripts/fetch_tdk_fulltext.py
+          python -m py_compile scripts/build_tdk_citation_network.py scripts/verify_literature_artifact.py
+          python -m py_compile scripts/audit_tdk_protocol_artifact.py
+          python -m py_compile scripts/run_tdk_independent_development.py
+
+      - name: Run full test suite
+        run: python -m unittest discover -s tests

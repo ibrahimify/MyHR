@@ -19,6 +19,8 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, relationship
 import enum
 
+from src.core.time import utc_now
+
 
 class Base(DeclarativeBase):
     pass
@@ -41,8 +43,8 @@ class OrgUnit(Base):
     )
     parent_id        = Column(Integer, ForeignKey("org_unit.id"), nullable=True)
     head_employee_id = Column(Integer, ForeignKey("employee.id"), nullable=True)
-    created_at       = Column(DateTime, default=datetime.utcnow)
-    updated_at       = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at       = Column(DateTime, default=utc_now)
+    updated_at       = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     parent    = relationship("OrgUnit", remote_side=[id], back_populates="children")
     children  = relationship("OrgUnit", back_populates="parent")
@@ -80,8 +82,8 @@ class Title(Base):
     )
     annual_increment_value       = Column(Float, nullable=False, default=3.0)  # 3% or 150 EUR
     promotion_salary_increase_pct = Column(Float, nullable=False, default=15.0)  # % on promotion
-    created_at                   = Column(DateTime, default=datetime.utcnow)
-    updated_at                   = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at                   = Column(DateTime, default=utc_now)
+    updated_at                   = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     employees              = relationship("Employee", back_populates="title")
     promotion_rules_from   = relationship("PromotionRule", foreign_keys="PromotionRule.from_title_id", back_populates="from_title")
@@ -144,8 +146,8 @@ class Employee(Base):
     title_id        = Column(Integer, ForeignKey("title.id"), nullable=False)
     reports_to_id   = Column(Integer, ForeignKey("employee.id"), nullable=True)
 
-    created_at      = Column(DateTime, default=datetime.utcnow)
-    updated_at      = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at      = Column(DateTime, default=utc_now)
+    updated_at      = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     org_unit     = relationship("OrgUnit", foreign_keys=[org_unit_id], back_populates="employees")
     title        = relationship("Title", back_populates="employees")
@@ -179,8 +181,8 @@ class PromotionRule(Base):
     to_title_id    = Column(Integer, ForeignKey("title.id"), nullable=False)
     base_months    = Column(Integer, nullable=False, default=36)  # base race duration
     is_active      = Column(Boolean, default=True)
-    created_at     = Column(DateTime, default=datetime.utcnow)
-    updated_at     = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at     = Column(DateTime, default=utc_now)
+    updated_at     = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     from_title = relationship("Title", foreign_keys=[from_title_id], back_populates="promotion_rules_from")
     to_title   = relationship("Title", foreign_keys=[to_title_id], back_populates="promotion_rules_to")
@@ -210,7 +212,7 @@ class PromotionHistory(Base):
     )
     months_taken    = Column(Integer, nullable=True)  # actual months in role before promotion
     notes           = Column(Text, nullable=True)
-    promoted_at     = Column(DateTime, default=datetime.utcnow)
+    promoted_at     = Column(DateTime, default=utc_now)
 
     employee    = relationship("Employee", back_populates="promotions")
     from_title  = relationship("Title", foreign_keys=[from_title_id])
@@ -239,7 +241,7 @@ class Commendation(Base):
     months_impact   = Column(Integer, nullable=False)  # -1, -3, or -6
     is_team_award   = Column(Boolean, default=False)
     issued_by_id    = Column(Integer, ForeignKey("system_user.id"), nullable=False)
-    issued_at       = Column(DateTime, default=datetime.utcnow)
+    issued_at       = Column(DateTime, default=utc_now)
 
     issued_by = relationship("SystemUser")
     employees = relationship("Employee", secondary="commendation_employee", back_populates="commendations")
@@ -277,7 +279,7 @@ class Sanction(Base):
     reason        = Column(Text, nullable=False)
     delay_months  = Column(Integer, nullable=False)  # 1-12 months added to promotion race
     issued_by_id  = Column(Integer, ForeignKey("system_user.id"), nullable=False)
-    issued_at     = Column(DateTime, default=datetime.utcnow)
+    issued_at     = Column(DateTime, default=utc_now)
     resolved_at   = Column(DateTime, nullable=True)
     is_resolved   = Column(Boolean, default=False)
 
@@ -309,7 +311,7 @@ class SalaryIncrementHistory(Base):
         nullable=False
     )
     increment_value = Column(Float, nullable=False)
-    applied_at      = Column(DateTime, default=datetime.utcnow)
+    applied_at      = Column(DateTime, default=utc_now)
     notes           = Column(Text, nullable=True)
 
     employee    = relationship("Employee", back_populates="salary_increments")
@@ -339,10 +341,10 @@ class PerformanceScore(Base):
     competency_score = Column(Float, nullable=True)
     conduct_score   = Column(Float, nullable=True)
     teamwork_score  = Column(Float, nullable=True)
-    evaluation_date = Column(DateTime, nullable=False, default=datetime.utcnow)
+    evaluation_date = Column(DateTime, nullable=False, default=utc_now)
     notes           = Column(Text, nullable=True)
-    created_at      = Column(DateTime, default=datetime.utcnow)
-    updated_at      = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at      = Column(DateTime, default=utc_now)
+    updated_at      = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     employee  = relationship("Employee", back_populates="performance_scores")
     evaluator = relationship("SystemUser")
@@ -375,7 +377,7 @@ class AuditLog(Base):
     description     = Column(Text, nullable=True)
     before_value    = Column(Text, nullable=True)  # JSON
     after_value     = Column(Text, nullable=True)  # JSON
-    performed_at    = Column(DateTime, default=datetime.utcnow)
+    performed_at    = Column(DateTime, default=utc_now)
 
     performed_by = relationship("SystemUser")
 
@@ -401,7 +403,7 @@ class SystemUser(Base):
     )
     full_name     = Column(String(255), nullable=False)
     is_active     = Column(Boolean, default=True)
-    created_at    = Column(DateTime, default=datetime.utcnow)
+    created_at    = Column(DateTime, default=utc_now)
     last_login    = Column(DateTime, nullable=True)
 
     def __repr__(self):

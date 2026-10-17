@@ -1,0 +1,158 @@
+"""Research utilities for policy-aware anomaly detection.
+
+This package is intentionally separate from the production UI. It will host the
+TDK research pipeline for synthetic data, policy-aware features, deterministic
+checks, baselines, model experiments, duplicate detection, and metrics.
+"""
+
+from .metrics import BinaryClassificationMetrics, confusion_counts
+from .policy_model import (
+    PromotionPolicy,
+    PromotionRaceInput,
+    PromotionRaceOutcome,
+    calculate_promotion_race,
+)
+from .synthetic_data import (
+    AdministrativeEvent,
+    AdministrativeEventType,
+    AnomalyDefinition,
+    AnomalyType,
+    DatasetSplit,
+    EmployeeIdentity,
+    EmploymentTrack,
+    ExperimentConfig,
+    SyntheticDataset,
+    SyntheticDatasetMetadata,
+    WorkforceHistoryRecord,
+    anomaly_taxonomy,
+    generate_synthetic_dataset,
+    serialize_dataset,
+    split_indices,
+)
+from .deterministic_checks import (
+    ValidationFinding,
+    ValidationSeverity,
+    summarize_findings,
+    validate_dataset,
+    validate_record,
+    validate_record_with_policy,
+)
+from .duplicate_detection import (
+    DuplicateCandidate,
+    DuplicateEvaluation,
+    evaluate_duplicate_detection,
+    find_exact_duplicate_candidates,
+    find_normalized_exact_duplicate_candidates,
+    find_similarity_duplicate_candidates,
+    normalize_identifier,
+    normalize_text,
+    normalized_similarity,
+)
+from .features import (
+    FeatureVector,
+    extract_features,
+    extract_policy_aware_features,
+    extract_raw_features,
+    supported_feature_sets,
+)
+from .experiment_runner import MethodEvaluation, evaluate_statistical_baseline
+from .isolation_forest import (
+    IsolationForestResult,
+    IsolationForestScores,
+    IsolationForestUnavailableError,
+    run_isolation_forest,
+    score_isolation_forest,
+    sklearn_is_available,
+)
+from .statistical_baselines import (
+    BaselineModel,
+    fit_iqr_baseline,
+    fit_z_score_baseline,
+    predict_baseline,
+    score_baseline,
+)
+from .scenario_generation import (
+    PopulationProfile,
+    ScenarioConfig,
+    ScenarioDataset,
+    generate_scenario_dataset,
+    policy_profiles,
+    population_profiles,
+    scenario_matrix,
+)
+from .protocol_evaluation import (
+    FeatureRepresentation,
+    ScenarioEvaluation,
+    ThresholdSelection,
+    evaluate_scenario,
+    feature_representations,
+)
+
+__all__ = [
+    "AdministrativeEvent",
+    "AdministrativeEventType",
+    "AnomalyDefinition",
+    "AnomalyType",
+    "BaselineModel",
+    "BinaryClassificationMetrics",
+    "DatasetSplit",
+    "DuplicateCandidate",
+    "DuplicateEvaluation",
+    "EmployeeIdentity",
+    "EmploymentTrack",
+    "ExperimentConfig",
+    "FeatureVector",
+    "IsolationForestResult",
+    "IsolationForestScores",
+    "IsolationForestUnavailableError",
+    "MethodEvaluation",
+    "PromotionPolicy",
+    "PromotionRaceInput",
+    "PromotionRaceOutcome",
+    "PopulationProfile",
+    "ScenarioConfig",
+    "ScenarioDataset",
+    "ScenarioEvaluation",
+    "FeatureRepresentation",
+    "ThresholdSelection",
+    "SyntheticDataset",
+    "SyntheticDatasetMetadata",
+    "ValidationFinding",
+    "ValidationSeverity",
+    "WorkforceHistoryRecord",
+    "anomaly_taxonomy",
+    "calculate_promotion_race",
+    "confusion_counts",
+    "evaluate_duplicate_detection",
+    "evaluate_statistical_baseline",
+    "evaluate_scenario",
+    "extract_features",
+    "extract_policy_aware_features",
+    "extract_raw_features",
+    "fit_iqr_baseline",
+    "fit_z_score_baseline",
+    "find_exact_duplicate_candidates",
+    "find_normalized_exact_duplicate_candidates",
+    "find_similarity_duplicate_candidates",
+    "generate_synthetic_dataset",
+    "generate_scenario_dataset",
+    "normalize_identifier",
+    "normalize_text",
+    "normalized_similarity",
+    "predict_baseline",
+    "policy_profiles",
+    "population_profiles",
+    "run_isolation_forest",
+    "score_baseline",
+    "score_isolation_forest",
+    "scenario_matrix",
+    "serialize_dataset",
+    "sklearn_is_available",
+    "summarize_findings",
+    "supported_feature_sets",
+    "feature_representations",
+    "split_indices",
+    "validate_dataset",
+    "validate_record",
+    "validate_record_with_policy",
+]

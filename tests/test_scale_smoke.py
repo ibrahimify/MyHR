@@ -4,6 +4,7 @@ import time
 import unittest
 from datetime import datetime, timedelta
 from types import SimpleNamespace
+from src.core.time import utc_now
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -80,7 +81,7 @@ class ScaleSmokeTests(unittest.TestCase):
             units.append(unit)
         session.flush()
 
-        now = datetime.utcnow()
+        now = utc_now()
         employees = []
         for index in range(employee_count):
             employee_number = index + 1
@@ -120,7 +121,7 @@ class ScaleSmokeTests(unittest.TestCase):
                 reason="Scale smoke sanction",
                 delay_months=(index % 12) + 1,
                 issued_by_id=1,
-                issued_at=datetime.utcnow(),
+                issued_at=utc_now(),
                 is_resolved=False,
             ))
         session.bulk_save_objects(sanctions)
@@ -138,7 +139,7 @@ class ScaleSmokeTests(unittest.TestCase):
         titles = {title.name: title for title in session.query(db.Title).all()}
         admin = session.query(SystemUser).filter_by(username="admin").first()
         admin_id = admin.id if admin else 1
-        now = datetime.utcnow()
+        now = utc_now()
 
         commendations = []
         links = []

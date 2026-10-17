@@ -68,6 +68,15 @@ pip install -r requirements.txt
 python main.py
 ```
 
+Research experiments use a separate dependency file so the packaged desktop app
+does not automatically inherit ML and plotting libraries:
+
+```bash
+pip install -r requirements.txt -r requirements-research.txt
+```
+
+Verified research artifacts record exact package versions. The matching development environment is captured in `requirements-research-lock.txt`; validate it in a clean environment before any frozen holdout run.
+
 Default credentials:
 
 | Role | Username | Password |
@@ -354,6 +363,28 @@ Avoid `git reset --hard` unless you are completely sure you want to discard loca
 | Architecture Roadmap | `docs/ARCHITECTURE_ROADMAP.md` |
 | Launch Audit Actions | `docs/LAUNCH_AUDIT_ACTIONS.md` |
 | Thesis Completion Plan | `docs/THESIS_COMPLETION_PLAN.md` |
+| Scope Audit | `docs/SCOPE_AUDIT.md` |
+| TDK Synthetic Data Contract | `docs/TDK_SYNTHETIC_DATA_CONTRACT.md` |
+| TDK Research Verification | `docs/TDK_RESEARCH_VERIFICATION.md` |
+| TDK Research Audit | `docs/TDK_RESEARCH_AUDIT_2026-10-15.md` |
+| TDK Experiment Protocol | `docs/TDK_EXPERIMENT_PROTOCOL.md` |
+| TDK Protocol V2 Development and Validation Report | `docs/TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md` |
+| TDK Methodology Review | `docs/TDK_METHODOLOGY_REVIEW_2026-10-16.md` |
+| TDK Independent Scenario Specification | `docs/TDK_INDEPENDENT_SCENARIO_SPEC.md` |
+| TDK Protocol Change Proposals | `docs/TDK_PROTOCOL_CHANGE_PROPOSALS.md` |
+| TDK Supervisor Review Package | `docs/TDK_SUPERVISOR_REVIEW_PACKAGE.md` |
+| TDK Supervisor Decision Sheet | `docs/TDK_SUPERVISOR_DECISION_SHEET.md` |
+| TDK Autonomous Research Roadmap | `docs/TDK_AUTONOMOUS_RESEARCH_ROADMAP.md` |
+| TDK Independent Review | `docs/TDK_INDEPENDENT_REVIEW_2026-10-17.md` |
+| TDK Expert Review Packet | `docs/TDK_EXPERT_REVIEW_PACKET.md` |
+| TDK Paper Methods Draft | `docs/TDK_PAPER_METHODS_DRAFT.md` |
+| TDK Literature Workflow | `docs/TDK_LITERATURE_WORKFLOW.md` |
+| TDK Literature Review | `docs/TDK_LITERATURE_REVIEW.md` |
+| TDK Verified Bibliography | `docs/TDK_REFERENCES.bib` |
+| TDK Protocol V2 Runner | `scripts/run_tdk_protocol_experiment.py` |
+| TDK Independent Development Runner | `scripts/run_tdk_independent_development.py` |
+| TDK Artifact Auditor | `scripts/audit_tdk_protocol_artifact.py` |
+| Licensing And IP Note | `docs/LICENSING_AND_IP.md` |
 | UI Mockup | `MockUI/` |
 | Demo Dataset Script | `scripts/seed_demo_company.py` |
 
@@ -362,6 +393,23 @@ are intentionally ignored by Git until they are cleaned for public release.
 
 ---
 
+## Repository Governance
+
+- Security policy: `SECURITY.md`
+- Contribution guide: `CONTRIBUTING.md`
+- Code of conduct: `CODE_OF_CONDUCT.md`
+- Support notes: `SUPPORT.md`
+- Citation metadata: `CITATION.cff`
+- Issue and pull request templates: `.github/`
+- Dependency monitoring: `.github/dependabot.yml`
+
+No permissive open-source license is added yet. See `docs/LICENSING_AND_IP.md`
+before choosing MIT, Apache-2.0, GPL, proprietary, or another licensing path.
+
+---
+
 ## License
 
 Academic project for Budapest University of Technology and Economics, 2025-2026.
+
+License decision pending; see `docs/LICENSING_AND_IP.md`.
