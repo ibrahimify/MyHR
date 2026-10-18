@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "default_year_from": 2022,
+  "default_year_to": 2026,
+  "queries": [
+    {"id": "policy_context", "query": "policy aware anomaly detection contextual anomaly detection", "arxiv_query": "raw:(all:\"contextual anomaly detection\" OR all:\"policy-aware anomaly detection\")"},
+    {"id": "isolation_forest", "query": "Isolation Forest anomaly detection evaluation", "arxiv_query": "raw:all:\"Isolation Forest\""},
+    {"id": "explainable_anomaly", "query": "explainable anomaly detection human in the loop", "arxiv_query": "raw:all:\"explainable anomaly detection\""},
+    {"id": "synthetic_validation", "query": "synthetic data validation anomaly detection benchmark", "arxiv_query": "raw:all:\"synthetic data\" AND all:\"anomaly detection\""},
+    {"id": "workforce_progression", "query": "employee workforce progression anomaly detection human resources", "arxiv_query": "raw:(all:\"human resources\" OR all:workforce) AND all:\"anomaly detection\""},
+    {"id": "duplicate_records", "query": "entity resolution duplicate record detection tabular data", "arxiv_query": "raw:(all:\"entity resolution\" OR all:\"record linkage\")"},
+    {"id": "robust_evaluation", "query": "anomaly detection evaluation precision recall statistical significance", "arxiv_query": "raw:all:\"anomaly detection\" AND (all:evaluation OR all:\"precision recall\")"},
+    {"id": "imbalanced_endpoint", "query": "average precision imbalanced anomaly detection evaluation metrics", "arxiv_query": "raw:all:\"anomaly detection\" AND (all:\"average precision\" OR all:\"precision recall\")"},
+    {"id": "paired_inference", "query": "paired statistical comparison machine learning multiple datasets Holm permutation bootstrap", "arxiv_query": "raw:all:\"statistical comparison\" AND all:\"machine learning\""},
+    {"id": "benchmark_circularity", "query": "anomaly detection benchmark overfitting synthetic generator evaluation bias", "arxiv_query": "raw:all:\"anomaly detection\" AND all:benchmark AND (all:synthetic OR all:overfitting)"},
+    {"id": "temporal_policy", "query": "bitemporal policy version valid time transaction time historical records", "arxiv_query": "raw:(all:bitemporal OR all:\"valid time\") AND all:\"transaction time\""},
+    {"id": "expert_ground_truth", "query": "expert annotation anomaly detection ground truth inter-rater reliability", "arxiv_query": "raw:all:\"anomaly detection\" AND (all:\"inter-rater\" OR all:\"human-in-the-loop\")"},
+    {"id": "foundational_isolation_forest", "query": "Isolation Forest", "arxiv_query": "raw:all:\"Isolation Forest\"", "year_from": 2008, "year_to": 2012}
+  ]
+}

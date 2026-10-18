@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.core.i18n import t
+from src.core.time import utc_now
 from src.database.connection import (
     get_session, generate_employee_id, generate_commendation_ref,
     generate_sanction_ref, log_action, degree_to_title_name,
@@ -686,7 +687,7 @@ class ImportDataPage(QWidget):
         join_date = _parse_date(row.get("join_date"))
         if _value(row.get("join_date")) and not join_date:
             issues.append("Join Date must be YYYY-MM-DD")
-        elif join_date and join_date > datetime.utcnow():
+        elif join_date and join_date > utc_now():
             issues.append("Join Date cannot be in the future")
 
         salary = _parse_float(row.get("base_salary"))
@@ -1013,7 +1014,7 @@ class ImportDataPage(QWidget):
                 session.add(sanction)
 
             if row["latest_performance_score"] is not None:
-                review_period = row["performance_review_period"] or str(datetime.utcnow().year)
+                review_period = row["performance_review_period"] or str(utc_now().year)
                 rubric_score = calculate_performance_rubric_score(
                     goal_score=row["goal_score"],
                     competency_score=row["competency_score"],
@@ -1209,7 +1210,7 @@ def _parse_int(value, default=0):
 
 
 def _event_date_for(join_date):
-    now = datetime.utcnow()
+    now = utc_now()
     candidate = now - timedelta(days=45)
     if join_date and candidate < join_date:
         return min(now, join_date + timedelta(days=30))

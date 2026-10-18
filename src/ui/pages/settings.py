@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 
 from src.core.i18n import t
 from src.core.app_settings import app_settings, company_name
+from src.core.time import utc_now
 from src.ui.animations import animate_widget_entry, install_tab_transition
 from src.ui.components.app_select import AppSelect
 from src.ui.icons import app_icon, app_pixmap
@@ -2239,7 +2240,7 @@ class DatabaseTab(QWidget):
     def _export_yearly_report(self):
         year = self.report_year.currentData()
         if not year:
-            year = datetime.utcnow().year
+            year = utc_now().year
         filters = self._report_filters()
         try:
             report = build_yearly_report(int(year), filters)
