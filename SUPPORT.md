@@ -20,6 +20,7 @@ Do not open public issues for vulnerabilities. See `SECURITY.md`.
 For thesis or TDK review, start with:
 
 - `README.md`
-- `docs/THESIS_COMPLETION_PLAN.md`
+- `docs/README.md`
+- `docs/RESEARCH_HANDOVER.md`
 - `docs/TDK_RESEARCH_VERIFICATION.md`
 - `docs/TDK_SYNTHETIC_DATA_CONTRACT.md`

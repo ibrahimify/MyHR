@@ -27,13 +27,13 @@ The matrix contains all 12 population-by-error combinations. Every split contain
 
 The first run is artifact `independent_development_e342bd4acf39b06b`.
 
-- Policy-aware and raw residual AP are effectively tied overall.
-- Policy-aware features help wrong-employee sanction-link cases.
-- Raw features perform better for missing-increment imports.
+- The stored residual AP values are `0.3621` for policy-aware features and `0.3616` for raw features, but this comparison is not evidence of a tie or a policy-aware effect.
+- After deterministic filtering, all three policy-specific residual features are constant zero. The experiment therefore contains no varying policy signal with which to test the central hypothesis.
+- Apparent mechanism-level differences must not be interpreted because six of the twelve scenarios contain no residual positives and the implemented AP convention assigns those scenarios zero.
 - Approval bypass and batch retry are removed by deterministic checks, as intended.
-- Current-policy rules falsely flag lawful grandfathered or recognized-service cases.
+- Deterministic rules raised false alerts for 39 of 72 broadly labelled rare-legitimate histories. Source regeneration found 39 realised policy-transition histories and all 39 were flagged, but the original stored artifact does not preserve mechanism attribution per record. The artifact-supported claim is therefore `39/72`, while `39/39` remains a qualified regeneration finding.
 
-These mixed findings are retained. No detector feature will be tuned against this artifact.
+These findings are retained as development evidence. No detector feature will be tuned against this artifact. See `TDK_INDEPENDENT_REVIEW_2026-10-17.md` for the adversarial re-analysis.
 
 ## Required Expert Review
 

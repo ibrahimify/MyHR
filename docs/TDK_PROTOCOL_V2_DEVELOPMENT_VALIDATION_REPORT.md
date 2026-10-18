@@ -55,7 +55,7 @@ This original generator contains too few rule-negative anomalies to estimate inc
 
 The independent simulator uses three population families, four causal error mechanisms, policy transitions, separate truth and observation ledgers, and no imports from the MyHR detector, policy engine, features, or original generator.
 
-Across 12 test scenarios it produced 108 anomalies and 72 rare-legitimate histories. Deterministic rules raised 105 alerts, including 39 false alerts on rare legitimate policy-transition cases. This demonstrates that a single-current-policy rule engine is not reliable when grandfathering or recognized prior service applies.
+Across 12 test scenarios it produced 108 anomalies and 72 broadly labelled rare-legitimate histories. Deterministic rules raised 105 alerts, including 39 false alerts among those 72 histories. Source regeneration found that all 39 realised policy-transition histories were flagged, but the stored artifact does not preserve the transition mechanism per record. The reproducible artifact claim is therefore `39/72`; the `39/39` transition finding is qualified regeneration evidence. Together, these results motivate explicit historical-policy modelling, but do not validate a particular policy-version design.
 
 Among the 759 rule-negative records, 42 anomalies remained:
 

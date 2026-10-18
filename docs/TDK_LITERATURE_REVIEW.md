@@ -8,6 +8,8 @@ Review date: 2026-10-17
 
 Status: development literature synthesis for supervisor review. No holdout data was generated or inspected, and no experiment protocol was silently changed.
 
+**Current evidence boundary:** The independent residual experiment cannot test whether policy-aware features add value. All three policy-specific residual features are constant zero after deterministic filtering. Its AP values are retained as history, not interpreted as a tie, benefit, or harm. The literature below motivates a redesigned experiment but does not repair this structural limitation.
+
 ## Review Method
 
 Thirteen predeclared searches covered recent work from 2022-2026 plus foundational papers. The 2026-10-17 OpenAlex and arXiv refresh returned 240 source records and 231 merged discovery records. The full-text synthesis used a curated set of 16 legally accessible papers totaling 428 pages. PDF headers, extracted text, identifiers, titles, and SHA-256 checksums were verified. DOI papers were resolved through OpenAlex; arXiv-only papers were resolved through the arXiv API. Semantic Scholar remains part of the free workflow, but its anonymous shared pool returned HTTP 429 during this refresh; no credential or paid service was introduced.
@@ -47,7 +49,7 @@ No strong directly comparable paper was found that combines formal workforce-pro
 
 ### 3. Deterministic Rules And ML Have Different Jobs
 
-Explicit inconsistencies should be found by deterministic checks. Unsupervised ML is more defensible as a residual ranking layer for unusual but not explicitly forbidden histories. This interpretation matches the Issue #10 cascade results: policy rules already explain most detectable policy violations, while policy-aware ML adds a smaller amount of ranking value for remaining cases.
+Explicit inconsistencies should be found by deterministic checks. Unsupervised ML is more defensible as a residual ranking layer for unusual but not explicitly forbidden histories. The Issue #10 cascade confirms that policy rules already explain most detectable policy violations. It does not establish added ranking value from policy-aware ML because the current policy-specific residual features are constant after filtering.
 
 The final system should retain this order:
 
@@ -73,7 +75,7 @@ Rare-legitimate and ordinary-clean flag rates, F1, anomaly-class recall, total f
 
 Synthetic data provides known labels for errors that are rare and sensitive in real HR systems. The reviewed synthetic-data work also shows the central weakness: matching marginal statistics does not establish realistic relationships or downstream validity.
 
-The current scenario matrix is a strong development instrument, but all scenarios still arise from one conceptual design. Before holdout execution, the supervisor should review:
+The original scenario matrix is a useful development instrument but arises from one conceptual design. A separately implemented independent stress-test family now exists, yet its residual policy features collapse to constants and its historical-policy counterexamples are partly guaranteed by construction. Source-code independence therefore did not establish a valid central comparison. Before holdout execution, the supervisor should review:
 
 - the causal story behind each anomaly mechanism;
 - whether clean, rare-legitimate, and anomalous cases overlap realistically;
@@ -115,7 +117,7 @@ The existing protocol is correct to require entity-disjoint splits, hard nondupl
 | Wrong-policy, shuffled-policy, and ablation controls | Implemented | Keep all unfavorable results |
 | Independent scenario units and paired uncertainty | Implemented across 30 scenarios | Keep; scenario, not employee, is the independent unit |
 | Multiple-comparison policy | Not explicitly predeclared | Propose one primary estimand and Holm-adjust secondary tests before freeze |
-| Independently designed generator family | Not yet complete | Required before holdout unlock |
+| Independently designed generator family | Implemented as a development stress test | Keep as development evidence; redesign is still required because the residual policy signal collapsed to constants |
 | Synthetic realism/external calibration | Limited | Seek supervisor or HR-domain review and aggregate real-world ranges |
 | Explanation evaluation | Not implemented | Optional after core validity; policy evidence first |
 | Duplicate entity-resolution experiment | Protocol specified, not part of v2 result | Secondary, time permitting |

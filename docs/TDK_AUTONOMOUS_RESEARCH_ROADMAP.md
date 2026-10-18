@@ -4,7 +4,7 @@ Research title: **MyHR: Policy-Aware Machine Learning for Anomaly Detection in W
 
 Current boundary: the authorized audit, corrections, independent scenario prototype, adversarial development run, independent hostile review, and targeted literature check are complete. The hostile review found that the current residual comparison does not isolate policy context because its three policy-specific features are constant after rule filtering. The protocol remains draft, the final holdout remains undefined and locked, and the research PR remains unmerged.
 
-Completed evidence is summarized in `TDK_METHODOLOGY_REVIEW_2026-10-16.md`, `TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md`, `TDK_INDEPENDENT_SCENARIO_SPEC.md`, and `TDK_INDEPENDENT_REVIEW_2026-10-17.md`. Pending human choices are condensed in `TDK_SUPERVISOR_DECISION_SHEET.md`.
+Completed evidence is summarized in `archive/research-audits/TDK_METHODOLOGY_REVIEW_2026-10-16.md`, `TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md`, `TDK_INDEPENDENT_SCENARIO_SPEC.md`, and `TDK_INDEPENDENT_REVIEW_2026-10-17.md`. Pending human choices are condensed in `TDK_SUPERVISOR_DECISION_SHEET.md`. `README.md` and `RESEARCH_HANDOVER.md` provide the current documentation entry point and full handover.
 
 ## Verified Unblocked Work - 2026-10-18
 
@@ -23,6 +23,9 @@ Completed evidence is summarized in `TDK_METHODOLOGY_REVIEW_2026-10-16.md`, `TDK
 - Three residual-design alternatives are documented as proposals only. No design is approved or implemented, and existing write-once artifacts remain unchanged.
 - A fresh hostile code review found incomplete event provenance and metric-key completeness checks. Both blockers were corrected with adversarial tests rather than waived.
 - Local verification passed all 134 tests. Commit `414a5b7` passed both GitHub Python test jobs and GitGuardian security checks.
+- Documentation was classified into current authority, pending decisions, and preserved archives. Stale claims about residual AP and the `39/72` denominator were corrected without rewriting dated audit history or changing the draft protocol.
+- A repository-grounded research handover and reusable beginner-to-defense ChatGPT tutor prompt were added. Historical plans, audits, rendered guides, and project-lab deliverables were moved to `docs/archive/`; no research evidence was deleted.
+- Post-cleanup verification passed all 134 tests, Python compilation checks, local Markdown-link resolution, `git diff --check`, and the independent artifact audit. Artifact `e342bd4acf39b06b` remained verified with `holdout_accessed: false`.
 
 ## 1. Supervisor Methodology Decision
 

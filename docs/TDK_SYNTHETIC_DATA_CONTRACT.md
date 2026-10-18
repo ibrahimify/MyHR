@@ -1,5 +1,7 @@
 # TDK Synthetic Data Contract
 
+> **Status note, 2026-10-18:** This contract documents the implemented development generators. It does not establish external validity or evidence for policy-aware model superiority. In the independent residual experiment, deterministic filtering made all three policy-specific residual features constant zero. Any redesigned residual representation, scenario eligibility rule, or holdout contract requires separate human approval before the draft protocol changes.
+
 Research title:
 
 **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**

@@ -105,13 +105,13 @@ documented in `docs/UI_RULES.md` and guarded by `tests/test_ui_component_policy.
 
 Before packaging or a formal demo, use `docs/QA_CHECKLIST.md` as the manual
 go/no-go checklist. Architectural follow-up items are tracked in
-`docs/ARCHITECTURE_ROADMAP.md`. SaaS launch-audit insights are converted into
-project-specific actions in `docs/LAUNCH_AUDIT_ACTIONS.md`.
+`docs/ARCHITECTURE_ROADMAP.md`. Historical launch-audit actions are preserved in
+`docs/archive/product-planning/LAUNCH_AUDIT_ACTIONS.md`.
 
 Latest verification before this README update:
 
 ```text
-Ran 42 tests in 70.647s
+Ran 134 tests
 OK
 ```
 
@@ -210,7 +210,7 @@ http://localhost:5173
 - Employee CSV export
 - Yearly PDF report with Full, Executive, and Audit-only modes
 - Report preview before PDF generation
-- Export history via immutable audit records
+- Export history via append-only application audit records with before/after snapshots
 - SQLite backup to a chosen location
 
 ### Audit Log
@@ -354,42 +354,20 @@ Avoid `git reset --hard` unless you are completely sure you want to discard loca
 
 ## Documentation
 
-| Document | Location |
-|---|---|
-| User Guide | `docs/guides/MyHR_User_Guide.docx` |
-| Developer Guide | `docs/guides/MyHR_Developer_Guide.docx` |
-| UI Rules | `docs/UI_RULES.md` |
-| QA Checklist | `docs/QA_CHECKLIST.md` |
-| Architecture Roadmap | `docs/ARCHITECTURE_ROADMAP.md` |
-| Launch Audit Actions | `docs/LAUNCH_AUDIT_ACTIONS.md` |
-| Thesis Completion Plan | `docs/THESIS_COMPLETION_PLAN.md` |
-| Scope Audit | `docs/SCOPE_AUDIT.md` |
-| TDK Synthetic Data Contract | `docs/TDK_SYNTHETIC_DATA_CONTRACT.md` |
-| TDK Research Verification | `docs/TDK_RESEARCH_VERIFICATION.md` |
-| TDK Research Audit | `docs/TDK_RESEARCH_AUDIT_2026-10-15.md` |
-| TDK Experiment Protocol | `docs/TDK_EXPERIMENT_PROTOCOL.md` |
-| TDK Protocol V2 Development and Validation Report | `docs/TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md` |
-| TDK Methodology Review | `docs/TDK_METHODOLOGY_REVIEW_2026-10-16.md` |
-| TDK Independent Scenario Specification | `docs/TDK_INDEPENDENT_SCENARIO_SPEC.md` |
-| TDK Protocol Change Proposals | `docs/TDK_PROTOCOL_CHANGE_PROPOSALS.md` |
-| TDK Supervisor Review Package | `docs/TDK_SUPERVISOR_REVIEW_PACKAGE.md` |
-| TDK Supervisor Decision Sheet | `docs/TDK_SUPERVISOR_DECISION_SHEET.md` |
-| TDK Autonomous Research Roadmap | `docs/TDK_AUTONOMOUS_RESEARCH_ROADMAP.md` |
-| TDK Independent Review | `docs/TDK_INDEPENDENT_REVIEW_2026-10-17.md` |
-| TDK Expert Review Packet | `docs/TDK_EXPERT_REVIEW_PACKET.md` |
-| TDK Paper Methods Draft | `docs/TDK_PAPER_METHODS_DRAFT.md` |
-| TDK Literature Workflow | `docs/TDK_LITERATURE_WORKFLOW.md` |
-| TDK Literature Review | `docs/TDK_LITERATURE_REVIEW.md` |
-| TDK Verified Bibliography | `docs/TDK_REFERENCES.bib` |
-| TDK Protocol V2 Runner | `scripts/run_tdk_protocol_experiment.py` |
-| TDK Independent Development Runner | `scripts/run_tdk_independent_development.py` |
-| TDK Artifact Auditor | `scripts/audit_tdk_protocol_artifact.py` |
-| Licensing And IP Note | `docs/LICENSING_AND_IP.md` |
-| UI Mockup | `MockUI/` |
-| Demo Dataset Script | `scripts/seed_demo_company.py` |
+Start with [`docs/README.md`](docs/README.md). It distinguishes current authority,
+pending decisions, and archived history.
 
-Private TDK research planning notes are kept locally under `docs/research/` and
-are intentionally ignored by Git until they are cleaned for public release.
+| Need | Location |
+|---|---|
+| Complete research handover | `docs/RESEARCH_HANDOVER.md` |
+| Guided ChatGPT learning prompt | `docs/CHATGPT_RESEARCH_TUTOR_PROMPT.md` |
+| Current research roadmap | `docs/TDK_AUTONOMOUS_RESEARCH_ROADMAP.md` |
+| User and developer guides | `docs/guides/` |
+| UI rules and release QA | `docs/UI_RULES.md`, `docs/QA_CHECKLIST.md` |
+| Historical documents | `docs/archive/` |
+
+Private registration notes under `docs/research/` are intentionally ignored by
+Git and are not repository authority.
 
 ---
 

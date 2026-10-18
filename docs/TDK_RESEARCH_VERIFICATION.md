@@ -8,7 +8,7 @@ This page is for supervisors, reviewers, and future maintainers who want to veri
 
 ## Research Status
 
-Seeds `2026-2030` are development-only because their outputs influenced feature design. Existing artifacts from those seeds must not be used as untouched holdout evidence. See `TDK_RESEARCH_AUDIT_2026-10-15.md` for the audit findings and `TDK_EXPERIMENT_PROTOCOL.md` for the holdout rules.
+Seeds `2026-2030` are development-only because their outputs influenced feature design. Existing artifacts from those seeds must not be used as untouched holdout evidence. The latest independent stress-test artifact is also development-only. Its policy-specific residual features are constant zero after deterministic filtering, so its raw-versus-policy-aware AP comparison cannot test the central hypothesis. See `archive/research-audits/TDK_RESEARCH_AUDIT_2026-10-15.md`, `TDK_INDEPENDENT_REVIEW_2026-10-17.md`, and `TDK_EXPERIMENT_PROTOCOL.md` for the evidence and holdout rules.
 
 ## Environments
 
@@ -98,7 +98,7 @@ Use `method_comparisons.csv` for development diagnostics only. A final claim req
 
 Small employee counts are useful for checking that the pipeline runs. Final paper evidence should use larger datasets and reviewed seeds because small test splits make precision and recall unstable.
 
-Current implementation note: the default policy-aware Isolation Forest feature set uses policy residuals instead of the raw minimum-promotion-interval feature. This representation is not yet validated as non-circular and remains subject to the matched ablation protocol.
+Current implementation note: the default policy-aware Isolation Forest feature set uses policy residuals instead of the raw minimum-promotion-interval feature. In the independent rule-negative experiment, all three policy-specific residual features are constant zero. The resulting comparison is structurally unable to estimate incremental policy-context value and requires a human-approved redesign.
 
 ## Protocol V2 Verification
 

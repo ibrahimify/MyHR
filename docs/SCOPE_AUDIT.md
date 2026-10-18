@@ -24,7 +24,7 @@ Official thesis topic:
 | Desktop GUI | Complete | PySide6 desktop interface with light/dark theme. |
 | Local database | Complete | SQLite local-first workflow. |
 | Configurable policies | Complete | Level, promotion, increment, salary, and policy settings. |
-| Audit logging | Complete | Immutable audit records with before/after snapshots and exports. |
+| Audit logging | Complete for application workflows | Append-only application audit records with before/after snapshots and exports; database-level tamper resistance is not claimed. |
 | Reporting | Complete | Yearly reports, PDF export, dashboard summaries. |
 | Improved validation | Mostly complete | Import validation, policy validation, dialog validation, and deterministic research validation. |
 | Reliability features | Partial | Backup, health checks, tests, CI. Packaging smoke test still needed. |
@@ -49,7 +49,7 @@ Submitted title:
 | Isolation Forest boundary | Implemented | scikit-learn research dependency and wrapper |
 | Duplicate-record detection | Implemented | exact, normalized exact, and similarity methods |
 | Experiment artifacts | Implemented | `scripts/run_tdk_research_experiment.py` |
-| Paper-ready final results | Not final | Requires reviewed full experiment runs and analysis. |
+| Paper-ready final results | Not final | Current development experiments exposed a structurally invalid residual comparison; supervisor-approved redesign, protocol freeze, and locked holdout evaluation are still required. |
 | User study | Optional | Not required unless time remains. |
 
 ## Verification Commands
@@ -78,9 +78,11 @@ python scripts/run_tdk_research_experiment.py --seed 2026 --employee-count 1000
 - Decide whether the packaged app ships empty, with seed data, or with a separate demo database.
 - Confirm licensing/IP direction from `docs/LICENSING_AND_IP.md`.
 
-## Before TDK Paper Writing
+## Before Final TDK Results
 
-- Run final experiments with fixed seeds and documented configuration.
+- Obtain human approval for the pending methodology decisions.
+- Freeze the protocol, exact dependencies, scenario contract, and analysis before generating a holdout.
+- Run the locked holdout only once with fixed seeds and documented configuration.
 - Save or archive selected `research_outputs/<run_id>/` folders.
 - Generate result tables only from CSV/JSON artifacts.
 - Document limitations clearly, especially synthetic data assumptions.
@@ -88,4 +90,4 @@ python scripts/run_tdk_research_experiment.py --seed 2026 --employee-count 1000
 
 ## Current Recommendation
 
-Keep the research PR as draft until final experiment settings are reviewed. Do not merge research code into the thesis packaging branch until the thesis app package is stable.
+Keep the research PR as draft until the methodology is reviewed and approved. The final holdout remains locked. Do not merge research code into the thesis packaging branch until the thesis app package is stable.
