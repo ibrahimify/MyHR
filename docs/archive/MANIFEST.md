@@ -4,14 +4,16 @@ Generated: 2026-10-29
 
 This manifest records the bytes currently preserved under `docs/archive/`,
 excluding this self-referential manifest file.
-Checksums are SHA-256. Unknown historical metadata is left unknown rather than
+Checksums are SHA-256. Text files use Git-normalized LF line endings so the
+record is stable across Windows and Linux checkouts; binary files use their
+preserved bytes. Unknown historical metadata is left unknown rather than
 inferred. Current authority and superseding documents are listed in
 [`README.md`](README.md).
 
 | Archived path | Bytes | SHA-256 |
 | --- | ---: | --- |
 | `README.md` | 2,763 | `af08363134ad7f19243b53de6706dca600165c610318d2b59c388c378f729f09` |
-| `product-planning/LAUNCH_AUDIT_ACTIONS.md` | 5,286 | `50b6cacdc5509e30519fb43fd3e5c7b6fb3ceb8493be43a4d66b0ec08ca07fd8` |
+| `product-planning/LAUNCH_AUDIT_ACTIONS.md` | 5,103 | `36c44dddb8b23f5a8837b2553bb7f9f3b22fa8af270ec67ad30b644a5637a1d0` |
 | `product-planning/THESIS_COMPLETION_PLAN.md` | 4,595 | `bf0f9db0849f3b8d4d8096bcdcf892c7a5557f6ccfbd6ca6ece81181557c3d0a` |
 | `project-lab/Analysis Module Reporting_13 Mar 2026.doc` | 1,253,376 | `15134bc086b65d411ab9d27f786e503edf8c26ede999e97112bc089b3c4e5876` |
 | `project-lab/guides/MyHR_Developer_Guide.pdf` | 577,944 | `297216fd30615f6ff24f2856950ab35aff48bdfad8547d518c6fc4902ee70c1c` |

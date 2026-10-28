@@ -32,6 +32,8 @@ class ArchiveManifestTests(unittest.TestCase):
         for relative_path, (expected_size, expected_digest) in rows.items():
             path = ARCHIVE_ROOT / relative_path
             body = path.read_bytes()
+            if path.suffix in {".md", ".html"}:
+                body = body.replace(b"\r\n", b"\n")
             self.assertEqual(len(body), expected_size, relative_path)
             self.assertEqual(sha256(body).hexdigest(), expected_digest, relative_path)
 
