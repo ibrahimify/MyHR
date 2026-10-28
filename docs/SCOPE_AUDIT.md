@@ -1,6 +1,6 @@
 # MyHR Scope Audit
 
-Last updated: 2026-10-11
+Last reviewed: 2026-10-29
 
 This document separates thesis scope, TDK research scope, and future work. It is intended for review before packaging, thesis defense preparation, and TDK paper writing.
 

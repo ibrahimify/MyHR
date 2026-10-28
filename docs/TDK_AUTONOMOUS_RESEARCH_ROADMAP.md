@@ -27,6 +27,19 @@ Completed evidence is summarized in `archive/research-audits/TDK_METHODOLOGY_REV
 - A repository-grounded research handover and reusable beginner-to-defense ChatGPT tutor prompt were added. Historical plans, audits, rendered guides, and project-lab deliverables were moved to `docs/archive/`; no research evidence was deleted.
 - Post-cleanup verification passed all 134 tests, Python compilation checks, local Markdown-link resolution, `git diff --check`, and the independent artifact audit. Artifact `e342bd4acf39b06b` remained verified with `holdout_accessed: false`.
 
+## Repository Preservation Maintenance - 2026-10-29
+
+- Issue #12 and draft PR #13 isolate non-destructive repository maintenance from research PR #1. PR #1 remains draft and unmerged.
+- Independent-development artifacts are now written to a process-owned staging directory and atomically published only after successful completion. Failed runs remove only their own staging directory, deterministic retries remain possible, and completed artifacts cannot be overwritten.
+- A read-only evidence inventory verified 34 local artifact candidates containing 434 files and 642,648,992 bytes. Twenty-eight candidates passed manifest or release-sidecar checks; all five artifacts cited by the current research documents are present and complete. Six legacy, interrupted, or unmanifested candidates remain preserved for human review.
+- The inventory treats holdout-like paths as opaque and reports private research notes only as aggregate counts. Seven private-note files were counted; their names and contents were not emitted. No holdout-like entry was encountered or inspected.
+- Documentation now distinguishes live authority, dated evidence, derivative summaries, pending decisions, and archives. The archive manifest records SHA-256 checksums for all preserved project-lab, planning, and early research files.
+- An issue-disposition review recommends evidence-based closure of implementation issues #2, #3, #4, #5, #7, and #9; rescoping #6 and #8; and keeping #10 and #11 open. No issue state was changed during the review.
+- The 173 tracked `tmp_*` UI-review files are inventoried separately. No temporary capture, research artifact, private file, or historical document was deleted or relocated.
+- An independent hostile maintenance review found an opaque-entry classification flaw, duplicate release-sidecar ambiguity, an incomplete archive-manifest claim, and one stale note. All four findings were corrected and covered by adversarial tests before commit.
+- Verification passed all 150 tests, focused artifact-publication and evidence-inventory tests, Python compilation, relative Markdown-link resolution, archive checksum verification, and `git diff --check`.
+- The draft protocol, hypotheses, endpoints, scenario definitions, scientific interpretations, and holdout boundary were not changed.
+
 ## 1. Supervisor Methodology Decision
 
 - **Scientific objective:** Approve or revise the primary hypothesis, rule-negative AP endpoint, scenario eligibility, and inference plan.

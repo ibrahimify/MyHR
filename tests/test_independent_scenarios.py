@@ -21,12 +21,73 @@ from scripts.run_tdk_independent_development import (
     _event_ledger_rows,
     _policy_epoch_rows,
     _record_truth_rows,
+    _staged_artifact_directory,
 )
 from scripts.run_tdk_protocol_experiment import _write_csv
 from scripts.audit_tdk_protocol_artifact import _verify_truth_sidecars
 
 
 class IndependentScenarioTests(unittest.TestCase):
+    def test_staged_artifact_is_published_only_after_success(self):
+        with tempfile.TemporaryDirectory() as directory:
+            final_dir = Path(directory) / "artifact_123"
+
+            with _staged_artifact_directory(final_dir) as staging_dir:
+                self.assertNotEqual(staging_dir, final_dir)
+                self.assertFalse(final_dir.exists())
+                (staging_dir / "manifest.json").write_text("{}", encoding="utf-8")
+
+            self.assertTrue((final_dir / "manifest.json").is_file())
+            self.assertFalse(staging_dir.exists())
+            self.assertEqual(list(Path(directory).iterdir()), [final_dir])
+
+    def test_failed_artifact_removes_only_its_staging_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            final_dir = root / "artifact_123"
+            unrelated = root / ".artifact_other.staging-preserve"
+            unrelated.mkdir()
+
+            with self.assertRaisesRegex(RuntimeError, "simulated failure"):
+                with _staged_artifact_directory(final_dir) as staging_dir:
+                    (staging_dir / "partial.csv").write_text("partial", encoding="utf-8")
+                    raise RuntimeError("simulated failure")
+
+            self.assertFalse(final_dir.exists())
+            self.assertFalse(staging_dir.exists())
+            self.assertTrue(unrelated.is_dir())
+
+    def test_failed_artifact_can_be_retried_with_same_final_name(self):
+        with tempfile.TemporaryDirectory() as directory:
+            final_dir = Path(directory) / "artifact_123"
+
+            with self.assertRaises(RuntimeError):
+                with _staged_artifact_directory(final_dir) as staging_dir:
+                    (staging_dir / "partial.csv").write_text("partial", encoding="utf-8")
+                    raise RuntimeError("simulated failure")
+
+            with _staged_artifact_directory(final_dir) as staging_dir:
+                (staging_dir / "manifest.json").write_text("complete", encoding="utf-8")
+
+            self.assertEqual(
+                (final_dir / "manifest.json").read_text(encoding="utf-8"),
+                "complete",
+            )
+
+    def test_completed_artifact_is_never_overwritten(self):
+        with tempfile.TemporaryDirectory() as directory:
+            final_dir = Path(directory) / "artifact_123"
+            final_dir.mkdir()
+            marker = final_dir / "manifest.json"
+            marker.write_text("original", encoding="utf-8")
+
+            with self.assertRaisesRegex(FileExistsError, "Artifact already exists"):
+                with _staged_artifact_directory(final_dir):
+                    self.fail("existing artifact must be rejected before staging")
+
+            self.assertEqual(marker.read_text(encoding="utf-8"), "original")
+            self.assertEqual(list(Path(directory).iterdir()), [final_dir])
+
     def test_generator_has_no_detector_or_existing_generator_imports(self):
         source = Path("src/research/independent_scenarios.py").read_text(encoding="utf-8")
         imported_roots = set()
