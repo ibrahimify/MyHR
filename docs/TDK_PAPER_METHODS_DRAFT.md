@@ -2,7 +2,7 @@
 
 Status: **DEVELOPMENT DRAFT - NOT A FROZEN PROTOCOL**
 
-This section documents implemented development work and clearly separates pending confirmatory choices. No holdout was generated or inspected.
+This section documents implemented development work and separates the approved confirmatory design from work not yet implemented or frozen. No holdout was generated or inspected.
 
 ## Research Design
 
@@ -14,7 +14,7 @@ Progression-anomaly detection and duplicate-record detection are separate tasks.
 
 The application policy engine calculates promotion service requirements, commendation credits, sanction delays, and progression eligibility. Shared golden histories test parity between SQL-backed application behavior and research calculations. Independent development scenarios additionally model fictional policy transitions, recognized prior service, delayed bulk recording, wrong-employee links, missing increment imports, approval bypasses, and batch retries.
 
-The 2026-10-17 review found that historical policy requires at least two time dimensions: the time at which a rule or fact is effective and the time at which it is recorded. A specific bitemporal schema remains pending human approval.
+The 2026-10-17 review found that historical policy requires at least two time dimensions: the time at which a rule or fact is effective and the time at which it is recorded. The supervisor approved a bitemporal contract with policy versions, recognized service, and correction provenance for implementation; the exact schema and migration remain unimplemented and unfrozen.
 
 ## Synthetic Development Data
 
@@ -32,17 +32,17 @@ Raw and policy-aware representations are paired within each scenario. Wrong-poli
 
 The stored rule-negative experiment first removes all histories flagged by the policy validator. That same validator removes every positive service-deficit history, leaving all three policy-specific matched features constant at zero. Consequently, the saved policy-aware residual model has no varying policy-specific signal. Its reported AP difference cannot be interpreted as evidence for or against incremental policy context.
 
-Six of twelve independent scenarios also have no residual positives. The implementation stored AP as zero for those scenarios, although the pending eligibility proposal says AP should be undefined and excluded from primary inference. Both defects are preserved in the development record. Their resolution requires a human-approved redesign before protocol freeze.
+Six of twelve independent scenarios also have no residual positives. The implementation stored AP as zero for those scenarios. Under the approved future design, zero-positive scenarios remain reported, recall and AP are marked undefined, and those scenarios do not enter paired inference for those metrics. Both defects remain preserved in the development record and must be corrected in new development runs before protocol freeze.
 
 ## Development Evaluation
 
 Saved outputs report evaluation size, positive and negative counts, alert count, confusion counts, precision, recall, F1, false-positive rate, average precision, rare-legitimate and ordinary-clean alert counts, per-class recall, runtime, and workload. Scenario means and pooled counts are kept distinct.
 
-The proposed, unapproved confirmatory endpoint is a paired scenario-level AP difference. The proposed inference uses a two-sided paired randomization procedure and a scenario-clustered bootstrap interval. The literature supports pairing on common experimental units and controlling a predeclared multiplicity family, but it does not resolve whether these assumptions fit the final MyHR scenario population. One primary endpoint, scenario eligibility, exchangeability, and secondary-test handling remain human decisions.
+The approved primary endpoint is the paired scenario-level difference in recall at identical fixed additional ML review capacity after invariant-only filtering. Precision, total false alerts, and rare-legitimate false-alert rates accompany it; AP is secondary. A two-sided paired randomization procedure and scenario-clustered bootstrap interval remain draft analysis choices pending implementation checks and protocol freeze. The exact secondary multiplicity family also remains pending.
 
 ## Expert Review
 
-The proposed realism review uses blinded fictional histories with no model results or generated truth labels. Two independent domain reviewers would rate plausibility, record status, evidence sufficiency, confidence, and escalation need, followed by documented adjudication. Reviewer qualifications, sample size, agreement statistic, and acceptance rule remain pending human approval.
+The approved realism-review method uses blinded fictional histories with no model results or generated truth labels. Two independent reviewers with complementary HR-policy and information-systems expertise rate plausibility, record status, evidence sufficiency, confidence, and escalation need. Initial judgments are preserved, agreement is reported, disagreements are adjudicated against policy evidence, and genuine ambiguity is retained. Exact reviewer identities, sample size, agreement statistic, and operational form remain pending.
 
 ## Reproducibility And Audit
 
@@ -67,4 +67,4 @@ Future independent development artifacts also write normalized truth, administra
 
 ## Confirmatory Boundary
 
-No final hypothesis, feature family, scenario matrix, endpoint, or holdout design is approved. The holdout remains undefined and locked. Confirmatory methods can be written only after a human records decisions and the protocol is frozen before any holdout generation.
+The methodology direction, primary endpoint, residual boundary, temporal contract, reviewer method, and independent holdout design are approved for implementation. Their code, exact scenario matrix, feature family, analysis details, dependencies, and source revision are not frozen. The holdout remains undefined and locked until implementation, independent verification, and a separate dated protocol-freeze approval.

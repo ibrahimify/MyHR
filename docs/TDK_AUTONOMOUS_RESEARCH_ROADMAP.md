@@ -1,5 +1,17 @@
 # TDK Autonomous Research Roadmap
 
+## Supervisor Methodology Decisions - 2026-10-29
+
+- The supervisor decisions relayed by Muhammad Ibrahim Shoeb approve the methodology for implementation; they do not freeze the protocol or unlock the holdout.
+- The primary experiment remains raw-versus-policy-aware residual Isolation Forest, with deterministic filtering restricted to invariant contradictions. The complete rules-plus-ML queue is secondary.
+- Recall at identical fixed additional review capacity is the primary endpoint. Precision, total false alerts, and rare-legitimate false-alert rates accompany it; Average Precision is secondary with predeclared undefined handling for zero-positive scenarios.
+- Both pipelines preserve the same invariant findings and receive the same additional ML budget over the same remaining records.
+- A bitemporal contract is approved for implementation, including policy versions, effective and recorded times, recognized service, and correction provenance.
+- The realism review uses two independent reviewers with complementary HR-policy and information-systems expertise, blinded to labels and model scores, with preserved initial judgments, agreement reporting, evidence-based adjudication, and retained ambiguity.
+- The final holdout matrix must be independently specified across policy transitions, lawful exceptions, administrative errors, populations, and repeated seeds, with causal truth outside model inputs.
+- Next unblocked milestone: implement the approved invariant-rule boundary, equal-capacity endpoint, bitemporal contract, scenario truth ledger, and tests. The holdout remains locked until a separately approved protocol freeze.
+- Documentation synchronization passed an independent read-only audit after stale AP-primary, pending-decision, reviewer-sample, and residual-population wording was corrected. All 168 tests and strict citation verification passed; no experiment or holdout-like path was accessed.
+
 ## Supervisor Paper Package - 2026-10-29
 
 - Prepared the English supervisor-review manuscript under the final title **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**. The rendered paper contains 31 pages of main text and 35 pages in total; the title page, abstract, references, and appendices remain outside the main-text count.
@@ -8,7 +20,7 @@
 - Microsoft Word rendered the authoritative DOCX and PDF. Every page was rasterized and visually inspected. The prescribed LibreOffice-based helper could not run because LibreOffice is not installed; this tooling limitation is recorded rather than hidden.
 - Local verification passed all 168 tests, all three canonical experiment artifact audits, strict citation verification, and both canonical literature-artifact checks. GitHub push and pull-request CI runs also passed for revision `94868c2`. Every artifact audit reported `holdout_accessed: false`.
 - Evidence inventory now reports 35 candidates and 444 files. The five canonical artifacts are complete; six legacy, interrupted, or unmanifested candidates remain preserved and are not cited as current authority.
-- PR #1 remains draft, mergeable, and unmerged. Issue #10 remains the scientific blocker. No issue or branch has been deleted, no protocol choice has been approved, and no holdout command has been executed.
+- PR #1 remains draft, mergeable, and unmerged. Issue #10 remains the implementation and freeze tracker. No issue or branch has been deleted, the approved methodology has not yet been frozen, and no holdout command has been executed.
 - Kiro CLI is not installed in the environment, so no Kiro credits were used. A fresh independent read-only agent performed the required adversarial manuscript and evidence review instead; its duplicate-denominator, zero-positive-scenario, citation-scope, and package-provenance findings were corrected before delivery.
 
 ## Research and Citation Governance - 2026-10-29
@@ -23,7 +35,7 @@ Research title: **MyHR: Policy-Aware Machine Learning for Anomaly Detection in W
 
 Current boundary: the authorized audit, corrections, independent scenario prototype, adversarial development run, independent hostile review, and targeted literature check are complete. The hostile review found that the current residual comparison does not isolate policy context because its three policy-specific features are constant after rule filtering. The protocol remains draft, the final holdout remains undefined and locked, and the research PR remains unmerged.
 
-Completed evidence is summarized in `archive/research-audits/TDK_METHODOLOGY_REVIEW_2026-10-16.md`, `TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md`, `TDK_INDEPENDENT_SCENARIO_SPEC.md`, and `TDK_INDEPENDENT_REVIEW_2026-10-17.md`. Pending human choices are condensed in `TDK_SUPERVISOR_DECISION_SHEET.md`. `README.md` and `RESEARCH_HANDOVER.md` provide the current documentation entry point and full handover.
+Completed evidence is summarized in `archive/research-audits/TDK_METHODOLOGY_REVIEW_2026-10-16.md`, `TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md`, `TDK_INDEPENDENT_SCENARIO_SPEC.md`, and `TDK_INDEPENDENT_REVIEW_2026-10-17.md`. The six human methodology decisions are recorded in `TDK_SUPERVISOR_DECISIONS_2026-10-29.md`; implementation and protocol freeze remain pending. `README.md` and `RESEARCH_HANDOVER.md` provide the current documentation entry point and full handover.
 
 ## Verified Unblocked Work - 2026-10-18
 
@@ -61,15 +73,15 @@ Completed evidence is summarized in `archive/research-audits/TDK_METHODOLOGY_REV
 
 ## 1. Supervisor Methodology Decision
 
-- **Scientific objective:** Approve or revise the primary hypothesis, rule-negative AP endpoint, scenario eligibility, and inference plan.
+- **Scientific objective:** Implement the approved invariant-negative residual comparison, recall-at-fixed-capacity endpoint, scenario eligibility, and inference plan.
 - **Why it matters:** The original generator is circular and its residual count is too small; independent development evidence is inconclusive.
 - **Evidence motivating it:** Corrected v2.4 artifacts, independent artifact `e342bd4acf39b06b`, and the critical feature-validity finding in the independent review.
 - **Files/components involved:** `TDK_PROTOCOL_CHANGE_PROPOSALS.md`, `TDK_SUPERVISOR_REVIEW_PACKAGE.md`, the experiment protocol, and Issue #10.
 - **Acceptance criteria:** A dated supervisor decision records the endpoint, independent unit, capacity rule, and allowed scenario families.
 - **Required validation:** Documentation cross-check against artifacts and literature.
-- **Dependencies and blockers:** Requires supervisor approval.
-- **Status:** Blocked on supervisor review.
-- **Outcome:** Corrected decision options, three design alternatives, and recommendations are ready; no option is approved.
+- **Dependencies and blockers:** Requires implementation, independent verification, and a separate dated freeze approval.
+- **Status:** Approved for implementation; freeze pending.
+- **Outcome:** Residual ML remains primary with invariant-only filtering, equal ML capacity, and recall at fixed capacity as the primary endpoint.
 
 ## 2. Blinded Domain-Realism Review
 
@@ -77,11 +89,11 @@ Completed evidence is summarized in `archive/research-audits/TDK_METHODOLOGY_REV
 - **Why it matters:** Synthetic correctness does not establish organizational realism.
 - **Evidence motivating it:** Independent scenarios reveal policy-version false alerts absent from the original generator.
 - **Files/components involved:** `TDK_EXPERT_REVIEW_PACKET.md`, independent scenario cards, truth taxonomy, and a blinded review form.
-- **Acceptance criteria:** 40 to 60 histories, two reviewers, realism ratings, classifications, reasons, agreement statistic, and documented adjudication.
+- **Acceptance criteria:** A human-approved sample size, two complementary reviewers, realism ratings, classifications, reasons, a predeclared agreement statistic, documented adjudication, and preserved ambiguity.
 - **Required validation:** Reviewer identities and protocol recorded; no case changed to improve metrics.
-- **Dependencies and blockers:** Requires supervisor-approved assumptions and external reviewers.
-- **Status:** Blocked on supervisor and reviewer availability.
-- **Outcome:** The result-blind questionnaire is drafted. Distribution and acceptance rules remain blocked.
+- **Dependencies and blockers:** Requires two named qualified reviewers before execution.
+- **Status:** Method approved; reviewer nomination and execution pending.
+- **Outcome:** The result-blind questionnaire is drafted. Blinding, preserved initial judgments, agreement, evidence-based adjudication, and retained ambiguity are approved.
 
 ## 3. Policy-Version And Administrative-Evidence Contract
 
@@ -91,9 +103,9 @@ Completed evidence is summarized in `archive/research-audits/TDK_METHODOLOGY_REV
 - **Files/components involved:** research record contract, adapter, policy history, features, golden histories, and parity tests.
 - **Acceptance criteria:** Approved fields, migration design, backward compatibility, multi-policy golden histories, and no application regression.
 - **Required validation:** SQL/research parity, historical-policy tests, transition-boundary tests, and full CI.
-- **Dependencies and blockers:** Requires Tasks 1 and 2 to avoid encoding unreviewed assumptions.
-- **Status:** Blocked on domain approval.
-- **Outcome:** Bitemporal modelling evidence is documented. Development-only artifact sidecars preserve literal policy epochs and event times, while the application schema and policy interpretation remain unchanged pending human approval.
+- **Dependencies and blockers:** Requires implementation, migration design, and golden-history validation.
+- **Status:** Approved for implementation.
+- **Outcome:** The approved contract includes policy versions, effective and recorded times, recognized service, and correction provenance. Application behavior remains unchanged until tested implementation is complete.
 
 ## 4. Protocol Freeze And Reproducible Environment Lock
 
@@ -103,8 +115,8 @@ Completed evidence is summarized in `archive/research-audits/TDK_METHODOLOGY_REV
 - **Files/components involved:** experiment protocol, requirements lock, source hashes, release archive, CI, and Issue #10.
 - **Acceptance criteria:** Supervisor-signed protocol, exact dependency lock, immutable development archive, clean CI, and completed holdout checklist.
 - **Required validation:** Fresh-environment replay and independent artifact audit.
-- **Dependencies and blockers:** Requires Tasks 1 through 3.
-- **Status:** Blocked on protocol approval.
+- **Dependencies and blockers:** Requires implementation and verification of Tasks 1 through 3 plus a dated freeze approval.
+- **Status:** Not frozen.
 - **Outcome:** Pending.
 
 ## 5. One-Time Locked Holdout Evaluation

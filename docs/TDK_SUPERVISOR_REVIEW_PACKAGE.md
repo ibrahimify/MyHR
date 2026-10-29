@@ -31,22 +31,22 @@ MyHR investigates whether explicit workforce-progression policy context improves
 
 These are development observations, not final claims.
 
-## Candidate Confirmatory Design - Pending Human Approval
+## Approved Confirmatory Design - Implementation Pending
 
-The research question may be retained, but the current residual representation and scenarios must not be reused as a confirmatory design. The supervisor must choose whether to redesign the residual task, adopt non-overlapping policy-context features, or make an end-to-end rules-plus-ML workflow the primary estimand.
+The research question is retained. The primary comparison is raw versus policy-aware residual ML after filtering only invariant contradictions. Both representations receive the same additional fixed review capacity over the same remaining records. The complete rules-plus-ML workflow is secondary.
 
-If AP remains primary, eligible scenario families must be defined before generation and must contain residual positives by construction. Zero-positive scenarios must never be selected or removed after results are inspected. Fixed-capacity outcomes remain operational secondary evidence with complete denominators.
+Recall at fixed review capacity is primary. Precision, total false alerts, and rare-legitimate false-alert rates accompany it. AP is secondary. Zero-positive scenarios remain reported, are marked undefined for recall and AP, and are excluded from paired inference for those metrics under the frozen predeclared rule.
 
-Secondary outcomes include fixed-budget recall, precision, rare-legitimate and ordinary-clean flag rates, workload, per-mechanism behavior, and cost sensitivity with Holm correction.
+The approved design also requires bitemporal policy and fact history, two blinded complementary reviewers, and an independently specified repeated-seed holdout matrix with causal truth outside model inputs.
 
-## Decisions Requested
+## Decisions Recorded And Remaining Work
 
-- Approve or revise the primary hypothesis and endpoint.
-- Approve mandatory rules with a nominal 10% capacity floor.
-- Review independent scenarios for organizational realism.
-- Approve policy version, jurisdiction, recognized service, and effective-versus-recorded dates.
-- Nominate two reviewers for blinded scenario plausibility assessment, if feasible.
-- Confirm whether authorized aggregate ranges or anonymized external data can be used.
+- Implement and test the invariant-contradiction boundary.
+- Implement equal fixed additional ML capacity and recall-primary analysis.
+- Implement and test the bitemporal policy and evidence contract.
+- Freeze the independent scenario matrix and zero-positive handling.
+- Record the two reviewers, qualifications, sampling, agreement measure, and adjudication process.
+- Freeze dependencies, analysis, source revision, and write-once configuration before requesting holdout authorization.
 
 ## Reproduction
 
@@ -65,5 +65,5 @@ The `holdout` run purpose fails by design. No holdout scenario or seed range exi
 - Internal validity of the central residual comparison: insufficient because the policy-specific signal is structurally absent.
 - Statistical confidence in policy-aware superiority: not estimable from the current residual experiment.
 - External generalization: not established.
-- Protocol freeze: not ready until the decisions above are resolved.
+- Protocol freeze: not ready until the approved design is implemented and independently verified.
 - Publication claim: not ready.

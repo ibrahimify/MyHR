@@ -1,23 +1,31 @@
 # MyHR TDK Blinded Scenario Realism Review Packet
 
-Status: **DRAFT - PENDING HUMAN APPROVAL**
+Status: **METHOD APPROVED 29 OCTOBER 2026 - REVIEWERS, SAMPLE, AND EXECUTION PENDING**
 
-This packet contains no model scores, predictions, thresholds, aggregate results, or generated truth labels. It does not approve a scenario or alter the experiment protocol. Cases must not be distributed until a human approves the policy assumptions, reviewer roles, and sampling plan.
+This packet contains no model scores, predictions, thresholds, aggregate results, or generated truth labels. The supervisor approved two independent blinded reviewers with complementary HR-policy and information-systems expertise, preserved initial judgments, agreement reporting, evidence-based adjudication, and retained ambiguity. Cases must not be distributed until the exact reviewers, policy cards, sample, sampling seed, and packet checksum are recorded.
 
 ## Purpose
 
 The review asks whether fictional workforce-progression histories are understandable, administratively plausible, and classifiable from the evidence shown. It does not ask reviewers to judge model quality.
 
-## Proposed Review Design
+## Approved Review Method And Pending Parameters
 
-- Two reviewers with HR administration, public-sector personnel, employment-policy, or closely related experience.
-- A blinded set of 48 fictional histories, sampled before model evaluation from approved scenario families.
+- Two independent reviewers: one with HR-policy expertise and one with information-systems expertise.
 - Independent first-pass ratings. Reviewers must not discuss cases before submitting them.
-- A recorded adjudication meeting only for disagreements or missing-policy findings.
+- A recorded adjudication meeting only for disagreements or missing-policy findings, using documented policy evidence.
+- Preserve genuinely ambiguous cases instead of forcing agreement.
 - No case may be edited, removed, or relabelled because a detector performs poorly on it.
 - Reviewer identity, experience category, review date, case order, and packet checksum must be recorded.
 
-The sample size, reviewer eligibility, agreement statistic, and adjudication rule are proposals only.
+The two-role reviewer method and adjudication principles are approved.
+
+Pending parameters before distribution:
+
+- exact reviewer identities and recorded qualifications;
+- proposed sample of 48 fictional histories, or another human-approved sample size;
+- frozen case-sampling script and random seed;
+- chance-corrected agreement statistic;
+- operational adjudication form and packet checksum.
 
 ## Reviewer Instructions
 

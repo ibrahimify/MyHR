@@ -46,7 +46,7 @@ The strongest current engineering finding is historical-policy handling. Determi
 | Raw IF: 81 alerts, 26 TP, 55 FP, 16 FN | Stored predictions | Development diagnostic only |
 | Policy-labelled IF: 81 alerts, 25 TP, 56 FP, 17 FN | Stored predictions | Development diagnostic only |
 | AP `0.3616` versus `0.3621` | Independently recomputed | Scientifically vacuous because policy features are constant |
-| Six of twelve scenarios have no residual positives | Scenario metrics | AP convention must be decided before confirmatory generation |
+| Six of twelve scenarios have no residual positives | Scenario metrics | Approved future rule marks recall and AP undefined and excludes those scenarios from paired inference for those metrics; implementation and freeze remain pending |
 | Deterministic checks flagged `39/72` rare-legitimate histories | Stored predictions | Constructed historical-policy failure, not prevalence |
 
 ## What Must Not Be Concluded
@@ -58,9 +58,9 @@ The strongest current engineering finding is historical-policy handling. Determi
 - No holdout or confirmatory result exists.
 - No anomaly score may trigger an automatic personnel decision or record merge.
 
-## Decisions Requested
+## Decisions Recorded
 
-The one-page decision sheet requests human choices on:
+The supervisor answers relayed on 29 October 2026 record these choices:
 
 1. primary estimand and residual redesign;
 2. primary endpoint and zero-positive scenarios;
@@ -69,11 +69,11 @@ The one-page decision sheet requests human choices on:
 5. blinded expert-realism review;
 6. conceptually independent holdout design.
 
-No AI agent can approve these decisions.
+The approved choices are documented in `TDK_SUPERVISOR_DECISIONS_2026-10-29.md`. Implementation, protocol freeze, and holdout access remain pending and cannot be approved by an AI agent.
 
 ## Paper Status
 
-An English supervisor-review manuscript has been prepared using the official 30-35-page main-text requirements. Introduction, related work, formal model, methods, implementation, development results, limitations, conclusion, references, and appendices are drafted. Confirmatory wording and any final result remain blocked until a human approves and freezes a valid protocol.
+An English supervisor-review manuscript has been prepared using the official 30-35-page main-text requirements. Introduction, related work, formal model, methods, implementation, development results, limitations, conclusion, references, and appendices are drafted. The methodology is approved for implementation, but confirmatory wording and any final result remain blocked until the implementation is verified and the protocol is separately frozen.
 
 ## Verification
 
@@ -86,7 +86,7 @@ python scripts/audit_tdk_protocol_artifact.py research_outputs/independent_devel
 
 Do not run a holdout command. The implementation intentionally refuses that run purpose.
 
-## Requested Meeting Outcome
+## Next Review Outcome
 
-Record approve, reject, or modify decisions on the supervisor sheet. If the methodology is approved, implement only those changes, rerun development and validation, freeze the complete protocol and environment, and execute the final holdout exactly once. If it is not approved, retain the current work as an honest methodological study and do not claim confirmatory superiority.
+Implement only the six recorded methodology decisions, rerun development and validation, and present the verified redesign for a separate protocol-freeze decision. Execute the final holdout exactly once only after that dated freeze approval. Until then, retain the current work as development evidence and do not claim confirmatory superiority.
 

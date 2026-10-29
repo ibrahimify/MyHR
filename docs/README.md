@@ -7,8 +7,9 @@ This index separates current authority, dated evidence, derivative summaries, pe
 1. [Research handover](RESEARCH_HANDOVER.md) - beginner-friendly synthesis of the research and its present limits. It is a derivative snapshot, not the live status authority.
 2. [Autonomous research roadmap](TDK_AUTONOMOUS_RESEARCH_ROADMAP.md) - sole live ledger for current status, blockers, validation, and next actions.
 3. [Independent methodology review](TDK_INDEPENDENT_REVIEW_2026-10-17.md) - dated adversarial review of revision `697344a`; read it with the later remediation sources identified below.
-4. [Supervisor decision sheet](TDK_SUPERVISOR_DECISION_SHEET.md) - decisions that still require a human.
-5. [Experiment protocol](TDK_EXPERIMENT_PROTOCOL.md) - draft normative boundary. It is not frozen or approved, and the holdout remains locked.
+4. [Supervisor methodology decisions](TDK_SUPERVISOR_DECISIONS_2026-10-29.md) - approved design direction and the remaining implementation and freeze gate.
+5. [Supervisor decision sheet](TDK_SUPERVISOR_DECISION_SHEET.md) - concise record of the six decisions.
+6. [Experiment protocol](TDK_EXPERIMENT_PROTOCOL.md) - draft normative boundary. Its methodology is approved for implementation, but it is not implemented or frozen and the holdout remains locked.
 
 Use the [ChatGPT research tutor prompt](CHATGPT_RESEARCH_TUTOR_PROMPT.md) to begin a guided course through the repository.
 
@@ -17,7 +18,7 @@ Use the [ChatGPT research tutor prompt](CHATGPT_RESEARCH_TUTOR_PROMPT.md) to beg
 | Document | Role | Status and interpretation |
 | --- | --- | --- |
 | [TDK_AUTONOMOUS_RESEARCH_ROADMAP.md](TDK_AUTONOMOUS_RESEARCH_ROADMAP.md) | Live research status ledger | Current authority for completed work, blockers, validation evidence, and next actions |
-| [TDK_EXPERIMENT_PROTOCOL.md](TDK_EXPERIMENT_PROTOCOL.md) | Normative experiment boundary | Draft; not frozen or approved; final holdout locked |
+| [TDK_EXPERIMENT_PROTOCOL.md](TDK_EXPERIMENT_PROTOCOL.md) | Normative experiment boundary | Methodology approved for implementation; implementation and freeze pending; final holdout locked |
 | [TDK_INDEPENDENT_SCENARIO_SPEC.md](TDK_INDEPENDENT_SCENARIO_SPEC.md) | Independent development scenario specification | Current implemented specification; does not authorize holdout work |
 | [TDK_RESEARCH_VERIFICATION.md](TDK_RESEARCH_VERIFICATION.md) | Verification and artifact interpretation | Current operational guidance |
 | [RESEARCH_EVIDENCE_PRESERVATION.md](RESEARCH_EVIDENCE_PRESERVATION.md) | Read-only evidence inventory and retention boundary | Current maintenance guidance; does not authorize deletion |
@@ -53,16 +54,17 @@ The independent review's historical implementation objections remain valid for t
 | [RESEARCH_HANDOVER.md](RESEARCH_HANDOVER.md) | Educational synthesis and project handover | Derivative snapshot; check the roadmap for live status |
 | [CHATGPT_RESEARCH_TUTOR_PROMPT.md](CHATGPT_RESEARCH_TUTOR_PROMPT.md) | Repository-grounded learning prompt | Teaching aid, not research authority |
 
-## Pending Human Decisions
+## Recorded Decisions And Pending Execution
 
 | Document | Purpose |
 | --- | --- |
-| [TDK_SUPERVISOR_DECISION_SHEET.md](TDK_SUPERVISOR_DECISION_SHEET.md) | One-page human decision form |
-| [TDK_PROTOCOL_CHANGE_PROPOSALS.md](TDK_PROTOCOL_CHANGE_PROPOSALS.md) | Unapproved alternatives and rationale |
+| [TDK_SUPERVISOR_DECISIONS_2026-10-29.md](TDK_SUPERVISOR_DECISIONS_2026-10-29.md) | Authoritative record of the six methodology decisions and remaining freeze gate |
+| [TDK_SUPERVISOR_DECISION_SHEET.md](TDK_SUPERVISOR_DECISION_SHEET.md) | Concise record of the six methodology decisions |
+| [TDK_PROTOCOL_CHANGE_PROPOSALS.md](TDK_PROTOCOL_CHANGE_PROPOSALS.md) | Approved choices plus clearly marked secondary proposals not covered by the decision |
 | [TDK_SUPERVISOR_REVIEW_PACKAGE.md](TDK_SUPERVISOR_REVIEW_PACKAGE.md) | Dated, derivative supervisor-facing evidence package |
-| [TDK_EXPERT_REVIEW_PACKET.md](TDK_EXPERT_REVIEW_PACKET.md) | Blinded realism review packet; not yet approved or distributed |
+| [TDK_EXPERT_REVIEW_PACKET.md](TDK_EXPERT_REVIEW_PACKET.md) | Review method approved; reviewer identities, sample parameters, and distribution pending |
 
-No AI agent can approve these decisions. A proposal is not part of the protocol until a human approves it and the approval is recorded.
+No AI agent can approve implementation completeness, protocol freeze, holdout access, or any proposal not covered by the recorded human decisions.
 
 ## Contracts And Boundaries
 

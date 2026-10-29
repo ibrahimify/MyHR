@@ -6,7 +6,7 @@ Research title:
 
 **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**
 
-This protocol prevents further feature tuning against the same observed outputs. It must be reviewed and marked `FROZEN` before any holdout scenario is executed.
+Human methodology decisions were recorded on 29 October 2026 in `TDK_SUPERVISOR_DECISIONS_2026-10-29.md`. They approve the design for implementation, not the implementation or protocol freeze. This protocol must be implemented, verified, and marked `FROZEN` at a recorded source revision before any holdout scenario is generated or executed.
 
 ## Research Questions
 
@@ -33,14 +33,14 @@ Duplicate detection is evaluated independently using entity-level ground truth, 
 
 ### Deterministic Validation
 
-Explicit rule violations are evaluated as a separate baseline and as part of a rules-plus-ML review pipeline. ML must demonstrate incremental value beyond rules alone.
+For the primary residual comparison, deterministic filtering is restricted to invariant contradictions that are independent of configurable progression policy. The same invariant checks and findings apply to both ML pipelines. Configurable policy checks remain part of the rule-only baseline and complete rules-plus-ML workflow, both reported secondarily. ML must demonstrate incremental value at equal additional review capacity.
 
 ## Data Partitions
 
 - Seeds `2026-2030`: development-only and permanently ineligible for final claims.
 - Protocol-development scenarios: may be generated and inspected while implementing this document.
 - Validation scenarios: used for thresholds, hyperparameters, and feature-family decisions.
-- Locked holdout scenarios: not generated or inspected until the generator, feature definitions, threshold objectives, and analysis script are frozen.
+- Locked holdout scenarios: not generated or inspected until the generator, invariant-rule boundary, feature definitions, review-capacity objective, zero-positive treatment, scenario matrix, and analysis script are frozen.
 
 Dataset seed, split seed, and model seed must be recorded separately. Records from one latent person or organization must never cross partitions in duplicate-detection experiments.
 
@@ -58,12 +58,17 @@ The final matrix must include multiple values for:
 - anomaly severity;
 - employee-track mixture;
 - rare-legitimate mechanisms not used to design the features.
+- policy transitions and lawful historical exceptions;
+- effective-time and recorded-time variation;
+- recognized-service and correction-provenance mechanisms.
 
-At least one holdout scenario family must use a generation mechanism implemented independently from the detector's policy residual calculation.
+The holdout matrix must cover policy transitions, lawful exceptions, administrative errors, populations, and repeated seeds. Its causal truth stays outside model inputs. At least one holdout scenario family must use a generation mechanism implemented independently from the detector's policy residual calculation.
 
 ## Comparisons And Ablations
 
 Every comparison uses the same scenario, split, model-seed budget, and evaluation records.
+
+The primary comparison applies identical invariant checks to both representations, preserves those findings, and allocates an identical additional ML review budget over the same remaining records. The complete rules-plus-ML queue is a secondary operational analysis.
 
 Required representations:
 
@@ -84,14 +89,17 @@ Feature families must be frozen before the holdout is opened. Unfavorable ablati
 
 Isolation Forest produces continuous anomaly scores. Results must include:
 
-1. Average precision (AP) without selecting a test threshold.
-2. Precision and recall at a fixed top-10% review budget for both representations.
-3. A threshold selected on validation data for a predeclared target false-positive rate.
-4. Validation-maximized F1 as a secondary analysis, using the same search budget for both representations.
+1. Recall at an identical fixed top-10% additional ML review budget as the primary endpoint.
+2. Precision, total false alerts, and rare-legitimate false-alert counts and rates at that capacity.
+3. Average Precision as a secondary ranking metric without selecting a test threshold.
+4. A threshold selected on validation data for a predeclared target false-positive rate as a secondary analysis.
+5. Validation-maximized F1 as a secondary analysis, using the same search budget for both representations.
 
 The configured anomaly prevalence must not be passed directly as a known test threshold. No threshold may be selected from holdout labels.
 
-For the rules-plus-ML cascade, every deterministic policy finding is mandatory. ML may fill unused capacity up to the nominal 10% budget, but the cascade must not discard deterministic findings when their count exceeds that budget. Raw and policy-aware cascades receive the same scenario-specific capacity floor.
+For the primary residual comparison, invariant findings are preserved outside the additional ML budget. Raw and policy-aware ML receive the same number of additional review slots over the same remaining records. For the secondary complete workflow, every deterministic policy finding is preserved and reported separately from the equal ML allocation; the queue must not hide findings merely to fit a nominal capacity.
+
+Zero-positive scenarios are retained and reported with their counts and denominators. Recall and AP are marked undefined for those scenarios and excluded from scenario-level paired inference for those metrics under a predeclared eligibility indicator. They must never be assigned zero, removed after inspection, or used to choose scenario families. Pooled counts across all scenarios are reported separately and cannot replace scenario-level inference.
 
 ## Metrics And Denominators
 
@@ -106,16 +114,18 @@ For every method and scenario, save:
 - ordinary-clean count, flagged count, and flagged rate;
 - recall per anomaly class;
 - runtime and review workload.
+- zero-positive eligibility status for recall and AP inference.
 
 Counts must never be reported without denominators. Aggregate tables include both mean per-scenario rates and pooled numerators/denominators.
 
 ## Statistical Analysis
 
 - Use at least 30 independent scenario seeds per primary condition unless a documented power analysis supports another count.
-- Analyze paired raw-versus-policy differences within the same scenario.
+- Analyze paired raw-versus-policy differences within the same scenario, with recall at fixed capacity as the primary difference.
 - Report mean and median differences, variability, 95% paired bootstrap confidence intervals, and a paired sign-flip/permutation test.
 - Treat scenario seeds, not individual records from one generated organization, as the primary independent units.
 - Report failures and negative findings. Do not select seeds or scenarios based on favorable outcomes.
+- Treat AP, precision, false-alert measures, rare-legitimate rates, utility, and per-class analyses as secondary; identify multiplicity handling before the holdout run.
 
 ## Operational Utility
 
@@ -128,6 +138,23 @@ Include a sensitivity table for multiple cost ratios between:
 - falsely escalating legitimate exceptional behavior.
 
 No single cost ratio may be presented as universally correct.
+
+## Bitemporal Policy And Evidence Contract
+
+Every policy and administrative fact used by the final experiment must carry:
+
+- a stable identifier and version;
+- valid-from and valid-to times describing when it was effective;
+- recorded-at time describing when the system learned it;
+- jurisdiction or applicability scope where relevant;
+- recognized-service evidence;
+- correction provenance linking amendments to the superseded record.
+
+Feature calculation must use the policy and facts valid for the decision being evaluated, while preserving later-recorded corrections. Prediction inputs must not contain causal truth, generated labels, or mechanism identifiers.
+
+## Blinded Expert Realism Review
+
+Before protocol freeze, two independent reviewers with complementary HR-policy and information-systems expertise review a predeclared sample of synthetic histories. They are blinded to generated labels, model scores, and model findings. Their initial judgments are preserved, agreement is reported, and disagreements are adjudicated against documented policy evidence. Genuinely ambiguous cases remain labelled ambiguous and are not silently forced into positive or negative ground truth.
 
 ## Duplicate-Detection Protocol
 
@@ -150,7 +177,8 @@ Every run must store:
 - hashes of generator, feature, policy, and evaluation sources;
 - Python and package versions;
 - seeds and policy configuration;
-- per-record labels, scores, predictions, and anomaly class;
+- per-record labels, scores, predictions, anomaly class, zero-positive eligibility, and causal truth in a detector-inaccessible sidecar;
+- policy versions, effective times, recorded times, recognized-service evidence, and correction provenance;
 - per-scenario and aggregate metrics;
 - artifact checksums.
 
@@ -164,8 +192,10 @@ The holdout remains locked until all items are true:
 - synthetic clean and rare-legitimate histories satisfy the formal policy;
 - application and research policy engines pass shared golden-history tests;
 - task definitions and feature families are frozen;
-- validation threshold objectives are frozen;
+- invariant-rule boundary, fixed review capacity, zero-positive treatment, and secondary threshold objectives are frozen;
 - robustness scenario matrix is frozen;
+- bitemporal policy and administrative-evidence contract is implemented and tested;
+- blinded reviewer method, qualifications, sampling, agreement, and adjudication are recorded;
 - analysis code produces complete denominators and uncertainty estimates;
 - artifact provenance is write-once and verified;
 - supervisor approves the protocol.
@@ -193,3 +223,5 @@ The v2 implementation currently provides:
 - write-once artifacts containing per-record predictions, provenance, and SHA-256 checksums.
 
 Implementation does not change the protocol status. The holdout remains locked until the checklist above is reviewed and the protocol is explicitly frozen with supervisor approval.
+
+The 29 October decisions supersede the currently implemented full-policy residual gate and AP-primary interpretation. The approved invariant-only residual boundary, recall-primary endpoint, equal additional ML budget, bitemporal contract, expert-review process, and independent holdout matrix are not yet fully implemented. Existing artifacts remain development diagnostics.

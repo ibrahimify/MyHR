@@ -161,7 +161,7 @@ Research calculations must agree with the actual application on shared histories
 
 ### 3.7 Temporal Limitation
 
-Current policy replay is insufficient for historical decisions. A record should retain the policy identifier, valid interval, recorded interval, jurisdiction, recognized service, and correction provenance required to reconstruct what an authorized reviewer knew at the time. This schema remains pending human approval. The paper therefore treats historical policy as a discovered requirement rather than an implemented production claim.
+Current policy replay is insufficient for historical decisions. A record should retain the policy identifier, valid interval, recorded interval, jurisdiction, recognized service, and correction provenance required to reconstruct what an authorized reviewer knew at the time. The supervisor approved this bitemporal direction for implementation, but the schema and migration are not yet implemented or frozen. The paper therefore treats historical policy as a discovered requirement rather than an implemented production claim.
 
 ## 4 Research Methodology
 
@@ -213,7 +213,7 @@ This source-code boundary reduces one form of leakage but does not guarantee a v
 
 Deterministic validation returns evidence-rich findings rather than a single boolean. Policy-agnostic checks address date contradictions, duplicate event references, and dense administrative activity. Policy checks assess progression service against the supplied policy. Rules are reported both as a standalone baseline and as the first stage of a rules-plus-ML queue.
 
-Explicit findings are not silently discarded to satisfy a nominal capacity. The original cascade uses a 10% capacity floor: all deterministic findings remain mandatory, and ML fills any unused nominal capacity. This is operationally conservative but complicates equal-budget interpretation when rules alone exceed the floor. A pending alternative is to report every rule finding and then allocate an equal, fixed ML budget only among rule-negative histories.
+Explicit findings are not silently discarded to satisfy a nominal capacity. The original cascade uses a 10% capacity floor: all deterministic findings remain mandatory, and ML fills any unused nominal capacity. This is operationally conservative but complicates equal-budget interpretation when rules alone exceed the floor. The approved primary redesign instead applies identical invariant checks to both pipelines and allocates an equal, fixed additional ML budget among the same invariant-negative histories. The complete policy-rules queue is reported secondarily.
 
 ### 4.7 Feature Representations
 
@@ -282,21 +282,21 @@ The score suggests candidate pairs for review and never merges records automatic
 
 ### 4.13 Formal Experimental Estimands
 
-The employee record is not the independent experimental unit. Let s identify a generated scenario, containing a policy profile, population profile, anomaly mechanism, rare-legitimate mechanism, prevalence, dataset seed, split seed, and model seed. Let X_s be the test histories in that scenario and Y_s their binary anomaly labels. A representation r and method m produce continuous scores a_{s,r,m}. The scenario-level ranking estimand is average precision AP(Y_s, a_{s,r,m}) for scenarios in which Y_s contains at least one positive and one negative case.
+The employee record is not the independent experimental unit. Let s identify a generated scenario, containing a policy profile, population profile, anomaly mechanism, rare-legitimate mechanism, prevalence, dataset seed, split seed, and model seed. Let E_s be the histories remaining after identical invariant checks, and let Y_s be their binary anomaly labels. A representation r and method m produce continuous scores a_{s,r,m} over E_s.
 
-For paired raw and policy-aware representations, the development difference is:
+At fixed additional review capacity k_s, let A_s,r be the top-k_s alert set. The primary scenario-level recall difference is:
 
 ```text
-delta_s = AP(Y_s, a_s,policy,m) - AP(Y_s, a_s,raw,m)
+delta_recall_s = recall(Y_s, A_s,policy) - recall(Y_s, A_s,raw)
 ```
 
-The intended primary summary would be the mean of delta_s across a predeclared population of eligible scenario seeds. This definition exposes two choices that cannot be postponed until after results are inspected. First, the scenario population must be defined so that a mean has a scientific interpretation rather than being an average over an arbitrary grid. Second, eligibility for AP must be determined by design, not by removing zero-positive scenarios after their scores are known.
+Equal capacity requires |A_s,raw| = |A_s,policy| over the same E_s. The primary summary is the paired scenario-level recall difference across the frozen scenario population. Precision, total false alerts, and rare-legitimate false-alert rates accompany it. Average precision AP(Y_s, a_s,r,m) is a secondary ranking metric.
 
-At review capacity k_s, the operational estimand is based on the top k_s scores in each scenario. If A_s,r is the selected alert set, then precision is the proportion of alerts with positive truth and recall is the proportion of positive histories included in A_s,r. Equal capacity requires |A_s,raw| = |A_s,policy|. When deterministic findings are mandatory, their number may exceed a nominal percentage. The protocol must therefore distinguish the complete rules queue from the additional ML budget. Otherwise a method can appear better simply because it raises more alerts.
+Scenarios with no positive Y_s remain in denominator tables, while recall and AP are marked undefined and excluded from paired inference for those metrics under the predeclared eligibility rule. They are never assigned zero or removed after score inspection. The complete rules queue remains separate from the identical additional ML budget so a representation cannot appear better merely by raising more alerts.
 
 Rare-legitimate workload is reported with its own denominator. Let L_s be the set of legitimate exceptional histories. The rare-legitimate flagged rate is |A_s,r intersect L_s| / |L_s|. This rate does not replace total false positives. A method can reduce alerts in L_s while increasing alerts among ordinary-clean histories. The original validation residual experiment demonstrates exactly this transfer.
 
-The confirmatory estimand remains pending because the current policy-specific residual features do not vary. The formulas above describe the intended comparison and the decisions required to make it identifiable; they do not convert the current development artifact into confirmatory evidence.
+The estimand is approved for implementation, but the current policy-specific residual features still do not vary because the historical filter removed the relevant signal. The formulas above describe the redesigned comparison; they do not convert the current development artifact into confirmatory evidence or freeze the future implementation.
 
 ### 4.14 Reproducibility and Artifact Audit
 
@@ -304,11 +304,11 @@ Every experiment directory records the protocol status, complete configuration, 
 
 The independent auditor verifies manifests, source hashes, confusion counts, rates, average precision from stored scores, aggregate consistency, paired differences, bootstrap intervals, sign-flip results, and correction fields. Passing this audit establishes reproducibility of implemented arithmetic. It does not establish that the estimand, scenario population, or policy assumptions are scientifically valid.
 
-### 4.15 Proposed Blinded Realism Review
+### 4.15 Approved Blinded Realism-Review Method
 
 Synthetic correctness is assessed by code and invariant tests; organizational realism requires a different review. The prepared expert packet contains fictional histories without model scores, generated labels, or method names. Reviewers would assess whether the history is plausible, whether it appears ordinary, legitimately exceptional, erroneous, or indeterminate, whether the evidence is sufficient, how confident they are, and whether escalation is appropriate.
 
-Two reviewers are proposed so that disagreement is observable rather than silently resolved by one opinion. Their original ratings and reasons would be retained before any adjudication. The review would not allow cases to be rewritten to improve model metrics. Instead, it would identify scenario assumptions that lack domain support and report the uncertainty. The reviewer count, qualifications, sample size, agreement statistic, acceptance criterion, and adjudication procedure remain human decisions. The prepared packet has not been distributed.
+Two independent reviewers with complementary HR-policy and information-systems expertise make disagreement observable rather than silently resolving it through one opinion. Their original ratings and reasons are retained before evidence-based adjudication, and genuinely ambiguous cases remain ambiguous. The review does not allow cases to be rewritten to improve model metrics. Exact reviewer identities, sample size, agreement statistic, acceptance criterion, sampling seed, and operational form remain pending. The prepared packet has not been distributed.
 
 ### 4.16 Safety and Decision Boundary
 
@@ -416,7 +416,7 @@ This is stronger and more precise than describing the result as merely inconclus
 
 [[FIGURE:feature_collapse.png|Figure 9. Deterministic filtering removes every positive service-deficit history, forcing the three policy-specific residual features to constant zero.]]
 
-Six of the twelve scenarios also contain no residual positive case. The implementation stores AP as zero for these scenarios, but the pending protocol proposal considers AP undefined. Including structural zeros halves both reported AP means and changes uncertainty. Restricting the development calculation to the six informative scenarios still yields a very wide interval and does not establish an advantage. The final eligibility rule must be fixed before generating any confirmatory scenario.
+Six of the twelve scenarios also contain no residual positive case. The implementation stores AP as zero for these scenarios, while the approved future design treats recall and AP as undefined and excludes those scenarios from paired inference for those metrics under a predeclared eligibility rule. Including structural zeros halves both reported AP means and changes uncertainty. Restricting the development calculation to the six informative scenarios still yields a very wide interval and does not establish an advantage. The approved rule must be implemented and frozen before generating any confirmatory scenario.
 
 ### 6.6 Historical-Policy False Alerts
 
@@ -482,7 +482,7 @@ The rare-legitimate objective remains operationally important. The original vali
 
 Direct contradictions should not be rediscovered by an opaque model. Deterministic checks provide stable evidence, while ML is better suited to ranking residual patterns that are unusual without being explicit violations. The division also supports explanation: a reviewer can distinguish a factual policy conflict from a statistical suggestion.
 
-The boundary must be designed carefully. If deterministic rules remove every history for which policy residuals vary, a residual model cannot test the value of those residuals. Three candidate redesigns are documented but not approved: use policy context not consumed by the rules; evaluate an end-to-end rules-plus-ML queue as the primary estimand; or redefine the residual population and rule boundary so the intended policy evidence can still vary. Choosing among them is a protocol decision.
+The boundary must be designed carefully. If deterministic rules remove every history for which policy residuals vary, a residual model cannot test the value of those residuals. On 29 October 2026, the supervisor approved a redesign that restricts the primary residual filter to invariant contradictions, compares raw and policy-aware ML at equal additional review capacity, and reports the complete rules-plus-ML queue secondarily. This design is not yet implemented or frozen.
 
 ### 7.3 Internal Validity
 
@@ -522,15 +522,15 @@ The current study does not make a fairness claim across protected demographic gr
 
 Checksums, manifests, source hashes, CI, and independent arithmetic audits make the work reproducible. They cannot make an invalid estimand valid. The most important outcome of the infrastructure is that it exposes exactly what was calculated and why the central comparison failed. This distinction is central to the paper's scientific contribution.
 
-### 7.10 Candidate Redesigns Requiring Approval
+### 7.10 Approved Redesign and Remaining Freeze Gate
 
-Three redesign families are documented as proposals. The first retains a rule-negative primary task but introduces policy context that is not consumed by the deterministic gate, such as historical policy identity, effective-versus-recorded timing, recognized-service evidence, jurisdiction, or correction provenance. This design most directly preserves the original question, but it requires approved domain semantics and scenarios in which those variables vary independently of the anomaly label.
+The approved primary design retains a residual task after removing only invariant contradictions. It introduces policy context that is not consumed by that gate, including historical policy identity, effective-versus-recorded timing, recognized-service evidence, jurisdiction, and correction provenance. Raw and policy-aware Isolation Forest receive the same additional review capacity over the same remaining records, with recall at that capacity as the primary endpoint.
 
-The second makes the end-to-end rules-plus-ML review queue the primary estimand. It measures the operational system a client would use and avoids pretending that rules and ML are unrelated. Its weakness is attribution: if rules dominate, a small difference between ML representations may be difficult to interpret. The protocol would need an explicit complete-rules queue and an equal additional ML budget.
+The end-to-end rules-plus-ML review queue remains a secondary operational analysis. It measures the system a client would use, but it is reported separately because rules can dominate the queue and obscure the incremental contribution of the ML representation.
 
-The third changes the deterministic boundary. Only incontrovertible data contradictions would be removed before ML, while policy deficits that depend on historical context remain in the ranking task. This restores policy variation but risks asking ML to rediscover rules and may make explanation less clear. The rule set would need to be frozen before scenarios are generated.
+The invariant rule set, bitemporal schema, scenario matrix, zero-positive treatment, exact secondary analysis family, dependencies, and source revision still require implementation and freeze before protected generation.
 
-None of these options is implemented as a confirmatory design. Selecting one after inspecting development outputs is acceptable for hypothesis refinement only. After selection, the scenario specification, feature family, endpoint, capacity, seeds, and analysis must be frozen before protected generation.
+The approval refines the hypothesis after inspecting development diagnostics; it does not convert those diagnostics into confirmatory evidence. New development and validation runs must test the redesigned pipeline. The scenario specification, feature family, endpoint, capacity, seeds, and analysis must then be frozen before protected generation.
 
 ### 7.11 Practical Implications for MyHR
 
@@ -540,11 +540,11 @@ The same principle applies to explanations. A reviewer should see which facts ar
 
 | Threat | Current mitigation | Remaining weakness |
 | --- | --- | --- |
-| Generator-detector circularity | Independent simulator, controls, preserved negative findings | Conceptual independence and realism not approved |
+| Generator-detector circularity | Independent simulator, controls, preserved negative findings | Approved review method not yet executed; conceptual realism unverified |
 | Test-threshold leakage | Validation-only thresholds | Deployment calibration unresolved |
 | Favorable seed selection | Recorded seed matrix and write-once artifacts | More replicated scenario seeds needed |
-| Missing denominators | Counts and pooled/scenario metrics stored | Zero-positive AP rule unresolved |
-| Historical policy replay | Constructed counterexamples and temporal proposal | Production temporal schema not implemented |
+| Missing denominators | Counts and pooled/scenario metrics stored | Approved zero-positive rule not yet implemented |
+| Historical policy replay | Constructed counterexamples and approved bitemporal direction | Production temporal schema not implemented |
 | Citation overstatement | Provenance registry and claim ledger | Two references remain metadata-only |
 | External validity | Fictional data protect privacy | No organizational validation |
 | Human over-trust | Review-only design and evidence display | Usability and automation-bias study not conducted |
@@ -557,7 +557,7 @@ The development experiments do not establish the expected advantage. Instead, th
 
 The most actionable finding concerns historical policy. Deterministic validation flagged 39 of 72 constructed rare-legitimate histories, with source regeneration attributing the flagged cases to realized policy transitions that the original artifact cannot independently identify per record. This demonstrates a missing historical-policy contract and motivates effective-time and recorded-time modelling. It does not estimate real-world error prevalence.
 
-The next step is a human-approved redesign. The supervisor must select the primary estimand, residual boundary, review-capacity rule, historical-policy contract, expert-review plan, and holdout design. After those decisions, the implementation can add the approved temporal model, produce replicated development and validation scenarios, freeze dependencies and analysis, and execute one locked holdout exactly once. A final conclusion must report whatever that holdout shows, including a negative result.
+The next step is to implement the approved redesign: invariant-only filtering, equal additional ML capacity, recall as the primary endpoint, the bitemporal policy contract, the blinded expert-review method, and an independently specified holdout matrix. After replicated development and validation checks, the dependencies, analysis, and source revision require a separate dated freeze approval. Only then may the locked holdout run once. A final conclusion must report whatever that holdout shows, including a negative result.
 
 Duplicate detection remains a useful secondary experiment, and evidence-rich explanation remains a product contribution. Neither substitutes for a valid central anomaly-detection experiment. The present paper therefore offers a reproducible research platform, an honest diagnosis of a failed comparison, and a concrete path to a stronger confirmatory study.
 
@@ -606,14 +606,14 @@ python scripts/audit_tdk_protocol_artifact.py research_outputs/independent_devel
 
 No holdout command is included. The holdout runner remains unavailable until the protocol is frozen and approved.
 
-## Appendix B Pending Human Decisions
+## Appendix B Recorded Decisions and Pending Freeze Work
 
-1. Redesign residual features and scenarios, or make the end-to-end rules-plus-ML queue primary.
-2. Select the primary endpoint and define zero-positive scenario handling before generation.
-3. Choose the deterministic-rule and equal-ML-capacity reporting rule.
-4. Approve the historical-policy, jurisdiction, effective-time, recorded-time, recognized-service, and correction contract.
-5. Approve reviewer qualifications, blinded sampling, agreement reporting, and adjudication for the realism review.
-6. Freeze a conceptually independent holdout matrix with repeated seeds and per-record causal truth.
+1. Implement invariant-only filtering for the primary residual comparison and report the complete workflow secondarily.
+2. Implement recall at fixed equal additional review capacity as primary, with AP secondary and predeclared zero-positive handling.
+3. Implement the bitemporal policy and evidence contract with recognized service and correction provenance.
+4. Nominate the two complementary reviewers and freeze the sample, agreement statistic, and adjudication form.
+5. Freeze the independently specified holdout matrix with repeated seeds and detector-inaccessible causal truth.
+6. Freeze exact dependencies, analysis code, configuration, and source revision after independent verification.
 
-Nothing in this appendix is approved by an AI agent or by the existence of this draft.
+The methodology direction was approved by the supervisor on 29 October 2026. Implementation completeness, protocol freeze, and holdout access still require separate recorded human approval and cannot be granted by an AI agent.
 

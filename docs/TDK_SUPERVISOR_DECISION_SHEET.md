@@ -1,8 +1,8 @@
 # MyHR TDK Supervisor Decision Sheet
 
-**NOTHING IS APPROVED UNTIL A HUMAN RESPONDS. AI agents cannot approve protocol decisions. The holdout remains locked.**
+**SUPERVISOR DECISIONS RECORDED 29 OCTOBER 2026. APPROVED FOR IMPLEMENTATION. PROTOCOL FREEZE PENDING. HOLDOUT LOCKED.**
 
-Date: __________  Human reviewer: ____________________
+Decision source: supervisor answers relayed by Muhammad Ibrahim Shoeb. Full record: `TDK_SUPERVISOR_DECISIONS_2026-10-29.md`.
 
 ## 1. Primary Hypothesis
 
@@ -10,9 +10,7 @@ Date: __________  Human reviewer: ____________________
 
 **Evidence/objection:** All three policy-specific residual features are constant zero, so current AP differences cannot be attributed to policy context.
 
-**Recommendation:** B. Preserve the current run only as development evidence.
-
-[ ] Yes, B  [ ] No  [ ] Modify: _________________________________
+**Decision:** Retain residual raw-versus-policy-aware ML as primary, restrict filtering to invariant contradictions, and evaluate the complete workflow secondarily. Preserve current runs as development evidence.
 
 ## 2. Primary Endpoint
 
@@ -20,9 +18,7 @@ Date: __________  Human reviewer: ____________________
 
 **Evidence/objection:** AP suits imbalanced ranking but depends on prevalence. Six scenarios have no residual positives and were incorrectly assigned AP zero.
 
-**Recommendation:** A only when scenario families are predeclared to contain residual positives by construction. Never select or exclude scenarios after inspection. Otherwise choose B or redefine the estimand.
-
-[ ] Yes  [ ] No  [ ] Modify: ____________________________________
+**Decision:** Recall at fixed review capacity is primary. Report precision, total false alerts, and rare-legitimate false-alert rates alongside it. AP is secondary with predeclared zero-positive handling.
 
 ## 3. Review Capacity
 
@@ -30,9 +26,7 @@ Date: __________  Human reviewer: ____________________
 
 **Evidence/objection:** Dropping explicit findings is unsafe, while a rising capacity floor prevents a clean equal-budget ML comparison.
 
-**Recommendation:** C.
-
-[ ] Yes  [ ] No  [ ] Modify: ____________________________________
+**Decision:** C. Preserve identical invariant findings, then allocate equal additional ML review capacity on the same residual records. Report rule-only and complete queues separately.
 
 ## 4. Historical Policy Model
 
@@ -40,9 +34,7 @@ Date: __________  Human reviewer: ____________________
 
 **Evidence/objection:** Current-policy replay flagged `39/72` rare histories; source regeneration found `39/39` realized transition histories flagged. This proves a constructed specification failure, not real-world prevalence.
 
-**Recommendation:** C.
-
-[ ] Yes  [ ] No  [ ] Modify: ____________________________________
+**Decision:** C. Implement policy versions, recognized service, correction provenance, effective time, and recorded time.
 
 ## 5. Expert Realism Review
 
@@ -50,9 +42,7 @@ Date: __________  Human reviewer: ____________________
 
 **Evidence/objection:** Synthetic correctness does not establish realism. Reviewer qualifications, sample size, and acceptance criteria remain undecided.
 
-**Recommendation:** B, using the draft packet only after human approval.
-
-[ ] Yes  [ ] No  [ ] Modify: ____________________________________
+**Decision:** B. Use two independent blinded reviewers with complementary expertise, preserve initial judgments, report agreement, and adjudicate from documented evidence while retaining ambiguity.
 
 ## 6. Holdout Design
 
@@ -60,10 +50,6 @@ Date: __________  Human reviewer: ____________________
 
 **Evidence/objection:** Current scenarios have constant policy residuals, six zero-positive cases, and incomplete truth in the existing artifact.
 
-**Recommendation:** B with predeclared residual-positive families. Use lawful external data only as secondary validation.
+**Decision:** B. Freeze an independent repeated-seed matrix covering policy transitions, lawful exceptions, administrative errors, and populations, with causal truth outside model inputs.
 
-[ ] Yes  [ ] No  [ ] Modify: ____________________________________
-
-**Protocol freeze:** [ ] No  [ ] Yes, after recorded modifications
-
-Signature: ______________________________  Date: __________________
+**Protocol freeze:** Not granted. It requires completed implementation, verification, exact dependency and source freeze, and a separate dated approval.

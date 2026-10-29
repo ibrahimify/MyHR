@@ -35,9 +35,9 @@ The first run is artifact `independent_development_e342bd4acf39b06b`.
 
 These findings are retained as development evidence. No detector feature will be tuned against this artifact. See `TDK_INDEPENDENT_REVIEW_2026-10-17.md` for the adversarial re-analysis.
 
-## Required Expert Review
+## Approved Expert-Review Method
 
-Before protocol freeze, prepare 40 to 60 blinded history summaries without model scores or intended labels. Ask at least two reviewers to classify each as legitimate, erroneous, ambiguous, or insufficient information and rate realism. Record reasons and agreement using Cohen's kappa or Gwet's AC1. Do not change cases to improve model metrics.
+Before protocol freeze, prepare a human-approved sample of blinded history summaries without model scores or intended labels. Use two independent reviewers with complementary HR-policy and information-systems expertise. They classify each history as legitimate, erroneous, ambiguous, or insufficient information and rate realism. Preserve their initial reasons, report agreement using a statistic selected before distribution, adjudicate from documented policy evidence, and retain genuinely ambiguous cases. Do not change cases to improve model metrics. Exact reviewers, sample size, statistic, sampling seed, and packet checksum remain pending.
 
 Only fictional histories and aggregate organizational assumptions may be used unless lawful access and safeguards for real data are approved.
 

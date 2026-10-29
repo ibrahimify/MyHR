@@ -59,11 +59,11 @@ No strong directly comparable paper was found that combines formal workforce-pro
 
 Explicit inconsistencies should be found by deterministic checks. Unsupervised ML is more defensible as a residual ranking layer for unusual but not explicitly forbidden histories. The Issue #10 cascade confirms that policy rules already explain most detectable policy violations. It does not establish added ranking value from policy-aware ML because the current policy-specific residual features are constant after filtering.
 
-The final system should retain this order:
+The primary experiment should use this order:
 
-1. validate explicit contradictions and policy violations;
-2. remove or mark rule-confirmed cases;
-3. rank residual cases with raw and policy-aware statistical models;
+1. validate and preserve invariant contradictions common to both pipelines;
+2. compare raw and policy-aware ranking over the same invariant-negative records at equal additional review capacity;
+3. report configurable policy checks and the complete rules-plus-ML queue secondarily;
 4. show evidence to an HR reviewer;
 5. never promote, sanction, or change salary automatically from an anomaly score.
 
@@ -73,11 +73,11 @@ The literature exposes two complementary facts. Precision-recall analysis is inf
 
 Issue #10 correctly adds continuous-score average precision, validation-only thresholds, equal top-10% review budgets, target-FPR analysis, and explicit counts. It also avoids passing known test contamination to Isolation Forest. These choices directly address the documented evaluation risks.
 
-The later independent methodology audit showed that rare-legitimate reduction alone can move false alerts to ordinary-clean records without improving total precision. The current proposed primary estimand is therefore:
+The later independent methodology audit showed that rare-legitimate reduction alone can move false alerts to ordinary-clean records without improving total precision. The supervisor decision recorded on 29 October 2026 therefore defines the primary estimand as:
 
-> Paired scenario-level difference in average precision between policy-aware and raw Isolation Forest among rule-negative records from independently generated residual-error scenarios.
+> Paired scenario-level difference in recall at identical fixed additional review capacity between policy-aware and raw Isolation Forest among invariant-negative records from independently generated residual-error scenarios.
 
-Rare-legitimate and ordinary-clean flag rates, F1, anomaly-class recall, total false positives, and cost sensitivity remain important secondary outcomes. Secondary hypothesis tests should be labelled exploratory and adjusted with Holm's procedure. The proposal remains subject to supervisor approval.
+Precision, total false alerts, and rare-legitimate false-alert rates accompany the primary endpoint. Average Precision, ordinary-clean flag rates, F1, per-class recall, and cost sensitivity remain secondary. The exact multiplicity procedure for inferential secondary tests remains a draft freeze decision rather than part of the six approved choices.
 
 ### 5. Synthetic Ground Truth Is Necessary But Not Sufficient
 
@@ -135,13 +135,13 @@ The existing protocol is correct to require entity-disjoint splits, hard nondupl
 
 ### Required Before Protocol Freeze
 
-1. Ask the supervisor to approve one primary estimand and the independent holdout-generation specification.
+1. Implement the approved recall-at-fixed-capacity estimand and independent holdout-generation specification without opening the holdout.
 2. Add a documented multiple-comparison rule for secondary inferential tests.
 3. Add an independently implemented scenario family or an expert-reviewed history set that does not call detector policy-residual code.
 4. Freeze prevalence levels, review budgets, anomaly mechanisms, rare-legitimate mechanisms, and utility-cost sensitivity ranges.
 5. Preserve all current negative findings, including raw ablations that outperform the complete raw representation.
 
-These are proposals from the review. They have not changed `docs/TDK_EXPERIMENT_PROTOCOL.md`.
+The primary estimand and holdout design were approved for implementation on 29 October 2026. The multiplicity rule, exact scenario matrix, implementation, and protocol freeze remain pending.
 
 ### Keep For The Main Paper
 
@@ -181,19 +181,22 @@ This update addresses only the open supervisor decisions. It does not approve or
 | Expert review of anomaly ground truth | Human-in-the-loop anomaly work treats expert validation as a separate workflow rather than automatic truth. Independent coding, agreement assessment, disagreement retention, and adjudication remain pending recommendations because the cited reliability paper has not yet received preserved full-text review. | No universal reviewer count or agreement threshold applies to workforce progression. Reviewer qualifications, sample size, acceptable agreement, and adjudication rules must be chosen before cases are reviewed. |
 | Holdout generation | The reviewed benchmark critique supports concern about overfitting to a single evaluation pipeline. Protected data, frozen choices, repeated random realizations, and scenario diversity are conservative MyHR design inferences that still require human approval. | The holdout scenario matrix, feature representation, and residual definition are not ready to freeze. The independent review found zero-positive scenarios and constant policy features, so generating a holdout now would lock in an invalid estimand. |
 
-### Evidence-Based Recommendation Pending Human Approval
+### Supervisor Decision Outcome - 2026-10-29
 
-Use one primary ranking endpoint only after a human approves a residual representation with genuinely varying policy information and primary-eligible scenarios with positive residual cases. Pair raw and policy-aware methods within the same independently generated scenario seed, report scenario-level and pooled denominators separately, and reserve Holm adjustment for a small predeclared family of genuinely inferential secondary outcomes. Treat all other analyses as descriptive or exploratory.
+The supervisor selected recall at identical fixed additional review capacity as the primary endpoint for raw versus policy-aware residual ML after invariant-only filtering. Pair methods within the same independently generated scenario seed and report scenario-level and pooled denominators separately. Average Precision is secondary. Zero-positive scenarios remain reported, are marked undefined for recall and AP, and do not enter paired inference for those metrics under the predeclared rule.
 
-For historical policy, store both effective and recorded times and retain the policy version applied to each administrative decision. For expert review, provide blinded histories without model scores or generated labels, collect independent ratings and reasons, calculate agreement, and preserve disagreement before adjudication. These are recommendations, not approved protocol decisions.
+For historical policy, the approved implementation contract stores effective and recorded times, policy versions, recognized service, and correction provenance. The approved review method uses two independent complementary reviewers, blinded histories without model scores or generated labels, preserved initial judgments, agreement reporting, evidence-based adjudication, and retained ambiguity. Exact schemas, reviewers, sample parameters, and the protocol freeze remain pending.
 
-## Supervisor Review Questions
+## Recorded Supervisor Answers
 
-1. Is rule-negative average precision an acceptable primary endpoint, with rare-legitimate and ordinary-clean flag rates as paired secondary outcomes?
-2. Which policy profiles and administrative histories are realistic enough to include in the independently designed scenario family?
-3. Can the supervisor or another domain expert review a blinded sample of generated histories before protocol freeze?
-4. Should secondary p-values use Holm adjustment, or should they remain descriptive with confidence intervals only?
-5. Is there any lawful anonymized or aggregate organizational data that can calibrate feature ranges without exposing personal data?
+1. Recall at fixed review capacity is primary; AP is secondary.
+2. Deterministic filtering for the primary residual comparison is restricted to invariant contradictions.
+3. Both ML representations receive the same additional review budget on the same remaining records.
+4. Historical reconstruction uses a bitemporal contract with policy versions and correction provenance.
+5. Two complementary blinded reviewers assess synthetic realism and preserve ambiguity.
+6. The final holdout uses an independently specified repeated-seed matrix with detector-inaccessible causal truth.
+
+The secondary multiplicity procedure, exact scenario matrix, exact reviewers and sample, external calibration, and protocol freeze were not resolved by these six answers.
 
 ## Bottom Line
 

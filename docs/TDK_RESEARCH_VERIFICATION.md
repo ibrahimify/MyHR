@@ -98,7 +98,7 @@ Use `method_comparisons.csv` for development diagnostics only. A final claim req
 
 Small employee counts are useful for checking that the pipeline runs. Final paper evidence should use larger datasets and reviewed seeds because small test splits make precision and recall unstable.
 
-Current implementation note: the default policy-aware Isolation Forest feature set uses policy residuals instead of the raw minimum-promotion-interval feature. In the independent rule-negative experiment, all three policy-specific residual features are constant zero. The resulting comparison is structurally unable to estimate incremental policy-context value and requires a human-approved redesign.
+Current implementation note: the default policy-aware Isolation Forest feature set uses policy residuals instead of the raw minimum-promotion-interval feature. In the independent historical rule-negative experiment, all three policy-specific residual features are constant zero. The resulting comparison is structurally unable to estimate incremental policy-context value. The supervisor-approved redesign uses invariant-only filtering and equal additional ML capacity, but it is not yet implemented or frozen.
 
 ## Protocol V2 Verification
 
