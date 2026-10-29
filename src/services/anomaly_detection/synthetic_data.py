@@ -39,6 +39,20 @@ class AnomalyType(str, Enum):
     POLICY_LEGITIMATE_RARE_CASE = "policy_legitimate_rare_case"
 
 
+class HardNonduplicateKind(str, Enum):
+    """Explicit mechanism for a hard nonduplicate record.
+
+    Hard nonduplicates are real distinct individuals that share surface
+    features likely to trigger naive similarity detectors.  They are NOT
+    true duplicates and must never appear in _true_duplicate_pairs.
+    """
+
+    SIMILAR_NAME = "similar_name"        # same first name, different family
+    SHARED_BIRTHDAY = "shared_birthday"  # same date_of_birth, different person
+    RELATIVE = "relative"                # same family name, different DOB
+    NEAR_IDENTICAL_ID = "near_identical_id"  # identifier one-digit apart
+
+
 @dataclass(frozen=True)
 class ExperimentConfig:
     """Configuration shared by synthetic data and experiment runners."""
@@ -105,6 +119,24 @@ class EmployeeIdentity:
 
 
 @dataclass(frozen=True)
+class LatentPerson:
+    """A fictional base entity from which one or more duplicate records are derived.
+
+    The latent person is generated first, outside any dataset partition.
+    Each record derived from this person inherits or mutates its identity
+    fields.  Storing the latent_person_id on every derived record allows
+    the auditor to verify partition containment by construction rather than
+    by checking a pointer chain after the fact.
+    """
+
+    latent_person_id: str
+    full_name: str
+    date_of_birth: date
+    national_id: str | None
+    email: str | None
+
+
+@dataclass(frozen=True)
 class AdministrativeEvent:
     """One timestamped administrative event in an employee history."""
 
@@ -145,6 +177,13 @@ class WorkforceHistoryRecord:
     anomaly_labels: tuple[AnomalyType, ...] = (AnomalyType.CLEAN,)
     duplicate_of_employee_id: str | None = None
     observation_date: date | None = None
+    # Latent-person-first duplicate provenance.  Set on every record derived
+    # from a LatentPerson cluster (source and all variants).  None for all
+    # non-duplicate records.
+    latent_person_id: str | None = None
+    # Explicit mechanism for hard nonduplicates.  Set only on records
+    # intentionally generated as confusable-but-distinct individuals.
+    hard_nonduplicate_kind: HardNonduplicateKind | None = None
 
     @property
     def has_anomaly(self) -> bool:
@@ -292,8 +331,18 @@ LEVELS = ("L7", "L6", "L5", "L4", "L3", "L2", "L1")
 
 
 def generate_synthetic_dataset(config: ExperimentConfig) -> SyntheticDataset:
-    """Generate deterministic synthetic histories with documented labels."""
+    """Generate deterministic synthetic histories with documented labels.
 
+    Duplicate records are generated latent-person-first: for each cluster, a
+    fictional base entity (LatentPerson) is created outside any partition, then
+    all records in the cluster—the source and every variant—are derived from it.
+    This guarantees partition containment by construction rather than by
+    post-hoc pointer checking.
+
+    Hard nonduplicate records are explicitly generated as confusable-but-distinct
+    individuals.  They share surface features (name, DOB, identifier) with other
+    records but are NOT true duplicates and must not appear in true_duplicate_pairs.
+    """
     config.validate()
     rng = seeded_random(config)
     split_by_index = _split_by_index(config.employee_count, config)
@@ -303,19 +352,88 @@ def generate_synthetic_dataset(config: ExperimentConfig) -> SyntheticDataset:
         _base_record(index, split_by_index[index], rng)
         for index in range(config.employee_count)
     ]
-    duplicate_sources = tuple(
-        record for index, record in enumerate(base_records)
-        if label_plan[index] is not AnomalyType.DUPLICATE_RECORD
-    )
+
+    # --- Latent-person-first duplicate generation ---
+    # Identify which indices will become DUPLICATE_RECORD.
+    duplicate_indices = [
+        index for index, label in label_plan.items()
+        if label is AnomalyType.DUPLICATE_RECORD
+    ]
+    # For each duplicate index, find a non-duplicate source in the same partition.
+    # Generate a latent person for each cluster (one per duplicate record).
+    latent_persons: dict[int, LatentPerson] = {}
+    duplicate_source_ids: dict[int, str] = {}  # duplicate_index -> source employee_id
+    for cluster_num, dup_idx in enumerate(sorted(duplicate_indices)):
+        dup_split = split_by_index[dup_idx]
+        same_split_sources = [
+            index for index, label in label_plan.items()
+            if label is not AnomalyType.DUPLICATE_RECORD
+            and split_by_index[index] is dup_split
+            and index != dup_idx
+        ]
+        if not same_split_sources:
+            raise ValueError(
+                f"latent-person duplicate generation: no source candidate in partition "
+                f"{dup_split.value} for duplicate at index {dup_idx}"
+            )
+        source_index = same_split_sources[cluster_num % len(same_split_sources)]
+        latent_persons[dup_idx] = _generate_latent_person(cluster_num, rng)
+        duplicate_source_ids[dup_idx] = base_records[source_index].identity.employee_id
+
+    # Also tag source records with the latent_person_id so the whole cluster
+    # can be traced back to its origin.
+    source_to_latent: dict[str, str] = {}  # source employee_id -> latent_person_id
+    for dup_idx, latent in latent_persons.items():
+        src_id = duplicate_source_ids[dup_idx]
+        source_to_latent[src_id] = latent.latent_person_id
+
+    # Apply labels and build final records.
     records: list[WorkforceHistoryRecord] = []
     for index, record in enumerate(base_records):
         label = label_plan[index]
-        if label is not AnomalyType.CLEAN:
-            record = _apply_label(record, label, duplicate_sources, rng)
+        if label is AnomalyType.DUPLICATE_RECORD:
+            person = latent_persons[index]
+            src_id = duplicate_source_ids[index]
+            variant = index % 4
+            record = _apply_latent_person_duplicate(record, person, src_id, variant)
+        elif label is not AnomalyType.CLEAN:
+            # All other anomaly types use the original _apply_label path.
+            non_duplicate_sources = tuple(
+                r for i, r in enumerate(base_records)
+                if label_plan[i] is not AnomalyType.DUPLICATE_RECORD
+            )
+            record = _apply_label(record, label, non_duplicate_sources, rng)
+        # Tag source records that belong to a latent cluster.
+        if record.identity.employee_id in source_to_latent:
+            record = replace(
+                record,
+                latent_person_id=source_to_latent[record.identity.employee_id],
+            )
         records.append(record)
 
+    # --- Hard nonduplicate injection ---
+    # Add one explicit hard nonduplicate record for each HardNonduplicateKind,
+    # provided enough clean records exist as anchors.
+    hard_nonduplicate_kinds = list(HardNonduplicateKind)
+    clean_records = [r for r in records if r.anomaly_labels == (AnomalyType.CLEAN,)]
+    if len(clean_records) >= 2 * len(hard_nonduplicate_kinds):
+        # Use a deterministic sub-RNG seeded from the main seed so insertion
+        # does not perturb the main RNG sequence.
+        hard_rng = Random(config.seed ^ 0xDEAD_BEEF)
+        hard_rng.shuffle(clean_records)
+        for kind_idx, kind in enumerate(hard_nonduplicate_kinds):
+            anchor = clean_records[kind_idx * 2]
+            target_idx = kind_idx * 2 + 1
+            target_record = clean_records[target_idx]
+            modified = _apply_hard_nonduplicate(target_record, kind, anchor)
+            # Replace the target record in the main list.
+            for list_idx, r in enumerate(records):
+                if r.identity.employee_id == target_record.identity.employee_id:
+                    records[list_idx] = modified
+                    break
+
     metadata = SyntheticDatasetMetadata(
-        schema_version="tdk-synthetic-v1",
+        schema_version="tdk-synthetic-v2",
         run_id=config.run_id(),
         seed=config.seed,
         employee_count=config.employee_count,
@@ -701,6 +819,135 @@ def _apply_label(
     )
 
 
+# ---------------------------------------------------------------------------
+# Latent-person-first duplicate generation
+# ---------------------------------------------------------------------------
+
+def _generate_latent_person(index: int, rng: Random) -> LatentPerson:
+    """Generate a fictional base entity outside any dataset partition.
+
+    The latent person is never inserted into the dataset directly.  All
+    duplicate records are derived from it, guaranteeing partition containment
+    by construction.
+    """
+    first_name = FIRST_NAMES[index % len(FIRST_NAMES)]
+    last_name = LAST_NAMES[(index * 7 + 3) % len(LAST_NAMES)]  # offset to avoid FIRST_NAMES alignment
+    full_name = f"{first_name} {last_name}"
+    dob = _safe_date(rng.randint(1970, 2001), rng.randint(1, 12), rng.randint(1, 28))
+    national_id = f"LATENT-{index:06d}"
+    email = f"{first_name.lower()}.{last_name.lower()}.latent{index}@synthetic.myhr"
+    return LatentPerson(
+        latent_person_id=f"LP-{index:06d}",
+        full_name=full_name,
+        date_of_birth=dob,
+        national_id=national_id,
+        email=email,
+    )
+
+
+def _derive_duplicate_identity(
+    person: LatentPerson,
+    employee_id: str,
+    variant: int,
+) -> EmployeeIdentity:
+    """Derive a mutated identity from a latent person for one dataset record.
+
+    variant 0: first name only, transposed identifier
+    variant 1: name typo, date-of-birth swap
+    variant 2: exact name, no email, dropped-leading-zero identifier
+    variant 3: first name only, date-of-birth swap, transposed identifier
+    """
+    full_name = (
+        _shorten_name(person.full_name) if variant in {0, 3}
+        else _name_typo(person.full_name) if variant == 1
+        else person.full_name
+    )
+    date_of_birth = (
+        _variant_birth_date(person.date_of_birth) if variant in {1, 3}
+        else person.date_of_birth
+    )
+    national_id = (
+        _transpose_identifier(person.national_id) if variant in {0, 3}
+        else _drop_leading_zeroes(person.national_id)
+    )
+    email = (
+        None if variant == 2
+        else _variant_email(person.email)
+    )
+    return EmployeeIdentity(
+        employee_id=employee_id,
+        full_name=full_name,
+        date_of_birth=date_of_birth,
+        national_id=national_id,
+        email=email,
+    )
+
+
+def _apply_latent_person_duplicate(
+    record: WorkforceHistoryRecord,
+    person: LatentPerson,
+    source_employee_id: str,
+    variant: int,
+) -> WorkforceHistoryRecord:
+    """Replace the identity of *record* with a latent-person-derived variant.
+
+    The returned record carries both ``duplicate_of_employee_id`` (pointing to
+    the source record in the same partition) and ``latent_person_id`` (the
+    shared origin for the whole cluster).
+    """
+    identity = _derive_duplicate_identity(person, record.identity.employee_id, variant)
+    return replace(
+        record,
+        identity=identity,
+        anomaly_labels=(AnomalyType.DUPLICATE_RECORD,),
+        duplicate_of_employee_id=source_employee_id,
+        latent_person_id=person.latent_person_id,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Hard nonduplicate generation
+# ---------------------------------------------------------------------------
+
+def _apply_hard_nonduplicate(
+    record: WorkforceHistoryRecord,
+    kind: HardNonduplicateKind,
+    anchor: WorkforceHistoryRecord,
+) -> WorkforceHistoryRecord:
+    """Return *record* with an identity modified to share surface features
+    with *anchor* without being a true duplicate.
+
+    The resulting record is a genuinely distinct person who will confuse
+    naive similarity detectors.  It is NOT labelled DUPLICATE_RECORD and
+    must NOT appear in _true_duplicate_pairs.
+    """
+    identity = record.identity
+    if kind is HardNonduplicateKind.SIMILAR_NAME:
+        # Same first name, different family name
+        first = anchor.identity.full_name.split()[0]
+        last = identity.full_name.split()[-1] if " " in identity.full_name else identity.full_name
+        identity = replace(identity, full_name=f"{first} {last}")
+    elif kind is HardNonduplicateKind.SHARED_BIRTHDAY:
+        # Same date_of_birth, different name
+        identity = replace(identity, date_of_birth=anchor.identity.date_of_birth)
+    elif kind is HardNonduplicateKind.RELATIVE:
+        # Same family name, different DOB and first name
+        family = anchor.identity.full_name.split()[-1] if " " in anchor.identity.full_name else anchor.identity.full_name
+        first = identity.full_name.split()[0] if " " in identity.full_name else identity.full_name
+        identity = replace(identity, full_name=f"{first} {family}")
+    elif kind is HardNonduplicateKind.NEAR_IDENTICAL_ID:
+        # National ID one character transposed
+        identity = replace(identity, national_id=_transpose_identifier(anchor.identity.national_id))
+    return replace(
+        record,
+        identity=identity,
+        anomaly_labels=(AnomalyType.CLEAN,),
+        hard_nonduplicate_kind=kind,
+        duplicate_of_employee_id=None,
+        latent_person_id=None,
+    )
+
+
 def _split_counts(records: list[WorkforceHistoryRecord]) -> dict[str, int]:
     counts = Counter(record.split.value for record in records)
     return {split.value: counts.get(split.value, 0) for split in DatasetSplit}
@@ -726,6 +973,10 @@ def _record_to_dict(record: WorkforceHistoryRecord) -> dict[str, object]:
         "events": [_event_to_dict(event) for event in record.events],
         "anomaly_labels": [label.value for label in record.anomaly_labels],
         "duplicate_of_employee_id": record.duplicate_of_employee_id,
+        "latent_person_id": record.latent_person_id,
+        "hard_nonduplicate_kind": (
+            record.hard_nonduplicate_kind.value if record.hard_nonduplicate_kind else None
+        ),
         "observation_date": (
             record.observation_date.isoformat() if record.observation_date else None
         ),

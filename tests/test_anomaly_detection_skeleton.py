@@ -9,6 +9,8 @@ from src.services.anomaly_detection import (
     EmployeeIdentity,
     EmploymentTrack,
     ExperimentConfig,
+    HardNonduplicateKind,
+    LatentPerson,
     PromotionPolicy,
     ValidationSeverity,
     WorkforceHistoryRecord,
@@ -556,6 +558,187 @@ class AnomalyDetectionSkeletonTests(unittest.TestCase):
         self.assertLessEqual(evaluation.blocking_recall, 1.0)
         self.assertGreaterEqual(evaluation.reduction_ratio, 0.0)
         self.assertLessEqual(evaluation.reduction_ratio, 1.0)
+
+
+class LatentPersonFirstDuplicateTests(unittest.TestCase):
+    """Verify latent-person-first duplicate generation contracts."""
+
+    def _dataset(self, seed: int = 2026, count: int = 200) -> object:
+        config = ExperimentConfig(seed=seed, employee_count=count, anomaly_rate=0.10, rare_legitimate_rate=0.02)
+        from src.services.anomaly_detection import generate_synthetic_dataset
+        return generate_synthetic_dataset(config)
+
+    def test_duplicate_records_carry_latent_person_id(self):
+        dataset = self._dataset()
+        duplicates = [
+            r for r in dataset.records
+            if AnomalyType.DUPLICATE_RECORD in r.anomaly_labels
+        ]
+        self.assertGreaterEqual(len(duplicates), 1, "need at least one duplicate")
+        for r in duplicates:
+            self.assertIsNotNone(r.latent_person_id, f"duplicate {r.identity.employee_id} missing latent_person_id")
+            self.assertTrue(r.latent_person_id.startswith("LP-"), f"unexpected latent_person_id format: {r.latent_person_id}")
+
+    def test_source_records_also_carry_latent_person_id(self):
+        """The source record of each cluster must also be tagged."""
+        dataset = self._dataset()
+        duplicates = [
+            r for r in dataset.records
+            if AnomalyType.DUPLICATE_RECORD in r.anomaly_labels
+        ]
+        source_ids = {r.duplicate_of_employee_id for r in duplicates if r.duplicate_of_employee_id}
+        records_by_id = {r.identity.employee_id: r for r in dataset.records}
+        for src_id in source_ids:
+            src = records_by_id[src_id]
+            self.assertIsNotNone(src.latent_person_id, f"source record {src_id} missing latent_person_id")
+
+    def test_cluster_members_share_latent_person_id(self):
+        """Each duplicate and its source must share the same latent_person_id."""
+        dataset = self._dataset()
+        records_by_id = {r.identity.employee_id: r for r in dataset.records}
+        for r in dataset.records:
+            if AnomalyType.DUPLICATE_RECORD in r.anomaly_labels:
+                src = records_by_id.get(r.duplicate_of_employee_id)
+                self.assertIsNotNone(src, f"source {r.duplicate_of_employee_id} not found")
+                self.assertEqual(
+                    r.latent_person_id,
+                    src.latent_person_id,
+                    f"duplicate {r.identity.employee_id} and source {src.identity.employee_id} "
+                    f"disagree on latent_person_id",
+                )
+
+    def test_latent_person_id_format_is_stable_across_seeds(self):
+        """LP-NNNNNN format must hold for multiple seeds."""
+        import re
+        pattern = re.compile(r"^LP-\d{6}$")
+        for seed in (2026, 2027, 2028):
+            dataset = self._dataset(seed=seed, count=300)
+            for r in dataset.records:
+                if r.latent_person_id is not None:
+                    self.assertRegex(r.latent_person_id, pattern, f"seed {seed}: bad format {r.latent_person_id}")
+
+    def test_partition_containment_enforced_by_construction(self):
+        """Duplicate-cluster membership must never cross partitions (construction check)."""
+        dataset = self._dataset(count=500)
+        records_by_id = {r.identity.employee_id: r for r in dataset.records}
+        for r in dataset.records:
+            if AnomalyType.DUPLICATE_RECORD in r.anomaly_labels:
+                src = records_by_id[r.duplicate_of_employee_id]
+                self.assertEqual(
+                    r.split, src.split,
+                    f"partition violation: duplicate {r.identity.employee_id} in {r.split.value} "
+                    f"but source {src.identity.employee_id} in {src.split.value}",
+                )
+
+    def test_non_duplicate_records_have_no_latent_person_id_unless_source(self):
+        """Only cluster members (source + variants) should carry a latent_person_id."""
+        dataset = self._dataset(count=500)
+        cluster_ids: set[str] = set()
+        for r in dataset.records:
+            if AnomalyType.DUPLICATE_RECORD in r.anomaly_labels:
+                cluster_ids.add(r.identity.employee_id)
+                if r.duplicate_of_employee_id:
+                    cluster_ids.add(r.duplicate_of_employee_id)
+        for r in dataset.records:
+            if r.identity.employee_id not in cluster_ids:
+                self.assertIsNone(
+                    r.latent_person_id,
+                    f"unexpected latent_person_id on non-cluster record {r.identity.employee_id}",
+                )
+
+
+class HardNonduplicateTests(unittest.TestCase):
+    """Verify explicit hard nonduplicate generation."""
+
+    def _dataset(self, seed: int = 2026, count: int = 500) -> object:
+        config = ExperimentConfig(seed=seed, employee_count=count, anomaly_rate=0.08, rare_legitimate_rate=0.02)
+        from src.services.anomaly_detection import generate_synthetic_dataset
+        return generate_synthetic_dataset(config)
+
+    def test_all_hard_nonduplicate_kinds_are_present(self):
+        dataset = self._dataset()
+        found_kinds = {
+            r.hard_nonduplicate_kind
+            for r in dataset.records
+            if r.hard_nonduplicate_kind is not None
+        }
+        for kind in HardNonduplicateKind:
+            self.assertIn(kind, found_kinds, f"HardNonduplicateKind.{kind.name} not generated")
+
+    def test_hard_nonduplicates_are_not_true_duplicates(self):
+        """Hard nonduplicates must not appear in _true_duplicate_pairs."""
+        from src.services.anomaly_detection.duplicate_detection import _true_duplicate_pairs
+        dataset = self._dataset()
+        records = tuple(r for r in dataset.records if r.split is DatasetSplit.TEST)
+        true_pairs = _true_duplicate_pairs(records)
+        hard_ids = {
+            r.identity.employee_id
+            for r in dataset.records
+            if r.hard_nonduplicate_kind is not None
+        }
+        for left_id, right_id in true_pairs:
+            self.assertNotIn(left_id, hard_ids, f"hard nonduplicate {left_id} appeared in true_pairs")
+            self.assertNotIn(right_id, hard_ids, f"hard nonduplicate {right_id} appeared in true_pairs")
+
+    def test_hard_nonduplicates_are_labelled_clean(self):
+        """Hard nonduplicates are distinct genuine records — no DUPLICATE_RECORD label."""
+        dataset = self._dataset()
+        for r in dataset.records:
+            if r.hard_nonduplicate_kind is not None:
+                self.assertNotIn(
+                    AnomalyType.DUPLICATE_RECORD,
+                    r.anomaly_labels,
+                    f"hard nonduplicate {r.identity.employee_id} incorrectly labelled DUPLICATE_RECORD",
+                )
+                self.assertIsNone(
+                    r.duplicate_of_employee_id,
+                    f"hard nonduplicate {r.identity.employee_id} has duplicate_of pointer",
+                )
+
+    def test_hard_nonduplicates_share_surface_feature_with_anchor(self):
+        """Each hard nonduplicate kind should produce a confusable surface similarity."""
+        from src.services.anomaly_detection.duplicate_detection import normalized_similarity
+        dataset = self._dataset(count=800)
+        hard_records = [r for r in dataset.records if r.hard_nonduplicate_kind is not None]
+        clean_records = {
+            r.identity.employee_id: r
+            for r in dataset.records
+            if r.anomaly_labels == (AnomalyType.CLEAN,) and r.hard_nonduplicate_kind is None
+        }
+        # At least one hard nonduplicate per kind should score >= 0.20 on name similarity
+        # with some clean record in the dataset (the surface feature is present).
+        for kind in HardNonduplicateKind:
+            kind_records = [r for r in hard_records if r.hard_nonduplicate_kind is kind]
+            if not kind_records:
+                continue
+            found_confusable = False
+            for hnd in kind_records:
+                for clean in list(clean_records.values())[:50]:
+                    name_sim = normalized_similarity(
+                        hnd.identity.full_name, clean.identity.full_name
+                    )
+                    dob_match = hnd.identity.date_of_birth == clean.identity.date_of_birth
+                    id_sim = normalized_similarity(
+                        hnd.identity.national_id or "", clean.identity.national_id or ""
+                    )
+                    if name_sim >= 0.30 or dob_match or id_sim >= 0.70:
+                        found_confusable = True
+                        break
+                if found_confusable:
+                    break
+            self.assertTrue(found_confusable, f"HardNonduplicateKind.{kind.name}: no confusable surface similarity found")
+
+    def test_hard_nonduplicate_count_is_bounded(self):
+        """Should have exactly one per kind (not more) for a given config."""
+        dataset = self._dataset()
+        from collections import Counter
+        kind_counts = Counter(
+            r.hard_nonduplicate_kind
+            for r in dataset.records
+            if r.hard_nonduplicate_kind is not None
+        )
+        for kind in HardNonduplicateKind:
+            self.assertLessEqual(kind_counts[kind], 1, f"more than one hard nonduplicate for {kind.name}")
 
 
 if __name__ == "__main__":
