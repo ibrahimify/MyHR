@@ -2,14 +2,14 @@
 
 ## Supervisor Paper Package - 2026-10-29
 
-- Prepared the English supervisor-review manuscript under the final title **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**. The rendered paper contains 30 pages of main text and 34 pages in total; the abstract, references, and appendices remain outside the main-text count.
+- Prepared the English supervisor-review manuscript under the final title **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**. The rendered paper contains 31 pages of main text and 35 pages in total; the title page, abstract, references, and appendices remain outside the main-text count.
 - The paper reports the constant-feature failure as a design failure rather than a null, tie, or equivalence result. It preserves `0.3616` versus `0.3621` only as reproducible arithmetic and limits the historical-policy artifact claim to `39/72` constructed rare-legitimate histories.
 - Added 11 reproducible figures, formal progression and evaluation equations, denominator tables, artifact traceability, a one-page human decision sheet, and an English-only TDK-specific document build. The original Hungarian source templates remain unchanged outside the repository.
 - Microsoft Word rendered the authoritative DOCX and PDF. Every page was rasterized and visually inspected. The prescribed LibreOffice-based helper could not run because LibreOffice is not installed; this tooling limitation is recorded rather than hidden.
-- Local verification passed all 165 existing tests before package-specific regression tests, all three canonical experiment artifact audits, strict citation verification, and both canonical literature-artifact checks. Every audit reported `holdout_accessed: false`.
+- Local verification passed all 168 tests, all three canonical experiment artifact audits, strict citation verification, and both canonical literature-artifact checks. GitHub push and pull-request CI runs also passed for revision `94868c2`. Every artifact audit reported `holdout_accessed: false`.
 - Evidence inventory now reports 35 candidates and 444 files. The five canonical artifacts are complete; six legacy, interrupted, or unmanifested candidates remain preserved and are not cited as current authority.
 - PR #1 remains draft, mergeable, and unmerged. Issue #10 remains the scientific blocker. No issue or branch has been deleted, no protocol choice has been approved, and no holdout command has been executed.
-- Kiro CLI is not installed in the environment, so no Kiro credits were used. A fresh independent read-only agent performs the required adversarial manuscript and evidence review instead.
+- Kiro CLI is not installed in the environment, so no Kiro credits were used. A fresh independent read-only agent performed the required adversarial manuscript and evidence review instead; its duplicate-denominator, zero-positive-scenario, citation-scope, and package-provenance findings were corrected before delivery.
 
 ## Research and Citation Governance - 2026-10-29
 

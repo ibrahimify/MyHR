@@ -75,6 +75,7 @@ No AI agent can approve these decisions. A proposal is not part of the protocol 
 | [QA_CHECKLIST.md](QA_CHECKLIST.md) | Manual release and demo checks |
 | [LICENSING_AND_IP.md](LICENSING_AND_IP.md) | Licensing and intellectual-property status |
 | [RESEARCH_ISSUE_DISPOSITION.md](RESEARCH_ISSUE_DISPOSITION.md) | Evidence-based recommendations for issues #2-#11; no issue state changed |
+| [TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-10-30.md](TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-10-30.md) | Reproducibility, page-count, citation, artifact, CI, and package-integrity report for the supervisor draft |
 | [TEMPORARY_ASSET_REVIEW.md](TEMPORARY_ASSET_REVIEW.md) | Inventory and approval boundary for tracked `tmp_*` UI captures |
 
 ## Product Guides And Media

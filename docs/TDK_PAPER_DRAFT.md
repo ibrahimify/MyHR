@@ -1,9 +1,12 @@
 # MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression
 
-**Author:** Muhammad Ibrahim Shoeb  
-**Supervisor:** Dr. Husam Al-Magsoosi  
-**Institution:** Budapest University of Technology and Economics, Faculty of Electrical Engineering and Informatics  
-**Paper language:** English  
+**Author:** Muhammad Ibrahim Shoeb
+
+**Supervisor:** Dr. Husam Al-Magsoosi
+
+**Institution:** Budapest University of Technology and Economics, Faculty of Electrical Engineering and Informatics
+
+**Paper language:** English
 **Status:** Supervisor review draft, 30 October 2026
 
 ## Abstract
