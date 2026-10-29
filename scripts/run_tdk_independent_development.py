@@ -40,7 +40,7 @@ from src.research.independent_scenarios import (
 from src.services.anomaly_detection.protocol_evaluation import evaluate_scenario
 
 
-PROTOCOL_VERSION = "independent-development-v1-2026-10-16"
+PROTOCOL_VERSION = "independent-development-v2-2026-10-29"
 PROTOCOL_STATUS = "draft_independent_development_holdout_locked"
 
 
@@ -122,6 +122,8 @@ def main() -> None:
                 ),
             })
 
+        _require_primary_policy_signal(metric_rows)
+
         metadata = {
             "title": "MyHR independent development-only scenario evaluation",
             "generated_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -130,7 +132,7 @@ def main() -> None:
             "protocol_status": PROTOCOL_STATUS,
             "holdout_accessed": False,
             "run_purpose": "development",
-            "artifact_schema_version": 2,
+            "artifact_schema_version": 3,
             "truth_sidecars_required": True,
             "scenario_count": len(specs),
             "employee_count_per_scenario": args.employee_count,
@@ -189,7 +191,11 @@ def _record_truth_rows(world: IndependentWorld) -> list[dict[str, object]]:
                 event.resolved_date.isoformat() if event.resolved_date else None
             ),
             "approval_reference": event.approval_reference,
+            "approval_status": event.approval_status,
             "correction_of_event_id": event.correction_of_event_id,
+            "retry_of_event_id": event.retry_of_event_id,
+            "recognized_service_months": event.recognized_service_months,
+            "jurisdiction": event.jurisdiction,
             "level_before": event.level_before,
             "level_after": event.level_after,
             "ledger_status": (
@@ -218,6 +224,24 @@ def _record_truth_rows(world: IndependentWorld) -> list[dict[str, object]]:
     return rows
 
 
+def _require_primary_policy_signal(rows: list[dict[str, object]]) -> None:
+    primary_policy_rows = [
+        row for row in rows
+        if row["method"] == "rule_negative_isolation_forest"
+        and row["representation"] == "policy_matched"
+        and row["operating_point"] == "fixed_review_budget"
+    ]
+    if not primary_policy_rows:
+        raise RuntimeError("primary policy-aware metric rows are missing")
+    if not any(
+        int(row.get("policy_signal_nonconstant_feature_count", 0)) > 0
+        for row in primary_policy_rows
+    ):
+        raise RuntimeError(
+            "primary policy-aware features are constant across every scenario"
+        )
+
+
 def _event_ledger_rows(world: IndependentWorld) -> list[dict[str, object]]:
     return [
         _event_row(world.spec.scenario_id, employee.employee_id, event)
@@ -239,7 +263,11 @@ def _event_row(
         "effective_date": event.effective_date.isoformat(),
         "recorded_date": event.recorded_date.isoformat(),
         "approval_reference": event.approval_reference or "",
+        "approval_status": event.approval_status,
         "correction_of_event_id": event.correction_of_event_id or "",
+        "retry_of_event_id": event.retry_of_event_id or "",
+        "recognized_service_months": event.recognized_service_months,
+        "jurisdiction": event.jurisdiction,
         "level_before": event.level_before or "",
         "level_after": event.level_after or "",
         "category": "" if event.category is None else event.category,
@@ -260,7 +288,13 @@ def _policy_epoch_rows(world: IndependentWorld) -> list[dict[str, object]]:
     return [{
         "scenario_id": world.spec.scenario_id,
         "policy_id": policy.policy_id,
+        "policy_version": policy.version,
         "effective_from": policy.effective_from.isoformat(),
+        "effective_to": (
+            policy.effective_to.isoformat() if policy.effective_to else ""
+        ),
+        "recorded_at": policy.recorded_at.isoformat(),
+        "jurisdiction": policy.jurisdiction,
         "service_months_by_level_json": json.dumps(
             policy.service_months_by_level, sort_keys=True
         ),

@@ -12,7 +12,7 @@ MyHR is a standalone PySide6, SQLite, and SQLAlchemy employee-management applica
 
 The implementation now includes formal policy calculations, deterministic validation, synthetic generators, statistical baselines, raw and policy-aware Isolation Forest representations, duplicate-record detection, reproducible artifacts, checksums, statistical comparisons, literature tooling, and independent artifact auditing.
 
-The main scientific result so far is a limitation, not a victory claim. In the current independent rules-first experiment, deterministic filtering makes all three policy-specific residual features constant zero. The remaining raw-versus-policy-aware AP comparison therefore cannot test the central hypothesis. The values `0.3621` and `0.3616` are arithmetically reproducible but scientifically vacuous as evidence about policy context.
+The main scientific result so far is a limitation, not a victory claim. In the preserved 2026-10-17 independent rules-first artifact, deterministic filtering makes all three policy-specific residual features constant zero. The remaining raw-versus-policy-aware AP comparison therefore cannot test the central hypothesis. The values `0.3621` and `0.3616` are arithmetically reproducible but scientifically vacuous as evidence about policy context. The corrected implementation now uses invariant-only filtering and a family-wide feature-variation guard, but no clean-revision development or validation artifact has yet replaced that historical evidence.
 
 A second important finding is actionable: deterministic current-policy checks flagged 39 of 72 broadly labelled rare-legitimate histories. Source regeneration found that all 39 realised policy-transition histories were flagged, but the old stored artifact cannot prove that per-record mechanism attribution. This motivates a historical, bitemporal policy model while also showing why provenance must be stored in future artifacts.
 
@@ -112,7 +112,7 @@ similarity = 0.35 * name
            + 0.10 * email
 ```
 
-The current default threshold is `0.86`. This is a review suggestion, never an automatic merge.
+The legacy API used inconsistent fixed thresholds. The corrected research workflow selects the similarity threshold on validation and applies it to the entity-disjoint test partition. The detector only recommends review and never merges records automatically.
 
 ### 5.6 Operational utility
 
@@ -194,7 +194,7 @@ These AP values must not be interpreted. All policy-specific residual features a
 ### Qualified inference
 
 - Deterministic source regeneration finds 39 realised transition histories and flags all 39. The original artifact does not preserve enough per-record mechanism evidence to reproduce this statement without regeneration.
-- Historical-policy modelling is strongly motivated, but the exact bitemporal schema and HR semantics require domain approval.
+- Historical-policy modelling is strongly motivated. A research-only bitemporal schema is implemented and tested; production-database migration and final HR semantics remain unfrozen.
 
 ### Pending human decisions
 

@@ -4,9 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from hashlib import sha256
+import json
 from math import ceil, inf
 from time import perf_counter
-from .deterministic_checks import validate_record, validate_record_with_policy
+from .deterministic_checks import (
+    validate_invariant_record,
+    validate_record,
+    validate_record_with_policy,
+)
 from .features import FeatureVector, extract_policy_aware_features, extract_raw_features
 from .isolation_forest import score_isolation_forest
 from .metrics import BinaryClassificationMetrics, confusion_counts
@@ -112,18 +117,35 @@ def evaluate_scenario(
     test_truth = [record.has_progression_anomaly for record in test]
     policy_rule_started = perf_counter()
     policy_rule_train_scores = tuple(
-        float(len(validate_record_with_policy(record, scenario.policy)))
+        float(len(validate_record_with_policy(
+            record, scenario.policy, scenario.policy_epochs
+        )))
         for record in train
     )
     policy_rule_validation_scores = tuple(
-        float(len(validate_record_with_policy(record, scenario.policy)))
+        float(len(validate_record_with_policy(
+            record, scenario.policy, scenario.policy_epochs
+        )))
         for record in validation
     )
     policy_rule_scores = tuple(
-        float(len(validate_record_with_policy(record, scenario.policy)))
+        float(len(validate_record_with_policy(
+            record, scenario.policy, scenario.policy_epochs
+        )))
         for record in test
     )
     policy_rule_runtime_ms = (perf_counter() - policy_rule_started) * 1000
+    invariant_rule_started = perf_counter()
+    invariant_rule_train_scores = tuple(
+        float(len(validate_invariant_record(record))) for record in train
+    )
+    invariant_rule_validation_scores = tuple(
+        float(len(validate_invariant_record(record))) for record in validation
+    )
+    invariant_rule_scores = tuple(
+        float(len(validate_invariant_record(record))) for record in test
+    )
+    invariant_rule_runtime_ms = (perf_counter() - invariant_rule_started) * 1000
     metric_rows: list[dict[str, object]] = []
     prediction_rows: list[dict[str, object]] = []
     iforest_scores: dict[str, tuple[tuple[float, ...], tuple[float, ...], float]] = {}
@@ -171,6 +193,7 @@ def evaluate_scenario(
             validation_selection=None,
             runtime_ms=runtime_ms,
         )
+        row.update(_feature_variation_columns(test_vectors, representation))
         metric_rows.append(row)
         prediction_rows.extend(records)
         for selection in selections:
@@ -188,6 +211,7 @@ def evaluate_scenario(
                 validation_selection=selection,
                 runtime_ms=runtime_ms,
             )
+            row.update(_feature_variation_columns(test_vectors, representation))
             metric_rows.append(row)
             prediction_rows.extend(records)
 
@@ -260,6 +284,23 @@ def evaluate_scenario(
     metric_rows.append(row)
     prediction_rows.extend(records)
 
+    invariant_rule_predictions = [score > 0 for score in invariant_rule_scores]
+    row, records = _evaluation_output(
+        scenario,
+        test,
+        test_truth,
+        invariant_rule_scores,
+        invariant_rule_predictions,
+        method="deterministic_invariant_rules",
+        representation="structural_contradictions",
+        operating_point="rules_fixed",
+        threshold=0.0,
+        validation_selection=None,
+        runtime_ms=invariant_rule_runtime_ms,
+    )
+    metric_rows.append(row)
+    prediction_rows.extend(records)
+
     policy_rule_predictions = [score > 0 for score in policy_rule_scores]
     row, records = _evaluation_output(
         scenario,
@@ -281,15 +322,15 @@ def evaluate_scenario(
     for representation_name in ("raw_matched", "policy_matched"):
         representation = representations[representation_name]
         residual_train = tuple(
-            record for record, score in zip(train, policy_rule_train_scores)
+            record for record, score in zip(train, invariant_rule_train_scores)
             if score <= 0
         )
         residual_validation = tuple(
-            record for record, score in zip(validation, policy_rule_validation_scores)
+            record for record, score in zip(validation, invariant_rule_validation_scores)
             if score <= 0
         )
         residual_test = tuple(
-            record for record, score in zip(test, policy_rule_scores)
+            record for record, score in zip(test, invariant_rule_scores)
             if score <= 0
         )
         residual_validation_truth = [
@@ -308,7 +349,7 @@ def evaluate_scenario(
         ).scores
         residual_validation_scores = residual_scores[:len(validation_vectors)]
         residual_test_scores = residual_scores[len(validation_vectors):]
-        runtime_ms = (perf_counter() - started) * 1000 + policy_rule_runtime_ms
+        runtime_ms = (perf_counter() - started) * 1000 + invariant_rule_runtime_ms
         selections = (
             _select_threshold(
                 residual_validation_truth,
@@ -349,6 +390,7 @@ def evaluate_scenario(
                 validation_selection=selection,
                 runtime_ms=runtime_ms,
             )
+            row.update(_feature_variation_columns(test_vectors, representation))
             metric_rows.append(row)
             prediction_rows.extend(records)
 
@@ -424,13 +466,16 @@ def _vectors(
     for record in records:
         if representation.policy_mode == "true":
             policy = scenario.policy
+            policy_epochs = scenario.policy_epochs
         elif representation.policy_mode == "wrong":
             policy = wrong_policy
+            policy_epochs = ()
         elif representation.policy_mode == "shuffled":
             policy = _shuffled_policy(record.identity.employee_id, scenario.config.model_seed)
+            policy_epochs = ()
         else:
             raise ValueError(f"unsupported policy mode: {representation.policy_mode}")
-        vectors.append(extract_policy_aware_features(record, policy))
+        vectors.append(extract_policy_aware_features(record, policy, policy_epochs))
     return tuple(vectors)
 
 
@@ -641,6 +686,9 @@ def _evaluation_output(
     clean_count = sum(clean_mask)
     clean_flagged = sum(predicted and clean for predicted, clean in zip(predictions, clean_mask))
     alert_count = sum(predictions)
+    positive_count = sum(y_true)
+    recall_defined = positive_count > 0
+    average_precision = _average_precision(y_true, scores)
     row: dict[str, object] = {
         **_scenario_columns(scenario),
         "method": method,
@@ -648,8 +696,8 @@ def _evaluation_output(
         "operating_point": operating_point,
         "threshold": "" if threshold is None else threshold,
         "evaluation_count": len(records),
-        "positive_count": sum(y_true),
-        "negative_count": len(y_true) - sum(y_true),
+        "positive_count": positive_count,
+        "negative_count": len(y_true) - positive_count,
         "alert_count": alert_count,
         "alert_rate": _ratio(alert_count, len(records)),
         "true_positives": metrics.true_positives,
@@ -657,10 +705,14 @@ def _evaluation_output(
         "true_negatives": metrics.true_negatives,
         "false_negatives": metrics.false_negatives,
         "precision": metrics.precision,
-        "recall": metrics.recall,
+        "recall": metrics.recall if recall_defined else "",
+        "recall_defined": recall_defined,
         "f1": metrics.f1,
         "false_positive_rate": metrics.false_positive_rate,
-        "average_precision": _average_precision(y_true, scores),
+        "average_precision": "" if average_precision is None else average_precision,
+        "average_precision_defined": average_precision is not None,
+        "paired_recall_eligible": recall_defined,
+        "paired_average_precision_eligible": average_precision is not None,
         "rare_legitimate_count": rare_count,
         "rare_legitimate_flagged": rare_flagged,
         "rare_legitimate_flagged_rate": _ratio(rare_flagged, rare_count),
@@ -689,7 +741,7 @@ def _evaluation_output(
         count = sum(mask)
         found = sum(predicted and expected for predicted, expected in zip(predictions, mask))
         row[f"{anomaly_type.value}_count"] = count
-        row[f"{anomaly_type.value}_recall"] = _ratio(found, count)
+        row[f"{anomaly_type.value}_recall"] = "" if count == 0 else _ratio(found, count)
 
     prediction_rows = [{
         **_scenario_columns(scenario),
@@ -723,9 +775,41 @@ def _scenario_columns(scenario: ScenarioDataset) -> dict[str, object]:
     }
 
 
-def _average_precision(y_true: list[bool], scores: tuple[float, ...]) -> float:
+def _feature_variation_columns(
+    vectors: tuple[FeatureVector, ...],
+    representation: FeatureRepresentation,
+) -> dict[str, object]:
+    unique_counts = {
+        name: len({vector.values[name] for vector in vectors})
+        for name in representation.feature_names
+    }
+    policy_names = {
+        "policy_service_deficit_months",
+        "policy_service_deficit_ratio",
+        "policy_unexplained_short_promotion",
+    }
+    return {
+        "constant_feature_count": sum(
+            count <= 1 for count in unique_counts.values()
+        ),
+        "nonconstant_feature_count": sum(
+            count > 1 for count in unique_counts.values()
+        ),
+        "policy_signal_nonconstant_feature_count": sum(
+            unique_counts.get(name, 0) > 1 for name in policy_names
+        ),
+        "feature_unique_counts_json": json.dumps(
+            unique_counts, sort_keys=True
+        ),
+    }
+
+
+def _average_precision(
+    y_true: list[bool],
+    scores: tuple[float, ...],
+) -> float | None:
     if not any(y_true):
-        return 0.0
+        return None
     from sklearn.metrics import average_precision_score
 
     return float(average_precision_score(y_true, scores))

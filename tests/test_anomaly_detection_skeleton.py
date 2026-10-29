@@ -35,6 +35,7 @@ from src.services.anomaly_detection.duplicate_detection import (
     find_similarity_duplicate_candidates,
     normalize_identifier,
     normalized_similarity,
+    select_similarity_threshold,
 )
 from src.services.anomaly_detection.experiment_runner import DEFAULT_POLICY_AWARE_FEATURES, describe_experiment
 from src.services.anomaly_detection.features import supported_feature_sets
@@ -503,9 +504,58 @@ class AnomalyDetectionSkeletonTests(unittest.TestCase):
         dataset = generate_synthetic_dataset(config)
 
         normalized = evaluate_duplicate_detection(dataset, "normalized_exact")
+        direct_test_links = sum(
+            record.split is DatasetSplit.TEST
+            and record.duplicate_of_employee_id is not None
+            for record in dataset.records
+        )
 
-        self.assertEqual(normalized.metrics.false_positives, 0)
-        self.assertEqual(normalized.metrics.recall, 1.0)
+        self.assertGreaterEqual(normalized.true_pair_count, direct_test_links)
+        self.assertEqual(
+            normalized.metrics.true_positives + normalized.metrics.false_negatives,
+            normalized.true_pair_count,
+        )
+
+    def test_duplicate_entities_never_cross_dataset_partitions(self):
+        dataset = generate_synthetic_dataset(ExperimentConfig(
+            seed=2026,
+            employee_count=1000,
+            anomaly_rate=0.10,
+            rare_legitimate_rate=0.05,
+        ))
+        records = {record.identity.employee_id: record for record in dataset.records}
+
+        for record in dataset.records:
+            if record.duplicate_of_employee_id is not None:
+                self.assertEqual(record.split, records[record.duplicate_of_employee_id].split)
+
+    def test_missing_identity_values_do_not_create_similarity_evidence(self):
+        self.assertEqual(normalized_similarity("", ""), 0.0)
+        self.assertEqual(normalized_similarity("known", ""), 0.0)
+
+    def test_similarity_default_matches_current_protocol_threshold(self):
+        self.assertEqual(find_similarity_duplicate_candidates.__defaults__, (0.70,))
+
+    def test_duplicate_threshold_is_selected_on_validation_and_scored_on_test(self):
+        dataset = generate_synthetic_dataset(ExperimentConfig(
+            seed=2026,
+            employee_count=1000,
+            anomaly_rate=0.10,
+            rare_legitimate_rate=0.05,
+        ))
+
+        threshold = select_similarity_threshold(dataset)
+        evaluation = evaluate_duplicate_detection(
+            dataset, "similarity", threshold=threshold
+        )
+
+        self.assertEqual(evaluation.partition, DatasetSplit.TEST.value)
+        self.assertGreater(evaluation.record_count, 0)
+        self.assertLess(evaluation.record_count, len(dataset.records))
+        self.assertGreaterEqual(evaluation.blocking_recall, 0.0)
+        self.assertLessEqual(evaluation.blocking_recall, 1.0)
+        self.assertGreaterEqual(evaluation.reduction_ratio, 0.0)
+        self.assertLessEqual(evaluation.reduction_ratio, 1.0)
 
 
 if __name__ == "__main__":

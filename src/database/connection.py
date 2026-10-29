@@ -419,7 +419,7 @@ def calculate_months_remaining(
     if comm_ids:
         commendations = session.query(Commendation).filter(
             Commendation.id.in_(comm_ids),
-            Commendation.issued_at >= race_start,
+            Commendation.issued_at > race_start,
             Commendation.issued_at <= now,
         ).all()
 
@@ -429,7 +429,7 @@ def calculate_months_remaining(
     sanctions = session.query(Sanction).filter(
         Sanction.employee_id == employee.id,
         Sanction.is_resolved == False,
-        Sanction.issued_at >= race_start,
+        Sanction.issued_at > race_start,
         Sanction.issued_at <= now,
     ).all()
 
@@ -547,7 +547,7 @@ def calculate_months_remaining_batch(employees: list[Employee], session: Session
             continue
         for commendation_id in ids:
             commendation = commendations_by_id.get(commendation_id)
-            if commendation and commendation.issued_at and commendation.issued_at >= race_start:
+            if commendation and commendation.issued_at and commendation.issued_at > race_start:
                 commendation_reduction_by_employee[employee_id] += abs(commendation.months_impact)
 
     sanction_addition_by_employee = defaultdict(int)
@@ -561,7 +561,7 @@ def calculate_months_remaining_batch(employees: list[Employee], session: Session
     )
     for sanction in sanctions:
         race_start = race_start_by_employee.get(sanction.employee_id)
-        if sanction.issued_at and race_start and sanction.issued_at >= race_start:
+        if sanction.issued_at and race_start and sanction.issued_at > race_start:
             sanction_addition_by_employee[sanction.employee_id] += sanction.delay_months
 
     for employee in standard_employees:
@@ -715,7 +715,7 @@ def count_commendations_in_current_role(employee: Employee, session: Session) ->
         return 0
     return session.query(Commendation).filter(
         Commendation.id.in_(comm_ids),
-        Commendation.issued_at >= race_start
+        Commendation.issued_at > race_start
     ).count()
 
 
@@ -772,7 +772,7 @@ def count_commendations_in_current_role_batch(employees: list[Employee], session
             if (
                 commendation_id in commendations_by_id
                 and commendations_by_id[commendation_id].issued_at
-                and commendations_by_id[commendation_id].issued_at >= race_start
+                and commendations_by_id[commendation_id].issued_at > race_start
             )
         )
     return counts

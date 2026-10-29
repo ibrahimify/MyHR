@@ -54,12 +54,14 @@ def has_duplicate_identifier(identifier: str | None, seen_identifiers: set[str])
     return False
 
 
-def validate_record(record: WorkforceHistoryRecord) -> tuple[ValidationFinding, ...]:
-    """Return explicit rule findings for one workforce-history record."""
+def validate_invariant_record(
+    record: WorkforceHistoryRecord,
+) -> tuple[ValidationFinding, ...]:
+    """Return structural contradictions independent of configurable policy."""
 
     findings: list[ValidationFinding] = []
     employee_id = record.identity.employee_id
-    events = tuple(sorted(record.events, key=lambda event: (event.event_date, event.source_id)))
+    events = _visible_events(record)
     hire_events = [event for event in events if event.event_type is AdministrativeEventType.HIRE]
 
     if not hire_events:
@@ -99,7 +101,16 @@ def validate_record(record: WorkforceHistoryRecord) -> tuple[ValidationFinding, 
                 )
             )
 
-    findings.extend(_validate_promotion_sequence(record, events))
+    findings.extend(_validate_promotion_level_order(record, events))
+    return tuple(findings)
+
+
+def validate_record(record: WorkforceHistoryRecord) -> tuple[ValidationFinding, ...]:
+    """Return structural and fixed administrative-interval findings."""
+
+    events = _visible_events(record)
+    findings = list(validate_invariant_record(record))
+    findings.extend(_validate_short_promotion_intervals(record, events))
     findings.extend(_validate_salary_increment_intervals(record, events))
     return tuple(findings)
 
@@ -107,13 +118,26 @@ def validate_record(record: WorkforceHistoryRecord) -> tuple[ValidationFinding, 
 def validate_record_with_policy(
     record: WorkforceHistoryRecord,
     policy: PromotionPolicy,
+    policy_epochs: tuple[object, ...] = (),
 ) -> tuple[ValidationFinding, ...]:
     """Add explicit policy violations to the policy-agnostic checks."""
 
     from .policy_history import assess_promotion_history
 
     findings = list(validate_record(record))
-    for assessment in assess_promotion_history(record, policy):
+    for event in _events_of_type(
+        _visible_events(record), AdministrativeEventType.PROMOTION
+    ):
+        if event.approval_status == "bypassed":
+            findings.append(ValidationFinding(
+                code="promotion_approval_bypassed",
+                severity=ValidationSeverity.ERROR,
+                employee_id=record.identity.employee_id,
+                event_source_id=event.source_id,
+                message="Promotion approval workflow was explicitly bypassed.",
+                expected_anomaly_type=AnomalyType.FREQUENT_PROMOTIONS,
+            ))
+    for assessment in assess_promotion_history(record, policy, policy_epochs):
         if assessment.service_deficit_months <= 0:
             continue
         findings.append(ValidationFinding(
@@ -147,14 +171,12 @@ def summarize_findings(findings: tuple[ValidationFinding, ...]) -> dict[str, int
     return dict(Counter(finding.code for finding in findings))
 
 
-def _validate_promotion_sequence(
+def _validate_promotion_level_order(
     record: WorkforceHistoryRecord,
     events: tuple[AdministrativeEvent, ...],
 ) -> tuple[ValidationFinding, ...]:
     findings: list[ValidationFinding] = []
     promotions = _events_of_type(events, AdministrativeEventType.PROMOTION)
-    previous_promotion: AdministrativeEvent | None = None
-
     for event in promotions:
         if event.level_before and event.level_after and not _level_progresses(event.level_before, event.level_after):
             findings.append(
@@ -168,6 +190,16 @@ def _validate_promotion_sequence(
                 )
             )
 
+    return tuple(findings)
+
+
+def _validate_short_promotion_intervals(
+    record: WorkforceHistoryRecord,
+    events: tuple[AdministrativeEvent, ...],
+) -> tuple[ValidationFinding, ...]:
+    findings: list[ValidationFinding] = []
+    previous_promotion: AdministrativeEvent | None = None
+    for event in _events_of_type(events, AdministrativeEventType.PROMOTION):
         if previous_promotion is not None:
             months = _months_between(previous_promotion.event_date, event.event_date)
             if months < 12:
@@ -177,12 +209,14 @@ def _validate_promotion_sequence(
                         severity=ValidationSeverity.ERROR,
                         employee_id=record.identity.employee_id,
                         event_source_id=event.source_id,
-                        message=f"Promotion interval is {months} months, below the deterministic 12-month minimum.",
+                        message=(
+                            f"Promotion interval is {months} months, below the "
+                            "deterministic 12-month minimum."
+                        ),
                         expected_anomaly_type=AnomalyType.FREQUENT_PROMOTIONS,
                     )
                 )
         previous_promotion = event
-
     return tuple(findings)
 
 
@@ -248,6 +282,20 @@ def _events_of_type(
     event_type: AdministrativeEventType,
 ) -> tuple[AdministrativeEvent, ...]:
     return tuple(event for event in events if event.event_type is event_type)
+
+
+def _visible_events(
+    record: WorkforceHistoryRecord,
+) -> tuple[AdministrativeEvent, ...]:
+    return tuple(sorted(
+        (
+            event for event in record.events
+            if record.observation_date is None
+            or event.recorded_date is None
+            or event.recorded_date <= record.observation_date
+        ),
+        key=lambda event: (event.event_date, event.source_id),
+    ))
 
 
 def _level_progresses(level_before: str, level_after: str) -> bool:

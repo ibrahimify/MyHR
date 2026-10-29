@@ -14,7 +14,7 @@ Progression-anomaly detection and duplicate-record detection are separate tasks.
 
 The application policy engine calculates promotion service requirements, commendation credits, sanction delays, and progression eligibility. Shared golden histories test parity between SQL-backed application behavior and research calculations. Independent development scenarios additionally model fictional policy transitions, recognized prior service, delayed bulk recording, wrong-employee links, missing increment imports, approval bypasses, and batch retries.
 
-The 2026-10-17 review found that historical policy requires at least two time dimensions: the time at which a rule or fact is effective and the time at which it is recorded. The supervisor approved a bitemporal contract with policy versions, recognized service, and correction provenance for implementation; the exact schema and migration remain unimplemented and unfrozen.
+The 2026-10-17 review found that historical policy requires at least two time dimensions: the time at which a rule or fact is effective and the time at which it is recorded. The supervisor approved a bitemporal contract with policy versions, recognized service, and correction provenance. A research-only schema and historical replay implementation now exist, while production-database migration and protocol freeze remain pending.
 
 ## Synthetic Development Data
 
@@ -32,7 +32,7 @@ Raw and policy-aware representations are paired within each scenario. Wrong-poli
 
 The stored rule-negative experiment first removes all histories flagged by the policy validator. That same validator removes every positive service-deficit history, leaving all three policy-specific matched features constant at zero. Consequently, the saved policy-aware residual model has no varying policy-specific signal. Its reported AP difference cannot be interpreted as evidence for or against incremental policy context.
 
-Six of twelve independent scenarios also have no residual positives. The implementation stored AP as zero for those scenarios. Under the approved future design, zero-positive scenarios remain reported, recall and AP are marked undefined, and those scenarios do not enter paired inference for those metrics. Both defects remain preserved in the development record and must be corrected in new development runs before protocol freeze.
+Six of twelve historical independent scenarios also had no residual positives, and the old implementation stored AP as zero. The corrected code retains zero-positive scenarios and their denominators, marks recall and AP undefined, and excludes only those undefined metric values from paired inference. The old defect remains preserved in the development record; a new clean-revision development and validation run is still required before protocol freeze.
 
 ## Development Evaluation
 

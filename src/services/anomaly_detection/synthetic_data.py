@@ -119,6 +119,15 @@ class AdministrativeEvent:
     is_resolved: bool = False
     resolved_date: date | None = None
     note: str = ""
+    recorded_date: date | None = None
+    policy_id: str | None = None
+    policy_version: str | None = None
+    approval_reference: str | None = None
+    approval_status: str | None = None
+    recognized_service_months: int = 0
+    correction_of_source_id: str | None = None
+    retry_of_source_id: str | None = None
+    jurisdiction: str = "organization-wide"
 
 
 @dataclass(frozen=True)
@@ -135,6 +144,7 @@ class WorkforceHistoryRecord:
     events: tuple[AdministrativeEvent, ...]
     anomaly_labels: tuple[AnomalyType, ...] = (AnomalyType.CLEAN,)
     duplicate_of_employee_id: str | None = None
+    observation_date: date | None = None
 
     @property
     def has_anomaly(self) -> bool:
@@ -289,12 +299,19 @@ def generate_synthetic_dataset(config: ExperimentConfig) -> SyntheticDataset:
     split_by_index = _split_by_index(config.employee_count, config)
     label_plan = _label_plan(config, rng, split_by_index)
 
+    base_records = [
+        _base_record(index, split_by_index[index], rng)
+        for index in range(config.employee_count)
+    ]
+    duplicate_sources = tuple(
+        record for index, record in enumerate(base_records)
+        if label_plan[index] is not AnomalyType.DUPLICATE_RECORD
+    )
     records: list[WorkforceHistoryRecord] = []
-    for index in range(config.employee_count):
-        record = _base_record(index, split_by_index[index], rng)
+    for index, record in enumerate(base_records):
         label = label_plan[index]
         if label is not AnomalyType.CLEAN:
-            record = _apply_label(record, label, records, rng)
+            record = _apply_label(record, label, duplicate_sources, rng)
         records.append(record)
 
     metadata = SyntheticDatasetMetadata(
@@ -585,13 +602,35 @@ def _apply_label(
                 )
             )
     elif label is AnomalyType.DUPLICATE_RECORD and existing_records:
-        source = rng.choice(existing_records)
+        same_partition_sources = [
+            candidate for candidate in existing_records
+            if candidate.split is record.split
+            and candidate.identity.employee_id != record.identity.employee_id
+        ]
+        if not same_partition_sources:
+            raise ValueError("duplicate generation requires a source in the same partition")
+        source = rng.choice(same_partition_sources)
+        variant = int("".join(character for character in employee_id if character.isdigit())) % 4
         identity = EmployeeIdentity(
             employee_id=employee_id,
-            full_name=_shorten_name(source.identity.full_name),
-            date_of_birth=source.identity.date_of_birth,
-            national_id=_drop_leading_zeroes(source.identity.national_id),
-            email=_variant_email(source.identity.email),
+            full_name=(
+                _shorten_name(source.identity.full_name)
+                if variant in {0, 3}
+                else _name_typo(source.identity.full_name)
+                if variant == 1
+                else source.identity.full_name
+            ),
+            date_of_birth=(
+                _variant_birth_date(source.identity.date_of_birth)
+                if variant in {1, 3}
+                else source.identity.date_of_birth
+            ),
+            national_id=(
+                _transpose_identifier(source.identity.national_id)
+                if variant in {2, 3}
+                else _drop_leading_zeroes(source.identity.national_id)
+            ),
+            email=None if variant == 2 else _variant_email(source.identity.email),
         )
         return replace(
             record,
@@ -687,6 +726,9 @@ def _record_to_dict(record: WorkforceHistoryRecord) -> dict[str, object]:
         "events": [_event_to_dict(event) for event in record.events],
         "anomaly_labels": [label.value for label in record.anomaly_labels],
         "duplicate_of_employee_id": record.duplicate_of_employee_id,
+        "observation_date": (
+            record.observation_date.isoformat() if record.observation_date else None
+        ),
         "has_anomaly": record.has_anomaly,
     }
 
@@ -728,3 +770,23 @@ def _variant_email(value: str | None) -> str | None:
     local, _, domain = value.partition("@")
     local = local.replace(".", "")
     return f"{local}@{domain}"
+
+
+def _name_typo(value: str) -> str:
+    if len(value) < 4:
+        return value
+    return f"{value[:1]}{value[2:3]}{value[1:2]}{value[3:]}"
+
+
+def _variant_birth_date(value: date) -> date:
+    if value.day <= 12 and value.month != value.day:
+        return _safe_date(value.year, value.day, value.month)
+    return _safe_date(value.year, value.month, value.day + 1)
+
+
+def _transpose_identifier(value: str | None) -> str | None:
+    if value is None or len(value) < 2:
+        return value
+    characters = list(value)
+    characters[-1], characters[-2] = characters[-2], characters[-1]
+    return "".join(characters)

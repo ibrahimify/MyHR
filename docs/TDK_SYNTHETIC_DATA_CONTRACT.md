@@ -1,6 +1,6 @@
 # TDK Synthetic Data Contract
 
-> **Status note, 2026-10-18:** This contract documents the implemented development generators. It does not establish external validity or evidence for policy-aware model superiority. In the independent residual experiment, deterministic filtering made all three policy-specific residual features constant zero. Any redesigned residual representation, scenario eligibility rule, or holdout contract requires separate human approval before the draft protocol changes.
+> **Status note, 2026-10-29:** This contract documents development generators and the approved invariant-negative redesign. It does not establish external validity or evidence for policy-aware model superiority. The earlier independent artifact remains preserved as a failed design in which deterministic policy filtering made all three policy-specific residual features constant zero. The corrected implementation must still pass clean-revision development and validation audits before protocol freeze.
 
 Research title:
 
@@ -15,6 +15,8 @@ Each synthetic employee history contains:
 - Identity fields: employee ID, full name, date of birth, optional national ID, optional email.
 - Organizational fields: department, role, employment track, current level, hire date.
 - Administrative events: hire, promotion, commendation, sanction, salary increment, performance review, and organization change.
+- Bitemporal evidence: effective date, recorded date, policy ID and version, jurisdiction, approval status and reference, recognized service, and correction or retry provenance.
+- Observation date: the latest knowledge time available to feature extraction.
 - Dataset split: train, validation, or test.
 - Ground-truth labels: clean, injected anomaly classes, or rare legitimate policy cases.
 - Optional duplicate link: the employee ID of the source record when a record is intentionally duplicated.
@@ -55,17 +57,20 @@ The generator must keep these tracks separate because forcing every employee int
 - Metadata records the split counts and label counts.
 - True anomalies and rare legitimate policy cases are distributed across train, validation, and test splits when counts allow.
 - Duplicate records must link back to a source employee ID.
+- Every latent duplicate cluster must remain within one partition.
+- Missing identity values are absence of evidence and never receive a perfect similarity score.
 - The generator creates HR-like histories only for experimentation; it is not a claim about real employee distributions.
 
-### V2 Independent Scenario Families
+### Independent Development V2
 
-The original `tdk-synthetic-v1` generator is retained only for historical development diagnostics. Protocol v2 uses `tdk-scenario-v2`, which:
+The original `tdk-synthetic-v1` generator is retained for historical development diagnostics and the secondary duplicate task. The independent progression generator uses `independent-development-v2`, which:
 
 - uses separate dataset, split, and model seeds;
 - varies policy, workforce composition, anomaly prevalence, rare-case prevalence, and injection mechanisms;
 - generates records without calling feature extraction or model code;
-- gives ordinary clean histories overlapping commendation and sanction patterns;
-- allocates rare legitimate cases only to promotion-track employees;
+- gives ordinary legitimate histories commendations, resolved sanctions, repeated reviews, and multiple promotions where tenure permits;
+- allocates each injected mechanism only to records that can realize it without known track or timing confounds;
+- keeps effective time and recorded time separate and replays the applicable policy version;
 - verifies that every clean and rare-legitimate completed promotion satisfies its assigned policy;
 - defines development and validation matrices but deliberately defines no holdout matrix while the protocol is draft.
 
@@ -83,7 +88,7 @@ The deterministic checker is the first non-ML baseline. It reports explainable f
 - salary increment intervals below the deterministic 300-day minimum;
 - exact duplicate employee IDs or national IDs.
 
-These checks are intentionally conservative. They are designed to catch directly checkable problems, not to replace statistical anomaly detection or policy-aware machine-learning features.
+For the primary ML comparison, only structural invariants are used as a filter: missing hire evidence, events before hire, promotions on the increment-only track, and invalid level order. Fixed interval heuristics and configurable policy checks remain separate secondary baselines so they cannot consume the signal intended for the primary comparison.
 
 Protocol v2 also evaluates `deterministic_policy_rules`, which adds an explicit service-deficit check under the scenario's true policy. This stronger baseline prevents a policy-aware ML representation from receiving credit merely for reconstructing a rule that can be evaluated exactly.
 
@@ -127,4 +132,4 @@ Duplicate detection is a secondary experiment. It compares:
 - normalized exact matching on normalized national IDs and emails;
 - weighted similarity matching across name, date of birth, national ID, and email.
 
-Similarity candidates must include field-level evidence so a human reviewer can see why a pair was suggested. This keeps duplicate detection as decision support, not an automatic merge operation.
+Entity clusters remain within one split. The similarity threshold is selected on validation and applied once to test. Reports separate blocking recall and reduction ratio from candidate-scoring and end-to-end metrics, and include explicit pair and record denominators. Similarity candidates retain field-level evidence so a human reviewer can see why a pair was suggested. The detector recommends review and never merges records automatically.

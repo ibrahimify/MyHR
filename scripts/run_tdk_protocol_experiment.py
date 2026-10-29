@@ -170,7 +170,15 @@ def _aggregate_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
             "scenario_count": len(group),
         }
         for metric in SUMMARY_METRICS:
-            values = [float(row[metric]) for row in group]
+            values = [
+                float(row[metric]) for row in group
+                if row.get(metric) not in {"", None}
+            ]
+            item[f"{metric}_scenario_count"] = len(values)
+            if not values:
+                for suffix in ("mean", "median", "std", "ci95_low", "ci95_high"):
+                    item[f"{metric}_{suffix}"] = ""
+                continue
             ci_low, ci_high = _bootstrap_mean_ci(values, seed=_stable_seed(method, representation, operating_point, metric))
             item[f"{metric}_mean"] = mean(values)
             item[f"{metric}_median"] = median(values)
@@ -220,7 +228,24 @@ def _paired_comparisons(rows: list[dict[str, object]]) -> list[dict[str, object]
                 "rare_legitimate_reviews_per_1000_employees",
                 "missed_anomalies_per_1000_employees",
             ):
-                deltas = [float(policy[metric]) - float(raw[metric]) for raw, policy in pairs]
+                eligible_pairs = [
+                    (raw, policy) for raw, policy in pairs
+                    if raw.get(metric) not in {"", None}
+                    and policy.get(metric) not in {"", None}
+                ]
+                deltas = [
+                    float(policy[metric]) - float(raw[metric])
+                    for raw, policy in eligible_pairs
+                ]
+                item[f"{metric}_scenario_count"] = len(deltas)
+                if not deltas:
+                    for suffix in (
+                        "delta_mean", "delta_median", "delta_std",
+                        "delta_ci95_low", "delta_ci95_high",
+                        "delta_sign_flip_p",
+                    ):
+                        item[f"{metric}_{suffix}"] = ""
+                    continue
                 ci_low, ci_high = _bootstrap_mean_ci(
                     deltas,
                     seed=_stable_seed(method, operating_point, metric),
@@ -239,7 +264,7 @@ def _paired_comparisons(rows: list[dict[str, object]]) -> list[dict[str, object]
         (item, key)
         for item in comparisons
         for key in item
-        if key.endswith("_delta_sign_flip_p")
+        if key.endswith("_delta_sign_flip_p") and item[key] != ""
     ]
     adjusted = _holm_adjusted_pvalues([
         float(item[key]) for item, key in pvalue_locations

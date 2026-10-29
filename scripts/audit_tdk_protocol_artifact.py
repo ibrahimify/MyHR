@@ -86,6 +86,7 @@ def audit_artifact(run_dir: Path, repo_root: Path | None = None) -> dict[str, An
         run_dir,
         prediction_rows,
         required=metadata.get("truth_sidecars_required") is True,
+        protocol_version=str(metadata.get("protocol_version", "")),
     )
 
     scenarios = {row["scenario_id"] for row in metric_rows}
@@ -138,8 +139,16 @@ def _verify_source_revision(metadata: dict[str, Any], repo_root: Path) -> None:
         raise ArtifactAuditError("artifact was not generated from a clean worktree")
     revision = provenance.get("git_commit")
     hashes = provenance.get("source_sha256", {})
-    if not revision or not isinstance(hashes, dict):
+    if not revision or not isinstance(hashes, dict) or not hashes:
         raise ArtifactAuditError("source revision provenance is incomplete")
+    revision_check = subprocess.run(
+        ["git", "rev-parse", "--verify", f"{revision}^{{commit}}"],
+        cwd=repo_root,
+        check=False,
+        capture_output=True,
+    )
+    if revision_check.returncode != 0:
+        raise ArtifactAuditError("source revision is not a resolvable commit")
     for relative_path, expected in hashes.items():
         result = subprocess.run(
             ["git", "show", f"{revision}:{relative_path}"],
@@ -180,7 +189,11 @@ def _verify_declared_matrix(
 
 
 def _expected_metric_suffixes(protocol_version: str) -> set[tuple[str, str, str]] | None:
-    if protocol_version != "independent-development-v1-2026-10-16":
+    supported = {
+        "independent-development-v1-2026-10-16",
+        "independent-development-v2-2026-10-29",
+    }
+    if protocol_version not in supported:
         return None
     validation_points = {"fixed_review_budget", "validation_f1", "validation_target_fpr"}
     paired_methods = {"iqr", "z_score", "rule_negative_isolation_forest"}
@@ -209,6 +222,12 @@ def _expected_metric_suffixes(protocol_version: str) -> set[tuple[str, str, str]
         ("deterministic_rules", "explicit_checks", "rules_fixed"),
         ("deterministic_policy_rules", "true_policy_checks", "rules_fixed"),
     })
+    if protocol_version == "independent-development-v2-2026-10-29":
+        result.add((
+            "deterministic_invariant_rules",
+            "structural_contradictions",
+            "rules_fixed",
+        ))
     return result
 
 
@@ -224,6 +243,8 @@ def _verify_scenario_metrics(
         raise ArtifactAuditError("duplicate scenario metric rows")
     if set(predictions) != set(metric_keys):
         raise ArtifactAuditError("prediction groups do not match scenario metric rows")
+
+    _verify_primary_pair_populations(predictions)
 
     for stored in metric_rows:
         rows = predictions.get(_key(stored), [])
@@ -258,9 +279,21 @@ def _verify_scenario_metrics(
         for column, actual in counts.items():
             if int(stored[column]) != actual:
                 raise ArtifactAuditError(f"{column} mismatch for {_key(stored)}")
+        positive_count = counts["positive_count"]
+        has_defined_flags = "recall_defined" in stored
+        if has_defined_flags:
+            if _parse_bool(stored["recall_defined"]) != (positive_count > 0):
+                raise ArtifactAuditError(f"recall eligibility mismatch for {_key(stored)}")
+            if _parse_bool(stored["average_precision_defined"]) != (positive_count > 0):
+                raise ArtifactAuditError(
+                    f"average-precision eligibility mismatch for {_key(stored)}"
+                )
+            if positive_count == 0 and (stored["recall"] or stored["average_precision"]):
+                raise ArtifactAuditError(
+                    f"undefined metrics must be blank for {_key(stored)}"
+                )
         rates = {
             "precision": _ratio(tp, tp + fp),
-            "recall": _ratio(tp, tp + fn),
             "f1": _ratio(2 * tp, 2 * tp + fp + fn),
             "false_positive_rate": _ratio(fp, fp + tn),
             "alert_rate": _ratio(sum(predicted), len(rows)),
@@ -270,16 +303,88 @@ def _verify_scenario_metrics(
             "ordinary_clean_flagged_rate": _ratio(
                 counts["ordinary_clean_flagged"], counts["ordinary_clean_count"]
             ),
-            "average_precision": _average_precision(truth, scores),
             "anomalies_found_per_100_reviews": 100 * _ratio(tp, sum(predicted)),
             "rare_legitimate_reviews_per_1000_employees": 1000 * _ratio(
                 counts["rare_legitimate_flagged"], len(rows)
             ),
             "missed_anomalies_per_1000_employees": 1000 * _ratio(fn, len(rows)),
         }
+        if positive_count > 0 or not has_defined_flags:
+            rates["recall"] = _ratio(tp, tp + fn)
+            rates["average_precision"] = _average_precision(truth, scores)
         for column, actual in rates.items():
             if abs(float(stored[column]) - actual) > 1e-12:
                 raise ArtifactAuditError(f"{column} mismatch for {_key(stored)}")
+
+
+def _verify_primary_pair_populations(
+    predictions: dict[tuple[str, str, str, str], list[dict[str, str]]],
+) -> None:
+    """Verify that the primary raw and policy models see identical records."""
+
+    scenario_points = {
+        (scenario_id, operating_point)
+        for scenario_id, method, representation, operating_point in predictions
+        if method == "rule_negative_isolation_forest"
+        and representation in {"raw_matched", "policy_matched"}
+    }
+    for scenario_id, operating_point in scenario_points:
+        raw = predictions.get((
+            scenario_id,
+            "rule_negative_isolation_forest",
+            "raw_matched",
+            operating_point,
+        ))
+        policy = predictions.get((
+            scenario_id,
+            "rule_negative_isolation_forest",
+            "policy_matched",
+            operating_point,
+        ))
+        if raw is None or policy is None:
+            raise ArtifactAuditError("primary raw/policy prediction group is incomplete")
+        raw_by_id = {row["employee_id"]: row for row in raw}
+        policy_by_id = {row["employee_id"]: row for row in policy}
+        if set(raw_by_id) != set(policy_by_id):
+            raise ArtifactAuditError("primary raw/policy populations are not identical")
+        for employee_id in raw_by_id:
+            raw_row = raw_by_id[employee_id]
+            policy_row = policy_by_id[employee_id]
+            if (
+                raw_row["ground_truth_anomaly"]
+                != policy_row["ground_truth_anomaly"]
+                or raw_row["labels"] != policy_row["labels"]
+            ):
+                raise ArtifactAuditError("primary raw/policy truth rows are not aligned")
+        if operating_point == "fixed_review_budget":
+            raw_alerts = sum(_parse_bool(row["predicted_anomaly"]) for row in raw)
+            policy_alerts = sum(
+                _parse_bool(row["predicted_anomaly"]) for row in policy
+            )
+            if raw_alerts != policy_alerts:
+                raise ArtifactAuditError("primary raw/policy review budgets differ")
+            _verify_top_score_selection(raw, raw_alerts)
+            _verify_top_score_selection(policy, policy_alerts)
+
+
+def _verify_top_score_selection(
+    rows: list[dict[str, str]],
+    alert_count: int,
+) -> None:
+    ranked = sorted(
+        rows,
+        key=lambda row: (
+            -_parse_float(row["score"], "score"),
+            sha256(row["employee_id"].encode("utf-8")).digest(),
+        ),
+    )
+    expected = {row["employee_id"] for row in ranked[:alert_count]}
+    actual = {
+        row["employee_id"] for row in rows
+        if _parse_bool(row["predicted_anomaly"])
+    }
+    if actual != expected:
+        raise ArtifactAuditError("fixed-budget predictions are not top-score selections")
 
 
 def _verify_aggregates(
@@ -305,7 +410,19 @@ def _verify_aggregates(
             if int(stored[f"{column}_total"]) != sum(int(row[column]) for row in rows):
                 raise ArtifactAuditError(f"aggregate {column} mismatch for {key}")
         for column in RATE_COLUMNS:
-            actual = mean(float(row[column]) for row in rows)
+            values = [float(row[column]) for row in rows if row[column] != ""]
+            if f"{column}_scenario_count" in stored:
+                if int(stored[f"{column}_scenario_count"]) != len(values):
+                    raise ArtifactAuditError(
+                        f"aggregate {column} eligibility count mismatch for {key}"
+                    )
+            if not values:
+                if stored[f"{column}_mean"]:
+                    raise ArtifactAuditError(
+                        f"aggregate undefined {column} must be blank for {key}"
+                    )
+                continue
+            actual = mean(values)
             if abs(float(stored[f"{column}_mean"]) - actual) > 1e-12:
                 raise ArtifactAuditError(f"aggregate {column} mismatch for {key}")
 
@@ -334,6 +451,10 @@ def _verify_paired_comparisons(
         for column, actual in item.items():
             if column in {"method", "operating_point"}:
                 continue
+            if actual == "":
+                if stored[column] != "":
+                    raise ArtifactAuditError(f"paired {column} must be blank for {key}")
+                continue
             if column == "scenario_count":
                 if int(stored[column]) != actual:
                     raise ArtifactAuditError(f"paired {column} mismatch for {key}")
@@ -346,6 +467,7 @@ def _verify_truth_sidecars(
     prediction_rows: list[dict[str, str]],
     *,
     required: bool = False,
+    protocol_version: str = "",
 ) -> dict[str, Any]:
     names = ("record_truth.csv", "administrative_events.csv", "policy_epochs.csv")
     existing = [name for name in names if (run_dir / name).is_file()]
@@ -373,14 +495,55 @@ def _verify_truth_sidecars(
     if len(set(policy_keys)) != len(policy_keys):
         raise ArtifactAuditError("duplicate policy epoch rows")
     policy_key_set = set(policy_keys)
+    policy_by_key = {}
+    require_bitemporal = protocol_version == "independent-development-v2-2026-10-29"
     for row in policy_rows:
-        _parse_iso_date(row["effective_from"], "policy effective_from")
+        effective_from = _parse_iso_date(row["effective_from"], "policy effective_from")
+        if require_bitemporal:
+            required_columns = {
+                "policy_version", "effective_to", "recorded_at", "jurisdiction"
+            }
+            if not required_columns.issubset(row):
+                raise ArtifactAuditError("bitemporal policy columns are incomplete")
+            effective_to = (
+                _parse_iso_date(row["effective_to"], "policy effective_to")
+                if row["effective_to"] else None
+            )
+            recorded_at = _parse_iso_date(row["recorded_at"], "policy recorded_at")
+            if effective_to is not None and effective_to < effective_from:
+                raise ArtifactAuditError("policy effective interval is reversed")
+            if not row["policy_version"] or not row["jurisdiction"]:
+                raise ArtifactAuditError("policy version or jurisdiction is empty")
+            policy_by_key[(row["scenario_id"], row["policy_id"])] = {
+                "effective_from": effective_from,
+                "effective_to": effective_to,
+                "recorded_at": recorded_at,
+                "jurisdiction": row["jurisdiction"],
+                "grandfather": _parse_bool(row["grandfather_previous_policy"]),
+            }
         try:
             service = json.loads(row["service_months_by_level_json"])
         except json.JSONDecodeError as exc:
             raise ArtifactAuditError("invalid policy service mapping JSON") from exc
         if not isinstance(service, dict) or not service:
             raise ArtifactAuditError("policy service mapping is empty")
+
+    if require_bitemporal:
+        epochs_by_scenario: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for (scenario_id, _), epoch in policy_by_key.items():
+            epochs_by_scenario[scenario_id].append(epoch)
+        for scenario_id, epochs in epochs_by_scenario.items():
+            ordered = sorted(epochs, key=lambda epoch: epoch["effective_from"])
+            for previous, current in zip(ordered, ordered[1:]):
+                previous_end = previous["effective_to"]
+                if previous_end is None or current["effective_from"] <= previous_end:
+                    raise ArtifactAuditError(
+                        f"policy epochs overlap in {scenario_id}"
+                    )
+                if (current["effective_from"] - previous_end).days != 1:
+                    raise ArtifactAuditError(
+                        f"policy epochs have a gap in {scenario_id}"
+                    )
 
     event_keys = set()
     events_by_key: dict[tuple[str, str, str], dict[str, str]] = {}
@@ -398,12 +561,60 @@ def _verify_truth_sidecars(
         event_keys.add(event_key)
         events_by_key[event_key] = row
         events_by_employee[employee_key].append(row)
-        _parse_iso_date(row["effective_date"], "event effective_date")
-        _parse_iso_date(row["recorded_date"], "event recorded_date")
+        effective_date = _parse_iso_date(row["effective_date"], "event effective_date")
+        recorded_date = _parse_iso_date(row["recorded_date"], "event recorded_date")
+        if recorded_date < effective_date:
+            raise ArtifactAuditError("event was recorded before it became effective")
+        if require_bitemporal:
+            for column in (
+                "recognized_service_months",
+                "jurisdiction",
+                "approval_status",
+                "retry_of_event_id",
+            ):
+                if column not in row:
+                    raise ArtifactAuditError("bitemporal event columns are incomplete")
+            if int(row["recognized_service_months"]) < 0:
+                raise ArtifactAuditError("recognized service cannot be negative")
+            policy_epoch = policy_by_key[policy_key]
+            in_interval = (
+                policy_epoch["effective_from"] <= effective_date
+                and (
+                    policy_epoch["effective_to"] is None
+                    or effective_date <= policy_epoch["effective_to"]
+                )
+            )
+            if not in_interval and not policy_epoch["grandfather"]:
+                raise ArtifactAuditError("event policy is not effective for event date")
+            if policy_epoch["recorded_at"] > recorded_date:
+                raise ArtifactAuditError("event uses a policy version not yet recorded")
+            if row["jurisdiction"] != policy_epoch["jurisdiction"]:
+                raise ArtifactAuditError("event and policy jurisdictions differ")
+            if row["approval_status"] not in {"approved", "bypassed"}:
+                raise ArtifactAuditError("event approval status is invalid")
+            if (
+                row["approval_status"] == "bypassed"
+                and row["approval_reference"]
+            ):
+                raise ArtifactAuditError("bypassed event retains approval evidence")
         if row["resolved_date"]:
             _parse_iso_date(row["resolved_date"], "event resolved_date")
         if row["category"]:
             int(row["category"])
+
+    for row in event_rows:
+        correction_id = row.get("correction_of_event_id", "")
+        retry_id = row.get("retry_of_event_id", "")
+        if correction_id and retry_id:
+            raise ArtifactAuditError("event cannot be both a correction and a retry")
+        if correction_id and (
+            row["scenario_id"], row["employee_id"], correction_id
+        ) not in events_by_key:
+            raise ArtifactAuditError("event correction target does not exist")
+        if retry_id and (
+            row["scenario_id"], row["employee_id"], retry_id
+        ) not in events_by_key:
+            raise ArtifactAuditError("event retry target does not exist")
 
     for row in truth_rows:
         if not row["truth_category"] or not row["realized_mechanism"]:
@@ -478,8 +689,9 @@ def _verify_truth_sidecars(
         "causal_evidence",
         "causal_events_json",
     }
-    if prediction_rows and forbidden_prediction_fields.intersection(prediction_rows[0]):
-        raise ArtifactAuditError("truth-only fields leaked into prediction rows")
+    for row in prediction_rows:
+        if forbidden_prediction_fields.intersection(row):
+            raise ArtifactAuditError("truth-only fields leaked into prediction rows")
     return {
         "present": True,
         "record_truth_rows": len(truth_rows),
@@ -534,10 +746,24 @@ def _recompute_paired_comparisons(
                 "scenario_count": len(pairs),
             }
             for metric in PAIR_METRICS:
-                deltas = [
-                    _parse_float(policy[metric], metric) - _parse_float(raw[metric], metric)
-                    for raw, policy in pairs
+                eligible_pairs = [
+                    (raw, policy) for raw, policy in pairs
+                    if raw[metric] != "" and policy[metric] != ""
                 ]
+                deltas = [
+                    _parse_float(policy[metric], metric)
+                    - _parse_float(raw[metric], metric)
+                    for raw, policy in eligible_pairs
+                ]
+                item[f"{metric}_scenario_count"] = len(deltas)
+                if not deltas:
+                    for suffix in (
+                        "delta_mean", "delta_median", "delta_std",
+                        "delta_ci95_low", "delta_ci95_high",
+                        "delta_sign_flip_p",
+                    ):
+                        item[f"{metric}_{suffix}"] = ""
+                    continue
                 ci_low, ci_high = _bootstrap_mean_ci(
                     deltas, _stable_seed(method, operating_point, metric)
                 )
@@ -555,7 +781,7 @@ def _recompute_paired_comparisons(
         (item, key)
         for item in comparisons
         for key in item
-        if key.endswith("_delta_sign_flip_p")
+        if key.endswith("_delta_sign_flip_p") and item[key] != ""
     ]
     adjusted = _holm_adjusted_pvalues([
         float(item[key]) for item, key in pvalue_locations

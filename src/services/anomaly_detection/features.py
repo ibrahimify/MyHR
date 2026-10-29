@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import date
 
-from .policy_history import PromotionPolicyAssessment, assess_promotion_history
+from .policy_history import PolicyEpoch, PromotionPolicyAssessment, assess_promotion_history
 from .policy_model import PromotionPolicy
 from .synthetic_data import AdministrativeEvent, AdministrativeEventType, EmploymentTrack, WorkforceHistoryRecord
 
@@ -52,13 +52,14 @@ def extract_raw_features(record: WorkforceHistoryRecord) -> FeatureVector:
 def extract_policy_aware_features(
     record: WorkforceHistoryRecord,
     policy: PromotionPolicy | None = None,
+    policy_epochs: tuple[PolicyEpoch, ...] = (),
 ) -> FeatureVector:
     """Extract features that condition raw history on explicit progression policy."""
 
     policy = policy or PromotionPolicy()
     raw = extract_raw_features(record).values
     events = _sorted_events(record)
-    assessments = assess_promotion_history(record, policy)
+    assessments = assess_promotion_history(record, policy, policy_epochs)
     service_context = _promotion_service_context(assessments)
 
     values = dict(raw)
@@ -129,7 +130,13 @@ def _promotion_service_context(
 
 
 def _sorted_events(record: WorkforceHistoryRecord) -> tuple[AdministrativeEvent, ...]:
-    return tuple(sorted(record.events, key=lambda event: (event.event_date, event.source_id)))
+    visible = (
+        event for event in record.events
+        if record.observation_date is None
+        or event.recorded_date is None
+        or event.recorded_date <= record.observation_date
+    )
+    return tuple(sorted(visible, key=lambda event: (event.event_date, event.source_id)))
 
 
 def _events_of_type(

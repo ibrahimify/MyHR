@@ -1,5 +1,18 @@
 # TDK Autonomous Research Roadmap
 
+## Data And Test Correctness Milestone - 2026-10-29
+
+- The external audit allegations were independently reproduced at baseline revision `32633d2`; exact counts, corrections, and remaining limitations are recorded in `TDK_DATA_TEST_CORRECTNESS_AUDIT_2026-10-29.md`.
+- The primary residual pipeline now uses invariant-only filtering, identical residual populations, and equal additional ML review capacity. Invariant rules, configurable policy rules, and the complete workflow remain separately reported.
+- Zero-positive scenarios remain in denominator tables while recall and AP are explicitly undefined and excluded from paired inference only under recorded eligibility flags.
+- Independent scenarios now realize their declared interventions: omissions remove records, approval bypass is explicit and unconfounded by service or track, event visibility respects recorded time, and ordinary legitimate histories contain varied administrative activity.
+- Historical replay now carries policy versions and valid/recorded times, jurisdiction, approval evidence, recognized service, and separate correction/retry provenance. Applicable historical policy replaces latest-policy replay for research features.
+- Duplicate entities are partition-contained; thresholds are selected on validation and evaluated on test; missing values provide no similarity evidence; blocking and scoring denominators are reported separately.
+- The artifact auditor now rejects empty source provenance and verifies primary population identity, truth alignment, equal budgets, top-score selection, bitemporal consistency, and provenance links.
+- A development-only 12-scenario smoke matrix completed and passed the family-wide feature-variation guard. Its artifact is intentionally uncertified because it was generated from an uncommitted worktree; it is not evidence for the paper.
+- Remaining blockers include latent-person-first duplicate generation, explicit hard-nonduplicate mechanisms, dedicated correction scenarios, duplicate runtime/memory evidence, blinded expert review, clean-revision development and validation artifacts, exact environment freeze, and dated protocol-freeze approval.
+- The final holdout was not generated, inspected, scored, or unlocked. PR #1 remains draft and unmerged.
+
 ## Supervisor Methodology Decisions - 2026-10-29
 
 - The supervisor decisions relayed by Muhammad Ibrahim Shoeb approve the methodology for implementation; they do not freeze the protocol or unlock the holdout.
@@ -9,7 +22,7 @@
 - A bitemporal contract is approved for implementation, including policy versions, effective and recorded times, recognized service, and correction provenance.
 - The realism review uses two independent reviewers with complementary HR-policy and information-systems expertise, blinded to labels and model scores, with preserved initial judgments, agreement reporting, evidence-based adjudication, and retained ambiguity.
 - The final holdout matrix must be independently specified across policy transitions, lawful exceptions, administrative errors, populations, and repeated seeds, with causal truth outside model inputs.
-- Next unblocked milestone: implement the approved invariant-rule boundary, equal-capacity endpoint, bitemporal contract, scenario truth ledger, and tests. The holdout remains locked until a separately approved protocol freeze.
+- Next unblocked milestone: independently audit the clean-revision implementation, generate new versioned development and validation artifacts, and close the remaining generator and duplicate-evaluation gaps. The holdout remains locked until a separately approved protocol freeze.
 - Documentation synchronization passed an independent read-only audit after stale AP-primary, pending-decision, reviewer-sample, and residual-population wording was corrected. All 168 tests and strict citation verification passed; no experiment or holdout-like path was accessed.
 
 ## Supervisor Paper Package - 2026-10-29

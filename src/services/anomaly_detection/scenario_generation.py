@@ -14,6 +14,10 @@ from datetime import date, timedelta
 from hashlib import sha256
 import json
 from random import Random
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .policy_history import PolicyEpoch
 
 from .policy_model import PromotionPolicy
 from .synthetic_data import (
@@ -98,6 +102,7 @@ class ScenarioDataset:
     policy: PromotionPolicy
     population: PopulationProfile
     dataset: SyntheticDataset
+    policy_epochs: tuple["PolicyEpoch", ...] = ()
 
 
 def policy_profiles() -> dict[str, PromotionPolicy]:

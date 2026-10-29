@@ -101,7 +101,7 @@ The original MyHR generator and policy-aware detector share policy concepts. Thi
 
 Administrative systems must distinguish when a fact or policy is effective in the modeled world from when it is recorded in the database. Bitemporal research calls these valid time and transaction time [15]. The distinction supports historical reconstruction, corrections, and auditability. It is directly relevant to promotions decided under an earlier policy, recognized service recorded later, and administrative corrections entered after an event.
 
-The present application and research adapter do not yet implement the full approved temporal contract. Independent scenarios intentionally expose the resulting failure by creating lawful histories under previous policy conditions while the detector replays the current policy. This is a constructed counterexample, not a prevalence estimate. A production design requires human approval of policy versions, jurisdiction, effective and recorded dates, recognized-service evidence, and correction provenance.
+The preserved development artifact predates the approved temporal contract and intentionally exposes the failure created by replaying current policy over lawful historical decisions. This is a constructed counterexample, not a prevalence estimate. The corrected research adapter now carries policy versions, jurisdiction, effective and recorded dates, recognized-service evidence, and correction or retry provenance, and replays the applicable historical policy. Production database migration and final protocol freeze remain pending.
 
 ### 2.7 Human Review and Duplicate Detection
 
@@ -161,7 +161,7 @@ Research calculations must agree with the actual application on shared histories
 
 ### 3.7 Temporal Limitation
 
-Current policy replay is insufficient for historical decisions. A record should retain the policy identifier, valid interval, recorded interval, jurisdiction, recognized service, and correction provenance required to reconstruct what an authorized reviewer knew at the time. The supervisor approved this bitemporal direction for implementation, but the schema and migration are not yet implemented or frozen. The paper therefore treats historical policy as a discovered requirement rather than an implemented production claim.
+Current policy replay is insufficient for historical decisions. The corrected research record retains the policy identifier and version, valid and recorded times, jurisdiction, recognized service, approval evidence, and correction or retry provenance required to reconstruct what an authorized reviewer knew at the time. This is an implemented research contract, not yet a migrated production schema or frozen confirmatory protocol.
 
 ## 4 Research Methodology
 
@@ -296,7 +296,7 @@ Scenarios with no positive Y_s remain in denominator tables, while recall and AP
 
 Rare-legitimate workload is reported with its own denominator. Let L_s be the set of legitimate exceptional histories. The rare-legitimate flagged rate is |A_s,r intersect L_s| / |L_s|. This rate does not replace total false positives. A method can reduce alerts in L_s while increasing alerts among ordinary-clean histories. The original validation residual experiment demonstrates exactly this transfer.
 
-The estimand is approved for implementation, but the current policy-specific residual features still do not vary because the historical filter removed the relevant signal. The formulas above describe the redesigned comparison; they do not convert the current development artifact into confirmatory evidence or freeze the future implementation.
+The estimand is implemented in the development code with invariant-only filtering, identical residual populations, and equal additional review capacity. The historical artifact still has constant policy-specific features and remains invalid for this estimand. The formulas above do not convert that artifact into confirmatory evidence; a clean-revision development and validation run, independent audit, and protocol freeze remain required.
 
 ### 4.14 Reproducibility and Artifact Audit
 
@@ -528,7 +528,7 @@ The approved primary design retains a residual task after removing only invarian
 
 The end-to-end rules-plus-ML review queue remains a secondary operational analysis. It measures the system a client would use, but it is reported separately because rules can dominate the queue and obscure the incremental contribution of the ML representation.
 
-The invariant rule set, bitemporal schema, scenario matrix, zero-positive treatment, exact secondary analysis family, dependencies, and source revision still require implementation and freeze before protected generation.
+The invariant rule boundary, research bitemporal schema, equal-capacity primary endpoint, and zero-positive treatment are implemented and covered by regression tests. The scenario matrix, explicit correction cases, duplicate latent-person design, exact secondary analysis family, dependencies, source revision, expert review, and protocol still require independent verification and freeze before protected generation.
 
 The approval refines the hypothesis after inspecting development diagnostics; it does not convert those diagnostics into confirmatory evidence. New development and validation runs must test the redesigned pipeline. The scenario specification, feature family, endpoint, capacity, seeds, and analysis must then be frozen before protected generation.
 
@@ -543,8 +543,8 @@ The same principle applies to explanations. A reviewer should see which facts ar
 | Generator-detector circularity | Independent simulator, controls, preserved negative findings | Approved review method not yet executed; conceptual realism unverified |
 | Test-threshold leakage | Validation-only thresholds | Deployment calibration unresolved |
 | Favorable seed selection | Recorded seed matrix and write-once artifacts | More replicated scenario seeds needed |
-| Missing denominators | Counts and pooled/scenario metrics stored | Approved zero-positive rule not yet implemented |
-| Historical policy replay | Constructed counterexamples and approved bitemporal direction | Production temporal schema not implemented |
+| Missing denominators | Counts and pooled/scenario metrics stored; undefined recall/AP eligibility implemented | New clean-revision artifacts not yet independently certified |
+| Historical policy replay | Research bitemporal contract and golden replay tests implemented | Production temporal schema and correction-case matrix not frozen |
 | Citation overstatement | Provenance registry and claim ledger | Two references remain metadata-only |
 | External validity | Fictional data protect privacy | No organizational validation |
 | Human over-trust | Review-only design and evidence display | Usability and automation-bias study not conducted |
@@ -557,7 +557,7 @@ The development experiments do not establish the expected advantage. Instead, th
 
 The most actionable finding concerns historical policy. Deterministic validation flagged 39 of 72 constructed rare-legitimate histories, with source regeneration attributing the flagged cases to realized policy transitions that the original artifact cannot independently identify per record. This demonstrates a missing historical-policy contract and motivates effective-time and recorded-time modelling. It does not estimate real-world error prevalence.
 
-The next step is to implement the approved redesign: invariant-only filtering, equal additional ML capacity, recall as the primary endpoint, the bitemporal policy contract, the blinded expert-review method, and an independently specified holdout matrix. After replicated development and validation checks, the dependencies, analysis, and source revision require a separate dated freeze approval. Only then may the locked holdout run once. A final conclusion must report whatever that holdout shows, including a negative result.
+The next step is to independently audit the corrected implementation and generate versioned development and validation evidence from a clean revision. Remaining work includes a latent-person-first duplicate generator, explicit hard nonduplicates and correction cases, duplicate runtime and memory measures, the blinded expert-realism review, and the independently specified holdout matrix. After replicated checks, the dependencies, analysis, and source revision require a separate dated freeze approval. Only then may the locked holdout run once. A final conclusion must report whatever that holdout shows, including a negative result.
 
 Duplicate detection remains a useful secondary experiment, and evidence-rich explanation remains a product contribution. Neither substitutes for a valid central anomaly-detection experiment. The present paper therefore offers a reproducible research platform, an honest diagnosis of a failed comparison, and a concrete path to a stronger confirmatory study.
 
@@ -609,8 +609,8 @@ No holdout command is included. The holdout runner remains unavailable until the
 ## Appendix B Recorded Decisions and Pending Freeze Work
 
 1. Implement invariant-only filtering for the primary residual comparison and report the complete workflow secondarily.
-2. Implement recall at fixed equal additional review capacity as primary, with AP secondary and predeclared zero-positive handling.
-3. Implement the bitemporal policy and evidence contract with recognized service and correction provenance.
+2. Independently verify recall at fixed equal additional review capacity as primary, with AP secondary and predeclared zero-positive handling.
+3. Independently verify the research bitemporal policy and evidence contract, then freeze explicit correction scenarios and the production-migration boundary.
 4. Nominate the two complementary reviewers and freeze the sample, agreement statistic, and adjudication form.
 5. Freeze the independently specified holdout matrix with repeated seeds and detector-inaccessible causal truth.
 6. Freeze exact dependencies, analysis code, configuration, and source revision after independent verification.

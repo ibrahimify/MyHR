@@ -7,7 +7,7 @@ from string import digits
 from typing import Callable, Iterable
 
 from .metrics import BinaryClassificationMetrics
-from .synthetic_data import SyntheticDataset, WorkforceHistoryRecord
+from .synthetic_data import DatasetSplit, SyntheticDataset, WorkforceHistoryRecord
 
 
 DUPLICATE_METHODS = (
@@ -34,6 +34,28 @@ class DuplicateEvaluation:
     threshold: float | None
     candidates: tuple[DuplicateCandidate, ...]
     metrics: BinaryClassificationMetrics
+    partition: str
+    record_count: int
+    total_pair_count: int
+    blocked_pair_count: int
+    true_pair_count: int
+    blocked_true_pair_count: int
+    candidate_metrics: BinaryClassificationMetrics
+    candidate_average_precision: float | None
+
+    @property
+    def blocking_recall(self) -> float:
+        return (
+            self.blocked_true_pair_count / self.true_pair_count
+            if self.true_pair_count else 0.0
+        )
+
+    @property
+    def reduction_ratio(self) -> float:
+        return (
+            1.0 - self.blocked_pair_count / self.total_pair_count
+            if self.total_pair_count else 0.0
+        )
 
 
 def normalized_similarity(left: str, right: str) -> float:
@@ -41,6 +63,8 @@ def normalized_similarity(left: str, right: str) -> float:
 
     left_norm = normalize_text(left)
     right_norm = normalize_text(right)
+    if not left_norm or not right_norm:
+        return 0.0
     return SequenceMatcher(None, left_norm, right_norm).ratio()
 
 
@@ -97,7 +121,7 @@ def find_normalized_exact_duplicate_candidates(
 
 def find_similarity_duplicate_candidates(
     records: tuple[WorkforceHistoryRecord, ...],
-    threshold: float = 0.86,
+    threshold: float = 0.70,
 ) -> tuple[DuplicateCandidate, ...]:
     """Find likely duplicates with weighted similarity across identity fields."""
 
@@ -106,7 +130,11 @@ def find_similarity_duplicate_candidates(
     candidates: list[DuplicateCandidate] = []
     for left, right in _blocked_similarity_pairs(records):
         name_score = normalized_similarity(left.identity.full_name, right.identity.full_name)
-        dob_match = left.identity.date_of_birth == right.identity.date_of_birth
+        dob_match = (
+            left.identity.date_of_birth is not None
+            and right.identity.date_of_birth is not None
+            and left.identity.date_of_birth == right.identity.date_of_birth
+        )
         national_id_score = _identifier_similarity(left.identity.national_id, right.identity.national_id)
         email_score = normalized_similarity(left.identity.email or "", right.identity.email or "")
         score = (
@@ -136,11 +164,13 @@ def find_similarity_duplicate_candidates(
 def evaluate_duplicate_detection(
     dataset: SyntheticDataset,
     method: str,
-    threshold: float = 0.86,
+    threshold: float = 0.70,
+    split: DatasetSplit = DatasetSplit.TEST,
 ) -> DuplicateEvaluation:
-    """Evaluate duplicate detection against synthetic duplicate ground truth."""
+    """Evaluate duplicate detection on one entity-disjoint partition."""
 
-    records = dataset.records
+    records = tuple(record for record in dataset.records if record.split is split)
+    scored_candidates: tuple[DuplicateCandidate, ...] = ()
     if method == "exact":
         candidates = find_exact_duplicate_candidates(records)
         threshold_used = None
@@ -148,18 +178,44 @@ def evaluate_duplicate_detection(
         candidates = find_normalized_exact_duplicate_candidates(records)
         threshold_used = None
     elif method == "similarity":
-        candidates = find_similarity_duplicate_candidates(records, threshold)
+        scored_candidates = _scored_similarity_candidates(records)
+        candidates = tuple(
+            candidate for candidate in scored_candidates
+            if candidate.score >= threshold
+        )
         threshold_used = threshold
     else:
         raise ValueError(f"Unsupported duplicate detection method: {method}")
 
     predicted_pairs = {_pair_key(candidate.left_employee_id, candidate.right_employee_id) for candidate in candidates}
     true_pairs = _true_duplicate_pairs(records)
+    blocked_pairs = {
+        _pair_key(left.identity.employee_id, right.identity.employee_id)
+        for left, right in _blocked_similarity_pairs(records)
+    }
     true_positives = len(predicted_pairs & true_pairs)
     false_positives = len(predicted_pairs - true_pairs)
     false_negatives = len(true_pairs - predicted_pairs)
     total_pairs = len(records) * (len(records) - 1) // 2
     true_negatives = total_pairs - true_positives - false_positives - false_negatives
+    blocked_true_pairs = blocked_pairs & true_pairs
+    candidate_metrics = confusion_counts_for_pairs(
+        predicted_pairs,
+        blocked_true_pairs,
+        len(blocked_pairs),
+    )
+    candidate_average_precision = None
+    if scored_candidates and blocked_true_pairs:
+        from sklearn.metrics import average_precision_score
+
+        candidate_average_precision = float(average_precision_score(
+            [
+                _pair_key(candidate.left_employee_id, candidate.right_employee_id)
+                in blocked_true_pairs
+                for candidate in scored_candidates
+            ],
+            [candidate.score for candidate in scored_candidates],
+        ))
     return DuplicateEvaluation(
         method=method,
         threshold=threshold_used,
@@ -170,6 +226,57 @@ def evaluate_duplicate_detection(
             true_negatives=true_negatives,
             false_negatives=false_negatives,
         ),
+        partition=split.value,
+        record_count=len(records),
+        total_pair_count=total_pairs,
+        blocked_pair_count=len(blocked_pairs),
+        true_pair_count=len(true_pairs),
+        blocked_true_pair_count=len(blocked_pairs & true_pairs),
+        candidate_metrics=candidate_metrics,
+        candidate_average_precision=candidate_average_precision,
+    )
+
+
+def select_similarity_threshold(
+    dataset: SyntheticDataset,
+    split: DatasetSplit = DatasetSplit.VALIDATION,
+) -> float:
+    """Select a similarity threshold from one non-test partition by F1."""
+
+    records = tuple(record for record in dataset.records if record.split is split)
+    scored = _scored_similarity_candidates(records)
+    if not scored:
+        raise ValueError("similarity threshold selection requires blocked pairs")
+    true_pairs = _true_duplicate_pairs(records)
+    thresholds = sorted({candidate.score for candidate in scored}, reverse=True)
+    selections = []
+    for threshold in thresholds:
+        predicted = {
+            _pair_key(candidate.left_employee_id, candidate.right_employee_id)
+            for candidate in scored
+            if candidate.score >= threshold
+        }
+        metrics = confusion_counts_for_pairs(predicted, true_pairs, len(scored))
+        selections.append((metrics.f1, metrics.precision, metrics.recall, threshold))
+    return max(selections)[3]
+
+
+def confusion_counts_for_pairs(
+    predicted_pairs: set[tuple[str, str]],
+    true_pairs: set[tuple[str, str]],
+    candidate_pair_count: int,
+) -> BinaryClassificationMetrics:
+    """Return candidate-set metrics without counting unblocked pairs as negatives."""
+
+    true_positives = len(predicted_pairs & true_pairs)
+    false_positives = len(predicted_pairs - true_pairs)
+    false_negatives = len(true_pairs - predicted_pairs)
+    true_negatives = candidate_pair_count - true_positives - false_positives
+    return BinaryClassificationMetrics(
+        true_positives=true_positives,
+        false_positives=false_positives,
+        true_negatives=max(true_negatives, 0),
+        false_negatives=false_negatives,
     )
 
 
@@ -251,10 +358,17 @@ def _blocked_similarity_pairs(
     records_by_id = {record.identity.employee_id: record for record in records}
     groups: dict[object, list[str]] = {}
     for record in records:
-        groups.setdefault(("dob", record.identity.date_of_birth), []).append(record.identity.employee_id)
+        if record.identity.date_of_birth is not None:
+            groups.setdefault(("dob", record.identity.date_of_birth), []).append(record.identity.employee_id)
         normalized_id = normalize_identifier(record.identity.national_id)
         if normalized_id:
             groups.setdefault(("national_id", normalized_id), []).append(record.identity.employee_id)
+        normalized_name = normalize_text(record.identity.full_name)
+        if normalized_name:
+            groups.setdefault(("name", normalized_name), []).append(record.identity.employee_id)
+            groups.setdefault(
+                ("first_name", normalized_name.split()[0]), []
+            ).append(record.identity.employee_id)
     for employee_ids in groups.values():
         if len(employee_ids) < 2:
             continue
@@ -282,3 +396,9 @@ def _identifier_similarity(left: str | None, right: str | None) -> float:
     if left_digits and right_digits and left_digits == right_digits:
         return 0.95
     return normalized_similarity(left_normalized, right_normalized)
+
+
+def _scored_similarity_candidates(
+    records: tuple[WorkforceHistoryRecord, ...],
+) -> tuple[DuplicateCandidate, ...]:
+    return find_similarity_duplicate_candidates(records, threshold=0.0)

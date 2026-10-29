@@ -8,6 +8,8 @@ from pathlib import Path
 
 from src.research.independent_scenario_adapter import adapt_independent_world
 from src.research.independent_scenarios import (
+    REFERENCE_DATE,
+    IndependentEventKind,
     IndependentScenarioSpec,
     IndependentSplit,
     TruthCategory,
@@ -20,6 +22,7 @@ from src.services.anomaly_detection.deterministic_checks import validate_record_
 from scripts.run_tdk_independent_development import (
     _event_ledger_rows,
     _policy_epoch_rows,
+    _require_primary_policy_signal,
     _record_truth_rows,
     _staged_artifact_directory,
 )
@@ -28,6 +31,21 @@ from scripts.audit_tdk_protocol_artifact import _verify_truth_sidecars
 
 
 class IndependentScenarioTests(unittest.TestCase):
+    def test_primary_feature_guard_rejects_family_wide_policy_collapse(self):
+        row = {
+            "method": "rule_negative_isolation_forest",
+            "representation": "policy_matched",
+            "operating_point": "fixed_review_budget",
+            "policy_signal_nonconstant_feature_count": 0,
+        }
+
+        with self.assertRaisesRegex(RuntimeError, "constant"):
+            _require_primary_policy_signal([row])
+
+        _require_primary_policy_signal([
+            {**row, "policy_signal_nonconstant_feature_count": 1}
+        ])
+
     def test_staged_artifact_is_published_only_after_success(self):
         with tempfile.TemporaryDirectory() as directory:
             final_dir = Path(directory) / "artifact_123"
@@ -105,7 +123,111 @@ class IndependentScenarioTests(unittest.TestCase):
         self.assertEqual(len(specs), 12)
         self.assertEqual({spec.population for spec in specs}, set(population_families()))
         self.assertEqual({spec.mechanism for spec in specs}, set(anomaly_mechanisms()))
+        self.assertEqual(
+            {(spec.population, spec.mechanism) for spec in specs},
+            {
+                (population, mechanism)
+                for population in population_families()
+                for mechanism in anomaly_mechanisms()
+            },
+        )
         self.assertTrue(all(spec.run_purpose == "independent_development" for spec in specs))
+
+    def test_every_error_realizes_its_declared_mechanism_without_known_confounds(self):
+        for spec in independent_scenario_matrix(employee_count=120):
+            world = generate_independent_world(spec)
+            employees = {employee.employee_id: employee for employee in world.employees}
+            errors = [
+                entry for entry in world.truth
+                if entry.category not in {
+                    TruthCategory.ORDINARY_LEGITIMATE,
+                    TruthCategory.RARE_LEGITIMATE,
+                }
+            ]
+            self.assertTrue(errors, spec.scenario_id)
+            for entry in errors:
+                self.assertEqual(entry.realized_mechanism, spec.mechanism)
+                self.assertTrue(entry.causal_events)
+                if spec.mechanism == "missing_increment_import":
+                    employee_event_ids = {
+                        event.event_id for event in employees[entry.employee_id].events
+                    }
+                    self.assertTrue(all(
+                        event.kind is IndependentEventKind.SALARY_INCREMENT
+                        and event.event_id not in employee_event_ids
+                        for event in entry.causal_events
+                    ))
+                elif spec.mechanism == "approval_bypass":
+                    employee = employees[entry.employee_id]
+                    self.assertEqual(employee.track.value, "progression")
+                    for event in entry.causal_events:
+                        self.assertIsNone(event.approval_reference)
+                        self.assertEqual(event.approval_status, "bypassed")
+                        service_months = (
+                            (event.effective_date.year - employee.hire_date.year) * 12
+                            + event.effective_date.month - employee.hire_date.month
+                        )
+                        self.assertGreaterEqual(service_months, 36)
+            if spec.mechanism == "approval_bypass":
+                scenario = adapt_independent_world(world)
+                error_ids = {entry.employee_id for entry in errors}
+                for record in scenario.dataset.records:
+                    if record.identity.employee_id not in error_ids:
+                        continue
+                    codes = {
+                        finding.code for finding in validate_record_with_policy(
+                            record, scenario.policy, scenario.policy_epochs
+                        )
+                    }
+                    self.assertIn("promotion_approval_bypassed", codes)
+                    self.assertNotIn("promotion_policy_service_deficit", codes)
+                    self.assertNotIn("promotion_on_other_track", codes)
+
+    def test_observable_events_do_not_extend_beyond_reference_date(self):
+        for spec in independent_scenario_matrix(employee_count=120):
+            world = generate_independent_world(spec)
+            for employee in world.employees:
+                for event in employee.events:
+                    self.assertLessEqual(event.effective_date, REFERENCE_DATE)
+                    self.assertLessEqual(event.recorded_date, REFERENCE_DATE)
+
+    def test_ordinary_legitimate_histories_include_realistic_event_variety(self):
+        worlds = [
+            generate_independent_world(spec)
+            for spec in independent_scenario_matrix(employee_count=120)
+        ]
+        truth_by_world = [
+            {entry.employee_id: entry for entry in world.truth}
+            for world in worlds
+        ]
+        ordinary_events = [
+            event
+            for world, truth_by_employee in zip(worlds, truth_by_world)
+            for employee in world.employees
+            if truth_by_employee[employee.employee_id].category
+            is TruthCategory.ORDINARY_LEGITIMATE
+            for event in employee.events
+        ]
+
+        self.assertTrue(any(
+            event.kind is IndependentEventKind.COMMENDATION
+            for event in ordinary_events
+        ))
+        self.assertTrue(any(
+            event.kind is IndependentEventKind.SANCTION
+            for event in ordinary_events
+        ))
+        ordinary_review_counts = [
+            sum(
+                event.kind is IndependentEventKind.PERFORMANCE_REVIEW
+                for event in employee.events
+            )
+            for world, truth_by_employee in zip(worlds, truth_by_world)
+            for employee in world.employees
+            if truth_by_employee[employee.employee_id].category
+            is TruthCategory.ORDINARY_LEGITIMATE
+        ]
+        self.assertTrue(any(count > 1 for count in ordinary_review_counts))
 
     def test_holdout_purpose_is_not_defined(self):
         spec = replace(independent_scenario_matrix(employee_count=120)[0], run_purpose="holdout")
@@ -207,7 +329,22 @@ class IndependentScenarioTests(unittest.TestCase):
             for row in truth_with_omission
             for event in json.loads(row["causal_events_json"])
         ]
-        self.assertTrue(any(event["ledger_status"] == "omitted" for event in causal_events))
+        omission_rows = [
+            row for row in truth_with_omission
+            if row["nominal_anomaly_mechanism"] == "missing_increment_import"
+            and row["truth_category"] not in {
+                TruthCategory.ORDINARY_LEGITIMATE.value,
+                TruthCategory.RARE_LEGITIMATE.value,
+            }
+        ]
+        self.assertTrue(omission_rows)
+        self.assertTrue(all(
+            all(
+                event["ledger_status"] == "omitted"
+                for event in json.loads(row["causal_events_json"])
+            )
+            for row in omission_rows
+        ))
 
     def test_adapter_preserves_residual_errors_for_incremental_evaluation(self):
         specs = [

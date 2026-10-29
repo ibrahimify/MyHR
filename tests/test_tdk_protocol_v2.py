@@ -1,16 +1,25 @@
 import ast
 import unittest
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
-from src.services.anomaly_detection.features import extract_policy_aware_features
-from src.services.anomaly_detection.deterministic_checks import validate_record_with_policy
+from src.services.anomaly_detection.features import (
+    extract_policy_aware_features,
+    extract_raw_features,
+)
+from src.services.anomaly_detection.deterministic_checks import (
+    validate_invariant_record,
+    validate_record_with_policy,
+)
+from src.services.anomaly_detection.policy_history import PolicyEpoch, assess_promotion_history
 from src.services.anomaly_detection.policy_model import (
     PromotionPolicy,
     PromotionRaceInput,
     calculate_promotion_race,
 )
 from src.services.anomaly_detection.protocol_evaluation import (
+    _evaluation_output,
     _rules_first_budget_predictions,
     _select_cascade_threshold,
     _select_threshold,
@@ -47,6 +56,195 @@ def _imported_modules(source: str) -> set[str]:
 
 
 class SharedPolicyContractTests(unittest.TestCase):
+    def test_recorded_time_controls_snapshot_feature_visibility(self):
+        base = WorkforceHistoryRecord(
+            identity=EmployeeIdentity(
+                employee_id="EMP-RECORDED",
+                full_name="Recorded Time",
+                date_of_birth=date(1990, 1, 1),
+                national_id="RECORDED-1",
+            ),
+            employment_track=EmploymentTrack.PROMOTION,
+            current_level="L7",
+            department="Operations",
+            role="Specialist",
+            hire_date=date(2020, 1, 1),
+            events=(
+                AdministrativeEvent(
+                    AdministrativeEventType.HIRE,
+                    date(2020, 1, 1),
+                    "HIRE",
+                    recorded_date=date(2020, 1, 2),
+                ),
+                AdministrativeEvent(
+                    AdministrativeEventType.SANCTION,
+                    date(2025, 1, 1),
+                    "SANCTION",
+                    category=1,
+                    recorded_date=date(2027, 1, 1),
+                ),
+            ),
+            split=DatasetSplit.TEST,
+            anomaly_labels=(AnomalyType.CLEAN,),
+            observation_date=date(2026, 12, 31),
+        )
+
+        before_correction = extract_raw_features(base).values
+        visible_event = replace(
+            base.events[1], recorded_date=date(2025, 1, 2)
+        )
+        after_correction = extract_raw_features(
+            replace(base, events=(base.events[0], visible_event))
+        ).values
+
+        self.assertEqual(before_correction["sanction_count"], 0.0)
+        self.assertEqual(after_correction["sanction_count"], 1.0)
+
+    def test_commendation_on_promotion_date_is_not_reused_in_next_race(self):
+        record = WorkforceHistoryRecord(
+            identity=EmployeeIdentity(
+                employee_id="EMP-BOUNDARY",
+                full_name="Boundary Example",
+                date_of_birth=date(1990, 1, 1),
+                national_id="BOUNDARY-1",
+            ),
+            employment_track=EmploymentTrack.PROMOTION,
+            current_level="L5",
+            department="Operations",
+            role="Specialist",
+            hire_date=date(2018, 1, 1),
+            events=(
+                AdministrativeEvent(
+                    AdministrativeEventType.HIRE, date(2018, 1, 1), "HIRE"
+                ),
+                AdministrativeEvent(
+                    AdministrativeEventType.COMMENDATION,
+                    date(2021, 1, 1),
+                    "COMM-ON-PROMOTION",
+                    category=2,
+                ),
+                AdministrativeEvent(
+                    AdministrativeEventType.PROMOTION,
+                    date(2021, 1, 1),
+                    "PROM-1",
+                    level_before="L7",
+                    level_after="L6",
+                ),
+                AdministrativeEvent(
+                    AdministrativeEventType.PROMOTION,
+                    date(2024, 1, 1),
+                    "PROM-2",
+                    level_before="L6",
+                    level_after="L5",
+                ),
+            ),
+            split=DatasetSplit.TEST,
+            anomaly_labels=(AnomalyType.CLEAN,),
+        )
+
+        assessments = assess_promotion_history(record, PromotionPolicy())
+
+        self.assertEqual(assessments[0].commendation_credit_months, 3)
+        self.assertEqual(assessments[1].commendation_credit_months, 0)
+
+    def test_invariant_filter_does_not_consume_configurable_service_deficit(self):
+        record = WorkforceHistoryRecord(
+            identity=EmployeeIdentity(
+                employee_id="EMP-POLICY-ONLY",
+                full_name="Policy Only",
+                date_of_birth=date(1990, 1, 1),
+                national_id="POLICY-ONLY-1",
+            ),
+            employment_track=EmploymentTrack.PROMOTION,
+            current_level="L6",
+            department="Operations",
+            role="Specialist",
+            hire_date=date(2020, 1, 1),
+            events=(
+                AdministrativeEvent(
+                    AdministrativeEventType.HIRE, date(2020, 1, 1), "HIRE"
+                ),
+                AdministrativeEvent(
+                    AdministrativeEventType.PROMOTION,
+                    date(2022, 1, 1),
+                    "PROM",
+                    level_before="L7",
+                    level_after="L6",
+                ),
+            ),
+            split=DatasetSplit.TEST,
+            anomaly_labels=(AnomalyType.FREQUENT_PROMOTIONS,),
+        )
+
+        self.assertEqual(validate_invariant_record(record), ())
+        self.assertTrue(validate_record_with_policy(record, PromotionPolicy()))
+
+    def test_historical_promotion_uses_effective_policy_epoch(self):
+        record = WorkforceHistoryRecord(
+            identity=EmployeeIdentity(
+                employee_id="EMP-HISTORICAL",
+                full_name="Historical Policy",
+                date_of_birth=date(1990, 1, 1),
+                national_id="HISTORICAL-1",
+            ),
+            employment_track=EmploymentTrack.PROMOTION,
+            current_level="L6",
+            department="Operations",
+            role="Specialist",
+            hire_date=date(2020, 1, 1),
+            events=(
+                AdministrativeEvent(
+                    AdministrativeEventType.HIRE,
+                    date(2020, 1, 1),
+                    "HIRE",
+                    recorded_date=date(2020, 1, 2),
+                    policy_id="legacy",
+                ),
+                AdministrativeEvent(
+                    AdministrativeEventType.PROMOTION,
+                    date(2022, 7, 1),
+                    "PROM",
+                    level_before="L7",
+                    level_after="L6",
+                    recorded_date=date(2022, 7, 2),
+                    policy_id="legacy",
+                ),
+            ),
+            split=DatasetSplit.TEST,
+            anomaly_labels=(AnomalyType.CLEAN,),
+        )
+        legacy = PromotionPolicy(service_months_by_level={"L7": 30})
+        current = PromotionPolicy(service_months_by_level={"L7": 36})
+        epochs = (
+            PolicyEpoch(
+                policy_id="legacy",
+                version="1.0",
+                valid_from=date(2018, 1, 1),
+                valid_to=date(2022, 12, 31),
+                recorded_at=date(2017, 12, 1),
+                jurisdiction="organization-wide",
+                policy=legacy,
+            ),
+            PolicyEpoch(
+                policy_id="current",
+                version="2.0",
+                valid_from=date(2023, 1, 1),
+                valid_to=None,
+                recorded_at=date(2022, 10, 1),
+                jurisdiction="organization-wide",
+                policy=current,
+            ),
+        )
+
+        self.assertEqual(
+            assess_promotion_history(record, current)[0].service_deficit_months,
+            6,
+        )
+        self.assertEqual(
+            assess_promotion_history(record, current, epochs)[0].service_deficit_months,
+            0,
+        )
+
     def test_application_database_does_not_import_research_package(self):
         source = Path("src/database/connection.py").read_text(encoding="utf-8")
         imported_modules = _imported_modules(source)
@@ -360,6 +558,10 @@ class ValidationProtocolTests(unittest.TestCase):
         self.assertIn("wrong_policy_control", representations)
         self.assertIn("shuffled_policy_control", representations)
         self.assertTrue(any(row["method"] == "deterministic_rules" for row in result.metric_rows))
+        self.assertTrue(any(
+            row["method"] == "deterministic_invariant_rules"
+            for row in result.metric_rows
+        ))
         self.assertTrue(any(row["method"] == "deterministic_policy_rules" for row in result.metric_rows))
         cascade_rows = [
             row for row in result.metric_rows
@@ -379,6 +581,52 @@ class ValidationProtocolTests(unittest.TestCase):
             int(row["alert_count"]) >= rule_alerts
             for row in cascade_rows
         ))
+
+        primary_predictions = [
+            row for row in result.prediction_rows
+            if row["method"] == "rule_negative_isolation_forest"
+            and row["operating_point"] == "fixed_review_budget"
+            and row["representation"] in {"raw_matched", "policy_matched"}
+        ]
+        ids_by_representation = {
+            representation: {
+                row["employee_id"] for row in primary_predictions
+                if row["representation"] == representation
+            }
+            for representation in ("raw_matched", "policy_matched")
+        }
+        self.assertEqual(
+            ids_by_representation["raw_matched"],
+            ids_by_representation["policy_matched"],
+        )
+
+    def test_zero_positive_metrics_are_explicitly_undefined(self):
+        scenario = generate_scenario_dataset(
+            scenario_matrix("development", count=1, employee_count=120)[0]
+        )
+        records = tuple(
+            record for record in scenario.dataset.records
+            if record.split is DatasetSplit.TEST
+        )[:3]
+
+        row, _ = _evaluation_output(
+            scenario,
+            records,
+            [False, False, False],
+            (0.3, 0.2, 0.1),
+            [True, False, False],
+            method="contract_probe",
+            representation="raw_matched",
+            operating_point="fixed_review_budget",
+            threshold=None,
+            validation_selection=None,
+            runtime_ms=0.0,
+        )
+
+        self.assertFalse(row["recall_defined"])
+        self.assertFalse(row["average_precision_defined"])
+        self.assertEqual(row["recall"], "")
+        self.assertEqual(row["average_precision"], "")
 
 
 if __name__ == "__main__":

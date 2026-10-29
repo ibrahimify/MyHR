@@ -27,6 +27,7 @@ from src.services.anomaly_detection import (
     evaluate_duplicate_detection,
     generate_synthetic_dataset,
     run_isolation_forest,
+    select_similarity_threshold,
     sklearn_is_available,
 )
 from src.services.anomaly_detection.experiment_runner import (
@@ -51,6 +52,7 @@ def main() -> None:
         rare_legitimate_rate=args.rare_legitimate_rate,
     )
     dataset = generate_synthetic_dataset(config)
+    duplicate_threshold = select_similarity_threshold(dataset)
 
     report: dict[str, Any] = {
         "experiment": {
@@ -70,7 +72,11 @@ def main() -> None:
         "duplicate_detection": [
             _duplicate_evaluation_to_dict(evaluate_duplicate_detection(dataset, "exact")),
             _duplicate_evaluation_to_dict(evaluate_duplicate_detection(dataset, "normalized_exact")),
-            _duplicate_evaluation_to_dict(evaluate_duplicate_detection(dataset, "similarity", threshold=0.70)),
+            _duplicate_evaluation_to_dict(
+                evaluate_duplicate_detection(
+                    dataset, "similarity", threshold=duplicate_threshold
+                )
+            ),
         ],
     }
 

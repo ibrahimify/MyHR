@@ -280,7 +280,9 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
             "provenance": {
                 "git_commit": "HEAD",
                 "git_dirty": False,
-                "source_sha256": {},
+                "source_sha256": {
+                    "AGENTS.md": sha256(Path("AGENTS.md").read_bytes()).hexdigest(),
+                },
             },
         }
         (run_dir / "metadata.json").write_text(

@@ -12,6 +12,7 @@ from .policy_model import (
     PromotionRaceOutcome,
     calculate_promotion_race,
 )
+from .policy_history import PolicyEpoch
 from .synthetic_data import (
     AdministrativeEvent,
     AdministrativeEventType,
@@ -34,6 +35,7 @@ from .deterministic_checks import (
     ValidationSeverity,
     summarize_findings,
     validate_dataset,
+    validate_invariant_record,
     validate_record,
     validate_record_with_policy,
 )
@@ -44,6 +46,7 @@ from .duplicate_detection import (
     find_exact_duplicate_candidates,
     find_normalized_exact_duplicate_candidates,
     find_similarity_duplicate_candidates,
+    select_similarity_threshold,
     normalize_identifier,
     normalize_text,
     normalized_similarity,
@@ -107,6 +110,7 @@ __all__ = [
     "IsolationForestUnavailableError",
     "MethodEvaluation",
     "PromotionPolicy",
+    "PolicyEpoch",
     "PromotionRaceInput",
     "PromotionRaceOutcome",
     "PopulationProfile",
@@ -134,6 +138,7 @@ __all__ = [
     "find_exact_duplicate_candidates",
     "find_normalized_exact_duplicate_candidates",
     "find_similarity_duplicate_candidates",
+    "select_similarity_threshold",
     "generate_synthetic_dataset",
     "generate_scenario_dataset",
     "normalize_identifier",
@@ -153,6 +158,7 @@ __all__ = [
     "feature_representations",
     "split_indices",
     "validate_dataset",
+    "validate_invariant_record",
     "validate_record",
     "validate_record_with_policy",
 ]

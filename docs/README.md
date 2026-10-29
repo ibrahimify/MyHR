@@ -6,10 +6,10 @@ This index separates current authority, dated evidence, derivative summaries, pe
 
 1. [Research handover](RESEARCH_HANDOVER.md) - beginner-friendly synthesis of the research and its present limits. It is a derivative snapshot, not the live status authority.
 2. [Autonomous research roadmap](TDK_AUTONOMOUS_RESEARCH_ROADMAP.md) - sole live ledger for current status, blockers, validation, and next actions.
-3. [Independent methodology review](TDK_INDEPENDENT_REVIEW_2026-10-17.md) - dated adversarial review of revision `697344a`; read it with the later remediation sources identified below.
-4. [Supervisor methodology decisions](TDK_SUPERVISOR_DECISIONS_2026-10-29.md) - approved design direction and the remaining implementation and freeze gate.
-5. [Supervisor decision sheet](TDK_SUPERVISOR_DECISION_SHEET.md) - concise record of the six decisions.
-6. [Experiment protocol](TDK_EXPERIMENT_PROTOCOL.md) - draft normative boundary. Its methodology is approved for implementation, but it is not implemented or frozen and the holdout remains locked.
+3. [Data and test correctness audit](TDK_DATA_TEST_CORRECTNESS_AUDIT_2026-10-29.md) - reproduced generator, evaluation, duplicate, temporal, and test defects; records corrections and remaining gaps.
+4. [Independent methodology review](TDK_INDEPENDENT_REVIEW_2026-10-17.md) - dated adversarial review of revision `697344a`; read it with the later remediation sources identified below.
+5. [Supervisor methodology decisions](TDK_SUPERVISOR_DECISIONS_2026-10-29.md) - approved design direction and the remaining implementation and freeze gate.
+6. [Experiment protocol](TDK_EXPERIMENT_PROTOCOL.md) - draft normative boundary. Approved components are partly implemented, but independent clean-revision verification and freeze remain pending; the holdout is locked.
 
 Use the [ChatGPT research tutor prompt](CHATGPT_RESEARCH_TUTOR_PROMPT.md) to begin a guided course through the repository.
 
@@ -18,7 +18,8 @@ Use the [ChatGPT research tutor prompt](CHATGPT_RESEARCH_TUTOR_PROMPT.md) to beg
 | Document | Role | Status and interpretation |
 | --- | --- | --- |
 | [TDK_AUTONOMOUS_RESEARCH_ROADMAP.md](TDK_AUTONOMOUS_RESEARCH_ROADMAP.md) | Live research status ledger | Current authority for completed work, blockers, validation evidence, and next actions |
-| [TDK_EXPERIMENT_PROTOCOL.md](TDK_EXPERIMENT_PROTOCOL.md) | Normative experiment boundary | Methodology approved for implementation; implementation and freeze pending; final holdout locked |
+| [TDK_EXPERIMENT_PROTOCOL.md](TDK_EXPERIMENT_PROTOCOL.md) | Normative experiment boundary | Methodology approved; foundational implementation completed; independent clean-revision verification and freeze pending; final holdout locked |
+| [TDK_DATA_TEST_CORRECTNESS_AUDIT_2026-10-29.md](TDK_DATA_TEST_CORRECTNESS_AUDIT_2026-10-29.md) | Reproduced data, test, temporal, duplicate, and evaluation defects plus remediation | Current dated corrective audit; does not establish favorable results or holdout readiness |
 | [TDK_INDEPENDENT_SCENARIO_SPEC.md](TDK_INDEPENDENT_SCENARIO_SPEC.md) | Independent development scenario specification | Current implemented specification; does not authorize holdout work |
 | [TDK_RESEARCH_VERIFICATION.md](TDK_RESEARCH_VERIFICATION.md) | Verification and artifact interpretation | Current operational guidance |
 | [RESEARCH_EVIDENCE_PRESERVATION.md](RESEARCH_EVIDENCE_PRESERVATION.md) | Read-only evidence inventory and retention boundary | Current maintenance guidance; does not authorize deletion |

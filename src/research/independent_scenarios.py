@@ -49,7 +49,11 @@ class TruthCategory(str, Enum):
 @dataclass(frozen=True)
 class IndependentPolicyCard:
     policy_id: str
+    version: str
     effective_from: date
+    effective_to: date | None
+    recorded_at: date
+    jurisdiction: str
     service_months_by_level: dict[str, int]
     grandfather_previous_policy: bool
 
@@ -95,7 +99,11 @@ class IndependentEvent:
     category: int | None = None
     resolved_date: date | None = None
     approval_reference: str | None = None
+    approval_status: str = "approved"
     correction_of_event_id: str | None = None
+    retry_of_event_id: str | None = None
+    recognized_service_months: int = 0
+    jurisdiction: str = "organization-wide"
 
 
 @dataclass(frozen=True)
@@ -176,12 +184,22 @@ def generate_independent_world(spec: IndependentScenarioSpec) -> IndependentWorl
     spec.validate()
     policies = _policy_cards()
     split_by_index = _split_assignments(spec)
-    truth_plan = _truth_plan(spec, split_by_index)
+    base_employees = tuple(
+        _base_employee(
+            index,
+            split_by_index[index],
+            spec,
+            policies,
+            Random(spec.seed * 100_003 + index * 97),
+        )
+        for index in range(spec.employee_count)
+    )
+    truth_plan = _truth_plan(spec, base_employees)
     employees = []
     truth = []
-    for index in range(spec.employee_count):
+    for index, base_employee in enumerate(base_employees):
         rng = Random(spec.seed * 100_003 + index * 97)
-        employee = _base_employee(index, split_by_index[index], spec, policies, rng)
+        employee = base_employee
         category = truth_plan[index]
         mechanism = "none"
         realized_mechanism = "none"
@@ -214,14 +232,22 @@ def generate_independent_world(spec: IndependentScenarioSpec) -> IndependentWorl
 def _policy_cards() -> tuple[IndependentPolicyCard, ...]:
     return (
         IndependentPolicyCard(
-            "legacy-2018",
-            date(2018, 1, 1),
+            "legacy-pre-2023",
+            "1.0",
+            date(2010, 1, 1),
+            date(2022, 12, 31),
+            date(2009, 12, 1),
+            "organization-wide",
             {"L7": 30, "L6": 30, "L5": 42, "L4": 48, "L3": 54, "L2": 60},
             True,
         ),
         IndependentPolicyCard(
             "reform-2023",
+            "2.0",
             date(2023, 1, 1),
+            None,
+            date(2022, 10, 1),
+            "organization-wide",
             {"L7": 36, "L6": 36, "L5": 42, "L4": 48, "L3": 54, "L2": 60},
             True,
         ),
@@ -245,15 +271,41 @@ def _split_assignments(spec: IndependentScenarioSpec) -> dict[int, IndependentSp
 
 def _truth_plan(
     spec: IndependentScenarioSpec,
-    split_by_index: dict[int, IndependentSplit],
+    employees: tuple[IndependentEmployeeLedger, ...],
 ) -> dict[int, TruthCategory]:
-    result = {index: TruthCategory.ORDINARY_LEGITIMATE for index in split_by_index}
+    result = {
+        index: TruthCategory.ORDINARY_LEGITIMATE
+        for index in range(len(employees))
+    }
     rng = Random(spec.seed + 41)
     for split in IndependentSplit:
-        indices = [index for index, assigned in split_by_index.items() if assigned is split]
-        rng.shuffle(indices)
+        indices = [
+            index for index, employee in enumerate(employees)
+            if employee.split is split
+        ]
         error_count = max(2, round(len(indices) * spec.error_rate))
         rare_count = max(2, round(len(indices) * spec.rare_rate))
+        error_candidates = [
+            index for index in indices
+            if _eligible_for_error(employees[index], spec.mechanism)
+        ]
+        rng.shuffle(error_candidates)
+        selected_errors = error_candidates[:error_count]
+        if len(selected_errors) != error_count:
+            raise ValueError(
+                f"insufficient {spec.mechanism} candidates in {split.value}"
+            )
+        rare_candidates = [
+            index for index in indices
+            if index not in selected_errors
+            and _eligible_for_rare_case(employees[index], spec.rare_pattern)
+        ]
+        rng.shuffle(rare_candidates)
+        selected_rare = rare_candidates[:rare_count]
+        if len(selected_rare) != rare_count:
+            raise ValueError(
+                f"insufficient {spec.rare_pattern} candidates in {split.value}"
+            )
         error_category = (
             TruthCategory.EXPLICIT_POLICY_VIOLATION
             if spec.mechanism == "approval_bypass"
@@ -261,11 +313,49 @@ def _truth_plan(
             if spec.mechanism == "wrong_employee_link"
             else TruthCategory.CONFIRMED_RECORDING_ERROR
         )
-        for index in indices[:error_count]:
+        for index in selected_errors:
             result[index] = error_category
-        for index in indices[error_count:error_count + rare_count]:
+        for index in selected_rare:
             result[index] = TruthCategory.RARE_LEGITIMATE
     return result
+
+
+def _eligible_for_error(
+    employee: IndependentEmployeeLedger,
+    mechanism: str,
+) -> bool:
+    if mechanism in {"missing_increment_import", "batch_retry"}:
+        return any(
+            event.kind is IndependentEventKind.SALARY_INCREMENT
+            for event in employee.events
+        )
+    if mechanism == "approval_bypass":
+        return (
+            employee.track is IndependentTrack.PROGRESSION
+            and _add_months(employee.hire_date, 36) <= REFERENCE_DATE
+        )
+    return True
+
+
+def _eligible_for_rare_case(
+    employee: IndependentEmployeeLedger,
+    pattern: str,
+) -> bool:
+    if pattern == "grandfathered_policy":
+        return (
+            employee.track is IndependentTrack.PROGRESSION
+            and _add_months(employee.hire_date, 30) <= REFERENCE_DATE
+        )
+    if pattern == "recognized_prior_service":
+        return (
+            employee.track is IndependentTrack.PROGRESSION
+            and _add_months(employee.hire_date, 24) <= REFERENCE_DATE
+        )
+    return any(
+        event.kind is IndependentEventKind.SALARY_INCREMENT
+        and event.effective_date + timedelta(days=120) <= REFERENCE_DATE
+        for event in employee.events
+    )
 
 
 def _base_employee(
@@ -289,13 +379,20 @@ def _base_employee(
         else IndependentTrack.INCREMENT_ONLY
     )
     employee_id = f"I-{index + 1:05d}"
-    events = [_event(spec.seed, index, 0, IndependentEventKind.HIRE, hire_date, "legacy-2018")]
+    events = [_event(
+        spec.seed,
+        index,
+        0,
+        IndependentEventKind.HIRE,
+        hire_date,
+        _policy_id_for_date(hire_date),
+    )]
     increment_date = _add_months(hire_date, 12)
     sequence = 1
     while increment_date <= REFERENCE_DATE:
         events.append(_event(
             spec.seed, index, sequence, IndependentEventKind.SALARY_INCREMENT,
-            increment_date, "reform-2023" if increment_date >= date(2023, 1, 1) else "legacy-2018",
+            increment_date, _policy_id_for_date(increment_date),
         ))
         sequence += 1
         increment_date = _add_months(increment_date, 12)
@@ -306,14 +403,68 @@ def _base_employee(
         if promotion_date <= REFERENCE_DATE:
             events.append(_event(
                 spec.seed, index, sequence, IndependentEventKind.PROMOTION,
-                promotion_date, "reform-2023", level_before="L7", level_after="L6",
+                promotion_date, _policy_id_for_date(promotion_date),
+                level_before="L7", level_after="L6",
             ))
             current_level = "L6"
             sequence += 1
-    events.append(_event(
-        spec.seed, index, sequence, IndependentEventKind.PERFORMANCE_REVIEW,
-        min(REFERENCE_DATE, _add_months(hire_date, 18)), "reform-2023",
-    ))
+            second_promotion_date = _add_months(promotion_date, 36)
+            if second_promotion_date <= REFERENCE_DATE:
+                events.append(_event(
+                    spec.seed,
+                    index,
+                    sequence,
+                    IndependentEventKind.PROMOTION,
+                    second_promotion_date,
+                    _policy_id_for_date(second_promotion_date),
+                    level_before="L6",
+                    level_after="L5",
+                ))
+                current_level = "L5"
+                sequence += 1
+
+    commendation_date = _add_months(hire_date, 9)
+    if rng.random() < 0.28 and commendation_date <= REFERENCE_DATE:
+        events.append(_event(
+            spec.seed,
+            index,
+            sequence,
+            IndependentEventKind.COMMENDATION,
+            commendation_date,
+            _policy_id_for_date(commendation_date),
+            category=1 + index % 3,
+        ))
+        sequence += 1
+
+    sanction_date = _add_months(hire_date, 15)
+    resolved_date = sanction_date + timedelta(days=90)
+    if rng.random() < 0.18 and resolved_date <= REFERENCE_DATE:
+        events.append(_event(
+            spec.seed,
+            index,
+            sequence,
+            IndependentEventKind.SANCTION,
+            sanction_date,
+            _policy_id_for_date(sanction_date),
+            category=1 + index % 2,
+            resolved_date=resolved_date,
+        ))
+        sequence += 1
+
+    review_date = _add_months(hire_date, 12)
+    review_count = 0
+    while review_date <= REFERENCE_DATE and review_count < 5:
+        events.append(_event(
+            spec.seed,
+            index,
+            sequence,
+            IndependentEventKind.PERFORMANCE_REVIEW,
+            review_date,
+            _policy_id_for_date(review_date),
+        ))
+        sequence += 1
+        review_count += 1
+        review_date = _add_months(review_date, 12)
     return IndependentEmployeeLedger(
         employee_id=employee_id,
         split=split,
@@ -347,24 +498,20 @@ def _apply_error(
         evidence = "Five sanction events from another employee were linked during migration."
     elif mechanism == "missing_increment_import":
         increments = [event for event in events if event.kind is IndependentEventKind.SALARY_INCREMENT]
-        if len(increments) >= 3:
-            removed = increments[len(increments) // 2]
-            events.remove(removed)
-            causal_events.append(removed)
-        else:
-            injected = _event(
-                rng.randint(1, 1_000_000), 1, len(events), IndependentEventKind.SALARY_INCREMENT,
-                min(REFERENCE_DATE, _add_months(employee.hire_date, 30)), "reform-2023",
-            )
-            events.append(injected)
-            causal_events.append(injected)
+        if not increments:
+            raise ValueError("missing-increment intervention requires an increment")
+        removed = increments[len(increments) // 2]
+        events.remove(removed)
+        causal_events.append(removed)
         evidence = "One approved annual increment was omitted from an imported history."
     elif mechanism == "approval_bypass":
         events = [event for event in events if event.kind is not IndependentEventKind.PROMOTION]
         injected = _event(
             rng.randint(1, 1_000_000), 2, len(events), IndependentEventKind.PROMOTION,
-            _add_months(employee.hire_date, 14), "reform-2023",
-            level_before="L7", level_after="L6",
+            _add_months(employee.hire_date, 36),
+            _policy_id_for_date(_add_months(employee.hire_date, 36)),
+            level_before="L7", level_after="L6", approval_reference=None,
+            approval_status="bypassed",
         )
         events.append(injected)
         causal_events.append(injected)
@@ -375,7 +522,7 @@ def _apply_error(
         injected = _event(
             rng.randint(1, 1_000_000), 3, len(events), IndependentEventKind.SALARY_INCREMENT,
             anchor.effective_date, anchor.policy_id,
-            correction_of_event_id=anchor.event_id,
+            retry_of_event_id=anchor.event_id,
         )
         events.append(injected)
         causal_events.append(injected)
@@ -392,23 +539,28 @@ def _apply_rare_case(
     rng: Random,
 ) -> tuple[IndependentEmployeeLedger, str, str, tuple[IndependentEvent, ...]]:
     events = list(employee.events)
-    if pattern == "grandfathered_policy" and employee.track is IndependentTrack.PROGRESSION:
+    if pattern == "grandfathered_policy":
         events = [event for event in events if event.kind is not IndependentEventKind.PROMOTION]
+        promotion_date = max(
+            _add_months(employee.hire_date, 30),
+            date(2023, 1, 1),
+        )
         injected = _event(
             rng.randint(1, 1_000_000), 4, len(events), IndependentEventKind.PROMOTION,
-            _add_months(employee.hire_date, 30), "legacy-2018",
+            promotion_date, "legacy-pre-2023",
             level_before="L7", level_after="L6",
         )
         events.append(injected)
         evidence = "A documented grandfathering clause retained the earlier service requirement."
         mechanism = pattern
         causal_events = (injected,)
-    elif pattern == "recognized_prior_service" and employee.track is IndependentTrack.PROGRESSION:
+    elif pattern == "recognized_prior_service":
         events = [event for event in events if event.kind is not IndependentEventKind.PROMOTION]
         injected = _event(
             rng.randint(1, 1_000_000), 5, len(events), IndependentEventKind.PROMOTION,
-            _add_months(employee.hire_date, 24), "reform-2023",
-            level_before="L7", level_after="L6",
+            _add_months(employee.hire_date, 24),
+            _policy_id_for_date(_add_months(employee.hire_date, 24)),
+            level_before="L7", level_after="L6", recognized_service_months=12,
         )
         events.append(injected)
         evidence = "Twelve months of prior public service were formally recognized."
@@ -418,7 +570,10 @@ def _apply_rare_case(
         delayed = []
         causal_events_list = []
         for event in events:
-            if event.kind is IndependentEventKind.SALARY_INCREMENT:
+            if (
+                event.kind is IndependentEventKind.SALARY_INCREMENT
+                and event.effective_date + timedelta(days=120) <= REFERENCE_DATE
+            ):
                 delayed_event = IndependentEvent(
                     **{**event.__dict__, "recorded_date": event.effective_date + timedelta(days=120)}
                 )
@@ -463,14 +618,27 @@ def _event(
     **kwargs: object,
 ) -> IndependentEvent:
     digest = sha256(f"{seed}:{employee_index}:{sequence}".encode("utf-8")).hexdigest()[:14]
+    approval_reference = kwargs.pop(
+        "approval_reference", f"AR-{digest[2:10]}"
+    )
     return IndependentEvent(
         event_id=f"EV-{digest}",
         kind=kind,
         effective_date=effective_date,
-        recorded_date=effective_date + timedelta(days=(employee_index + sequence) % 19),
+        recorded_date=min(
+            REFERENCE_DATE,
+            effective_date + timedelta(days=(employee_index + sequence) % 19),
+        ),
         policy_id=policy_id,
-        approval_reference=f"AR-{digest[2:10]}",
+        approval_reference=approval_reference,
         **kwargs,
+    )
+
+
+def _policy_id_for_date(value: date) -> str:
+    return (
+        "reform-2023" if value >= date(2023, 1, 1)
+        else "legacy-pre-2023"
     )
 
 

@@ -6,6 +6,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 from src.services.anomaly_detection.policy_model import PromotionPolicy
+from src.services.anomaly_detection.policy_history import PolicyEpoch
 from src.services.anomaly_detection.scenario_generation import ScenarioDataset
 from src.services.anomaly_detection.synthetic_data import (
     AdministrativeEvent,
@@ -20,6 +21,7 @@ from src.services.anomaly_detection.synthetic_data import (
 )
 
 from .independent_scenarios import (
+    REFERENCE_DATE,
     IndependentEventKind,
     IndependentScenarioSpec,
     IndependentSplit,
@@ -54,6 +56,7 @@ def adapt_independent_world(world: IndependentWorld) -> ScenarioDataset:
     """Expose observable records to the detector and attach truth for evaluation."""
 
     truth_by_employee = {entry.employee_id: entry for entry in world.truth}
+    policy_versions = {card.policy_id: card.version for card in world.policies}
     records = []
     for employee in world.employees:
         truth = truth_by_employee[employee.employee_id]
@@ -75,8 +78,11 @@ def adapt_independent_world(world: IndependentWorld) -> ScenarioDataset:
             department=employee.department,
             role=employee.role,
             hire_date=employee.hire_date,
-            events=tuple(_event(event) for event in employee.events),
+            events=tuple(
+                _event(event, policy_versions) for event in employee.events
+            ),
             anomaly_labels=(_label(truth.category, truth.mechanism),),
+            observation_date=REFERENCE_DATE,
         ))
     labels = Counter(label.value for record in records for label in record.anomaly_labels)
     splits = Counter(record.split.value for record in records)
@@ -99,11 +105,26 @@ def adapt_independent_world(world: IndependentWorld) -> ScenarioDataset:
     return ScenarioDataset(
         config=config,  # type: ignore[arg-type]
         policy=PromotionPolicy(service_months_by_level=current_policy.service_months_by_level),
+        policy_epochs=tuple(
+            PolicyEpoch(
+                policy_id=card.policy_id,
+                version=card.version,
+                valid_from=card.effective_from,
+                valid_to=card.effective_to,
+                recorded_at=card.recorded_at,
+                jurisdiction=card.jurisdiction,
+                policy=PromotionPolicy(
+                    service_months_by_level=card.service_months_by_level
+                ),
+                grandfather_previous_policy=card.grandfather_previous_policy,
+            )
+            for card in world.policies
+        ),
         population=AdapterPopulation(spec.population),  # type: ignore[arg-type]
         dataset=SyntheticDataset(
             records=tuple(records),
             metadata=SyntheticDatasetMetadata(
-                schema_version="independent-development-v1",
+                schema_version="independent-development-v2",
                 run_id=spec.scenario_id,
                 seed=spec.seed,
                 employee_count=spec.employee_count,
@@ -122,7 +143,7 @@ def _event_kind(value: IndependentEventKind) -> AdministrativeEventType:
     return AdministrativeEventType(value.value)
 
 
-def _event(value) -> AdministrativeEvent:
+def _event(value, policy_versions: dict[str, str]) -> AdministrativeEvent:
     return AdministrativeEvent(
         event_type=_event_kind(value.kind),
         event_date=value.effective_date,
@@ -136,6 +157,15 @@ def _event(value) -> AdministrativeEvent:
             f"policy={value.policy_id}; recorded={value.recorded_date.isoformat()}; "
             f"approval={value.approval_reference or ''}"
         ),
+        recorded_date=value.recorded_date,
+        policy_id=value.policy_id,
+        policy_version=policy_versions[value.policy_id],
+        approval_reference=value.approval_reference,
+        approval_status=value.approval_status,
+        recognized_service_months=value.recognized_service_months,
+        correction_of_source_id=value.correction_of_event_id,
+        retry_of_source_id=value.retry_of_event_id,
+        jurisdiction=value.jurisdiction,
     )
 
 

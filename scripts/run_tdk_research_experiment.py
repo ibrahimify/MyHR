@@ -32,6 +32,7 @@ from src.services.anomaly_detection import (
     extract_features,
     generate_synthetic_dataset,
     run_isolation_forest,
+    select_similarity_threshold,
     sklearn_is_available,
 )
 from src.services.anomaly_detection.experiment_runner import (
@@ -284,21 +285,49 @@ def _isolation_forest_row(
 def _duplicate_rows(dataset: Any) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     metric_rows: list[dict[str, Any]] = []
     candidate_rows: list[dict[str, Any]] = []
+    similarity_threshold = select_similarity_threshold(dataset)
     for evaluation in (
         evaluate_duplicate_detection(dataset, "exact"),
         evaluate_duplicate_detection(dataset, "normalized_exact"),
-        evaluate_duplicate_detection(dataset, "similarity", threshold=0.70),
+        evaluate_duplicate_detection(
+            dataset, "similarity", threshold=similarity_threshold
+        ),
     ):
         metric_rows.append({
             "task": "duplicate_detection",
             "method": evaluation.method,
+            "partition": evaluation.partition,
             "threshold": "" if evaluation.threshold is None else evaluation.threshold,
             "candidate_count": len(evaluation.candidates),
+            "record_count": evaluation.record_count,
+            "total_pair_count": evaluation.total_pair_count,
+            "blocked_pair_count": evaluation.blocked_pair_count,
+            "true_pair_count": evaluation.true_pair_count,
+            "blocked_true_pair_count": evaluation.blocked_true_pair_count,
+            "blocking_recall": evaluation.blocking_recall,
+            "reduction_ratio": evaluation.reduction_ratio,
+            "candidates_per_1000_records": 1000 * _safe_rate(
+                len(evaluation.candidates), evaluation.record_count
+            ),
+            "false_matches_per_1000_records": 1000 * _safe_rate(
+                evaluation.metrics.false_positives, evaluation.record_count
+            ),
+            "candidate_average_precision": (
+                "" if evaluation.candidate_average_precision is None
+                else evaluation.candidate_average_precision
+            ),
+            **{
+                f"candidate_{key}": value
+                for key, value in _metrics_dict(
+                    evaluation.candidate_metrics
+                ).items()
+            },
             **_metrics_dict(evaluation.metrics),
         })
         for candidate in evaluation.candidates:
             candidate_rows.append({
                 "method": evaluation.method,
+                "partition": evaluation.partition,
                 "threshold": "" if evaluation.threshold is None else evaluation.threshold,
                 "left_employee_id": candidate.left_employee_id,
                 "right_employee_id": candidate.right_employee_id,
