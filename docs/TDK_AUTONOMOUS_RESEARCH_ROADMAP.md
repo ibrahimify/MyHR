@@ -1,5 +1,15 @@
 # TDK Autonomous Research Roadmap
 
+## Latent-Person-First Duplicates And Hard Nonduplicates - 2026-10-30
+
+- Root gap from audit: duplicate records were derived from an existing source record in the dataset. Partition containment was enforced by a pointer-chain check after the fact, not by construction.
+- Fix: `LatentPerson` dataclass represents a fictional base entity generated outside all partitions. Every cluster member (source + variants) is derived from the latent person and carries `latent_person_id`. Partition assignment for duplicate records is resolved before derivation, so cross-partition leakage is structurally impossible.
+- `HardNonduplicateKind` enum adds four explicit mechanisms: `similar_name`, `shared_birthday`, `relative`, `near_identical_id`. One record per kind is injected into every generated dataset (when enough clean records are available). Hard nonduplicates are CLEAN-labelled with no `duplicate_of_employee_id` pointer and must not appear in `_true_duplicate_pairs`.
+- New fields on `WorkforceHistoryRecord`: `latent_person_id` (cluster provenance), `hard_nonduplicate_kind` (confusability mechanism). Schema version bumped to `tdk-synthetic-v2`.
+- 11 new tests added: `LatentPersonFirstDuplicateTests` (6) and `HardNonduplicateTests` (5). All 192 tests pass. Commit `c98f416`.
+- Remaining duplicate gaps: dedicated late-correction scenario family (bitemporal contract tested, scenario type not frozen); runtime/memory reporting for duplicate blocking/scoring.
+- The final holdout was not generated, inspected, scored, or unlocked. PR #1 remains draft and unmerged.
+
 ## Clean-Revision Artifact Generation And Audit - 2026-10-30
 
 - Root cause of prior audit failure: `_provenance()` hashed on-disk file bytes (CRLF on Windows), while the auditor re-reads source via `git show` (LF). Mismatch was deterministic on Windows with `autocrlf=true`.
