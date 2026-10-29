@@ -141,6 +141,23 @@ def _metadata(dataset: Any, config: ExperimentConfig) -> dict[str, Any]:
     }
 
 
+def _git_object_bytes(revision: str, relative_path: str) -> bytes:
+    """Return the raw git-stored bytes for *relative_path* at *revision*.
+
+    Using git-stored bytes (always LF on all platforms) instead of on-disk
+    bytes (CRLF on Windows with autocrlf=true) ensures that the hash recorded
+    in an artifact's provenance matches what the auditor later reads with
+    ``git show <revision>:<path>``.
+    """
+    result = subprocess.run(
+        ("git", "show", f"{revision}:{relative_path}"),
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+    )
+    return result.stdout
+
+
 def _provenance() -> dict[str, Any]:
     packages = {}
     for package in ("scikit-learn", "numpy", "pandas", "scipy"):
@@ -156,7 +173,7 @@ def _provenance() -> dict[str, Any]:
         "platform": platform.platform(),
         "packages": packages,
         "source_sha256": {
-            relative_path: sha256((REPO_ROOT / relative_path).read_bytes()).hexdigest()
+            relative_path: sha256(_git_object_bytes("HEAD", relative_path)).hexdigest()
             for relative_path in PROVENANCE_SOURCE_PATHS
         },
     }
