@@ -19,6 +19,7 @@ Only free access modes are implemented. The code contains no billing integration
 | [Semantic Scholar Academic Graph API](https://api.semanticscholar.org/api-docs/) | Discovery, citation counts, DOI/arXiv cross-identifiers, open-access links | Optional free API key in `SEMANTIC_SCHOLAR_API_KEY` | One request per second when using the client; bounded retries on `429` and server errors |
 | [OpenAlex API](https://help.openalex.org/) | Discovery, scholarly metadata, open-access locations, DOI verification | Keyless basic access; optional free key in `OPENALEX_API_KEY` | Bearer header for keys, short pacing, bounded retries |
 | [arXiv API](https://info.arxiv.org/help/api/index.html) | Recent preprints, exact arXiv metadata, legal author-submitted PDFs | No key | At least three seconds between requests, following the [arXiv API manual](https://info.arxiv.org/help/api/user-manual.html) |
+| [Crossref REST API](https://www.crossref.org/documentation/retrieve-metadata/rest-api/) | DOI registration metadata and independent identifier verification | No key; optional contact email in `MYHR_RESEARCH_CONTACT` | Versioned REST endpoint, bounded retries, caching through write-once artifacts, and polite-pool identification when a contact is configured |
 
 OpenAlex documents a free key with a daily free budget on its [authentication page](https://help.openalex.org/how-to-use-the-api/api-authentication). No payment method is required for the workflow. arXiv metadata is reusable, but each paper retains its own copyright and license; downloaded files are local research artifacts and are never committed.
 
@@ -59,7 +60,7 @@ python -m pip install -r requirements.txt
 Run a small live metadata check:
 
 ```powershell
-python scripts/refresh_tdk_literature.py --smoke --sources openalex,arxiv --output-dir research_outputs/literature_smoke
+python scripts/refresh_tdk_literature.py --smoke --sources openalex,arxiv,crossref --output-dir research_outputs/literature_smoke
 ```
 
 After configuring the Semantic Scholar key, verify it independently:
@@ -123,6 +124,15 @@ Every run directory is timestamped and write-once. It stores configuration hashe
 
 This is an integration limitation, not missing research evidence: OpenAlex, arXiv, DOI metadata, and the paper PDFs independently verify the tracked core references.
 
+## Integration Recheck On 2026-10-29
+
+- OpenAlex, arXiv, and Crossref each passed the same real Isolation Forest smoke query through the repository client.
+- Crossref independently resolved the four corrected publication DOIs and the Krippendorff DOI to matching titles.
+- Semantic Scholar remains configured and covered by client tests, but its anonymous shared pool returned HTTP `429` after bounded retries. No paid access was enabled. A free `SEMANTIC_SCHOLAR_API_KEY` is required for a reliable live recheck from this network.
+- The 18-entry bibliography and 15-claim evidence ledger pass the citation-governance verifier. Two claim records remain intentionally unverified because inspected full text is not preserved.
+
+Official service documentation was rechecked before the integration update: OpenAlex documents free keyless casual access and an optional free key, Crossref documents free public and polite-pool access, arXiv documents its query interface and three-second pacing guidance, and Semantic Scholar documents header-based optional API keys.
+
 ## Refresh Rules
 
 1. Never replace an old artifact directory.
@@ -132,3 +142,5 @@ This is an integration limitation, not missing research evidence: OpenAlex, arXi
 5. Verify DOI and arXiv identifiers before adding a bibliography entry.
 6. Document protocol proposals separately; literature refreshes must not silently change the frozen experiment.
 7. Never query, generate, or inspect the locked experimental holdout from this workflow.
+8. Every literature-supported claim must be recorded in `TDK_CLAIM_EVIDENCE_LEDGER.json`; every paper must have one deduplicated bibliography entry and a provenance record.
+9. Run `python scripts/verify_tdk_citations.py --require-local-artifact` before research review. CI runs the portable registry checks; the Independent Auditor additionally verifies local artifact checksums, exact page locators, citation accuracy, and scientific scope before recommending the change for human approval.

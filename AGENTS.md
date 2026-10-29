@@ -11,6 +11,8 @@ These instructions apply to repository work on the TDK research branch.
 - Keep progression anomaly detection and duplicate-record detection as separate evaluation tasks.
 - Anomaly scores support human review and must never trigger automatic personnel decisions.
 - Do not use private employee data, paid services, or credentials without explicit authorization.
+- When scientific literature informs work, use the repository `researcher` skill at `.codex/skills/researcher/SKILL.md` and update the centralized bibliography, citation provenance, and claim-evidence ledger in the same change.
+- The Research & Citation Specialist is the sixth research role. It verifies identifiers and legally accessible evidence, preserves provenance, and deduplicates citations; it cannot approve protocol decisions.
 
 ## Resume procedure
 
@@ -27,4 +29,5 @@ These instructions apply to repository work on the TDK research branch.
 - Compare ML representations at equal review budgets and report incremental value beyond deterministic rules.
 - Record source revision, configuration, dependencies, seeds, and checksums for experiment artifacts.
 - Keep the draft research PR open. Do not merge it without user authorization.
+- Before recommending a literature-informed change for human review, the Independent Auditor must verify citation identity, claim scope, evidence locators, conflicts, and reproducibility with `scripts/verify_tdk_citations.py --require-local-artifact`.
 

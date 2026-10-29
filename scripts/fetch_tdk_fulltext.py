@@ -76,7 +76,7 @@ def main() -> None:
         pdf_path.write_bytes(response.body)
         extracted_text, page_count = extract_pdf_text(response.body)
         text_path = text_dir / f"{paper_id}.txt"
-        text_path.write_text(extracted_text, encoding="utf-8")
+        text_sha256 = write_text_and_hash(text_path, extracted_text)
 
         verification = None
         doi = paper.get("doi")
@@ -132,7 +132,7 @@ def main() -> None:
             "pdf_sha256": sha256(response.body).hexdigest(),
             "pdf_bytes": len(response.body),
             "text_file": text_path.relative_to(run_dir).as_posix(),
-            "text_sha256": sha256(extracted_text.encode("utf-8")).hexdigest(),
+            "text_sha256": text_sha256,
             "text_characters": len(extracted_text),
             "page_count": page_count,
             "metadata_verification": verification,
@@ -180,6 +180,13 @@ def extract_pdf_text(body: bytes) -> tuple[str, int]:
     if len(text) < 500:
         raise ValueError("PDF text extraction produced fewer than 500 characters")
     return text, len(reader.pages)
+
+
+def write_text_and_hash(path: Path, text: str) -> str:
+    """Hash the bytes actually stored, including platform newline translation."""
+
+    path.write_text(text, encoding="utf-8")
+    return sha256(path.read_bytes()).hexdigest()
 
 
 def title_token_similarity(expected: str, actual: str) -> float:

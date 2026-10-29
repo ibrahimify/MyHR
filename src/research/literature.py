@@ -25,6 +25,7 @@ SEMANTIC_SCHOLAR_BASE = "https://api.semanticscholar.org/graph/v1"
 SEMANTIC_SCHOLAR_RECOMMENDATIONS_BASE = "https://api.semanticscholar.org/recommendations/v1"
 OPENALEX_BASE = "https://api.openalex.org"
 ARXIV_BASE = "https://export.arxiv.org/api/query"
+CROSSREF_BASE = "https://api.crossref.org/v1"
 
 
 class LiteratureApiError(RuntimeError):
@@ -331,6 +332,53 @@ class ArxivClient:
         return _batch("arxiv", normalized, response, records, "xml")
 
 
+class CrossrefClient:
+    """Free Crossref REST client for DOI verification and metadata discovery."""
+
+    def __init__(
+        self,
+        transport: HttpTransport | None = None,
+        contact_email: str | None = None,
+    ) -> None:
+        self.transport = transport or HttpTransport(minimum_interval_seconds=0.2)
+        self.contact_email = (
+            contact_email if contact_email is not None else os.getenv("MYHR_RESEARCH_CONTACT")
+        )
+
+    def search(self, query: str, *, year_from: int, year_to: int, limit: int) -> SearchBatch:
+        params = {
+            "query.bibliographic": query,
+            "filter": f"from-pub-date:{year_from}-01-01,until-pub-date:{year_to}-12-31",
+            "rows": min(max(limit, 1), 100),
+            "select": "DOI,title,author,published,container-title,is-referenced-by-count,URL,license,abstract",
+        }
+        if self.contact_email:
+            params["mailto"] = self.contact_email
+        request_url = f"{CROSSREF_BASE}/works?{urlencode(params)}"
+        response = self.transport.get(request_url, headers={"Accept": "application/json"})
+        payload = _json_object(response.body, "Crossref")
+        records = tuple(
+            _crossref_record(item)
+            for item in (payload.get("message") or {}).get("items", [])
+            if isinstance(item, dict)
+        )
+        return _batch("crossref", query, response, records, "json")
+
+    def get_by_doi(self, doi: str) -> SearchBatch:
+        normalized = normalize_doi(doi)
+        if not normalized:
+            raise ValueError("a DOI is required")
+        params = {"mailto": self.contact_email} if self.contact_email else {}
+        suffix = f"?{urlencode(params)}" if params else ""
+        request_url = f"{CROSSREF_BASE}/works/{quote(normalized, safe='')}{suffix}"
+        response = self.transport.get(request_url, headers={"Accept": "application/json"})
+        payload = _json_object(response.body, "Crossref")
+        message = payload.get("message")
+        if not isinstance(message, dict):
+            raise LiteratureApiError(f"Crossref did not resolve DOI {normalized}")
+        return _batch("crossref", normalized, response, (_crossref_record(message),), "json")
+
+
 def merge_records(records: Iterable[PaperRecord]) -> list[dict[str, object]]:
     """Cross-source merge without assuming that titles alone prove identity."""
 
@@ -381,7 +429,12 @@ def normalize_doi(value: object) -> str | None:
 
 
 def redact_url(url: str) -> str:
-    return re.sub(r"([?&]api_key=)[^&]+", r"\1REDACTED", url, flags=re.IGNORECASE)
+    return re.sub(
+        r"([?&](?:api_key|mailto)=)[^&]+",
+        r"\1REDACTED",
+        url,
+        flags=re.IGNORECASE,
+    )
 
 
 def _semantic_scholar_record(item: dict[str, object]) -> PaperRecord:
@@ -450,6 +503,45 @@ def _openalex_network_node(item: dict[str, object]) -> dict[str, object]:
         "year": _int_or_none(item.get("publication_year")),
         "citation_count": _int_or_none(item.get("cited_by_count")),
     }
+
+
+def _crossref_record(item: dict[str, object]) -> PaperRecord:
+    authors = item.get("author") or []
+    published = item.get("published") or {}
+    date_parts = published.get("date-parts") or []
+    parts = date_parts[0] if date_parts and isinstance(date_parts[0], list) else []
+    publication_date = None
+    if parts:
+        padded = [int(value) for value in parts[:3]] + [1] * (3 - len(parts[:3]))
+        publication_date = f"{padded[0]:04d}-{padded[1]:02d}-{padded[2]:02d}"
+    titles = item.get("title") or []
+    containers = item.get("container-title") or []
+    licenses = item.get("license") or []
+    return PaperRecord(
+        source="crossref",
+        source_id=normalize_doi(item.get("DOI")) or "",
+        title=_clean_text(titles[0] if titles else None) or "Untitled",
+        year=padded[0] if parts else None,
+        publication_date=publication_date,
+        authors=tuple(
+            name
+            for name in (
+                _clean_text(" ".join(filter(None, (author.get("given"), author.get("family")))))
+                for author in authors
+                if isinstance(author, dict)
+            )
+            if name
+        ),
+        abstract=_clean_text(item.get("abstract")),
+        doi=normalize_doi(item.get("DOI")),
+        arxiv_id=None,
+        venue=_clean_text(containers[0] if containers else None),
+        citation_count=_int_or_none(item.get("is-referenced-by-count")),
+        landing_url=_string_or_none(item.get("URL")),
+        pdf_url=None,
+        open_access_status=None,
+        license=_string_or_none(licenses[0].get("URL")) if licenses else None,
+    )
 
 
 def _parse_arxiv(body: bytes) -> tuple[PaperRecord, ...]:

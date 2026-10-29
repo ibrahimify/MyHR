@@ -1,0 +1,4 @@
+interface:
+  display_name: "Researcher"
+  short_description: "Verify literature and record claim evidence"
+  default_prompt: "Use $researcher to audit and record scientific evidence for this MyHR research task."

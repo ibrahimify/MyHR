@@ -18,6 +18,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from src.research.literature import (
     ArxivClient,
+    CrossrefClient,
     OpenAlexClient,
     PaperRecord,
     SearchBatch,
@@ -41,8 +42,8 @@ def main() -> None:
     parser.add_argument("--max-results", type=int, default=8)
     parser.add_argument(
         "--sources",
-        default="semantic_scholar,openalex,arxiv",
-        help="Comma-separated subset of semantic_scholar, openalex,arxiv.",
+        default="semantic_scholar,openalex,arxiv,crossref",
+        help="Comma-separated subset of semantic_scholar, openalex,arxiv,crossref.",
     )
     parser.add_argument(
         "--smoke",
@@ -69,6 +70,7 @@ def main() -> None:
         "semantic_scholar": SemanticScholarClient(),
         "openalex": OpenAlexClient(),
         "arxiv": ArxivClient(),
+        "crossref": CrossrefClient(),
     }
     unknown = set(source_names) - set(clients)
     if unknown:
@@ -143,6 +145,7 @@ def main() -> None:
         "credentials": {
             "semantic_scholar_key_present": bool(clients["semantic_scholar"].api_key),
             "openalex_key_present": bool(clients["openalex"].api_key),
+            "crossref_contact_present": bool(clients["crossref"].contact_email),
             "values_recorded": False,
         },
     })

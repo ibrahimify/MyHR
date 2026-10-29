@@ -1,5 +1,13 @@
 # TDK Autonomous Research Roadmap
 
+## Research and Citation Governance - 2026-10-29
+
+- Added the sixth workflow role, Research & Citation Specialist, and the repository `researcher` skill.
+- Added free direct API support for Crossref alongside OpenAlex, Semantic Scholar, and arXiv. OpenAlex, arXiv, and Crossref passed a live smoke query. Semantic Scholar remains correctly configured but anonymous live access returned HTTP 429; a free key is still an optional setup item.
+- Audited all 18 bibliography entries, corrected identified metadata, preserved the existing 16-paper full-text artifact, and recorded two unresolved full-text evidence gaps without deleting or weakening prior history.
+- Added a centralized citation provenance registry and claim-to-source evidence ledger. CI now validates deduplication, DOI consistency, source provenance, evidence type, claim status, and full-text review state.
+- The Independent Auditor must verify citations and claim scope before recommending research changes for human review. This process change does not approve a protocol decision, alter an endpoint, or access the holdout.
+
 Research title: **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**
 
 Current boundary: the authorized audit, corrections, independent scenario prototype, adversarial development run, independent hostile review, and targeted literature check are complete. The hostile review found that the current residual comparison does not isolate policy context because its three policy-specific features are constant after rule filtering. The protocol remains draft, the final holdout remains undefined and locked, and the research PR remains unmerged.

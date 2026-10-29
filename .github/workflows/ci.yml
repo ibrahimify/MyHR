@@ -55,6 +55,10 @@ jobs:
           python -m py_compile scripts/build_tdk_citation_network.py scripts/verify_literature_artifact.py
           python -m py_compile scripts/audit_tdk_protocol_artifact.py
           python -m py_compile scripts/run_tdk_independent_development.py
+          python -m py_compile scripts/verify_tdk_citations.py scripts/record_tdk_claim.py
+
+      - name: Verify research citation governance
+        run: python scripts/verify_tdk_citations.py
 
       - name: Run full test suite
         run: python -m unittest discover -s tests

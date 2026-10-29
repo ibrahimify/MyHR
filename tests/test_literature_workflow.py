@@ -5,6 +5,7 @@ import unittest
 
 from src.research.literature import (
     ArxivClient,
+    CrossrefClient,
     HttpResponse,
     OpenAlexClient,
     PaperRecord,
@@ -18,6 +19,7 @@ from scripts.fetch_tdk_fulltext import (
     extract_pdf_text,
     title_token_similarity,
     validate_pdf_bytes,
+    write_text_and_hash,
 )
 from scripts.verify_literature_artifact import verify_artifact
 
@@ -214,6 +216,39 @@ class LiteratureClientTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "invalid arXiv"):
             ArxivClient(transport).get_by_id("not-an-id")
 
+    def test_crossref_search_uses_free_polite_pool_and_parses_metadata(self):
+        transport = FakeTransport(json.dumps({"message": {"items": [{
+            "DOI": "10.1000/TEST",
+            "title": ["Policy-aware detection"],
+            "author": [{"given": "A.", "family": "Author"}],
+            "published": {"date-parts": [[2025, 4]]},
+            "container-title": ["Journal"],
+            "is-referenced-by-count": 3,
+            "URL": "https://doi.org/10.1000/test",
+        }]}}).encode())
+
+        batch = CrossrefClient(transport, contact_email="research@example.org").search(
+            "policy aware anomaly", year_from=2022, year_to=2026, limit=5
+        )
+
+        self.assertEqual(batch.records[0].doi, "10.1000/test")
+        self.assertEqual(batch.records[0].publication_date, "2025-04-01")
+        self.assertEqual(batch.records[0].authors, ("A. Author",))
+        self.assertIn("mailto=research%40example.org", transport.urls[0])
+        self.assertNotIn("research%40example.org", batch.request_url)
+
+    def test_crossref_doi_lookup_encodes_identifier(self):
+        transport = FakeTransport(json.dumps({"message": {
+            "DOI": "10.1000/TEST",
+            "title": ["Verified title"],
+            "published": {"date-parts": [[2024]]},
+        }}).encode())
+
+        batch = CrossrefClient(transport).get_by_doi("https://doi.org/10.1000/TEST")
+
+        self.assertEqual(batch.records[0].year, 2024)
+        self.assertIn("10.1000%2Ftest", transport.urls[0])
+
     def test_cross_source_merge_prefers_doi_over_title(self):
         first = _paper("semantic_scholar", "s1", doi="10.1/shared")
         second = _paper("openalex", "W1", doi="https://doi.org/10.1/SHARED")
@@ -227,6 +262,10 @@ class LiteratureClientTests(unittest.TestCase):
     def test_credentials_are_redacted_and_env_file_is_ignored(self):
         self.assertEqual(normalize_doi(" DOI: 10.1000/XYZ. "), "10.1000/xyz")
         self.assertNotIn("secret", redact_url("https://example.org?api_key=secret&x=1"))
+        self.assertNotIn(
+            "person%40example.org",
+            redact_url("https://example.org?mailto=person%40example.org"),
+        )
         gitignore = Path(".gitignore").read_text(encoding="utf-8")
         self.assertIn(".env", gitignore)
 
@@ -251,6 +290,14 @@ class LiteratureClientTests(unittest.TestCase):
         ), 0.99)
         with self.assertRaisesRegex(ValueError, "fewer than 500"):
             extract_pdf_text(payload.getvalue())
+
+    def test_fulltext_hash_uses_stored_bytes(self):
+        from hashlib import sha256
+
+        with TemporaryDirectory() as temporary:
+            path = Path(temporary) / "paper.txt"
+            digest = write_text_and_hash(path, "first\nsecond\n")
+            self.assertEqual(digest, sha256(path.read_bytes()).hexdigest())
 
     def test_artifact_verifier_checks_hashes_and_rejects_credentials(self):
         from hashlib import sha256

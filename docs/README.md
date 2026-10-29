@@ -23,6 +23,11 @@ Use the [ChatGPT research tutor prompt](CHATGPT_RESEARCH_TUTOR_PROMPT.md) to beg
 | [RESEARCH_EVIDENCE_PRESERVATION.md](RESEARCH_EVIDENCE_PRESERVATION.md) | Read-only evidence inventory and retention boundary | Current maintenance guidance; does not authorize deletion |
 | [TDK_LITERATURE_REVIEW.md](TDK_LITERATURE_REVIEW.md) | Verified literature synthesis | Current synthesis; literature is not proof of this project's results |
 | [TDK_REFERENCES.bib](TDK_REFERENCES.bib) | Verified bibliography | Current bibliography |
+| [TDK_CITATION_PROVENANCE.json](TDK_CITATION_PROVENANCE.json) | Identifier, retrieval, and full-text provenance for each bibliography entry | Current evidence registry |
+| [TDK_CLAIM_EVIDENCE_LEDGER.json](TDK_CLAIM_EVIDENCE_LEDGER.json) | Machine-checked mapping from research claims to exact source evidence | Current evidence ledger |
+| [TDK_RESEARCH_AGENT_WORKFLOW.md](TDK_RESEARCH_AGENT_WORKFLOW.md) | Six-role workflow and citation/auditor gates | Current agent governance |
+| [TDK_CITATION_AUDIT_2026-10-29.md](TDK_CITATION_AUDIT_2026-10-29.md) | Complete reference audit, corrections, and unresolved evidence gaps | Dated audit evidence |
+| [TDK_CITATION_INDEPENDENT_AUDIT_2026-10-29.md](TDK_CITATION_INDEPENDENT_AUDIT_2026-10-29.md) | Hostile citation-governance review, remediation, and readiness verdict | Dated independent audit |
 | [TDK_LITERATURE_WORKFLOW.md](TDK_LITERATURE_WORKFLOW.md) | Reusable free literature workflow | Current operational guidance |
 
 ## Dated Evidence And Remediation
