@@ -1,5 +1,19 @@
 # TDK Autonomous Research Roadmap
 
+## Clean-Revision Artifact Generation And Audit - 2026-10-30
+
+- Root cause of prior audit failure: `_provenance()` hashed on-disk file bytes (CRLF on Windows), while the auditor re-reads source via `git show` (LF). Mismatch was deterministic on Windows with `autocrlf=true`.
+- Fix: `_git_object_bytes()` helper reads content via `git show HEAD:<path>` so both sides hash the same byte stream. No test fixtures, seeds, or scientific values were changed. Commit `bbc59f8`.
+- New certified independent development artifact `62f482ce6ff477b9` generated from clean committed worktree at `bbc59f8`. Artifact audit status: **verified**. `holdout_accessed: false`.
+- Artifact contains: 12 scenarios, 864 test histories, 108 labelled anomalies, 72 broadly labelled rare-legitimate histories, 648 metric rows, 46,656 prediction rows, 57,485 administrative events, 24 policy epochs, 4,320 truth sidecar rows.
+- Primary residual endpoint (fixed_review_budget, `rule_negative_isolation_forest`): recall delta mean `+0.037`, 95% CI `[-0.037, 0.111]`, sign-flip p=0.516. No evidence for policy-aware advantage at this sample size.
+- AP delta mean `+0.048` (secondary; zero-positive scenario handling eligibility pending explicit count in future artifact schema).
+- Deterministic policy rules: 62 TP, 0 FP, 46 FN of 108 anomalies. Rare-legitimate flagged: 0/72.
+- Rules-plus-IF (policy_matched, rules_first_budget_floor): 82 TP, 20 FP, 26 FN; rare-legitimate flagged 2/72.
+- All 181 tests pass locally. Focused research suite (52 tests) confirmed post-fix.
+- Remaining blockers unchanged: latent-person-first duplicate generation, hard nonduplicate mechanisms, dedicated correction scenarios, duplicate runtime/memory, blinded expert review, environment freeze, dated protocol-freeze approval.
+- The final holdout was not generated, inspected, scored, or unlocked. PR #1 remains draft and unmerged.
+
 ## Data And Test Correctness Milestone - 2026-10-29
 
 - The external audit allegations were independently reproduced at baseline revision `32633d2`; exact counts, corrections, and remaining limitations are recorded in `TDK_DATA_TEST_CORRECTNESS_AUDIT_2026-10-29.md`.
