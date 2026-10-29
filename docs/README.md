@@ -26,6 +26,10 @@ Use the [ChatGPT research tutor prompt](CHATGPT_RESEARCH_TUTOR_PROMPT.md) to beg
 | [TDK_CITATION_PROVENANCE.json](TDK_CITATION_PROVENANCE.json) | Identifier, retrieval, and full-text provenance for each bibliography entry | Current evidence registry |
 | [TDK_CLAIM_EVIDENCE_LEDGER.json](TDK_CLAIM_EVIDENCE_LEDGER.json) | Machine-checked mapping from research claims to exact source evidence | Current evidence ledger |
 | [TDK_RESEARCH_AGENT_WORKFLOW.md](TDK_RESEARCH_AGENT_WORKFLOW.md) | Six-role workflow and citation/auditor gates | Current agent governance |
+| [TDK_2026_SUBMISSION_REQUIREMENTS.md](TDK_2026_SUBMISSION_REQUIREMENTS.md) | 2026 portal deadlines, paper format, and upload checklist | Current submission checklist; final portal deadline still requires manual confirmation |
+| [TDK_PAPER_DRAFT.md](TDK_PAPER_DRAFT.md) | English supervisor-review manuscript source | Current development-evidence draft; not a confirmatory paper |
+| [TDK_SUPERVISOR_BRIEF_2026-10-30.md](TDK_SUPERVISOR_BRIEF_2026-10-30.md) | Professor-facing executive summary and meeting request | Current supervisor package entry point |
+| [TDK_REPOSITORY_APPROVAL_GATE_2026-10-30.md](TDK_REPOSITORY_APPROVAL_GATE_2026-10-30.md) | Prepared issue, PR, and branch dispositions | Human approval gate; authorizes no repository mutation |
 | [TDK_CITATION_AUDIT_2026-10-29.md](TDK_CITATION_AUDIT_2026-10-29.md) | Complete reference audit, corrections, and unresolved evidence gaps | Dated audit evidence |
 | [TDK_CITATION_INDEPENDENT_AUDIT_2026-10-29.md](TDK_CITATION_INDEPENDENT_AUDIT_2026-10-29.md) | Hostile citation-governance review, remediation, and readiness verdict | Dated independent audit |
 | [TDK_LITERATURE_WORKFLOW.md](TDK_LITERATURE_WORKFLOW.md) | Reusable free literature workflow | Current operational guidance |

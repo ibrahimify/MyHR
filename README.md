@@ -7,6 +7,18 @@ audit logs, imports, exports, and yearly HR reports.
 It is built for a local-first HR workflow: no server is required, data is stored
 in SQLite, and the desktop UI is implemented with PySide6.
 
+## TDK Research
+
+The current research project is **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**. It evaluates deterministic validation, statistical baselines, and raw versus policy-aware Isolation Forest models using reproducible synthetic administrative histories.
+
+The current evidence is development-only. The latest independent review found that deterministic filtering makes the policy-specific residual features constant zero, so the saved residual comparison cannot test policy-aware value. The final holdout remains locked and the protocol remains pending human approval.
+
+- [Supervisor brief](docs/TDK_SUPERVISOR_BRIEF_2026-10-30.md)
+- [Research handover](docs/RESEARCH_HANDOVER.md)
+- [Paper draft source](docs/TDK_PAPER_DRAFT.md)
+- [Experiment protocol](docs/TDK_EXPERIMENT_PROTOCOL.md)
+- [Submission requirements](docs/TDK_2026_SUBMISSION_REQUIREMENTS.md)
+
 ![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
 ![Qt](https://img.shields.io/badge/PySide6-Qt6-41CD52?logo=qt&logoColor=white)
 ![SQLite](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite&logoColor=white)
