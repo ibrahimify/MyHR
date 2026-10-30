@@ -152,7 +152,13 @@ def anomaly_mechanisms() -> tuple[str, ...]:
 
 
 def rare_legitimate_patterns() -> tuple[str, ...]:
-    return "grandfathered_policy", "recognized_prior_service", "delayed_bulk_recording"
+    return (
+        "grandfathered_policy",
+        "recognized_prior_service",
+        "delayed_bulk_recording",
+        "late_correction",
+        "policy_transition",
+    )
 
 
 def independent_scenario_matrix(
@@ -566,7 +572,7 @@ def _apply_rare_case(
         evidence = "Twelve months of prior public service were formally recognized."
         mechanism = pattern
         causal_events = (injected,)
-    else:
+    elif pattern == "delayed_bulk_recording":
         delayed = []
         causal_events_list = []
         for event in events:
@@ -585,6 +591,66 @@ def _apply_rare_case(
         evidence = "A documented administrative backlog delayed recording without changing effective dates."
         mechanism = "delayed_bulk_recording"
         causal_events = tuple(causal_events_list)
+    elif pattern == "late_correction":
+        # A promotion was initially recorded with the wrong date (off by one
+        # year), then a correction event was filed that supersedes it.  The
+        # corrected effective date is policy-compliant; the original was not.
+        # The rare-legitimate label marks the corrected history as lawful.
+        promotion_events = [e for e in events if e.kind is IndependentEventKind.PROMOTION]
+        if promotion_events:
+            original = promotion_events[-1]
+            # Original event had an erroneous effective date one year earlier
+            erroneous_date = _add_months(original.effective_date, -12)
+            erroneous = IndependentEvent(
+                **{**original.__dict__,
+                   "event_id": f"ERR-{original.event_id}",
+                   "effective_date": erroneous_date,
+                   "recorded_date": erroneous_date + timedelta(days=3),
+                   "approval_status": "pending_correction",
+                   }
+            )
+            # Correction event supersedes the erroneous one
+            corrected = IndependentEvent(
+                **{**original.__dict__,
+                   "event_id": f"COR-{original.event_id}",
+                   "recorded_date": original.effective_date + timedelta(days=14),
+                   "correction_of_event_id": erroneous.event_id,
+                   "approval_status": "approved",
+                   }
+            )
+            events = [e for e in events if e.event_id != original.event_id]
+            events.extend([erroneous, corrected])
+            causal_events = (corrected,)
+        else:
+            causal_events = ()
+        evidence = "An initially mis-dated promotion was corrected via a formal amendment; the amended date satisfies the applicable policy."
+        mechanism = "late_correction"
+    else:  # policy_transition
+        # Employee was hired under the legacy policy and promoted under the
+        # reform-2023 policy.  Their service requirement is evaluated under
+        # the policy effective at the promotion date, not the current policy.
+        # This is the core scenario motivating the bitemporal contract.
+        events_out = []
+        causal_events_list = []
+        for event in events:
+            if event.kind is IndependentEventKind.PROMOTION:
+                # Re-stamp the promotion to use the legacy policy explicitly
+                legacy_id = "legacy-pre-2023"
+                updated = IndependentEvent(
+                    **{**event.__dict__,
+                       "policy_id": legacy_id,
+                       "effective_date": date(2022, 6, 1),
+                       "recorded_date": date(2022, 6, 3),
+                       }
+                )
+                events_out.append(updated)
+                causal_events_list.append(updated)
+            else:
+                events_out.append(event)
+        events = events_out
+        causal_events = tuple(causal_events_list)
+        evidence = "Promotion evaluated under the legacy-pre-2023 policy epoch applicable at the promotion date; this satisfies the then-current service requirement even though the current policy requires more service."
+        mechanism = "policy_transition"
     return _replace_events(employee, events), evidence, mechanism, causal_events
 
 

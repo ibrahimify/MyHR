@@ -382,3 +382,122 @@ class IndependentScenarioTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LateCorrectionAndPolicyTransitionScenarioTests(unittest.TestCase):
+    """Verify the late_correction and policy_transition rare-legitimate patterns."""
+
+    def _spec(self, rare_pattern: str, seed: int = 99001) -> IndependentScenarioSpec:
+        return IndependentScenarioSpec(
+            scenario_id=f"test-{rare_pattern}",
+            run_purpose="independent_development",
+            seed=seed,
+            split_seed=seed + 2,
+            model_seed=seed + 6,
+            employee_count=120,
+            population=population_families()[0],
+            mechanism=anomaly_mechanisms()[0],
+            rare_pattern=rare_pattern,
+        )
+
+    # --- late_correction ---
+
+    def test_late_correction_spec_validates(self):
+        self._spec("late_correction").validate()
+
+    def test_late_correction_generates_rare_legitimate_records(self):
+        world = generate_independent_world(self._spec("late_correction"))
+        rare = [t for t in world.truth if t.category.value == "rare_legitimate"]
+        self.assertGreater(len(rare), 0, "late_correction must produce rare-legitimate records")
+
+    def test_late_correction_causal_events_have_correction_link(self):
+        world = generate_independent_world(self._spec("late_correction"))
+        rare = [t for t in world.truth if t.category.value == "rare_legitimate"]
+        correction_events = [
+            e for t in rare for e in t.causal_events
+            if e.correction_of_event_id is not None
+        ]
+        self.assertGreater(
+            len(correction_events), 0,
+            "late_correction causal events must include at least one correction_of_event_id link",
+        )
+
+    def test_late_correction_erroneous_events_are_in_ledger(self):
+        """The erroneous pre-correction event must appear in the employee ledger."""
+        world = generate_independent_world(self._spec("late_correction"))
+        rare_employee_ids = {
+            t.employee_id for t in world.truth if t.category.value == "rare_legitimate"
+        }
+        for emp in world.employees:
+            if emp.employee_id not in rare_employee_ids:
+                continue
+            event_ids = {e.event_id for e in emp.events}
+            correction_links = {
+                e.correction_of_event_id for e in emp.events if e.correction_of_event_id
+            }
+            for linked_id in correction_links:
+                self.assertIn(
+                    linked_id, event_ids,
+                    f"correction_of_event_id {linked_id!r} not in ledger for {emp.employee_id}",
+                )
+
+    def test_late_correction_rare_legitimate_not_flagged_by_invariant_rules(self):
+        world = generate_independent_world(self._spec("late_correction"))
+        scenario = adapt_independent_world(world)
+        rare_ids = {
+            t.employee_id for t in world.truth if t.category.value == "rare_legitimate"
+        }
+        from src.services.anomaly_detection.deterministic_checks import validate_invariant_record
+        for record in scenario.dataset.records:
+            if record.identity.employee_id in rare_ids:
+                findings = validate_invariant_record(record)
+                self.assertEqual(
+                    len(findings), 0,
+                    f"rare-legitimate {record.identity.employee_id} flagged by invariant rules: {findings}",
+                )
+
+    # --- policy_transition ---
+
+    def test_policy_transition_spec_validates(self):
+        self._spec("policy_transition").validate()
+
+    def test_policy_transition_generates_rare_legitimate_records(self):
+        world = generate_independent_world(self._spec("policy_transition"))
+        rare = [t for t in world.truth if t.category.value == "rare_legitimate"]
+        self.assertGreater(len(rare), 0, "policy_transition must produce rare-legitimate records")
+
+    def test_policy_transition_causal_events_use_legacy_policy(self):
+        world = generate_independent_world(self._spec("policy_transition"))
+        rare = [t for t in world.truth if t.category.value == "rare_legitimate"]
+        legacy_events = [
+            e for t in rare for e in t.causal_events
+            if e.policy_id == "legacy-pre-2023"
+        ]
+        self.assertGreater(
+            len(legacy_events), 0,
+            "policy_transition causal events must reference legacy-pre-2023 policy",
+        )
+
+    def test_policy_transition_rare_legitimate_not_flagged_by_invariant_rules(self):
+        world = generate_independent_world(self._spec("policy_transition"))
+        scenario = adapt_independent_world(world)
+        rare_ids = {
+            t.employee_id for t in world.truth if t.category.value == "rare_legitimate"
+        }
+        from src.services.anomaly_detection.deterministic_checks import validate_invariant_record
+        for record in scenario.dataset.records:
+            if record.identity.employee_id in rare_ids:
+                findings = validate_invariant_record(record)
+                self.assertEqual(
+                    len(findings), 0,
+                    f"rare-legitimate {record.identity.employee_id} flagged by invariant rules: {findings}",
+                )
+
+    def test_all_five_rare_patterns_are_registered(self):
+        from src.research.independent_scenarios import rare_legitimate_patterns
+        patterns = rare_legitimate_patterns()
+        for expected in (
+            "grandfathered_policy", "recognized_prior_service",
+            "delayed_bulk_recording", "late_correction", "policy_transition",
+        ):
+            self.assertIn(expected, patterns, f"pattern {expected!r} missing from rare_legitimate_patterns()")
