@@ -43,7 +43,7 @@ RATE_COLUMNS = (
     "rare_legitimate_reviews_per_1000_employees",
     "missed_anomalies_per_1000_employees",
 )
-PAIR_METRICS = (
+LEGACY_AUDITED_PAIR_METRICS = (
     "precision",
     "recall",
     "f1",
@@ -55,6 +55,23 @@ PAIR_METRICS = (
     "anomalies_found_per_100_reviews",
     "rare_legitimate_reviews_per_1000_employees",
     "missed_anomalies_per_1000_employees",
+)
+PAIR_METRICS = LEGACY_AUDITED_PAIR_METRICS + (
+    "false_positives",
+    "inconsistent_dates_recall",
+    "frequent_promotions_recall",
+    "excessive_sanctions_recall",
+    "unusual_admin_interval_recall",
+)
+PRIMARY_COMPARISON = (
+    "rule_negative_isolation_forest",
+    "fixed_review_budget",
+)
+PRIMARY_ENDPOINT = "recall"
+SECONDARY_COMPARISON_METRICS = (
+    "average_precision",
+    "rare_legitimate_flagged_rate",
+    "ordinary_clean_flagged_rate",
 )
 
 
@@ -183,6 +200,35 @@ def _verify_declared_matrix(
         raise ArtifactAuditError("duplicate scenario configuration rows")
     if int(metadata["scenario_count"]) != len(config_scenarios):
         raise ArtifactAuditError("metadata scenario count does not match configurations")
+    if "seeds_per_condition" in metadata:
+        seeds_per_condition = int(metadata["seeds_per_condition"])
+        condition_count = int(metadata["condition_count"])
+        if len(config_rows) != condition_count * seeds_per_condition:
+            raise ArtifactAuditError("condition and seed counts do not match configurations")
+        by_condition: dict[str, list[dict[str, str]]] = defaultdict(list)
+        for row in config_rows:
+            if not row.get("condition_id") or not row.get("seed_replicate"):
+                raise ArtifactAuditError("seed provenance columns are incomplete")
+            by_condition[row["condition_id"]].append(row)
+        if len(by_condition) != condition_count:
+            raise ArtifactAuditError("declared condition count is incorrect")
+        expected_replicates = set(range(1, seeds_per_condition + 1))
+        for condition_id, rows in by_condition.items():
+            replicates = {int(row["seed_replicate"]) for row in rows}
+            if replicates != expected_replicates:
+                raise ArtifactAuditError(
+                    f"seed replicates are incomplete for {condition_id}"
+                )
+            seed_columns = (
+                ("seed", "split_seed", "model_seed")
+                if "seed" in rows[0]
+                else ("dataset_seed", "split_seed", "model_seed")
+            )
+            for column in seed_columns:
+                if len({row[column] for row in rows}) != seeds_per_condition:
+                    raise ArtifactAuditError(
+                        f"{column} is not unique across {condition_id} replicates"
+                    )
     metric_scenarios = {row["scenario_id"] for row in metric_rows}
     if set(config_scenarios) != metric_scenarios:
         raise ArtifactAuditError("scenario metrics do not match declared configurations")
@@ -473,7 +519,13 @@ def _verify_paired_comparisons(
     metric_rows: list[dict[str, str]],
     paired_rows: list[dict[str, str]],
 ) -> None:
-    expected = _recompute_paired_comparisons(metric_rows)
+    include_declared_plan = bool(
+        paired_rows and "comparison_role" in paired_rows[0]
+    )
+    expected = _recompute_paired_comparisons(
+        metric_rows,
+        include_declared_plan=include_declared_plan,
+    )
     if len(expected) != len(paired_rows):
         raise ArtifactAuditError("paired comparison groups do not match scenario metrics")
     stored_keys = [
@@ -497,7 +549,16 @@ def _verify_paired_comparisons(
                 if stored[column] != "":
                     raise ArtifactAuditError(f"paired {column} must be blank for {key}")
                 continue
-            if column == "scenario_count":
+            if column in {
+                "method", "operating_point", "comparison_role",
+                "primary_endpoint",
+            }:
+                if stored[column] != actual:
+                    raise ArtifactAuditError(f"paired {column} mismatch for {key}")
+            elif column in {
+                "scenario_count", "secondary_family_declared_size",
+                "secondary_family_tested_size",
+            }:
                 if int(stored[column]) != actual:
                     raise ArtifactAuditError(f"paired {column} mismatch for {key}")
             elif abs(_parse_float(stored[column], column) - float(actual)) > 1e-12:
@@ -519,6 +580,8 @@ def _verify_truth_sidecars(
     )
     if artifact_schema_version >= 5:
         names += ("entitlement_evidence.csv",)
+    if artifact_schema_version >= 6:
+        names += ("temporal_view_evaluations.csv",)
     existing = [name for name in names if (run_dir / name).is_file()]
     if not existing:
         if required:
@@ -531,8 +594,13 @@ def _verify_truth_sidecars(
     event_rows = _read_csv(run_dir / names[1])
     policy_rows = _read_csv(run_dir / names[2])
     entitlement_rows = (
-        _read_csv(run_dir / names[3]) if len(names) == 4 else []
+        _read_csv(run_dir / "entitlement_evidence.csv")
+        if artifact_schema_version >= 5 else []
     )
+    if artifact_schema_version >= 6:
+        temporal_rows = _read_csv(run_dir / "temporal_view_evaluations.csv")
+    else:
+        temporal_rows = []
     truth_keys = [(row["scenario_id"], row["employee_id"]) for row in truth_rows]
     if len(set(truth_keys)) != len(truth_keys):
         raise ArtifactAuditError("duplicate record truth rows")
@@ -562,12 +630,16 @@ def _verify_truth_sidecars(
                 "prediction membership does not match eligible test truth"
             )
 
-    policy_keys = [(row["scenario_id"], row["policy_id"]) for row in policy_rows]
+    require_bitemporal = protocol_version == "independent-development-v2-2026-10-29"
+    policy_keys = [(
+        row["scenario_id"],
+        row["policy_id"],
+        row.get("policy_version", "") if require_bitemporal else "",
+    ) for row in policy_rows]
     if len(set(policy_keys)) != len(policy_keys):
         raise ArtifactAuditError("duplicate policy epoch rows")
     policy_key_set = set(policy_keys)
     policy_by_key = {}
-    require_bitemporal = protocol_version == "independent-development-v2-2026-10-29"
     for row in policy_rows:
         effective_from = _parse_iso_date(row["effective_from"], "policy effective_from")
         if require_bitemporal:
@@ -585,7 +657,9 @@ def _verify_truth_sidecars(
                 raise ArtifactAuditError("policy effective interval is reversed")
             if not row["policy_version"] or not row["jurisdiction"]:
                 raise ArtifactAuditError("policy version or jurisdiction is empty")
-            policy_by_key[(row["scenario_id"], row["policy_id"])] = {
+            policy_by_key[(
+                row["scenario_id"], row["policy_id"], row["policy_version"]
+            )] = {
                 "policy_version": row["policy_version"],
                 "effective_from": effective_from,
                 "effective_to": effective_to,
@@ -602,7 +676,7 @@ def _verify_truth_sidecars(
 
     if require_bitemporal:
         epochs_by_scenario: dict[str, list[dict[str, Any]]] = defaultdict(list)
-        for (scenario_id, _), epoch in policy_by_key.items():
+        for (scenario_id, _, _), epoch in policy_by_key.items():
             epochs_by_scenario[scenario_id].append(epoch)
         for scenario_id, epochs in epochs_by_scenario.items():
             ordered = sorted(epochs, key=lambda epoch: epoch["effective_from"])
@@ -624,7 +698,11 @@ def _verify_truth_sidecars(
         employee_key = (row["scenario_id"], row["employee_id"])
         if employee_key not in truth_key_set:
             raise ArtifactAuditError("event references employee missing from record truth")
-        policy_key = (row["scenario_id"], row["policy_id"])
+        policy_key = (
+            row["scenario_id"],
+            row["policy_id"],
+            row.get("policy_version", "") if require_bitemporal else "",
+        )
         if policy_key not in policy_key_set:
             raise ArtifactAuditError("event references unknown policy epoch")
         event_key = (row["scenario_id"], row["employee_id"], row["event_id"])
@@ -643,6 +721,7 @@ def _verify_truth_sidecars(
                 "jurisdiction",
                 "approval_status",
                 "retry_of_event_id",
+                "policy_version",
             ):
                 if column not in row:
                     raise ArtifactAuditError("bitemporal event columns are incomplete")
@@ -692,7 +771,9 @@ def _verify_truth_sidecars(
         event = events_by_key.get(event_key)
         if event is None:
             raise ArtifactAuditError("entitlement references unknown employee event")
-        policy = policy_by_key.get((row["scenario_id"], row["policy_id"]))
+        policy = policy_by_key.get((
+            row["scenario_id"], row["policy_id"], row["policy_version"]
+        ))
         if policy is None or policy["policy_version"] != row["policy_version"]:
             raise ArtifactAuditError("entitlement references unknown policy version")
         if not row["evidence_reference"]:
@@ -709,7 +790,11 @@ def _verify_truth_sidecars(
 
     if artifact_schema_version >= 5:
         for event_key, event in events_by_key.items():
-            policy = policy_by_key[(event["scenario_id"], event["policy_id"])]
+            policy = policy_by_key[(
+                event["scenario_id"],
+                event["policy_id"],
+                event["policy_version"],
+            )]
             effective_date = _parse_iso_date(
                 event["effective_date"], "event effective_date"
             )
@@ -726,10 +811,20 @@ def _verify_truth_sidecars(
                     raise ArtifactAuditError(
                         "out-of-interval policy use lacks event-linked entitlement"
                     )
-                if entitlement["policy_id"] != event["policy_id"]:
+                if (
+                    entitlement["policy_id"] != event["policy_id"]
+                    or entitlement["policy_version"] != event["policy_version"]
+                ):
                     raise ArtifactAuditError(
                         "entitlement policy does not match the relevant event"
                     )
+
+    if artifact_schema_version >= 6:
+        _verify_temporal_view_rows(
+            temporal_rows,
+            events_by_key,
+            events_by_employee,
+        )
 
     for row in event_rows:
         correction_id = row.get("correction_of_event_id", "")
@@ -780,7 +875,14 @@ def _verify_truth_sidecars(
             }
             if not isinstance(event, dict) or not required.issubset(event):
                 raise ArtifactAuditError("causal event evidence is incomplete")
-            if (row["scenario_id"], str(event["policy_id"])) not in policy_key_set:
+            if require_bitemporal and not event.get("policy_version"):
+                raise ArtifactAuditError("causal event policy version is missing")
+            causal_policy_key = (
+                row["scenario_id"],
+                str(event["policy_id"]),
+                str(event.get("policy_version", "")) if require_bitemporal else "",
+            )
+            if causal_policy_key not in policy_key_set:
                 raise ArtifactAuditError("causal event references unknown policy epoch")
             _parse_iso_date(str(event["effective_date"]), "causal effective_date")
             _parse_iso_date(str(event["recorded_date"]), "causal recorded_date")
@@ -808,6 +910,8 @@ def _verify_truth_sidecars(
                 "level_before": "" if event["level_before"] is None else str(event["level_before"]),
                 "level_after": "" if event["level_after"] is None else str(event["level_after"]),
             }
+            if require_bitemporal:
+                expected["policy_version"] = str(event["policy_version"])
             if any(ledger_event[field] != value for field, value in expected.items()):
                 raise ArtifactAuditError("causal event does not match event ledger")
 
@@ -827,7 +931,88 @@ def _verify_truth_sidecars(
         "administrative_event_rows": len(event_rows),
         "policy_epoch_rows": len(policy_rows),
         "entitlement_evidence_rows": len(entitlement_rows),
+        "temporal_view_rows": len(temporal_rows),
     }
+
+
+def _verify_temporal_view_rows(
+    rows: list[dict[str, str]],
+    events_by_key: dict[tuple[str, str, str], dict[str, str]],
+    events_by_employee: dict[tuple[str, str], list[dict[str, str]]],
+) -> None:
+    if not rows:
+        raise ArtifactAuditError("temporal-view artifact rows are missing")
+    grouped: dict[tuple[str, str, str], list[dict[str, str]]] = defaultdict(list)
+    for row in rows:
+        key = (
+            row["scenario_id"],
+            row["employee_id"],
+            row["decision_event_id"],
+        )
+        event = events_by_key.get(key)
+        if event is None or event["event_kind"] != "promotion":
+            raise ArtifactAuditError(
+                "temporal view references an unknown non-promotion decision"
+            )
+        decision_date = _parse_iso_date(
+            row["decision_effective_date"], "temporal decision date"
+        )
+        if decision_date != _parse_iso_date(
+            event["effective_date"], "event effective date"
+        ):
+            raise ArtifactAuditError("temporal decision date does not match event")
+        if _parse_iso_date(row["effective_through"], "effective through") != decision_date:
+            raise ArtifactAuditError("temporal views do not share the decision horizon")
+        visible_ids = json.loads(row["visible_event_ids_json"])
+        effective_ids = json.loads(row["effective_event_ids_json"])
+        if not isinstance(visible_ids, list) or not isinstance(effective_ids, list):
+            raise ArtifactAuditError("temporal event identifiers are not JSON lists")
+        if int(row["visible_event_count"]) != len(visible_ids):
+            raise ArtifactAuditError("temporal visible-event count mismatch")
+        if int(row["effective_event_count"]) != len(effective_ids):
+            raise ArtifactAuditError("temporal effective-event count mismatch")
+        employee_events = {
+            item["event_id"]: item
+            for item in events_by_employee[(row["scenario_id"], row["employee_id"])]
+        }
+        if not set(visible_ids).issubset(employee_events):
+            raise ArtifactAuditError("temporal view contains an unknown event")
+        if not set(effective_ids).issubset(visible_ids):
+            raise ArtifactAuditError("effective temporal events are not visible")
+        if int(row["promotion_assessment_count"]) < 0:
+            raise ArtifactAuditError("temporal assessment count is negative")
+        if int(row["total_service_deficit_months"]) < 0:
+            raise ArtifactAuditError("temporal service deficit is negative")
+        grouped[key].append(row)
+
+    for key, pair in grouped.items():
+        by_view = {row["view_identifier"]: row for row in pair}
+        if set(by_view) != {"known_then", "later_review"} or len(pair) != 2:
+            raise ArtifactAuditError(f"temporal view pair is incomplete for {key}")
+        decision_date = _parse_iso_date(
+            by_view["known_then"]["decision_effective_date"],
+            "temporal decision date",
+        )
+        if _parse_iso_date(
+            by_view["known_then"]["recorded_through"], "known-then cutoff"
+        ) != decision_date:
+            raise ArtifactAuditError("known-then knowledge cutoff is incorrect")
+        later_cutoff = _parse_iso_date(
+            by_view["later_review"]["recorded_through"], "later-review cutoff"
+        )
+        if later_cutoff < decision_date:
+            raise ArtifactAuditError("later-review cutoff precedes decision")
+        known_ids = json.loads(by_view["known_then"]["visible_event_ids_json"])
+        employee_events = {
+            item["event_id"]: item
+            for item in events_by_employee[(key[0], key[1])]
+        }
+        if any(
+            _parse_iso_date(employee_events[event_id]["recorded_date"], "recorded date")
+            > decision_date
+            for event_id in known_ids
+        ):
+            raise ArtifactAuditError("later knowledge leaked into known-then view")
 
 
 def _event_rows_sha256(rows: list[dict[str, str]]) -> str:
@@ -838,6 +1023,8 @@ def _event_rows_sha256(rows: list[dict[str, str]]) -> str:
 
 def _recompute_paired_comparisons(
     rows: list[dict[str, str]],
+    *,
+    include_declared_plan: bool = False,
 ) -> list[dict[str, object]]:
     metric_keys = [
         (row["scenario_id"], row["method"], row["representation"], row["operating_point"])
@@ -875,6 +1062,17 @@ def _recompute_paired_comparisons(
                 "operating_point": operating_point,
                 "scenario_count": len(pairs),
             }
+            is_primary = (method, operating_point) == PRIMARY_COMPARISON
+            if include_declared_plan:
+                item["comparison_role"] = (
+                    "primary_raw_vs_policy" if is_primary else "exploratory"
+                )
+                item["primary_endpoint"] = PRIMARY_ENDPOINT if is_primary else ""
+                item["secondary_family_declared_size"] = (
+                    len(SECONDARY_COMPARISON_METRICS) if is_primary else 0
+                )
+                item["secondary_family_tested_size"] = 0
+                item["primary_recall_sign_flip_p"] = ""
             for metric in PAIR_METRICS:
                 eligible_pairs = [
                     (raw, policy) for raw, policy in pairs
@@ -893,6 +1091,9 @@ def _recompute_paired_comparisons(
                         "delta_sign_flip_p",
                     ):
                         item[f"{metric}_{suffix}"] = ""
+                    if include_declared_plan:
+                        item[f"{metric}_delta_holm_all_p"] = ""
+                        item[f"{metric}_delta_holm_secondary_p"] = ""
                     continue
                 ci_low, ci_high = _bootstrap_mean_ci(
                     deltas, _stable_seed(method, operating_point, metric)
@@ -906,18 +1107,45 @@ def _recompute_paired_comparisons(
                 item[f"{prefix}_sign_flip_p"] = _paired_sign_flip_pvalue(
                     deltas, _stable_seed("sign", method, operating_point, metric)
                 )
+                if include_declared_plan:
+                    item[f"{metric}_delta_holm_all_p"] = ""
+                    item[f"{metric}_delta_holm_secondary_p"] = ""
             comparisons.append(item)
     pvalue_locations = [
-        (item, key)
+        (item, f"{metric}_delta_sign_flip_p")
         for item in comparisons
-        for key in item
-        if key.endswith("_delta_sign_flip_p") and item[key] != ""
+        for metric in LEGACY_AUDITED_PAIR_METRICS
+        if item.get(f"{metric}_delta_sign_flip_p") not in {"", None}
     ]
     adjusted = _holm_adjusted_pvalues([
         float(item[key]) for item, key in pvalue_locations
     ])
     for (item, key), value in zip(pvalue_locations, adjusted):
         item[key.replace("_sign_flip_p", "_holm_all_p")] = value
+    if include_declared_plan:
+        primary_rows = [
+            item for item in comparisons
+            if (item["method"], item["operating_point"]) == PRIMARY_COMPARISON
+        ]
+        if len(primary_rows) > 1:
+            raise ArtifactAuditError("primary comparison is not unique")
+        if primary_rows:
+            primary = primary_rows[0]
+            locations = [
+                (metric, f"{metric}_delta_sign_flip_p")
+                for metric in SECONDARY_COMPARISON_METRICS
+                if primary.get(f"{metric}_delta_sign_flip_p") not in {"", None}
+            ]
+            adjusted_secondary = _holm_adjusted_pvalues([
+                float(primary[key]) for _, key in locations
+            ])
+            for (metric, _), value in zip(locations, adjusted_secondary):
+                primary[f"{metric}_delta_holm_secondary_p"] = value
+            primary["secondary_family_tested_size"] = len(locations)
+            primary["primary_recall_sign_flip_p"] = primary.get(
+                "recall_delta_sign_flip_p",
+                "",
+            )
     return comparisons
 
 

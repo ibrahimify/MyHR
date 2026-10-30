@@ -54,7 +54,7 @@ These are development observations, not final claims.
 
 The research question is retained. The primary comparison is raw versus policy-aware residual ML after filtering only invariant contradictions. Both representations receive the same additional fixed review capacity over the same remaining records. The complete rules-plus-ML workflow is secondary.
 
-Recall at fixed review capacity is primary. Precision, total false alerts, and rare-legitimate false-alert rates accompany it. AP is secondary. Zero-positive scenarios remain reported, are marked undefined for recall and AP, and are excluded from paired inference for those metrics under the frozen predeclared rule.
+Recall at fixed review capacity is primary. Precision, total false alerts, and rare-legitimate false-alert rates accompany it. AP is secondary. Zero-positive scenarios remain reported, are marked undefined for recall and AP, and are excluded from paired inference for those metrics under the predeclared rule. The protocol is not frozen.
 
 The approved design also requires employee-linked entitlement evidence,
 separate `known_then` and `later_review` temporal views, two blinded

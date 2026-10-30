@@ -41,11 +41,19 @@ from src.research.independent_scenarios import (
     IndependentEvent,
     IndependentScenarioSpec,
     IndependentWorld,
+    REFERENCE_DATE,
     TruthCategory,
     generate_independent_world,
     independent_scenario_matrix,
 )
 from src.services.anomaly_detection.protocol_evaluation import evaluate_scenario
+from src.services.anomaly_detection.synthetic_data import (
+    AdministrativeEventType,
+    DatasetSplit,
+)
+from src.services.anomaly_detection.temporal_diagnostics import (
+    diagnose_temporal_views,
+)
 
 
 PROTOCOL_VERSION = "independent-development-v2-2026-10-29"
@@ -124,6 +132,7 @@ def main() -> None:
         event_rows = []
         policy_rows = []
         entitlement_rows = []
+        temporal_view_rows = []
         for spec in specs:
             world = generate_independent_world(spec)
             scenario = adapt_independent_world(world)
@@ -138,6 +147,7 @@ def main() -> None:
             event_rows.extend(_event_ledger_rows(world))
             policy_rows.extend(_policy_epoch_rows(world))
             entitlement_rows.extend(_entitlement_evidence_rows(world))
+            temporal_view_rows.extend(_temporal_view_rows(scenario))
             truth_counts = Counter(entry.category.value for entry in world.truth)
             config_rows.append({
                 **asdict(spec),
@@ -161,7 +171,7 @@ def main() -> None:
             "protocol_status": PROTOCOL_STATUS,
             "holdout_accessed": False,
             "run_purpose": "development",
-            "artifact_schema_version": 5,
+            "artifact_schema_version": 6,
             "analysis_plan_version": ANALYSIS_PLAN_VERSION,
             "truth_sidecars_required": True,
             "condition_count": len(condition_specs),
@@ -196,6 +206,7 @@ def main() -> None:
         _write_csv(run_dir / "administrative_events.csv", event_rows)
         _write_csv(run_dir / "policy_epochs.csv", policy_rows)
         _write_csv(run_dir / "entitlement_evidence.csv", entitlement_rows)
+        _write_csv(run_dir / "temporal_view_evaluations.csv", temporal_view_rows)
         _write_csv(run_dir / "aggregate_metrics.csv", _aggregate_rows(metric_rows))
         _write_csv(run_dir / "paired_comparisons.csv", _paired_comparisons(metric_rows))
         _write_csv(run_dir / "robustness_slices.csv", _robustness_slices(metric_rows))
@@ -262,6 +273,7 @@ def _record_truth_rows(world: IndependentWorld) -> list[dict[str, object]]:
             "event_id": event.event_id,
             "kind": event.kind.value,
             "policy_id": event.policy_id,
+            "policy_version": event.policy_version,
             "effective_date": event.effective_date.isoformat(),
             "recorded_date": event.recorded_date.isoformat(),
             "category": event.category,
@@ -345,6 +357,7 @@ def _event_row(
         "event_id": event.event_id,
         "event_kind": event.kind.value,
         "policy_id": event.policy_id,
+        "policy_version": event.policy_version,
         "effective_date": event.effective_date.isoformat(),
         "recorded_date": event.recorded_date.isoformat(),
         "approval_reference": event.approval_reference or "",
@@ -400,6 +413,56 @@ def _entitlement_evidence_rows(
         "evidence_reference": evidence.evidence_reference,
         "recorded_at": evidence.recorded_at.isoformat(),
     } for evidence in world.entitlement_evidence]
+
+
+def _temporal_view_rows(scenario: object) -> list[dict[str, object]]:
+    """Persist paired knowledge views for every test-split promotion event."""
+
+    rows: list[dict[str, object]] = []
+    evidence_by_employee = getattr(
+        scenario.population,
+        "grandfathering_evidence_by_employee_id",
+        {},
+    )
+    eligible = getattr(
+        scenario.population,
+        "evaluation_eligible_by_employee_id",
+        {},
+    )
+    for record in scenario.dataset.records:
+        employee_id = record.identity.employee_id
+        if record.split is not DatasetSplit.TEST or not eligible.get(employee_id, True):
+            continue
+        promotions = [
+            event for event in record.events
+            if event.event_type is AdministrativeEventType.PROMOTION
+        ]
+        for promotion in promotions:
+            results = diagnose_temporal_views(
+                record,
+                scenario.policy,
+                scenario.policy_epochs,
+                tuple(evidence_by_employee.get(employee_id, ())),
+                promotion.event_date,
+                REFERENCE_DATE,
+            )
+            for result in results:
+                rows.append({
+                    "scenario_id": scenario.config.scenario_id,
+                    "employee_id": employee_id,
+                    "decision_event_id": promotion.source_id,
+                    "decision_effective_date": promotion.event_date.isoformat(),
+                    "view_identifier": result.view_identifier,
+                    "effective_through": result.effective_through.isoformat(),
+                    "recorded_through": result.recorded_through.isoformat(),
+                    "visible_event_ids_json": json.dumps(result.visible_event_ids),
+                    "visible_event_count": result.visible_event_count,
+                    "effective_event_ids_json": json.dumps(result.effective_event_ids),
+                    "effective_event_count": result.effective_event_count,
+                    "promotion_assessment_count": result.promotion_assessment_count,
+                    "total_service_deficit_months": result.total_service_deficit_months,
+                })
+    return rows
 
 
 if __name__ == "__main__":

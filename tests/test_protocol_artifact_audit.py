@@ -13,6 +13,7 @@ from scripts.audit_tdk_protocol_artifact import (
     _verify_declared_matrix,
     _verify_paired_comparisons,
     _verify_scenario_metrics,
+    _verify_temporal_view_rows,
     _verify_truth_sidecars,
     audit_artifact,
 )
@@ -64,6 +65,7 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
             event = {
                 "scenario_id": "s1", "employee_id": "E1", "event_id": "P1",
                 "event_kind": "promotion", "policy_id": "legacy",
+                "policy_version": "1.0",
                 "effective_date": "2023-06-01", "recorded_date": "2023-06-02",
                 "approval_reference": "AR-1", "approval_status": "approved",
                 "correction_of_event_id": "", "retry_of_event_id": "",
@@ -75,6 +77,7 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
             truth["event_ledger_sha256"] = _event_rows_sha256([event])
             truth["causal_events_json"] = json.dumps([{
                 "event_id": "P1", "kind": "promotion", "policy_id": "legacy",
+                "policy_version": "1.0",
                 "effective_date": "2023-06-01", "recorded_date": "2023-06-02",
                 "category": None, "resolved_date": None,
                 "approval_reference": "AR-1", "approval_status": "approved",
@@ -112,6 +115,23 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
             )
             self.assertTrue(result["present"])
 
+            mismatched = dict(entitlement, policy_version="2.0")
+            self._write_csv(
+                run_dir / "entitlement_evidence.csv",
+                [mismatched],
+            )
+            with self.assertRaisesRegex(
+                ArtifactAuditError,
+                "unknown policy version",
+            ):
+                _verify_truth_sidecars(
+                    run_dir,
+                    [{"scenario_id": "s1", "employee_id": "E1"}],
+                    required=True,
+                    protocol_version="independent-development-v2-2026-10-29",
+                    artifact_schema_version=5,
+                )
+
             (run_dir / "entitlement_evidence.csv").write_text(
                 ",".join(entitlement) + "\n",
                 encoding="utf-8",
@@ -127,6 +147,54 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
                     protocol_version="independent-development-v2-2026-10-29",
                     artifact_schema_version=5,
                 )
+
+    def test_temporal_sidecar_rejects_later_knowledge_in_known_then(self):
+        events = {
+            ("s1", "E1", "P1"): {
+                "scenario_id": "s1", "employee_id": "E1", "event_id": "P1",
+                "event_kind": "promotion", "effective_date": "2022-01-01",
+                "recorded_date": "2022-01-01",
+            },
+            ("s1", "E1", "C1"): {
+                "scenario_id": "s1", "employee_id": "E1", "event_id": "C1",
+                "event_kind": "promotion", "effective_date": "2022-01-01",
+                "recorded_date": "2025-01-01",
+            },
+        }
+        by_employee = {("s1", "E1"): list(events.values())}
+        base = {
+            "scenario_id": "s1", "employee_id": "E1",
+            "decision_event_id": "P1", "decision_effective_date": "2022-01-01",
+            "effective_through": "2022-01-01",
+            "promotion_assessment_count": "1",
+            "total_service_deficit_months": "0",
+        }
+        rows = [
+            {
+                **base,
+                "view_identifier": "known_then",
+                "recorded_through": "2022-01-01",
+                "visible_event_ids_json": json.dumps(["P1"]),
+                "visible_event_count": "1",
+                "effective_event_ids_json": json.dumps(["P1"]),
+                "effective_event_count": "1",
+            },
+            {
+                **base,
+                "view_identifier": "later_review",
+                "recorded_through": "2026-12-31",
+                "visible_event_ids_json": json.dumps(["P1", "C1"]),
+                "visible_event_count": "2",
+                "effective_event_ids_json": json.dumps(["C1"]),
+                "effective_event_count": "1",
+            },
+        ]
+        _verify_temporal_view_rows(rows, events, by_employee)
+
+        rows[0]["visible_event_ids_json"] = json.dumps(["P1", "C1"])
+        rows[0]["visible_event_count"] = "2"
+        with self.assertRaisesRegex(ArtifactAuditError, "later knowledge leaked"):
+            _verify_temporal_view_rows(rows, events, by_employee)
 
     def test_audit_recomputes_counts_and_rates(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -338,6 +406,55 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ArtifactAuditError, "paired .* mismatch"):
             _verify_paired_comparisons(metrics, paired)
+
+    def test_audit_rejects_tampered_declared_secondary_holm_family(self):
+        metrics = []
+        for scenario_id in ("s1", "s2"):
+            for representation, offset in (
+                ("raw_matched", 0.0),
+                ("policy_matched", 0.05),
+            ):
+                metrics.append({
+                    "scenario_id": scenario_id,
+                    "method": "rule_negative_isolation_forest",
+                    "representation": representation,
+                    "operating_point": "fixed_review_budget",
+                    **{name: 0.4 + offset for name in PAIR_METRICS},
+                })
+        paired = _paired_comparisons(metrics)
+        primary = paired[0]
+        self.assertEqual(primary["secondary_family_declared_size"], 3)
+        primary["average_precision_delta_holm_secondary_p"] = 0.123
+
+        with self.assertRaisesRegex(ArtifactAuditError, "paired .* mismatch"):
+            _verify_paired_comparisons(metrics, paired)
+
+    def test_declared_matrix_verifies_seed_replicate_provenance(self):
+        configs = []
+        metrics = []
+        for condition_index in (1, 2):
+            for replicate in (1, 2, 3):
+                scenario_id = f"c{condition_index}-seed-{replicate:02d}"
+                configs.append({
+                    "scenario_id": scenario_id,
+                    "condition_id": f"c{condition_index}",
+                    "seed_replicate": str(replicate),
+                    "seed": str(100 * condition_index + replicate),
+                    "split_seed": str(200 * condition_index + replicate),
+                    "model_seed": str(300 * condition_index + replicate),
+                })
+                metrics.append({"scenario_id": scenario_id})
+        metadata = {
+            "protocol_version": "seed-provenance-test",
+            "scenario_count": 6,
+            "condition_count": 2,
+            "seeds_per_condition": 3,
+        }
+
+        _verify_declared_matrix(metadata, configs, metrics)
+        configs[-1]["seed_replicate"] = "2"
+        with self.assertRaisesRegex(ArtifactAuditError, "replicates are incomplete"):
+            _verify_declared_matrix(metadata, configs, metrics)
 
     def test_audit_rejects_duplicate_metric_keys_and_incomplete_pairs(self):
         prediction = {
