@@ -2,6 +2,29 @@
 
 ## Autonomous Audit And Repair Cycle - 2026-10-30
 
+- Final independent methodology review reproduced the current arithmetic but
+  found that policy-matched and wrong-policy representations select identical
+  primary alert membership. Three single-policy-feature ablations each find
+  42 anomalies versus 39 for the full policy representation. Active paper and
+  supervisor materials now preserve this adverse evidence and do not attribute
+  the raw-to-policy difference to correct policy knowledge.
+- The nominal top-10% queue uses ceiling rounding. Each 72-record scenario
+  therefore contributes eight reviews (11.11%), for 96 reviews over 12
+  scenarios. This realized capacity is now reported alongside the nominal rule.
+- The repaired 0/72 deterministic alert count is explicitly a count over
+  generated labels. Twenty-four grandfathering labels lack independently
+  established employee-specific entitlement and are not presented as proven
+  lawful cases.
+- All synthetic generators now derive birth date from hire date with a minimum
+  generated hire age of 18. Semantic tests cover the original generator, the
+  protocol-v2 generator, independent-world histories, duplicate clusters, and
+  hard nonduplicates.
+- The supervisor package now includes every file in the current artifact
+  manifest, immutable legacy metric extracts for historical figures, a
+  quantitative figure-data table, and a package-wide SHA-256 manifest. Legacy
+  artifacts are labelled inherited evidence because they predate and fail the
+  strengthened provenance schema.
+
 - Generator plausibility audit reproduced 83 under-16 hires among 4,320
   independent histories. Both generators now derive fictional birth dates from
   hire dates. The repaired independent matrix has a minimum hire age of 18.007

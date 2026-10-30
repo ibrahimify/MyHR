@@ -34,6 +34,8 @@ from .synthetic_data import (
 
 
 REFERENCE_DATE = date(2026, 12, 31)
+_MIN_GENERATED_HIRE_AGE = 18
+_MAX_GENERATED_HIRE_AGE = 55
 PROGRESSION_ANOMALIES = (
     AnomalyType.INCONSISTENT_DATES,
     AnomalyType.FREQUENT_PROMOTIONS,
@@ -334,7 +336,7 @@ def _simulate_base_history(
     identity = EmployeeIdentity(
         employee_id=f"S2-{employee_number:05d}",
         full_name=f"Synthetic Person {employee_number:05d}",
-        date_of_birth=date(rng.randint(1965, 2002), rng.randint(1, 12), rng.randint(1, 28)),
+        date_of_birth=_birth_date_for_hire(hire_date, rng),
         national_id=f"S2N-{employee_number:08d}",
         email=f"person{employee_number:05d}@scenario.invalid",
     )
@@ -348,6 +350,16 @@ def _simulate_base_history(
         hire_date=hire_date,
         events=tuple(sorted(events, key=lambda event: (event.event_date, event.source_id))),
     )
+
+
+def _birth_date_for_hire(hire_date: date, rng: Random) -> date:
+    age_at_hire = rng.randint(_MIN_GENERATED_HIRE_AGE, _MAX_GENERATED_HIRE_AGE)
+    month = rng.randint(1, 12)
+    day = rng.randint(1, 28)
+    birth_year = hire_date.year - age_at_hire
+    if (month, day) > (hire_date.month, hire_date.day):
+        birth_year -= 1
+    return date(birth_year, month, day)
 
 
 def _normal_role_events(

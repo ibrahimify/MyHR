@@ -152,7 +152,7 @@ class R1DuplicateIdentityDerivationTests(unittest.TestCase):
             age_at_hire = (
                 record.hire_date - record.identity.date_of_birth
             ).days / 365.2425
-            self.assertGreaterEqual(age_at_hire, 16.0)
+            self.assertGreaterEqual(age_at_hire, 18.0)
 
 
 class R6CandidateCountConservationTests(unittest.TestCase):

@@ -12,9 +12,11 @@ MyHR is an offline employee-management and decision-support application. The TDK
 
 The repository implements deterministic validation, statistical baselines, raw and policy-aware Isolation Forest representations, wrong- and shuffled-policy controls, feature ablations, synthetic generators, duplicate-candidate detection, write-once artifacts, checksum auditing, and paired scenario-level analysis. An external audit exposed invalid scenario semantics and an incorrect duplicate-pair universe. Those defects were repaired with regression tests before generating the current artifact.
 
-The current corrected exploratory artifact is `4feea4508de1bb05`, generated from clean commit `56597d3`. Its audit status is verified and `holdout_accessed` is `false`. Across 12 scenarios it contains 864 eligible test histories, 108 anomalies, and 72 rare-legitimate histories. Deterministic policy checks produced 63 TP, 0 FP, and 45 FN, with 0/72 rare-legitimate histories flagged.
+The current corrected exploratory artifact is `4feea4508de1bb05`, generated from clean commit `56597d3`. Its audit status is verified and `holdout_accessed` is `false`. Across 12 scenarios it contains 864 eligible test histories, 108 anomalies, and 72 generated rare-legitimate labels. Deterministic policy checks produced 63 TP, 0 FP, and 45 FN, with 0/72 generated rare labels flagged. That denominator includes 24 grandfathering labels without independently established employee-specific entitlement.
 
-At identical additional review capacity, the scenario-level recall difference for policy-aware minus raw Isolation Forest was +0.0278, 95% CI [-0.0278, +0.1019], paired sign-flip p=0.6875. **No policy-aware advantage was demonstrated in this exploratory run.** The interval does not establish equivalence. The secondary AP difference was +0.0738 with unadjusted p=0.0122, but the all-comparison Holm-adjusted p was 1.0; it is not confirmatory.
+At identical additional review capacity, the scenario-level recall difference for policy-aware minus raw Isolation Forest was +0.0278, 95% CI [-0.0278, +0.1019], paired sign-flip p=0.6875. The nominal top-10% rule uses ceiling rounding, so each model reviewed 8/72 records per scenario, or 96/864 (11.11%) overall. **No policy-aware advantage was demonstrated in this exploratory run.** The interval does not establish equivalence. The secondary AP difference was +0.0738 with unadjusted p=0.0122, but the all-comparison Holm-adjusted p was 1.0; it is not confirmatory.
+
+The adverse controls are more restrictive than the headline comparison: wrong-policy context selected exactly the same 96 records as policy-matched context and produced the same 39 TP/57 FP. Each of three single-policy-feature ablations produced 42 TP/54 FP. The observed difference from raw features therefore cannot be attributed to correct policy knowledge, and the full policy representation underperformed its ablations in this inspected run.
 
 ## What The Audit Changed
 
@@ -23,7 +25,7 @@ At identical additional review capacity, the scenario-level recall difference fo
 - Duplicate metrics now use explicit pair-set membership. Exact methods use the complete partition-local pair universe; similarity evaluation uses its declared blocking universe. True negatives are no longer repaired by capping a wrong count.
 - Correction histories reject duplicate identifiers, branched corrections, cross-type corrections, self-corrections, and cycles.
 - Provenance covers the effective-state resolver, and runtime measurement no longer resets a caller-owned memory trace.
-- Duplicate source and variant records share the same latent-person history and satisfy an adult-at-hire plausibility check.
+- Duplicate source and variant records share the same latent-person history. All three synthetic generators now enforce and test a minimum generated hire age of 18 years.
 
 ## Scientific Boundaries
 

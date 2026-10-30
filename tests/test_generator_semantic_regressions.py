@@ -11,9 +11,13 @@ from src.research.independent_scenarios import (
     independent_scenario_matrix,
 )
 from src.services.anomaly_detection import synthetic_data as syn
+from src.services.anomaly_detection.scenario_generation import (
+    generate_scenario_dataset,
+    scenario_matrix,
+)
 
 
-MIN_PLAUSIBLE_HIRE_AGE = 16.0
+MIN_PLAUSIBLE_HIRE_AGE = 18.0
 
 
 def _age_at_hire(date_of_birth, hire_date) -> float:
@@ -171,6 +175,18 @@ class OriginalGeneratorSemanticTests(unittest.TestCase):
                         target.identity.national_id,
                         syn._transpose_identifier(anchor.identity.national_id),
                     )
+
+
+class ProtocolV2GeneratorSemanticTests(unittest.TestCase):
+    def test_all_generated_identities_are_adults_at_hire(self):
+        offenders = []
+        for config in scenario_matrix("development", count=12, employee_count=120):
+            dataset = generate_scenario_dataset(config).dataset
+            for record in dataset.records:
+                age = _age_at_hire(record.identity.date_of_birth, record.hire_date)
+                if age < MIN_PLAUSIBLE_HIRE_AGE:
+                    offenders.append((config.scenario_id, record.identity.employee_id, age))
+        self.assertEqual(offenders, [])
 
 
 if __name__ == "__main__":

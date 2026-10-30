@@ -17,10 +17,10 @@ Status: supervisor-review draft; development evidence only; draft protocol; fina
 
 - ID: `independent_development_4feea4508de1bb05`.
 - Audit status: `verified`; `holdout_accessed: false`.
-- Data: 12 scenarios; 864 eligible test histories; 108 anomalies; 72 rare-legitimate histories; 900 metric rows; 64,800 prediction rows.
+- Data: 12 scenarios; 864 eligible test histories; 108 anomalies; 72 generated rare-legitimate labels; 900 metric rows; 64,800 prediction rows. Twenty-four generated grandfathering labels lack independently established employee entitlement.
 - Truth sidecars: 4,320 record rows, 57,547 administrative events, and 24 policy epochs.
-- Deterministic policy checks: 63 TP, 0 FP, 45 FN; 0/72 rare-legitimate alerts.
-- Equal residual review queues: 96 records per model. Raw Isolation Forest found 36 anomalies with 60 false alerts; policy-aware Isolation Forest found 39 with 57 false alerts.
+- Deterministic policy checks: 63 TP, 0 FP, 45 FN; 0/72 generated rare-label alerts.
+- Equal residual review queues: 96 records per model, eight of 72 records per scenario (11.11%) under the nominal 10% ceiling rule. Raw Isolation Forest found 36 anomalies with 60 false alerts; policy-aware Isolation Forest found 39 with 57 false alerts. Wrong-policy context selected the identical queue as policy-matched context, and three single-policy-feature ablations each found 42 anomalies.
 - Primary exploratory recall difference: +0.0278, 95% CI [-0.0278, +0.1019], paired sign-flip p=0.6875.
 - Interpretation: no policy-aware advantage was demonstrated; the interval does not establish equivalence.
 

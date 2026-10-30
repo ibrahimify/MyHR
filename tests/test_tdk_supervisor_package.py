@@ -44,7 +44,7 @@ class TdkSupervisorPackageTests(unittest.TestCase):
         text = PAPER_SOURCE.read_text(encoding="utf-8")
 
         required_statements = (
-            "No policy-aware advantage was demonstrated in this exploratory development run",
+            "No policy-aware advantage was demonstrated",
             CURRENT_ARTIFACT_ID,
             "does not establish equivalence",
             "The final holdout has not been generated or accessed.",

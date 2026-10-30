@@ -180,7 +180,7 @@ The old AP values `0.3616` and `0.3621` are reproducible arithmetic but cannot a
 
 ### 8.4 Current repaired exploratory run
 
-Artifact `4feea4508de1bb05` contains 12 scenarios, 864 eligible test histories, 108 anomalies, and 72 rare-legitimate histories. Deterministic policy checks produced 63 TP, 0 FP, and 45 FN, with 0/72 rare-legitimate alerts. At equal additional review capacity, policy-aware minus raw Isolation Forest recall was +0.0278, 95% CI [-0.0278, +0.1019], p=0.6875. Raw and policy-aware residual queues each reviewed 96 records; they found 36 and 39 anomalies respectively, with 60 and 57 false alerts. These inspected development results are neither confirmatory nor evidence of equivalence.
+Artifact `4feea4508de1bb05` contains 12 scenarios, 864 eligible test histories, 108 anomalies, and 72 generated rare-legitimate labels. Deterministic policy checks produced 63 TP, 0 FP, and 45 FN, with 0/72 generated rare-label alerts; 24 grandfathering labels lack independently established employee entitlement. At equal additional review capacity, policy-aware minus raw Isolation Forest recall was +0.0278, 95% CI [-0.0278, +0.1019], p=0.6875. Raw and policy-aware residual queues each reviewed 96 records; they found 36 and 39 anomalies respectively, with 60 and 57 false alerts. Wrong-policy context selected the identical queue as policy-matched context, while three single-policy-feature ablations each found 42 anomalies. These inspected development results neither demonstrate correct-policy value nor establish equivalence.
 
 ## 9. What Is Verified, Inferred, Or Pending
 
