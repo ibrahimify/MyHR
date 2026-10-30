@@ -2,7 +2,7 @@
 
 **SUPERVISOR DECISIONS RECORDED 29 OCTOBER 2026. APPROVED FOR IMPLEMENTATION. PROTOCOL FREEZE PENDING. HOLDOUT LOCKED.**
 
-Decision source: supervisor answers relayed by Muhammad Ibrahim Shoeb. Full record: `TDK_SUPERVISOR_DECISIONS_2026-10-29.md`.
+Decision source: author-authorized implementation decisions recorded by Muhammad Ibrahim Shoeb (not a separately documented independent supervisor endorsement; see the authorship note in `TDK_SUPERVISOR_DECISIONS_2026-10-29.md`). Full record: `TDK_SUPERVISOR_DECISIONS_2026-10-29.md`.
 
 ## 1. Primary Hypothesis
 

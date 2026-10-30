@@ -46,7 +46,17 @@ A second independent repository audit (imported verbatim to `docs/TDK_SECOND_EXT
 - **R10 (provenance completeness).** The artifact auditor now requires provenance `source_sha256` to cover the COMPLETE `PROVENANCE_SOURCE_PATHS` set, not an arbitrary non-empty subset. Independent auditor: subset rejected, complete set accepted, and artifact `274067cbb57f1dc2` still audits "verified" under the stricter check.
 - Two brittle pre-existing tests updated to match corrected behavior (threshold-default inspection; audit fixtures now supply complete provenance). 244 tests pass.
 
-**STILL OPEN (last):** R11 (paper/protocol/status/package reconciliation — documentation only). Holdout stays locked.
+**R11 — RECONCILED (2026-10-30, documentation only):**
+
+- Removed the duplicated/corrupted paragraph fragment in the paper conclusion (`TDK_PAPER_DRAFT.md`).
+- Fixed the implementation-status contradiction: the invariant-only residual boundary, recall-primary endpoint, equal budget, and bitemporal contract are now described as IMPLEMENTED (and exercised by the current development artifacts) but NOT frozen; expert review and the holdout matrix remain unimplemented. Protocol `Implemented Draft Protocol Boundary` section updated to match.
+- Corrected the approver attribution across the decision records: the 29 October decisions are the project author's (Ibrahim's) own implementation authorizations, not a separately documented independent supervisor endorsement. The earlier "supervisor answers relayed by..." phrasing overstated independence and was corrected in `TDK_SUPERVISOR_DECISIONS_2026-10-29.md`, `TDK_SUPERVISOR_DECISION_SHEET.md`, and the paper.
+- Updated the paper conclusion so it no longer presents an invalid transition reading as a historical-policy false-positive claim: the older `39/72` is marked historical, the intermediate `8/72` is marked INVALIDATED, and the corrected artifact `274067cbb57f1dc2` (0/72 flagged, recall delta +0.0185, no advantage) is cited as the current exploratory diagnostic.
+- Doc-sensitive tests (supervisor package) still pass. 245 tests pass.
+
+## SECOND-AUDIT REPAIR COMPLETE — all 11 findings addressed (2026-10-30)
+
+All confirmed findings R1–R10 were fixed with a failing semantic test written first and independent read-only verification; R11 (documentation) was reconciled. Remaining non-code items are explicitly deferred, not silently closed: R7.2 (employee-level grandfathering entitlement) and R7.4 (knowledge-time vs observation-time dual views) are documented modeling limitations; the scenario definitions (Proposals 1,4,5,6) remain PENDING human approval; expert-reviewer nomination, protocol freeze, and holdout authorization remain human-gated. The holdout was never generated, inspected, scored, or unlocked. All work is local (commits `abaf175`, `63c5dcf`, `b72fd6e`, `f62a164`, and the R11 doc commit); nothing pushed; PR #1 stays draft.
 
 ## Scientific-Scope Correction For New Scenario Families - 2026-10-30
 

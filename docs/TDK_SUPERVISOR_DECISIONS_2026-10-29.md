@@ -2,9 +2,16 @@
 
 Date recorded: 29 October 2026
 
-Decision source: supervisor answers relayed by Muhammad Ibrahim Shoeb.
+Decision source: these decisions were recorded as the project author's (Muhammad
+Ibrahim Shoeb) own implementation-authorization decisions. The second external
+audit (2026-10-30) correctly noted that the earlier phrasing "supervisor answers
+relayed by..." implied an independent supervisor endorsement that is not
+separately documented. Unless and until a distinct supervisor communication is
+recorded, these are the author's authorizations to IMPLEMENT the methodology.
+They remain subject to the scientific boundaries below: they do not freeze the
+protocol or unlock the holdout, which require a separately documented approval.
 
-Status: **APPROVED FOR IMPLEMENTATION. PROTOCOL NOT YET FROZEN. HOLDOUT LOCKED.**
+Status: **APPROVED FOR IMPLEMENTATION (AUTHOR-AUTHORIZED). PROTOCOL NOT YET FROZEN. HOLDOUT LOCKED.**
 
 These decisions authorize the methodology changes below. They do not certify that the implementation is complete, freeze a source revision, or authorize holdout generation or evaluation.
 
