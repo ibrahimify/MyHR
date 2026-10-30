@@ -79,21 +79,21 @@ These are development-audit counts, not final scientific results.
 
 - Regression tests were added before implementation and failed on the intended defects.
 - Focused research, artifact, duplicate, and application suites pass.
-- The full repository suite passed 181 tests after the first correction set; a final full run is required after documentation and independent-review corrections.
+- The full repository suite passed 181 tests after the first correction set; subsequent gap-closure work (latent-person-first duplicates, hard nonduplicates, runtime/memory reporting, late_correction and policy_transition scenarios) brought the total to **210 tests** as of commit `e3e18ac`.
 - A fresh 12-scenario, 120-employee-per-scenario development run completed with 648 metric rows and 15,552 prediction rows.
 - The family-wide policy-feature variation guard passed.
 - Formal artifact certification correctly refused that run because it was generated from an uncommitted dirty worktree. A new write-once run must be generated and audited from the clean committed revision.
 
 ## Remaining Weaknesses
 
-1. Duplicate data are still derived from source records rather than from a fully separate latent-person-first generator.
-2. Hard nonduplicates are partly incidental; relatives, shared contacts, and controlled near-identical identifiers still need explicit balanced mechanisms.
-3. Correction fields are implemented and audited, but a dedicated late-correction scenario family is not yet frozen.
-4. Some individual scenarios may legitimately have constant policy features; only family-wide collapse is currently fatal.
-5. The bitemporal contract is implemented for research records, not migrated into the production SQLite schema.
-6. Runtime and memory reporting for duplicate blocking/scoring remain incomplete.
-7. Expert realism review has not been executed.
-8. The protocol remains draft, the exact environment is not frozen, and no holdout access is authorized.
+1. ~~Duplicate data are still derived from source records rather than from a fully separate latent-person-first generator.~~ **CLOSED 2026-10-30** (commit `c98f416`): `LatentPerson` dataclass, `latent_person_id` field on `WorkforceHistoryRecord`, schema `tdk-synthetic-v2`.
+2. ~~Hard nonduplicates are partly incidental; relatives, shared contacts, and controlled near-identical identifiers still need explicit balanced mechanisms.~~ **CLOSED 2026-10-30** (commit `c98f416`): `HardNonduplicateKind` enum adds four explicit mechanisms (`similar_name`, `shared_birthday`, `relative`, `near_identical_id`).
+3. ~~Correction fields are implemented and audited, but a dedicated late-correction scenario family is not yet frozen.~~ **SCENARIO IMPLEMENTED 2026-10-30** (commit `0bfa585`): `late_correction` and `policy_transition` added to `rare_legitimate_patterns()`; 10 new tests added. Protocol freeze itself remains pending.
+4. Some individual scenarios may legitimately have constant policy features; only family-wide collapse is currently fatal. *(Still open by design — deliberate choice.)*
+5. The bitemporal contract is implemented for research records, not migrated into the production SQLite schema. *(Still open — production migration deferred.)*
+6. ~~Runtime and memory reporting for duplicate blocking/scoring remain incomplete.~~ **CLOSED 2026-10-30** (commit `14dc1cd`): `blocking_time_s`, `scoring_time_s`, `peak_memory_bytes`, `candidates_per_1000_records`, `false_matches_per_1000_records` added to `DuplicateEvaluation`.
+7. Expert realism review has not been executed. *(Still open — reviewers unnamed.)*
+8. The protocol remains draft, the exact environment is not frozen, and no holdout access is authorized. *(Still open — freeze and holdout require separate supervisor approval.)*
 
 ## Scientific Interpretation
 

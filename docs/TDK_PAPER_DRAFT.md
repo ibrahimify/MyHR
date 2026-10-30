@@ -351,7 +351,8 @@ CI answers whether the checked code and tests pass in the configured environment
 | Raw and policy features | `features.py` and protocol tests |
 | Independent generator boundary | `src/research/independent_scenarios.py` |
 | Validation results | `validation_c5878ca7b927ccd2` artifact and audit |
-| Independent results | `independent_development_e342bd4acf39b06b` artifact and audit |
+| Independent results (pre-fix development) | `independent_development_e342bd4acf39b06b` artifact and audit |
+| Clean-revision independent results | `independent_development_62f482ce6ff477b9` artifact and audit (commit `bbc59f8`, status: verified) |
 | Structural feature collapse | Independent hostile review and source trace |
 | Citation claims | Bibliography, provenance registry, and evidence ledger |
 | Holdout status | Protocol, artifact metadata, runner refusal, and roadmap |
@@ -543,7 +544,7 @@ The same principle applies to explanations. A reviewer should see which facts ar
 | Generator-detector circularity | Independent simulator, controls, preserved negative findings | Approved review method not yet executed; conceptual realism unverified |
 | Test-threshold leakage | Validation-only thresholds | Deployment calibration unresolved |
 | Favorable seed selection | Recorded seed matrix and write-once artifacts | More replicated scenario seeds needed |
-| Missing denominators | Counts and pooled/scenario metrics stored; undefined recall/AP eligibility implemented | New clean-revision artifacts not yet independently certified |
+| Missing denominators | Counts and pooled/scenario metrics stored; undefined recall/AP eligibility implemented | Clean-revision independent artifact `62f482ce6ff477b9` independently certified at commit `bbc59f8`; new protocol-scale development artifacts still needed |
 | Historical policy replay | Research bitemporal contract and golden replay tests implemented | Production temporal schema and correction-case matrix not frozen |
 | Citation overstatement | Provenance registry and claim ledger | Two references remain metadata-only |
 | External validity | Fictional data protect privacy | No organizational validation |
@@ -557,7 +558,7 @@ The development experiments do not establish the expected advantage. Instead, th
 
 The most actionable finding concerns historical policy. Deterministic validation flagged 39 of 72 constructed rare-legitimate histories, with source regeneration attributing the flagged cases to realized policy transitions that the original artifact cannot independently identify per record. This demonstrates a missing historical-policy contract and motivates effective-time and recorded-time modelling. It does not estimate real-world error prevalence.
 
-The next step is to independently audit the corrected implementation and generate versioned development and validation evidence from a clean revision. Remaining work includes a latent-person-first duplicate generator, explicit hard nonduplicates and correction cases, duplicate runtime and memory measures, the blinded expert-realism review, and the independently specified holdout matrix. After replicated checks, the dependencies, analysis, and source revision require a separate dated freeze approval. Only then may the locked holdout run once. A final conclusion must report whatever that holdout shows, including a negative result.
+The next step is to generate new development and validation artifacts using the clean protocol at adequate scale. The clean-revision independent development artifact `62f482ce6ff477b9` was generated from commit `bbc59f8` and independently audited: 12 scenarios, 864 test histories, 108 anomalies, primary recall delta mean +0.037, 95% CI [−0.037, +0.111], sign-flip p=0.516. This is a development diagnostic, not a final result, but it confirms the corrected pipeline is executable. Remaining work includes the blinded expert-realism review and the independently specified holdout matrix. After replicated checks, the dependencies, analysis, and source revision require a separate dated freeze approval. Only then may the locked holdout run once. A final conclusion must report whatever that holdout shows, including a negative result.icated checks, the dependencies, analysis, and source revision require a separate dated freeze approval. Only then may the locked holdout run once. A final conclusion must report whatever that holdout shows, including a negative result.
 
 Duplicate detection remains a useful secondary experiment, and evidence-rich explanation remains a product contribution. Neither substitutes for a valid central anomaly-detection experiment. The present paper therefore offers a reproducible research platform, an honest diagnosis of a failed comparison, and a concrete path to a stronger confirmatory study.
 
@@ -602,6 +603,7 @@ pip install -r requirements.txt -r requirements-research.txt
 python -m unittest discover tests
 python scripts/verify_tdk_citations.py --require-local-artifact
 python scripts/audit_tdk_protocol_artifact.py research_outputs/independent_development/independent_development_e342bd4acf39b06b
+python scripts/audit_tdk_protocol_artifact.py research_outputs/independent_development/independent_development_62f482ce6ff477b9
 ```
 
 No holdout command is included. The holdout runner remains unavailable until the protocol is frozen and approved.

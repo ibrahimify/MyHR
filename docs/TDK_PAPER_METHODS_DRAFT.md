@@ -32,7 +32,7 @@ Raw and policy-aware representations are paired within each scenario. Wrong-poli
 
 The stored rule-negative experiment first removes all histories flagged by the policy validator. That same validator removes every positive service-deficit history, leaving all three policy-specific matched features constant at zero. Consequently, the saved policy-aware residual model has no varying policy-specific signal. Its reported AP difference cannot be interpreted as evidence for or against incremental policy context.
 
-Six of twelve historical independent scenarios also had no residual positives, and the old implementation stored AP as zero. The corrected code retains zero-positive scenarios and their denominators, marks recall and AP undefined, and excludes only those undefined metric values from paired inference. The old defect remains preserved in the development record; a new clean-revision development and validation run is still required before protocol freeze.
+Six of twelve historical independent scenarios also had no residual positives, and the old implementation stored AP as zero. The corrected code retains zero-positive scenarios and their denominators, marks recall and AP undefined, and excludes only those undefined metric values from paired inference. A clean-revision independent development artifact (`62f482ce6ff477b9`, commit `bbc59f8`) has been generated and independently audited: 12 scenarios, 864 test histories, 108 anomalies, primary recall delta mean +0.037, 95% CI [−0.037, +0.111], sign-flip p=0.516. This confirms the corrected pipeline is executable; new protocol-scale development and validation artifacts are still required before protocol freeze.
 
 ## Development Evaluation
 
@@ -58,6 +58,7 @@ Future independent development artifacts also write normalized truth, administra
 | Independent generator boundary | `src/research/independent_scenarios.py`, `tests/test_independent_scenarios.py` |
 | Stored model and metric implementation | `src/services/anomaly_detection/protocol_evaluation.py` |
 | Independent development run | `research_outputs/independent_development/independent_development_e342bd4acf39b06b/metadata.json` |
+| Clean-revision independent development run | `research_outputs/independent_development/independent_development_62f482ce6ff477b9/metadata.json` (status: verified, commit `bbc59f8`) |
 | Per-record scores and denominators | Same artifact: `record_predictions.csv`, `scenario_metrics.csv` |
 | Paired development summaries | Same artifact: `paired_comparisons.csv` |
 | Integrity and source hashes | Same artifact: `manifest.json`; adjacent `.audit.json` |
