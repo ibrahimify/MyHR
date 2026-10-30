@@ -35,6 +35,18 @@ then regenerate evidence, then remaining findings. Each fix gets a failing
 regression test first and independent read-only verification. The holdout remains
 locked; no feature expansion; artifacts preserved unchanged.
 
+## Codex takeover status
+
+The first R6 repair was insufficient because it accepted only a universe size and
+could not verify pair membership. The takeover repair uses an explicit pair set,
+rejects out-of-universe predictions, treats out-of-universe truth as a blocking
+miss, and exports the method-specific candidate-universe size. R7 is **partially
+resolved**, not closed: version identity and future-effective exclusion are
+implemented, while employee-level grandfathering and distinct knowledge-time
+views remain open. Artifact `274067cbb57f1dc2` predates the final R6 repair; do
+not cite its duplicate candidate-set metrics. The original report below remains
+unchanged.
+
 ---
 
 # Original external audit report (verbatim)

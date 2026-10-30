@@ -44,6 +44,7 @@ class DuplicateEvaluation:
     blocked_true_pair_count: int
     candidate_metrics: BinaryClassificationMetrics
     candidate_average_precision: float | None
+    candidate_pair_count: int = 0
     # Runtime and memory measurements (protocol requirement).
     # blocking_time_s: wall-clock seconds spent building the candidate set.
     # scoring_time_s: wall-clock seconds spent computing similarity scores.
@@ -68,9 +69,9 @@ class DuplicateEvaluation:
 
     @property
     def candidates_per_1000_records(self) -> float:
-        """Number of candidate pairs surfaced per 1,000 evaluated records."""
+        """Number of review candidates surfaced per 1,000 evaluated records."""
         return (
-            self.blocked_pair_count / self.record_count * 1000
+            len(self.candidates) / self.record_count * 1000
             if self.record_count else 0.0
         )
 
@@ -213,7 +214,7 @@ def evaluate_duplicate_detection(
     caller_was_tracing = tracemalloc.is_tracing()
     if not caller_was_tracing:
         tracemalloc.start()
-    tracemalloc.reset_peak()
+        tracemalloc.reset_peak()
 
     records = tuple(record for record in dataset.records if record.split is split)
     scored_candidates: tuple[DuplicateCandidate, ...] = ()
@@ -250,8 +251,13 @@ def evaluate_duplicate_detection(
             raise ValueError(f"Unsupported duplicate detection method: {method}")
         scoring_time_s = time.perf_counter() - score_start
 
-        # True peak allocation for this call, in bytes.
-        _current, peak_memory_bytes = tracemalloc.get_traced_memory()
+        # A true call-scoped peak is available only when this function owns the
+        # tracing session. Resetting a caller-owned peak would destroy their
+        # instrumentation, so nested measurements are reported as unavailable.
+        if caller_was_tracing:
+            peak_memory_bytes = 0
+        else:
+            _current, peak_memory_bytes = tracemalloc.get_traced_memory()
     finally:
         # Only stop tracing if we started it; never disturb a caller's tracing.
         if not caller_was_tracing:
@@ -265,10 +271,20 @@ def evaluate_duplicate_detection(
     total_pairs = len(records) * (len(records) - 1) // 2
     true_negatives = total_pairs - true_positives - false_positives - false_negatives
     blocked_true_pairs = blocked_pairs & true_pairs
+    if method == "similarity":
+        candidate_universe = blocked_pairs
+    else:
+        # Exact methods apply their equality predicate to the complete partition.
+        # Their optimized grouping is an implementation detail, not a smaller
+        # evaluation universe.
+        candidate_universe = {
+            _pair_key(left.identity.employee_id, right.identity.employee_id)
+            for left, right in _record_pairs(records)
+        }
     candidate_metrics = confusion_counts_for_pairs(
         predicted_pairs,
-        blocked_true_pairs,
-        len(blocked_pairs),
+        true_pairs,
+        candidate_universe,
     )
     candidate_average_precision = None
     if scored_candidates and blocked_true_pairs:
@@ -300,6 +316,7 @@ def evaluate_duplicate_detection(
         blocked_true_pair_count=len(blocked_pairs & true_pairs),
         candidate_metrics=candidate_metrics,
         candidate_average_precision=candidate_average_precision,
+        candidate_pair_count=len(candidate_universe),
         blocking_time_s=blocking_time_s,
         scoring_time_s=scoring_time_s,
         peak_memory_bytes=max(peak_memory_bytes, 0),
@@ -325,7 +342,15 @@ def select_similarity_threshold(
             for candidate in scored
             if candidate.score >= threshold
         }
-        metrics = confusion_counts_for_pairs(predicted, true_pairs, len(scored))
+        candidate_universe = {
+            _pair_key(candidate.left_employee_id, candidate.right_employee_id)
+            for candidate in scored
+        }
+        metrics = confusion_counts_for_pairs(
+            predicted,
+            true_pairs,
+            candidate_universe,
+        )
         selections.append((metrics.f1, metrics.precision, metrics.recall, threshold))
     return max(selections)[3]
 
@@ -333,49 +358,34 @@ def select_similarity_threshold(
 def confusion_counts_for_pairs(
     predicted_pairs: set[tuple[str, str]],
     true_pairs: set[tuple[str, str]],
-    candidate_pair_count: int,
+    pair_universe: set[tuple[str, str]],
 ) -> BinaryClassificationMetrics:
-    """Return candidate-set confusion counts over a bounded candidate universe.
+    """Partition an explicit pair universe into TP, FP, FN, and TN.
 
-    Universe semantics: ``candidate_pair_count`` is the size of the candidate
-    universe (e.g. the blocked pair set).  The four confusion counts partition
-    that universe, so TP + FP + FN + TN must never exceed ``candidate_pair_count``
-    and, when every predicted and true pair lies inside the universe, must sum to
-    exactly ``candidate_pair_count`` with::
-
-        TN = candidate_pair_count - TP - FP - FN
-
-    Predicted or true pairs may legitimately lie *outside* the universe: an
-    exact/email match not surfaced by the similarity block, or a true pair that
-    was never blocked.  Those out-of-universe positives must not corrupt the
-    negative count.  TP/FP are derived from predicted pairs and FN from the
-    remaining true pairs; ``true_negatives`` is the universe size minus the
-    positive classes, capped at zero.
-
-    Guarantee: when every predicted and true pair lies inside the universe (the
-    normal case at every real call site, where the blocked universe dwarfs the
-    positive counts), TP + FP + FN + TN == ``candidate_pair_count`` exactly and
-    TN >= 0.  In the degenerate case where out-of-universe positives alone exceed
-    ``candidate_pair_count``, TN is floored at 0 and the raw positive counts
-    (TP/FP/FN) are reported unclamped, so their sum may exceed the universe; this
-    does not occur in the experiment and is preserved only so positive counts
-    stay faithful to the supplied inputs.
+    Truth outside the universe represents blocking misses and is evaluated by
+    blocking recall, not by candidate-set classification. Predictions outside
+    the declared universe are a contract error because they would make the
+    candidate confusion matrix undefined.
     """
 
-    true_positives = len(predicted_pairs & true_pairs)
-    false_positives = len(predicted_pairs - true_pairs)
-    false_negatives = len(true_pairs - predicted_pairs)
-    # Cap the positive classes at the universe so out-of-universe pairs cannot
-    # drive the negative count below zero or push the total past the universe.
-    positive_total = min(
-        true_positives + false_positives + false_negatives,
-        candidate_pair_count,
+    outside_predictions = predicted_pairs - pair_universe
+    if outside_predictions:
+        raise ValueError(
+            "predicted pairs are outside the declared candidate universe: "
+            f"{sorted(outside_predictions)[:3]}"
+        )
+
+    in_universe_truth = true_pairs & pair_universe
+    true_positives = len(predicted_pairs & in_universe_truth)
+    false_positives = len(predicted_pairs - in_universe_truth)
+    false_negatives = len(in_universe_truth - predicted_pairs)
+    true_negatives = len(
+        pair_universe - predicted_pairs - in_universe_truth
     )
-    true_negatives = candidate_pair_count - positive_total
     return BinaryClassificationMetrics(
         true_positives=true_positives,
         false_positives=false_positives,
-        true_negatives=max(true_negatives, 0),
+        true_negatives=true_negatives,
         false_negatives=false_negatives,
     )
 

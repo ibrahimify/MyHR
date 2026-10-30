@@ -32,9 +32,9 @@ class TdkSupervisorPackageTests(unittest.TestCase):
         text = PAPER_SOURCE.read_text(encoding="utf-8")
 
         required_statements = (
-            "deterministic filtering removes all variation from the policy-specific residual features",
-            "cannot test the central hypothesis",
-            "39/72",
+            "No policy-aware advantage was demonstrated in this exploratory development run",
+            "274067cbb57f1dc2",
+            "does not establish equivalence",
             "The final holdout has not been generated or accessed.",
         )
         for statement in required_statements:

@@ -367,13 +367,15 @@ def generate_synthetic_dataset(config: ExperimentConfig) -> SyntheticDataset:
     # Generate a latent person for each cluster (one per duplicate record).
     latent_persons: dict[int, LatentPerson] = {}
     duplicate_source_ids: dict[int, str] = {}  # duplicate_index -> source employee_id
+    used_source_indices: set[int] = set()
     for cluster_num, dup_idx in enumerate(sorted(duplicate_indices)):
         dup_split = split_by_index[dup_idx]
         same_split_sources = [
             index for index, label in label_plan.items()
-            if label is not AnomalyType.DUPLICATE_RECORD
+            if label is AnomalyType.CLEAN
             and split_by_index[index] is dup_split
             and index != dup_idx
+            and index not in used_source_indices
         ]
         if not same_split_sources:
             raise ValueError(
@@ -381,6 +383,7 @@ def generate_synthetic_dataset(config: ExperimentConfig) -> SyntheticDataset:
                 f"{dup_split.value} for duplicate at index {dup_idx}"
             )
         source_index = same_split_sources[cluster_num % len(same_split_sources)]
+        used_source_indices.add(source_index)
         latent_persons[dup_idx] = _generate_latent_person(cluster_num, rng)
         duplicate_source_ids[dup_idx] = base_records[source_index].identity.employee_id
 
@@ -394,35 +397,49 @@ def generate_synthetic_dataset(config: ExperimentConfig) -> SyntheticDataset:
         src_id = duplicate_source_ids[dup_idx]
         source_to_latent[src_id] = latent
 
+    # Canonicalize source identities before deriving variants. Duplicate records
+    # are then copied from this canonical source record, including the same
+    # employment and administrative history, rather than retaining an unrelated
+    # independently generated history.
+    canonical_base_records: list[WorkforceHistoryRecord] = []
+    for record in base_records:
+        latent_for_source = source_to_latent.get(record.identity.employee_id)
+        if latent_for_source is None:
+            canonical_base_records.append(record)
+            continue
+        canonical_base_records.append(replace(
+            record,
+            identity=_canonical_latent_identity(
+                latent_for_source, record.identity.employee_id
+            ),
+            latent_person_id=latent_for_source.latent_person_id,
+        ))
+    canonical_by_id = {
+        record.identity.employee_id: record for record in canonical_base_records
+    }
+
     # Apply labels and build final records.
     records: list[WorkforceHistoryRecord] = []
-    for index, record in enumerate(base_records):
+    for index, record in enumerate(canonical_base_records):
         label = label_plan[index]
         if label is AnomalyType.DUPLICATE_RECORD:
             person = latent_persons[index]
             src_id = duplicate_source_ids[index]
             variant = index % 4
-            record = _apply_latent_person_duplicate(record, person, src_id, variant)
+            record = _apply_latent_person_duplicate(
+                canonical_by_id[src_id],
+                person,
+                src_id,
+                record.identity.employee_id,
+                variant,
+            )
         elif label is not AnomalyType.CLEAN:
             # All other anomaly types use the original _apply_label path.
             non_duplicate_sources = tuple(
-                r for i, r in enumerate(base_records)
+                r for i, r in enumerate(canonical_base_records)
                 if label_plan[i] is not AnomalyType.DUPLICATE_RECORD
             )
             record = _apply_label(record, label, non_duplicate_sources, rng)
-        # Source records of a latent cluster: overwrite their identity with the
-        # latent person's canonical identity (keeping their own employee_id and
-        # events) and tag them with the latent_person_id. The source now IS the
-        # latent person; its linked duplicate is a corrupted copy of these facts.
-        latent_for_source = source_to_latent.get(record.identity.employee_id)
-        if latent_for_source is not None:
-            record = replace(
-                record,
-                identity=_canonical_latent_identity(
-                    latent_for_source, record.identity.employee_id
-                ),
-                latent_person_id=latent_for_source.latent_person_id,
-            )
         records.append(record)
 
     # --- Hard nonduplicate injection ---
@@ -861,7 +878,10 @@ def _generate_latent_person(index: int, rng: Random) -> LatentPerson:
     first_name = FIRST_NAMES[index % len(FIRST_NAMES)]
     last_name = LAST_NAMES[(index * 7 + 3) % len(LAST_NAMES)]  # offset to avoid FIRST_NAMES alignment
     full_name = f"{first_name} {last_name}"
-    dob = _safe_date(rng.randint(1970, 2001), rng.randint(1, 12), rng.randint(1, 28))
+    # Keep latent duplicate entities old enough for every generated employment
+    # start. The ordinary generator currently starts histories no earlier than
+    # 2016, so a 1995 upper bound leaves a conservative adult margin.
+    dob = _safe_date(rng.randint(1970, 1995), rng.randint(1, 12), rng.randint(1, 28))
     national_id = f"LATENT-{index:06d}"
     email = f"{first_name.lower()}.{last_name.lower()}.latent{index}@synthetic.myhr"
     return LatentPerson(
@@ -936,6 +956,7 @@ def _apply_latent_person_duplicate(
     record: WorkforceHistoryRecord,
     person: LatentPerson,
     source_employee_id: str,
+    duplicate_employee_id: str,
     variant: int,
 ) -> WorkforceHistoryRecord:
     """Replace the identity of *record* with a latent-person-derived variant.
@@ -944,7 +965,7 @@ def _apply_latent_person_duplicate(
     the source record in the same partition) and ``latent_person_id`` (the
     shared origin for the whole cluster).
     """
-    identity = _derive_duplicate_identity(person, record.identity.employee_id, variant)
+    identity = _derive_duplicate_identity(person, duplicate_employee_id, variant)
     return replace(
         record,
         identity=identity,

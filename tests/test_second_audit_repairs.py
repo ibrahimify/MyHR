@@ -20,6 +20,8 @@ from unittest.mock import patch
 import src.services.anomaly_detection.synthetic_data as syn
 from src.services.anomaly_detection.duplicate_detection import (
     confusion_counts_for_pairs,
+    evaluate_duplicate_detection,
+    select_similarity_threshold,
 )
 
 
@@ -122,12 +124,43 @@ class R1DuplicateIdentityDerivationTests(unittest.TestCase):
             "recover at least one true pair",
         )
 
+    def test_duplicate_variant_shares_source_employment_history(self):
+        dataset, _ = self._generate_with_latent_capture()
+        by_id = {record.identity.employee_id: record for record in dataset.records}
+        duplicates = [
+            record for record in dataset.records
+            if record.duplicate_of_employee_id is not None
+        ]
+        self.assertTrue(duplicates)
+        for duplicate in duplicates:
+            source = by_id[duplicate.duplicate_of_employee_id]
+            self.assertEqual(duplicate.hire_date, source.hire_date)
+            self.assertEqual(duplicate.department, source.department)
+            self.assertEqual(duplicate.role, source.role)
+            self.assertEqual(duplicate.employment_track, source.employment_track)
+            self.assertEqual(duplicate.current_level, source.current_level)
+            self.assertEqual(duplicate.events, source.events)
+
+    def test_duplicate_clusters_have_plausible_hire_age(self):
+        dataset, _ = self._generate_with_latent_capture()
+        cluster_records = [
+            record for record in dataset.records
+            if record.latent_person_id is not None
+        ]
+        self.assertTrue(cluster_records)
+        for record in cluster_records:
+            age_at_hire = (
+                record.hire_date - record.identity.date_of_birth
+            ).days / 365.2425
+            self.assertGreaterEqual(age_at_hire, 16.0)
+
 
 class R6CandidateCountConservationTests(unittest.TestCase):
     """R6: candidate-set confusion counts must not exceed the candidate universe."""
 
     def test_one_missed_pair_in_one_candidate_universe_conserves_counts(self):
-        metrics = confusion_counts_for_pairs(set(), {("A", "B")}, 1)
+        universe = {("A", "B")}
+        metrics = confusion_counts_for_pairs(set(), {("A", "B")}, universe)
         total = (
             metrics.true_positives
             + metrics.false_positives
@@ -139,21 +172,48 @@ class R6CandidateCountConservationTests(unittest.TestCase):
         self.assertEqual(metrics.true_negatives, 0)
 
     def test_counts_conserve_across_mixed_candidate_universe(self):
-        # Universe of 4 candidate pairs. 2 true (AB, CD). Predict AB (TP) and EF
-        # (FP, but EF is outside the universe -> should not inflate counts beyond 4).
+        universe = {
+            ("A", "B"), ("C", "D"), ("E", "F"), ("G", "H"),
+        }
         predicted = {("A", "B"), ("C", "D")}
         true_pairs = {("A", "B"), ("E", "F")}
-        metrics = confusion_counts_for_pairs(predicted, true_pairs, 4)
+        metrics = confusion_counts_for_pairs(predicted, true_pairs, universe)
         total = (
             metrics.true_positives
             + metrics.false_positives
             + metrics.true_negatives
             + metrics.false_negatives
         )
-        self.assertLessEqual(total, 4, f"counts {metrics} exceed the 4-pair universe")
+        self.assertEqual(total, 4)
+        self.assertEqual(metrics.true_positives, 1)
+        self.assertEqual(metrics.false_positives, 1)
+        self.assertEqual(metrics.false_negatives, 1)
+        self.assertEqual(metrics.true_negatives, 1)
+        self.assertAlmostEqual(metrics.precision, 0.5)
+        self.assertAlmostEqual(metrics.recall, 0.5)
+        self.assertAlmostEqual(metrics.false_positive_rate, 0.5)
+
+    def test_prediction_outside_universe_is_rejected(self):
+        with self.assertRaises(ValueError):
+            confusion_counts_for_pairs(
+                {("A", "B")},
+                {("A", "B")},
+                {("C", "D")},
+            )
+
+    def test_truth_outside_universe_is_a_blocking_miss_not_candidate_fn(self):
+        universe = {("A", "B"), ("C", "D")}
+        metrics = confusion_counts_for_pairs(
+            set(),
+            {("X", "Y")},
+            universe,
+        )
+        self.assertEqual(metrics.false_negatives, 0)
+        self.assertEqual(metrics.true_negatives, 2)
 
     def test_no_predictions_no_truth_all_true_negative(self):
-        metrics = confusion_counts_for_pairs(set(), set(), 5)
+        universe = {(str(index), str(index + 1)) for index in range(5)}
+        metrics = confusion_counts_for_pairs(set(), set(), universe)
         self.assertEqual(metrics.true_positives, 0)
         self.assertEqual(metrics.false_positives, 0)
         self.assertEqual(metrics.false_negatives, 0)
@@ -161,7 +221,8 @@ class R6CandidateCountConservationTests(unittest.TestCase):
 
     def test_perfect_prediction_conserves(self):
         pairs = {("A", "B"), ("C", "D")}
-        metrics = confusion_counts_for_pairs(pairs, pairs, 3)
+        universe = pairs | {("E", "F")}
+        metrics = confusion_counts_for_pairs(pairs, pairs, universe)
         total = (
             metrics.true_positives
             + metrics.false_positives
@@ -171,6 +232,123 @@ class R6CandidateCountConservationTests(unittest.TestCase):
         self.assertEqual(total, 3)
         self.assertEqual(metrics.true_positives, 2)
         self.assertEqual(metrics.true_negatives, 1)
+
+    @staticmethod
+    def _record(
+        employee_id: str,
+        name: str,
+        dob: date,
+        national_id: str,
+        email: str,
+        *,
+        duplicate_of: str | None = None,
+        split: syn.DatasetSplit = syn.DatasetSplit.TEST,
+    ) -> syn.WorkforceHistoryRecord:
+        return syn.WorkforceHistoryRecord(
+            identity=syn.EmployeeIdentity(
+                employee_id, name, dob, national_id, email
+            ),
+            split=split,
+            employment_track=syn.EmploymentTrack.OTHER,
+            current_level=None,
+            department="D",
+            role="R",
+            hire_date=date(2020, 1, 1),
+            events=(),
+            duplicate_of_employee_id=duplicate_of,
+        )
+
+    @staticmethod
+    def _dataset(*records: syn.WorkforceHistoryRecord) -> syn.SyntheticDataset:
+        return syn.SyntheticDataset(
+            records=tuple(records),
+            metadata=syn.SyntheticDatasetMetadata(
+                schema_version="test",
+                run_id="r6-explicit-universe",
+                seed=1,
+                employee_count=len(records),
+                split_counts={"test": len(records)},
+                label_counts={},
+            ),
+        )
+
+    def test_exact_pair_outside_similarity_block_uses_full_pair_universe(self):
+        left = self._record(
+            "A", "Alice North", date(1990, 1, 1), "ID-A", "shared@example.test"
+        )
+        right = self._record(
+            "B", "Boris South", date(1991, 2, 2), "ID-B", "shared@example.test",
+            duplicate_of="A",
+        )
+        evaluation = evaluate_duplicate_detection(self._dataset(left, right), "exact")
+        self.assertEqual(evaluation.blocked_pair_count, 0)
+        self.assertEqual(evaluation.candidate_pair_count, 1)
+        self.assertEqual(evaluation.candidate_metrics.true_positives, 1)
+        self.assertEqual(evaluation.metrics.true_positives, 1)
+
+    def test_similarity_candidate_counts_partition_the_blocked_universe(self):
+        dataset = syn.generate_synthetic_dataset(
+            syn.ExperimentConfig(seed=2026, employee_count=200)
+        )
+        evaluation = evaluate_duplicate_detection(dataset, "similarity")
+        metrics = evaluation.candidate_metrics
+        self.assertEqual(
+            evaluation.candidate_pair_count,
+            evaluation.blocked_pair_count,
+        )
+        self.assertEqual(
+            metrics.true_positives
+            + metrics.false_positives
+            + metrics.false_negatives
+            + metrics.true_negatives,
+            evaluation.candidate_pair_count,
+        )
+
+    def test_unblocked_truth_reduces_blocking_recall_not_candidate_f1(self):
+        # A/B are a true pair with no shared blocking key. C/D provide one
+        # non-duplicate blocked pair so threshold selection remains defined.
+        records = (
+            self._record(
+                "A", "Alice North", date(1990, 1, 1), "ID-A", "a@example.test",
+                split=syn.DatasetSplit.VALIDATION,
+            ),
+            self._record(
+                "B", "Boris South", date(1991, 2, 2), "ID-B", "b@example.test",
+                duplicate_of="A", split=syn.DatasetSplit.VALIDATION,
+            ),
+            self._record(
+                "C", "Chris One", date(1985, 3, 3), "ID-C", "c@example.test",
+                split=syn.DatasetSplit.VALIDATION,
+            ),
+            self._record(
+                "D", "Chris Two", date(1986, 4, 4), "ID-D", "d@example.test",
+                split=syn.DatasetSplit.VALIDATION,
+            ),
+        )
+        dataset = self._dataset(*records)
+        threshold = select_similarity_threshold(
+            dataset, split=syn.DatasetSplit.VALIDATION
+        )
+        evaluation = evaluate_duplicate_detection(
+            dataset,
+            "similarity",
+            threshold=threshold,
+            split=syn.DatasetSplit.VALIDATION,
+        )
+        self.assertEqual(evaluation.true_pair_count, 1)
+        self.assertEqual(evaluation.blocked_true_pair_count, 0)
+        self.assertEqual(evaluation.blocking_recall, 0.0)
+        self.assertEqual(evaluation.candidate_metrics.false_negatives, 0)
+
+    def test_duplicate_export_includes_candidate_universe_size(self):
+        from scripts.run_tdk_research_experiment import _duplicate_rows
+
+        dataset = syn.generate_synthetic_dataset(
+            syn.ExperimentConfig(seed=2026, employee_count=200)
+        )
+        metric_rows, _ = _duplicate_rows(dataset)
+        self.assertTrue(metric_rows)
+        self.assertTrue(all("candidate_pair_count" in row for row in metric_rows))
 
 
 class R2R3R4GeneratorIntegrityTests(unittest.TestCase):
@@ -410,6 +588,71 @@ class R5CorrectionSemanticsTests(unittest.TestCase):
         with self.assertRaises(CorrectionGraphError):
             superseded_source_ids((a, b))
 
+    def test_correction_graph_rejects_duplicate_source_ids(self):
+        from src.services.anomaly_detection.effective_state import (
+            CorrectionGraphError,
+            superseded_source_ids,
+        )
+
+        first = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.COMMENDATION,
+            date(2021, 1, 1),
+            "DUP",
+        )
+        second = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.COMMENDATION,
+            date(2021, 2, 1),
+            "DUP",
+        )
+        with self.assertRaises(CorrectionGraphError):
+            superseded_source_ids((first, second))
+
+    def test_correction_graph_rejects_branching_corrections(self):
+        from src.services.anomaly_detection.effective_state import (
+            CorrectionGraphError,
+            superseded_source_ids,
+        )
+
+        original = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.SANCTION,
+            date(2021, 1, 1),
+            "ORIGINAL",
+        )
+        first = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.SANCTION,
+            date(2021, 2, 1),
+            "COR-1",
+            correction_of_source_id="ORIGINAL",
+        )
+        second = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.SANCTION,
+            date(2021, 3, 1),
+            "COR-2",
+            correction_of_source_id="ORIGINAL",
+        )
+        with self.assertRaises(CorrectionGraphError):
+            superseded_source_ids((original, first, second))
+
+    def test_correction_graph_rejects_cross_type_correction(self):
+        from src.services.anomaly_detection.effective_state import (
+            CorrectionGraphError,
+            superseded_source_ids,
+        )
+
+        sanction = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.SANCTION,
+            date(2021, 1, 1),
+            "SANCTION",
+        )
+        commendation = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.COMMENDATION,
+            date(2021, 2, 1),
+            "COMMENDATION",
+            correction_of_source_id="SANCTION",
+        )
+        with self.assertRaises(CorrectionGraphError):
+            superseded_source_ids((sanction, commendation))
+
     def test_superseded_sanction_delay_not_double_counted(self):
         """R5 generalization: correcting a sanction must not keep the old delay."""
         from src.services.anomaly_detection.policy_history import assess_promotion_history
@@ -610,10 +853,18 @@ class R9MemoryAndExportTests(unittest.TestCase):
         was_tracing_before = tracemalloc.is_tracing()
         tracemalloc.start()
         try:
-            evaluate_duplicate_detection(self._dataset(), "exact")
+            _current_before, peak_before = tracemalloc.get_traced_memory()
+            evaluation = evaluate_duplicate_detection(self._dataset(), "exact")
+            _current_after, peak_after = tracemalloc.get_traced_memory()
             self.assertTrue(
                 tracemalloc.is_tracing(),
                 "evaluate_duplicate_detection stopped the caller's tracemalloc",
+            )
+            self.assertGreaterEqual(peak_after, peak_before)
+            self.assertEqual(
+                evaluation.peak_memory_bytes,
+                0,
+                "nested tracing must not claim a call-scoped peak",
             )
         finally:
             tracemalloc.stop()

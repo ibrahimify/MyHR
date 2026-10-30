@@ -772,7 +772,7 @@ class DuplicateRuntimeMemoryTests(unittest.TestCase):
     def test_candidates_per_1000_records_is_consistent(self):
         dataset = self._dataset()
         ev = evaluate_duplicate_detection(dataset, "similarity")
-        expected = ev.blocked_pair_count / ev.record_count * 1000 if ev.record_count else 0.0
+        expected = len(ev.candidates) / ev.record_count * 1000 if ev.record_count else 0.0
         self.assertAlmostEqual(ev.candidates_per_1000_records, expected, places=6)
 
     def test_false_matches_per_1000_records_is_consistent(self):

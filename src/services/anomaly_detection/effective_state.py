@@ -89,10 +89,14 @@ def superseded_source_ids(
     """
     by_id: dict[str, AdministrativeEvent] = {}
     for event in events:
-        # source_id is expected unique per history; last one wins defensively.
+        if event.source_id in by_id:
+            raise CorrectionGraphError(
+                f"duplicate source_id {event.source_id!r} in correction graph"
+            )
         by_id[event.source_id] = event
 
     superseded: set[str] = set()
+    correction_by_target: dict[str, str] = {}
     for event in events:
         target = event.correction_of_source_id
         if target is None:
@@ -108,6 +112,19 @@ def superseded_source_ids(
             # date while its correction is visible), not a malformed graph. There
             # is nothing visible to supersede, so skip rather than raise.
             continue
+        target_event = by_id[target]
+        if event.event_type is not target_event.event_type:
+            raise CorrectionGraphError(
+                f"event {event.source_id!r} of type {event.event_type.value!r} "
+                f"cannot correct {target!r} of type {target_event.event_type.value!r}"
+            )
+        previous_correction = correction_by_target.get(target)
+        if previous_correction is not None:
+            raise CorrectionGraphError(
+                f"events {previous_correction!r} and {event.source_id!r} both "
+                f"correct target {target!r}"
+            )
+        correction_by_target[target] = event.source_id
         superseded.add(target)
 
     # Detect cycles: follow correction_of_source_id links; a cycle means an
