@@ -741,5 +741,77 @@ class HardNonduplicateTests(unittest.TestCase):
             self.assertLessEqual(kind_counts[kind], 1, f"more than one hard nonduplicate for {kind.name}")
 
 
+class DuplicateRuntimeMemoryTests(unittest.TestCase):
+    """Verify that evaluate_duplicate_detection records runtime and memory."""
+
+    def _dataset(self) -> object:
+        from src.services.anomaly_detection import generate_synthetic_dataset
+        config = ExperimentConfig(seed=2026, employee_count=300, anomaly_rate=0.10, rare_legitimate_rate=0.02)
+        return generate_synthetic_dataset(config)
+
+    def test_blocking_time_is_non_negative(self):
+        dataset = self._dataset()
+        ev = evaluate_duplicate_detection(dataset, "similarity")
+        self.assertGreaterEqual(ev.blocking_time_s, 0.0)
+
+    def test_scoring_time_is_non_negative(self):
+        dataset = self._dataset()
+        ev = evaluate_duplicate_detection(dataset, "similarity")
+        self.assertGreaterEqual(ev.scoring_time_s, 0.0)
+
+    def test_peak_memory_bytes_is_non_negative(self):
+        dataset = self._dataset()
+        ev = evaluate_duplicate_detection(dataset, "similarity")
+        self.assertGreaterEqual(ev.peak_memory_bytes, 0)
+
+    def test_candidates_per_1000_records_is_consistent(self):
+        dataset = self._dataset()
+        ev = evaluate_duplicate_detection(dataset, "similarity")
+        expected = ev.blocked_pair_count / ev.record_count * 1000 if ev.record_count else 0.0
+        self.assertAlmostEqual(ev.candidates_per_1000_records, expected, places=6)
+
+    def test_false_matches_per_1000_records_is_consistent(self):
+        dataset = self._dataset()
+        ev = evaluate_duplicate_detection(dataset, "similarity")
+        expected = ev.metrics.false_positives / ev.record_count * 1000 if ev.record_count else 0.0
+        self.assertAlmostEqual(ev.false_matches_per_1000_records, expected, places=6)
+
+    def test_exact_method_also_records_timing(self):
+        dataset = self._dataset()
+        ev = evaluate_duplicate_detection(dataset, "exact")
+        self.assertGreaterEqual(ev.blocking_time_s, 0.0)
+        self.assertGreaterEqual(ev.scoring_time_s, 0.0)
+        self.assertGreaterEqual(ev.peak_memory_bytes, 0)
+
+    def test_normalized_exact_method_also_records_timing(self):
+        dataset = self._dataset()
+        ev = evaluate_duplicate_detection(dataset, "normalized_exact")
+        self.assertGreaterEqual(ev.blocking_time_s, 0.0)
+        self.assertGreaterEqual(ev.scoring_time_s, 0.0)
+        self.assertGreaterEqual(ev.peak_memory_bytes, 0)
+
+    def test_zero_record_count_gives_zero_rates(self):
+        """Guard: properties must not divide by zero."""
+        from src.services.anomaly_detection.duplicate_detection import DuplicateEvaluation
+        from src.services.anomaly_detection.metrics import BinaryClassificationMetrics
+        empty_metrics = BinaryClassificationMetrics(0, 0, 0, 0)
+        ev = DuplicateEvaluation(
+            method="exact",
+            threshold=None,
+            candidates=(),
+            metrics=empty_metrics,
+            partition="test",
+            record_count=0,
+            total_pair_count=0,
+            blocked_pair_count=0,
+            true_pair_count=0,
+            blocked_true_pair_count=0,
+            candidate_metrics=empty_metrics,
+            candidate_average_precision=None,
+        )
+        self.assertEqual(ev.candidates_per_1000_records, 0.0)
+        self.assertEqual(ev.false_matches_per_1000_records, 0.0)
+
+
 if __name__ == "__main__":
     unittest.main()

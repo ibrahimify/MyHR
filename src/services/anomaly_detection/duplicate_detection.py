@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from difflib import SequenceMatcher
 from itertools import combinations
 from string import digits
+import time
+import tracemalloc
 from typing import Callable, Iterable
 
 from .metrics import BinaryClassificationMetrics
@@ -42,6 +44,13 @@ class DuplicateEvaluation:
     blocked_true_pair_count: int
     candidate_metrics: BinaryClassificationMetrics
     candidate_average_precision: float | None
+    # Runtime and memory measurements (protocol requirement).
+    # blocking_time_s: wall-clock seconds spent building the candidate set.
+    # scoring_time_s: wall-clock seconds spent computing similarity scores.
+    # peak_memory_bytes: peak tracemalloc allocation delta during full evaluation.
+    blocking_time_s: float = 0.0
+    scoring_time_s: float = 0.0
+    peak_memory_bytes: int = 0
 
     @property
     def blocking_recall(self) -> float:
@@ -55,6 +64,22 @@ class DuplicateEvaluation:
         return (
             1.0 - self.blocked_pair_count / self.total_pair_count
             if self.total_pair_count else 0.0
+        )
+
+    @property
+    def candidates_per_1000_records(self) -> float:
+        """Number of candidate pairs surfaced per 1,000 evaluated records."""
+        return (
+            self.blocked_pair_count / self.record_count * 1000
+            if self.record_count else 0.0
+        )
+
+    @property
+    def false_matches_per_1000_records(self) -> float:
+        """Number of false-positive pairs per 1,000 evaluated records."""
+        return (
+            self.metrics.false_positives / self.record_count * 1000
+            if self.record_count else 0.0
         )
 
 
@@ -167,16 +192,35 @@ def evaluate_duplicate_detection(
     threshold: float = 0.70,
     split: DatasetSplit = DatasetSplit.TEST,
 ) -> DuplicateEvaluation:
-    """Evaluate duplicate detection on one entity-disjoint partition."""
+    """Evaluate duplicate detection on one entity-disjoint partition.
+
+    Measures wall-clock time for blocking and scoring separately, and peak
+    tracemalloc allocation across the full evaluation.  Both are stored on
+    the returned DuplicateEvaluation for protocol reporting.
+    """
+    tracemalloc.start()
+    snapshot_before = tracemalloc.take_snapshot()
 
     records = tuple(record for record in dataset.records if record.split is split)
     scored_candidates: tuple[DuplicateCandidate, ...] = ()
+    threshold_used: float | None = None
+
+    # --- Blocking phase (timed) ---
+    block_start = time.perf_counter()
+    blocked_pairs_raw = tuple(_blocked_similarity_pairs(records))
+    blocking_time_s = time.perf_counter() - block_start
+
+    blocked_pairs = {
+        _pair_key(left.identity.employee_id, right.identity.employee_id)
+        for left, right in blocked_pairs_raw
+    }
+
+    # --- Scoring / candidate selection phase (timed) ---
+    score_start = time.perf_counter()
     if method == "exact":
         candidates = find_exact_duplicate_candidates(records)
-        threshold_used = None
     elif method == "normalized_exact":
         candidates = find_normalized_exact_duplicate_candidates(records)
-        threshold_used = None
     elif method == "similarity":
         scored_candidates = _scored_similarity_candidates(records)
         candidates = tuple(
@@ -186,13 +230,16 @@ def evaluate_duplicate_detection(
         threshold_used = threshold
     else:
         raise ValueError(f"Unsupported duplicate detection method: {method}")
+    scoring_time_s = time.perf_counter() - score_start
+
+    # --- Peak memory ---
+    snapshot_after = tracemalloc.take_snapshot()
+    tracemalloc.stop()
+    top_stats = snapshot_after.compare_to(snapshot_before, "lineno")
+    peak_memory_bytes = max((stat.size_diff for stat in top_stats), default=0)
 
     predicted_pairs = {_pair_key(candidate.left_employee_id, candidate.right_employee_id) for candidate in candidates}
     true_pairs = _true_duplicate_pairs(records)
-    blocked_pairs = {
-        _pair_key(left.identity.employee_id, right.identity.employee_id)
-        for left, right in _blocked_similarity_pairs(records)
-    }
     true_positives = len(predicted_pairs & true_pairs)
     false_positives = len(predicted_pairs - true_pairs)
     false_negatives = len(true_pairs - predicted_pairs)
@@ -234,6 +281,9 @@ def evaluate_duplicate_detection(
         blocked_true_pair_count=len(blocked_pairs & true_pairs),
         candidate_metrics=candidate_metrics,
         candidate_average_precision=candidate_average_precision,
+        blocking_time_s=blocking_time_s,
+        scoring_time_s=scoring_time_s,
+        peak_memory_bytes=max(peak_memory_bytes, 0),
     )
 
 
