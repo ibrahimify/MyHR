@@ -118,19 +118,28 @@ def evaluate_scenario(
     policy_rule_started = perf_counter()
     policy_rule_train_scores = tuple(
         float(len(validate_record_with_policy(
-            record, scenario.policy, scenario.policy_epochs
+            record,
+            scenario.policy,
+            scenario.policy_epochs,
+            _grandfathering_evidence(scenario, record),
         )))
         for record in train
     )
     policy_rule_validation_scores = tuple(
         float(len(validate_record_with_policy(
-            record, scenario.policy, scenario.policy_epochs
+            record,
+            scenario.policy,
+            scenario.policy_epochs,
+            _grandfathering_evidence(scenario, record),
         )))
         for record in validation
     )
     policy_rule_scores = tuple(
         float(len(validate_record_with_policy(
-            record, scenario.policy, scenario.policy_epochs
+            record,
+            scenario.policy,
+            scenario.policy_epochs,
+            _grandfathering_evidence(scenario, record),
         )))
         for record in test
     )
@@ -475,6 +484,9 @@ def _vectors(
                 record,
                 scenario.policy,
                 scenario.policy_epochs,
+                grandfathering_evidence=_grandfathering_evidence(
+                    scenario, record
+                ),
             )
             for record in records
         )
@@ -493,8 +505,28 @@ def _vectors(
             policy_epochs = ()
         else:
             raise ValueError(f"unsupported policy mode: {representation.policy_mode}")
-        vectors.append(extract_policy_aware_features(record, policy, policy_epochs))
+        vectors.append(extract_policy_aware_features(
+            record,
+            policy,
+            policy_epochs,
+            grandfathering_evidence=(
+                _grandfathering_evidence(scenario, record)
+                if representation.policy_mode == "true" else None
+            ),
+        ))
     return tuple(vectors)
+
+
+def _grandfathering_evidence(
+    scenario: ScenarioDataset,
+    record: WorkforceHistoryRecord,
+) -> tuple[object, ...]:
+    evidence_by_employee = getattr(
+        scenario.population,
+        "grandfathering_evidence_by_employee_id",
+        {},
+    )
+    return tuple(evidence_by_employee.get(record.identity.employee_id, ()))
 
 
 def _wrong_policy(true_profile: str) -> PromotionPolicy:

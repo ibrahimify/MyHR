@@ -1,5 +1,24 @@
 # MyHR TDK Supervisor Review Package
 
+## Decision Update - 2026-10-30
+
+The project author approved lawful correction and scenario-eligibility
+constraints, employee- and event-linked entitlement evidence, separate
+decision-time and later-review views, 30 independent seeds per included
+protocol-scale condition unless justified beforehand, and fixed-capacity recall
+as primary. The predeclared Holm family contains AP, rare-legitimate false-alert
+rate, and ordinary-legitimate false-alert rate. A 48-case blinded realism review
+with two complementary reviewers, raw agreement, unweighted Cohen's kappa, and
+evidence-based adjudication is specified, but the two human reviewers are not
+nominated and no review has occurred. Protocol freeze and holdout access were
+explicitly withheld.
+
+The approved compatibility boundary permits all five rare patterns in stable
+administration and merger/migration populations. Rapid expansion excludes
+legacy policy transition under its current hire window. Infeasible record-level
+combinations must be reported and omitted rather than forced. This does not
+freeze the final balanced matrix.
+
 ## Methodological Correction - 2026-10-18
 
 The independent hostile review supersedes the earlier interpretation of the residual experiment. After deterministic policy findings are removed, all three policy-specific residual features are constant zero. The reported residual comparison therefore cannot test whether policy context improves anomaly ranking. It is a design failure, not evidence that policy-aware and raw models perform similarly.
@@ -31,21 +50,30 @@ MyHR investigates whether explicit workforce-progression policy context improves
 
 These are development observations, not final claims.
 
-## Approved Confirmatory Design - Implementation Pending
+## Approved Confirmatory Design - Verification And Freeze Pending
 
 The research question is retained. The primary comparison is raw versus policy-aware residual ML after filtering only invariant contradictions. Both representations receive the same additional fixed review capacity over the same remaining records. The complete rules-plus-ML workflow is secondary.
 
 Recall at fixed review capacity is primary. Precision, total false alerts, and rare-legitimate false-alert rates accompany it. AP is secondary. Zero-positive scenarios remain reported, are marked undefined for recall and AP, and are excluded from paired inference for those metrics under the frozen predeclared rule.
 
-The approved design also requires bitemporal policy and fact history, two blinded complementary reviewers, and an independently specified repeated-seed holdout matrix with causal truth outside model inputs.
+The approved design also requires employee-linked entitlement evidence,
+separate `known_then` and `later_review` temporal views, two blinded
+complementary reviewers, and an independently specified repeated-seed holdout
+matrix with causal truth outside model inputs. The development code contains the
+entitlement and temporal primitives; protocol-scale verification is pending.
 
 ## Decisions Recorded And Remaining Work
 
 - Implement and test the invariant-contradiction boundary.
 - Implement equal fixed additional ML capacity and recall-primary analysis.
-- Implement and test the bitemporal policy and evidence contract.
-- Freeze the independent scenario matrix and zero-positive handling.
-- Record the two reviewers, qualifications, sampling, agreement measure, and adjudication process.
+- Verify the implemented bitemporal and entitlement contract in protocol-scale
+  development and validation artifacts.
+- Freeze a balanced compatible-cell matrix with 30 independent seeds per
+  included condition; retain zero-positive scenarios with metric-specific
+  undefined values.
+- Nominate the two reviewers and execute the predeclared 48-case sampling,
+  agreement, and adjudication procedure.
+- Verify the predeclared three-test Holm family independently.
 - Freeze dependencies, analysis, source revision, and write-once configuration before requesting holdout authorization.
 
 ## Reproduction

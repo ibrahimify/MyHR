@@ -1,14 +1,31 @@
 # MyHR TDK Blinded Scenario Realism Review Packet
 
-Status: **METHOD APPROVED 29 OCTOBER 2026 - REVIEWERS, SAMPLE, AND EXECUTION PENDING**
+Status: **METHOD AND PROCEDURE AUTHOR-APPROVED - REVIEWER NOMINATION AND EXECUTION PENDING**
 
-This packet contains no model scores, predictions, thresholds, aggregate results, or generated truth labels. The supervisor approved two independent blinded reviewers with complementary HR-policy and information-systems expertise, preserved initial judgments, agreement reporting, evidence-based adjudication, and retained ambiguity. Cases must not be distributed until the exact reviewers, policy cards, sample, sampling seed, and packet checksum are recorded.
+This packet contains no model scores, predictions, thresholds, aggregate results,
+or generated truth labels. The project author approved two independent blinded
+reviewers with complementary HR-policy and information-systems expertise,
+preserved initial judgments, predeclared agreement reporting, evidence-based
+adjudication, and retained ambiguity. This is not represented as an independent
+supervisor signature. Cases must not be distributed until both reviewers are
+nominated and qualified, the sampling output and seed are frozen, and the packet
+checksum is recorded.
 
 ## Purpose
 
 The review asks whether fictional workforce-progression histories are understandable, administratively plausible, and classifiable from the evidence shown. It does not ask reviewers to judge model quality.
 
-## Approved Review Method And Pending Parameters
+## Reviewer Nomination - Required Before Distribution
+
+| Role | Required expertise | Human name | Qualification evidence | Confirmed/date |
+| --- | --- | --- | --- | --- |
+| Reviewer A | HR policy, workforce progression, or public-sector personnel administration | ____________________ | ____________________ | ____________________ |
+| Reviewer B | Information systems, administrative data quality, or audit systems | ____________________ | ____________________ | ____________________ |
+
+The same person may not fill both roles. Neither reviewer may have generated the
+sample labels or inspected model scores for the selected cases.
+
+## Approved Review Method
 
 - Two independent reviewers: one with HR-policy expertise and one with information-systems expertise.
 - Independent first-pass ratings. Reviewers must not discuss cases before submitting them.
@@ -17,15 +34,29 @@ The review asks whether fictional workforce-progression histories are understand
 - No case may be edited, removed, or relabelled because a detector performs poorly on it.
 - Reviewer identity, experience category, review date, case order, and packet checksum must be recorded.
 
-The two-role reviewer method and adjudication principles are approved.
+The two-role reviewer method, 48-case sampling plan, agreement measures, and
+adjudication principles are approved for protocol preparation. Execution remains
+blocked on the two human nominations and the frozen sampling output.
 
-Pending parameters before distribution:
+## Predeclared Sampling Protocol
 
-- exact reviewer identities and recorded qualifications;
-- proposed sample of 48 fictional histories, or another human-approved sample size;
-- frozen case-sampling script and random seed;
-- chance-corrected agreement statistic;
-- operational adjudication form and packet checksum.
+1. Construct the candidate pool from development and validation scenarios only;
+   never sample from or inspect a holdout.
+2. Include only histories whose scenario combination passes the approved
+   population-pattern and record-level eligibility checks.
+3. Select 48 histories: 12 ordinary legitimate, 12 rare legitimate, 12
+   administrative error, and 12 ambiguous or evidence-insufficient histories.
+4. Within those four strata, balance population, policy version, and mechanism
+   coverage as far as the frozen candidate pool permits. Record any unavailable
+   cell instead of substituting after inspecting model behavior.
+5. Use one recorded sampling seed. Selection must not use anomaly scores,
+   predictions, alert membership, or method performance.
+6. Give both reviewers the same 48 cases in independently randomized order.
+   Record both order seeds, the sampling script revision, case IDs, policy-card
+   revision, and packet SHA-256 checksum before distribution.
+
+The 48-case review is a realism and evidence-sufficiency check. It does not
+estimate organizational prevalence or replace the protocol-scale experiment.
 
 ## Reviewer Instructions
 
@@ -81,13 +112,26 @@ Model-derived values are prohibited from the reviewer packet.
 
 ## Planned Analysis
 
-Report response counts with denominators, reviewer-specific distributions, raw agreement, and a human-approved chance-corrected agreement statistic. Preserve original ratings, disagreement reasons, and adjudicated outcomes separately. Do not treat adjudication as proof of real-world prevalence.
+Report response counts with denominators and reviewer-specific distributions.
+For the four-category `Record status` item, report raw agreement and unweighted
+Cohen's kappa with a 95% bootstrap interval resampled by case. Report raw
+agreement for the other categorical items; confidence is summarized by reviewer
+and category and is not converted into a correctness score.
+
+After both first-pass forms are locked, send every record-status disagreement
+and every case receiving `Insufficient evidence` from either reviewer to a joint
+evidence meeting. Reviewers must cite the policy-card clause and record evidence
+supporting any adjudicated result. Preserve each initial rating, the cited
+evidence, final disposition, and reason in separate fields. If the evidence does
+not resolve the disagreement, retain `Ambiguous`; do not force a binary label or
+count adjudication as proof of real-world prevalence.
 
 ## Distribution Checklist
 
-- [ ] Human approval of policy cards and scenario families
-- [ ] Human approval of reviewer eligibility and invitations
-- [ ] Frozen case-sampling script and random seed
+- [ ] Policy cards and compatible scenario families match the approved contract
+- [ ] Reviewer A named and qualification recorded
+- [ ] Reviewer B named and qualification recorded
+- [ ] Frozen 48-case sampling output, script revision, and sampling seed
 - [ ] No model results or truth labels in distributed files
 - [ ] Packet checksum recorded
 - [ ] Reviewer instructions piloted for clarity without changing case outcomes

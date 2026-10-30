@@ -6,7 +6,10 @@ from collections import Counter
 from dataclasses import dataclass
 
 from src.services.anomaly_detection.policy_model import PromotionPolicy
-from src.services.anomaly_detection.policy_history import PolicyEpoch
+from src.services.anomaly_detection.policy_history import (
+    GrandfatheringEvidence,
+    PolicyEpoch,
+)
 from src.services.anomaly_detection.scenario_generation import ScenarioDataset
 from src.services.anomaly_detection.synthetic_data import (
     AdministrativeEvent,
@@ -37,6 +40,9 @@ class AdapterPopulation:
     evaluation_eligible_by_employee_id: dict[str, bool]
     evaluation_exclusion_reason_by_employee_id: dict[str, str]
     truth_category_by_employee_id: dict[str, str]
+    grandfathering_evidence_by_employee_id: dict[
+        str, tuple[GrandfatheringEvidence, ...]
+    ]
 
 
 @dataclass(frozen=True)
@@ -90,6 +96,18 @@ def adapt_independent_world(world: IndependentWorld) -> ScenarioDataset:
     labels = Counter(label.value for record in records for label in record.anomaly_labels)
     splits = Counter(record.split.value for record in records)
     spec = world.spec
+    entitlement_by_employee: dict[str, list[GrandfatheringEvidence]] = {}
+    for evidence in world.entitlement_evidence:
+        entitlement_by_employee.setdefault(evidence.employee_id, []).append(
+            GrandfatheringEvidence(
+                employee_id=evidence.employee_id,
+                policy_id=evidence.policy_id,
+                policy_version=evidence.policy_version,
+                event_source_id=evidence.relevant_event_id,
+                evidence_reference=evidence.evidence_reference,
+                recorded_at=evidence.recorded_at,
+            )
+        )
     config = AdapterConfig(
         scenario_id=spec.scenario_id,
         run_purpose=spec.run_purpose,
@@ -138,6 +156,10 @@ def adapt_independent_world(world: IndependentWorld) -> ScenarioDataset:
             },
             truth_category_by_employee_id={
                 entry.employee_id: entry.category.value for entry in world.truth
+            },
+            grandfathering_evidence_by_employee_id={
+                employee_id: tuple(evidence)
+                for employee_id, evidence in entitlement_by_employee.items()
             },
         ),
         dataset=SyntheticDataset(

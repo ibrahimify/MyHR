@@ -62,6 +62,19 @@ class IndependentPolicyCard:
 
 
 @dataclass(frozen=True)
+class IndependentEntitlementEvidence:
+    """Observable evidence authorizing one event under a named policy version."""
+
+    entitlement_id: str
+    employee_id: str
+    policy_id: str
+    policy_version: str
+    relevant_event_id: str
+    evidence_reference: str
+    recorded_at: date
+
+
+@dataclass(frozen=True)
 class IndependentScenarioSpec:
     scenario_id: str
     run_purpose: str
@@ -86,6 +99,13 @@ class IndependentScenarioSpec:
             raise ValueError(f"unknown mechanism: {self.mechanism}")
         if self.rare_pattern not in rare_legitimate_patterns():
             raise ValueError(f"unknown rare pattern: {self.rare_pattern}")
+        compatible = compatible_rare_patterns_by_population()[self.population]
+        if self.rare_pattern not in compatible:
+            raise ValueError(
+                "incompatible scenario combination: "
+                f"population {self.population!r} cannot lawfully host "
+                f"rare pattern {self.rare_pattern!r}"
+            )
         if not 0 < self.error_rate < 0.3 or not 0 < self.rare_rate < 0.3:
             raise ValueError("scenario rates must be between zero and 0.3")
 
@@ -139,6 +159,7 @@ class IndependentWorld:
     policies: tuple[IndependentPolicyCard, ...]
     employees: tuple[IndependentEmployeeLedger, ...]
     truth: tuple[IndependentTruthEntry, ...]
+    entitlement_evidence: tuple[IndependentEntitlementEvidence, ...]
 
 
 def population_families() -> tuple[str, ...]:
@@ -162,6 +183,26 @@ def rare_legitimate_patterns() -> tuple[str, ...]:
         "late_correction",
         "policy_transition",
     )
+
+
+def compatible_rare_patterns_by_population() -> dict[str, tuple[str, ...]]:
+    """Return the predeclared lawful population/pattern combinations.
+
+    Rapid-expansion employees are hired from 2021 onward, so that population
+    cannot reliably host a promotion completed inside the legacy epoch. The
+    remaining patterns select eligible employees within each population.
+    """
+
+    return {
+        population: tuple(
+            pattern for pattern in rare_legitimate_patterns()
+            if (
+                pattern != "policy_transition"
+                or _population_can_host_policy_transition(population)
+            )
+        )
+        for population in population_families()
+    }
 
 
 # Single source of truth for the per-population hire-year windows. Used both by
@@ -211,10 +252,7 @@ def independent_scenario_matrix(
         # When the cycle lands on policy_transition for such a population, we
         # deterministically advance to the next pattern in the cycle instead.
         rare_pattern = patterns[index % len(patterns)]
-        if (
-            rare_pattern == "policy_transition"
-            and not _population_can_host_policy_transition(population)
-        ):
+        if rare_pattern not in compatible_rare_patterns_by_population()[population]:
             rare_pattern = patterns[(index + 1) % len(patterns)]
         specs.append(IndependentScenarioSpec(
             scenario_id=f"ind-dev-{index + 1:02d}",
@@ -247,6 +285,7 @@ def generate_independent_world(spec: IndependentScenarioSpec) -> IndependentWorl
     truth_plan = _truth_plan(spec, base_employees)
     employees = []
     truth = []
+    entitlement_evidence = []
     for index, base_employee in enumerate(base_employees):
         rng = Random(spec.seed * 100_003 + index * 97)
         employee = base_employee
@@ -260,6 +299,28 @@ def generate_independent_world(spec: IndependentScenarioSpec) -> IndependentWorl
             employee, evidence, realized_mechanism, causal_events = _apply_rare_case(
                 employee, spec.rare_pattern, policies, rng
             )
+            if spec.rare_pattern == "grandfathered_policy":
+                if len(causal_events) != 1:
+                    raise ValueError(
+                        "grandfathered policy case requires one relevant event"
+                    )
+                promotion = causal_events[0]
+                policy = next(
+                    card for card in policies
+                    if card.policy_id == promotion.policy_id
+                )
+                entitlement_evidence.append(IndependentEntitlementEvidence(
+                    entitlement_id=f"ENT-{employee.employee_id}-{promotion.event_id}",
+                    employee_id=employee.employee_id,
+                    policy_id=policy.policy_id,
+                    policy_version=policy.version,
+                    relevant_event_id=promotion.event_id,
+                    evidence_reference=f"GF-{employee.employee_id}-{promotion.event_id}",
+                    recorded_at=min(
+                        promotion.effective_date,
+                        promotion.recorded_date,
+                    ) - timedelta(days=30),
+                ))
         elif category is not TruthCategory.ORDINARY_LEGITIMATE:
             employee, evidence, causal_events = _apply_error(
                 employee, spec.mechanism, policies, rng
@@ -276,7 +337,13 @@ def generate_independent_world(spec: IndependentScenarioSpec) -> IndependentWorl
             track=employee.track,
             causal_events=causal_events,
         ))
-    return IndependentWorld(spec, policies, tuple(employees), tuple(truth))
+    return IndependentWorld(
+        spec=spec,
+        policies=policies,
+        employees=tuple(employees),
+        truth=tuple(truth),
+        entitlement_evidence=tuple(entitlement_evidence),
+    )
 
 
 def _policy_cards() -> tuple[IndependentPolicyCard, ...]:
@@ -394,6 +461,7 @@ def _eligible_for_rare_case(
     if pattern == "grandfathered_policy":
         return (
             employee.track is IndependentTrack.PROGRESSION
+            and employee.hire_date <= _LEGACY_EPOCH_END
             and _add_months(employee.hire_date, 30) <= REFERENCE_DATE
         )
     if pattern == "recognized_prior_service":

@@ -46,6 +46,88 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
             with self.assertRaisesRegex(ArtifactAuditError, "required truth sidecars"):
                 _verify_truth_sidecars(Path(directory), [], required=True)
 
+    def test_schema_five_requires_event_linked_entitlement_for_grandfathering(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run_dir = Path(directory)
+            truth = {
+                "scenario_id": "s1", "employee_id": "E1", "split": "test",
+                "truth_category": "rare_legitimate",
+                "evaluation_eligible": True,
+                "nominal_anomaly_mechanism": "approval_bypass",
+                "nominal_rare_pattern": "grandfathered_policy",
+                "realized_mechanism": "grandfathered_policy",
+                "employment_track": "progression", "current_level": "L6",
+                "department": "Operations", "role": "Officer",
+                "date_of_birth": "1990-01-01", "hire_date": "2020-01-01",
+                "event_count": 1, "causal_evidence": "Entitled.",
+            }
+            event = {
+                "scenario_id": "s1", "employee_id": "E1", "event_id": "P1",
+                "event_kind": "promotion", "policy_id": "legacy",
+                "effective_date": "2023-06-01", "recorded_date": "2023-06-02",
+                "approval_reference": "AR-1", "approval_status": "approved",
+                "correction_of_event_id": "", "retry_of_event_id": "",
+                "recognized_service_months": "0",
+                "jurisdiction": "organization-wide",
+                "level_before": "L7", "level_after": "L6", "category": "",
+                "resolved_date": "",
+            }
+            truth["event_ledger_sha256"] = _event_rows_sha256([event])
+            truth["causal_events_json"] = json.dumps([{
+                "event_id": "P1", "kind": "promotion", "policy_id": "legacy",
+                "effective_date": "2023-06-01", "recorded_date": "2023-06-02",
+                "category": None, "resolved_date": None,
+                "approval_reference": "AR-1", "approval_status": "approved",
+                "correction_of_event_id": None, "retry_of_event_id": None,
+                "recognized_service_months": 0,
+                "jurisdiction": "organization-wide",
+                "level_before": "L7", "level_after": "L6",
+                "ledger_status": "observed",
+            }])
+            policy = {
+                "scenario_id": "s1", "policy_id": "legacy",
+                "policy_version": "1.0", "effective_from": "2010-01-01",
+                "effective_to": "2022-12-31", "recorded_at": "2009-12-01",
+                "jurisdiction": "organization-wide",
+                "service_months_by_level_json": json.dumps({"L7": 30}),
+                "grandfather_previous_policy": True,
+            }
+            entitlement = {
+                "scenario_id": "s1", "entitlement_id": "ENT-1",
+                "employee_id": "E1", "policy_id": "legacy",
+                "policy_version": "1.0", "relevant_event_id": "P1",
+                "evidence_reference": "GF-E1-P1", "recorded_at": "2023-05-01",
+            }
+            self._write_csv(run_dir / "record_truth.csv", [truth])
+            self._write_csv(run_dir / "administrative_events.csv", [event])
+            self._write_csv(run_dir / "policy_epochs.csv", [policy])
+            self._write_csv(run_dir / "entitlement_evidence.csv", [entitlement])
+
+            result = _verify_truth_sidecars(
+                run_dir,
+                [{"scenario_id": "s1", "employee_id": "E1"}],
+                required=True,
+                protocol_version="independent-development-v2-2026-10-29",
+                artifact_schema_version=5,
+            )
+            self.assertTrue(result["present"])
+
+            (run_dir / "entitlement_evidence.csv").write_text(
+                ",".join(entitlement) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                ArtifactAuditError,
+                "lacks event-linked entitlement",
+            ):
+                _verify_truth_sidecars(
+                    run_dir,
+                    [{"scenario_id": "s1", "employee_id": "E1"}],
+                    required=True,
+                    protocol_version="independent-development-v2-2026-10-29",
+                    artifact_schema_version=5,
+                )
+
     def test_audit_recomputes_counts_and_rates(self):
         with tempfile.TemporaryDirectory() as directory:
             run_dir = Path(directory)

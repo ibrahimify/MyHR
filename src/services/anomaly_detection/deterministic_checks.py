@@ -120,6 +120,7 @@ def validate_record_with_policy(
     record: WorkforceHistoryRecord,
     policy: PromotionPolicy,
     policy_epochs: tuple[object, ...] = (),
+    grandfathering_evidence: tuple[object, ...] | None = None,
 ) -> tuple[ValidationFinding, ...]:
     """Add explicit policy violations to the policy-agnostic checks."""
 
@@ -138,7 +139,12 @@ def validate_record_with_policy(
                 message="Promotion approval workflow was explicitly bypassed.",
                 expected_anomaly_type=AnomalyType.FREQUENT_PROMOTIONS,
             ))
-    for assessment in assess_promotion_history(record, policy, policy_epochs):
+    for assessment in assess_promotion_history(
+        record,
+        policy,
+        policy_epochs,
+        grandfathering_evidence=grandfathering_evidence,
+    ):
         if assessment.service_deficit_months <= 0:
             continue
         findings.append(ValidationFinding(

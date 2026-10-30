@@ -39,18 +39,8 @@ PRIMARY_COMPARISON = (
 PRIMARY_ENDPOINT = "recall"
 SECONDARY_COMPARISON_METRICS = (
     "average_precision",
-    "precision",
-    "false_positives",
-    "false_positive_rate",
     "rare_legitimate_flagged_rate",
     "ordinary_clean_flagged_rate",
-    "anomalies_found_per_100_reviews",
-    "rare_legitimate_reviews_per_1000_employees",
-    "missed_anomalies_per_1000_employees",
-    "inconsistent_dates_recall",
-    "frequent_promotions_recall",
-    "excessive_sanctions_recall",
-    "unusual_admin_interval_recall",
 )
 LEGACY_AUDITED_PAIR_METRICS = (
     "precision",

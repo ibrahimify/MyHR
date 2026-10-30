@@ -14,6 +14,7 @@ from src.research.independent_scenarios import (
     IndependentSplit,
     TruthCategory,
     anomaly_mechanisms,
+    compatible_rare_patterns_by_population,
     generate_independent_world,
     independent_scenario_matrix,
     population_families,
@@ -31,6 +32,30 @@ from scripts.audit_tdk_protocol_artifact import _verify_truth_sidecars
 
 
 class IndependentScenarioTests(unittest.TestCase):
+    def test_compatible_rare_patterns_are_explicit_for_every_population(self):
+        compatibility = compatible_rare_patterns_by_population()
+
+        self.assertEqual(set(compatibility), set(population_families()))
+        self.assertIn("policy_transition", compatibility["stable_administration"])
+        self.assertIn("policy_transition", compatibility["merger_migration"])
+        self.assertNotIn("policy_transition", compatibility["rapid_expansion"])
+
+    def test_incompatible_population_pattern_pair_is_rejected(self):
+        spec = IndependentScenarioSpec(
+            scenario_id="incompatible-transition",
+            run_purpose="independent_development",
+            seed=1,
+            split_seed=2,
+            model_seed=3,
+            employee_count=120,
+            population="rapid_expansion",
+            mechanism="wrong_employee_link",
+            rare_pattern="policy_transition",
+        )
+
+        with self.assertRaisesRegex(ValueError, "incompatible scenario combination"):
+            spec.validate()
+
     def test_primary_feature_guard_rejects_family_wide_policy_collapse(self):
         row = {
             "method": "rule_negative_isolation_forest",
@@ -537,3 +562,96 @@ class LateCorrectionAndPolicyTransitionScenarioTests(unittest.TestCase):
             "delayed_bulk_recording", "late_correction", "policy_transition",
         ):
             self.assertIn(expected, patterns, f"pattern {expected!r} missing from rare_legitimate_patterns()")
+
+
+class EntitlementEvidenceScenarioTests(unittest.TestCase):
+    def _world(self):
+        spec = IndependentScenarioSpec(
+            scenario_id="test-grandfathered-evidence",
+            run_purpose="independent_development",
+            seed=99101,
+            split_seed=99103,
+            model_seed=99107,
+            employee_count=120,
+            population="stable_administration",
+            mechanism="wrong_employee_link",
+            rare_pattern="grandfathered_policy",
+        )
+        return generate_independent_world(spec)
+
+    def test_every_grandfathered_case_has_event_specific_entitlement(self):
+        world = self._world()
+        rare_entries = {
+            entry.employee_id: entry
+            for entry in world.truth
+            if entry.category is TruthCategory.RARE_LEGITIMATE
+        }
+        evidence_by_employee = {
+            evidence.employee_id: evidence for evidence in world.entitlement_evidence
+        }
+
+        self.assertEqual(set(evidence_by_employee), set(rare_entries))
+        for employee_id, truth in rare_entries.items():
+            self.assertEqual(len(truth.causal_events), 1)
+            promotion = truth.causal_events[0]
+            evidence = evidence_by_employee[employee_id]
+            self.assertEqual(evidence.policy_id, "legacy-pre-2023")
+            self.assertEqual(evidence.policy_version, "1.0")
+            self.assertEqual(evidence.relevant_event_id, promotion.event_id)
+            self.assertLessEqual(evidence.recorded_at, promotion.recorded_date)
+            self.assertTrue(evidence.evidence_reference)
+
+    def test_adapter_preserves_entitlement_identity_and_event_linkage(self):
+        world = self._world()
+        scenario = adapt_independent_world(world)
+
+        for evidence in world.entitlement_evidence:
+            adapted = scenario.population.grandfathering_evidence_by_employee_id[
+                evidence.employee_id
+            ]
+            self.assertEqual(len(adapted), 1)
+            self.assertEqual(adapted[0].employee_id, evidence.employee_id)
+            self.assertEqual(adapted[0].policy_id, evidence.policy_id)
+            self.assertEqual(adapted[0].policy_version, evidence.policy_version)
+            self.assertEqual(adapted[0].event_source_id, evidence.relevant_event_id)
+
+    def test_generated_entitlement_satisfies_strict_policy_assessment(self):
+        from src.services.anomaly_detection.policy_history import assess_promotion_history
+
+        world = self._world()
+        scenario = adapt_independent_world(world)
+        rare_ids = {
+            entry.employee_id
+            for entry in world.truth
+            if entry.category is TruthCategory.RARE_LEGITIMATE
+        }
+        for record in scenario.dataset.records:
+            employee_id = record.identity.employee_id
+            if employee_id not in rare_ids:
+                continue
+            evidence = (
+                scenario.population.grandfathering_evidence_by_employee_id[
+                    employee_id
+                ]
+            )
+            assessments = assess_promotion_history(
+                record,
+                scenario.policy,
+                scenario.policy_epochs,
+                grandfathering_evidence=evidence,
+            )
+            self.assertEqual(len(assessments), 1)
+
+    def test_protocol_evaluation_consumes_generated_entitlement(self):
+        from src.services.anomaly_detection.protocol_evaluation import evaluate_scenario
+
+        scenario = adapt_independent_world(self._world())
+        result = evaluate_scenario(scenario)
+        policy_rows = [
+            row for row in result.metric_rows
+            if row["method"] == "deterministic_policy_rules"
+            and row["operating_point"] == "rules_fixed"
+        ]
+
+        self.assertEqual(len(policy_rows), 1)
+        self.assertEqual(policy_rows[0]["rare_legitimate_flagged"], 0)

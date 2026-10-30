@@ -203,11 +203,95 @@ class TemporalPolicyTests(unittest.TestCase):
                 employee_id="A",
                 policy_id="LEGACY",
                 policy_version="1",
+                event_source_id="P",
                 evidence_reference="GF-A-2023",
                 recorded_at=date(2023, 5, 1),
             ),),
         )
         self.assertEqual(len(assessments), 1)
+
+    def test_mismatched_grandfathering_evidence_is_rejected(self):
+        promotion = AdministrativeEvent(
+            AdministrativeEventType.PROMOTION,
+            date(2023, 6, 1),
+            "P",
+            level_before="L7",
+            level_after="L6",
+            recorded_date=date(2023, 6, 2),
+            policy_id="LEGACY",
+            policy_version="1",
+        )
+        legacy = PolicyEpoch(
+            "LEGACY", "1", date(2020, 1, 1), date(2022, 12, 31),
+            date(2020, 1, 1), "organization-wide", PromotionPolicy(),
+            grandfather_previous_policy=True,
+        )
+
+        valid = GrandfatheringEvidence(
+            employee_id="A",
+            policy_id="LEGACY",
+            policy_version="1",
+            event_source_id="P",
+            evidence_reference="GF-A-P",
+            recorded_at=date(2023, 5, 1),
+        )
+        mismatches = (
+            replace(valid, employee_id="OTHER"),
+            replace(valid, policy_id="OTHER"),
+            replace(valid, policy_version="2"),
+            replace(valid, event_source_id="OTHER-PROMOTION"),
+            replace(valid, recorded_at=date(2023, 7, 1)),
+        )
+        for evidence in mismatches:
+            with self.subTest(evidence=evidence):
+                with self.assertRaisesRegex(ValueError, "not applicable"):
+                    assess_promotion_history(
+                        _record((promotion,)),
+                        PromotionPolicy(),
+                        (legacy,),
+                        grandfathering_evidence=(evidence,),
+                    )
+
+    def test_generated_correction_has_distinct_decision_and_review_states(self):
+        spec = next(
+            replace(candidate, employee_count=120)
+            for candidate in independent_scenario_matrix(employee_count=120)
+            if candidate.rare_pattern == "late_correction"
+        )
+        world = generate_independent_world(spec)
+        scenario = adapt_independent_world(world)
+        rare_ids = {
+            entry.employee_id
+            for entry in world.truth
+            if entry.category is TruthCategory.RARE_LEGITIMATE
+        }
+        record = next(
+            item for item in scenario.dataset.records
+            if item.identity.employee_id in rare_ids
+        )
+        correction = next(
+            event for event in record.events
+            if event.correction_of_source_id is not None
+        )
+        original = next(
+            event for event in record.events
+            if event.source_id == correction.correction_of_source_id
+        )
+        # Reconstruct the promotion decision at its intended effective date.
+        # The erroneous record was already known, while the formal correction
+        # was recorded fourteen days later and is visible only on later review.
+        decision_date = correction.event_date
+
+        known_then = visible_events(record, TemporalView.known_then(decision_date))
+        later_review = visible_events(
+            record,
+            TemporalView.present_review(decision_date, date(2026, 12, 31)),
+        )
+
+        self.assertIn(original.source_id, {event.source_id for event in known_then})
+        self.assertNotIn(correction.source_id, {event.source_id for event in known_then})
+        self.assertIn(original.source_id, {event.source_id for event in later_review})
+        self.assertIn(correction.source_id, {event.source_id for event in later_review})
 
 
 class ResidualControlTests(unittest.TestCase):

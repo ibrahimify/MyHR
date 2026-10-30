@@ -14,13 +14,33 @@ Progression-anomaly detection and duplicate-record detection are separate tasks.
 
 The application policy engine calculates promotion service requirements, commendation credits, sanction delays, and progression eligibility. Shared golden histories test parity between SQL-backed application behavior and research calculations. Independent development scenarios additionally model fictional policy transitions, recognized prior service, delayed bulk recording, wrong-employee links, missing increment imports, approval bypasses, and batch retries.
 
-The 2026-10-17 review found that historical policy requires at least two time dimensions: the time at which a rule or fact is effective and the time at which it is recorded. The supervisor approved a bitemporal contract with policy versions, recognized service, and correction provenance. A research-only schema and historical replay implementation now exist, while production-database migration and protocol freeze remain pending.
+The 2026-10-17 review found that historical policy requires at least two time
+dimensions: the time at which a rule or fact is effective and the time at which
+it is recorded. The project author approved a bitemporal contract with policy
+versions, recognized service, correction provenance, and employee-specific
+entitlement evidence linked to the applicable policy version and event. A
+research-only schema implements separate `known_then` and `later_review` views.
+Production-database migration, protocol-scale verification, and protocol freeze
+remain pending.
 
 ## Synthetic Development Data
 
 Two generators have been used for development. The original protocol generator varies policy, population, anomaly, and rare-legitimate parameters. A separate standard-library generator constructs an administrative world and an observation ledger without importing detector, policy-feature, or original-generator code. Its source-code independence does not establish conceptual independence or real-world validity.
 
-Each run records dataset, split, and model seeds. Scenario seed is the intended independent unit for paired comparisons. The development artifacts include complete configurations, per-record labels and scores, source revisions, dependency versions, checksums, and a `holdout_accessed: false` attestation.
+Each run records dataset, split, and model seeds. Scenario seed is the intended
+independent unit for paired comparisons. Every included protocol-scale condition
+uses 30 independent scenario seeds unless a written pre-run power or feasibility
+justification approves another number. The development artifacts include
+complete configurations, per-record labels and scores, source revisions,
+dependency versions, checksums, and a `holdout_accessed: false` attestation.
+
+Compatible scenario construction is predeclared. Stable-administration and
+merger/migration populations may host all five rare-legitimate patterns;
+rapid-expansion scenarios exclude legacy policy transitions under the current
+hire window. Late corrections require an existing promotion and lawful
+one-to-one supersession. Grandfathering requires employee-, policy-version-, and
+event-linked entitlement evidence. Infeasible combinations are reported and
+omitted rather than forced. The final balanced cell allocation is not frozen.
 
 ## Deterministic And Statistical Methods
 
@@ -38,11 +58,30 @@ The corrected code retains zero-positive scenarios and their denominators, marks
 
 Saved outputs report evaluation size, positive and negative counts, alert count, confusion counts, precision, recall, F1, false-positive rate, average precision, rare-legitimate and ordinary-clean alert counts, per-class recall, runtime, and workload. Scenario means and pooled counts are kept distinct.
 
-The approved primary endpoint is the paired scenario-level difference in recall at identical fixed additional ML review capacity after invariant-only filtering. Precision, total false alerts, and rare-legitimate false-alert rates accompany it; AP is secondary. A two-sided paired randomization procedure and scenario-clustered bootstrap interval remain draft analysis choices pending implementation checks and protocol freeze. The exact secondary multiplicity family also remains pending.
+The approved primary endpoint is the paired scenario-level difference in recall
+at identical fixed additional ML review capacity after invariant-only filtering.
+Precision and total false alerts accompany it descriptively. The predeclared
+secondary family contains paired policy-aware-versus-raw differences in AP,
+rare-legitimate false-alert rate, and ordinary-legitimate false-alert rate;
+Holm's step-down adjustment is applied across those three two-sided tests. A
+two-sided paired randomization procedure and scenario-clustered bootstrap
+interval remain subject to implementation checks and protocol freeze.
+Zero-positive scenarios remain in design and denominator tables; recall and AP
+are undefined and excluded only from their metric-specific paired inference.
 
 ## Expert Review
 
-The approved realism-review method uses blinded fictional histories with no model results or generated truth labels. Two independent reviewers with complementary HR-policy and information-systems expertise rate plausibility, record status, evidence sufficiency, confidence, and escalation need. Initial judgments are preserved, agreement is reported, disagreements are adjudicated against policy evidence, and genuine ambiguity is retained. Exact reviewer identities, sample size, agreement statistic, and operational form remain pending.
+The approved realism-review method uses 48 blinded fictional histories with no
+model results or generated truth labels: 12 ordinary legitimate, 12 rare
+legitimate, 12 administrative-error, and 12 ambiguous or evidence-insufficient
+cases. Two independent reviewers with complementary HR-policy and
+information-systems expertise rate plausibility, record status, evidence
+sufficiency, confidence, and escalation need. Initial judgments are preserved.
+Raw agreement and unweighted Cohen's kappa with a case-bootstrap interval are
+reported for four-category record status. Disagreements and any insufficient-
+evidence rating are adjudicated against cited policy evidence; unresolved cases
+remain ambiguous. Exact reviewer identities, qualifications, sampling output,
+seed, order randomizations, and packet checksum remain pending.
 
 ## Reproducibility And Audit
 
@@ -68,4 +107,10 @@ Future independent development artifacts also write normalized truth, administra
 
 ## Confirmatory Boundary
 
-The methodology direction, primary endpoint, residual boundary, temporal contract, reviewer method, and independent holdout design are approved for implementation. Their code, exact scenario matrix, feature family, analysis details, dependencies, and source revision are not frozen. The holdout remains undefined and locked until implementation, independent verification, and a separate dated protocol-freeze approval.
+The methodology direction, primary endpoint, residual boundary, entitlement and
+temporal contract, compatibility rules, repeated-seed rule, reviewer procedure,
+and secondary Holm family are approved for protocol preparation. The exact
+balanced scenario matrix, concrete example set, reviewer identities, feature
+family, dependencies, source revision, and final analysis implementation are not
+frozen. The holdout remains undefined and locked until implementation,
+independent verification, and a separate dated protocol-freeze approval.

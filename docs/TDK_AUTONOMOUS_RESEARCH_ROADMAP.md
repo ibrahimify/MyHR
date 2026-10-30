@@ -1,5 +1,37 @@
 # TDK Autonomous Research Roadmap
 
+## Author Decisions Recorded - 2026-10-30
+
+- Lawful correction semantics and record-level eligibility requirements are
+  approved for protocol preparation. The compatibility contract allows all five
+  rare-legitimate patterns in stable-administration and merger/migration
+  populations, while rapid expansion excludes `policy_transition`. Impossible
+  cells must be reported and omitted rather than forced. The exact
+  protocol-scale frequency allocation remains unfrozen.
+- Employee-specific exception evidence is approved. Entitlement must link the
+  employee, policy ID/version, relevant event, evidence reference, and knowledge
+  time. The current development implementation and semantic tests contain this
+  structure; protocol-scale examples still require verification before freeze.
+- `known_then` and later-review views are approved as distinct estimands. The
+  current temporal primitives and tests implement both views, but their use in
+  protocol-scale artifacts is not yet frozen.
+- The expert-review procedure is specified as 48 stratified fictional cases,
+  reviewed independently by two blinded complementary reviewers. Raw agreement
+  and unweighted Cohen's kappa are predeclared; evidence-based adjudication
+  preserves unresolved ambiguity. The two human identities remain blank and no
+  review is claimed.
+- Protocol-scale included conditions use 30 independent seeds unless a written
+  pre-run justification approves another count. Zero-positive scenarios remain
+  in design and denominator tables; recall and AP are undefined for their
+  metric-specific inference.
+- Fixed-capacity recall remains primary. The predeclared Holm family contains
+  AP, rare-legitimate false-alert rate, and ordinary-legitimate false-alert rate
+  for the policy-aware-versus-raw paired comparison. Other controls, ablations,
+  thresholds, per-class analyses, and utility results are exploratory.
+- Protocol freeze and one-time holdout authorization were explicitly withheld.
+  The final holdout remains undefined, locked, ungenerated, uninspected, and
+  unscored.
+
 ## Autonomous Audit And Repair Cycle - 2026-10-30
 
 - Final independent methodology review reproduced the current arithmetic but
@@ -38,11 +70,11 @@
   frequency-preserving permutation of observed policy-signal rows. All nine
   raw, policy, ablation, wrong-policy, and shuffled-policy representations use
   identical residual employee IDs, order, and fixed review capacity.
-- Temporal replay now distinguishes effective time, recorded time, and policy
-  knowledge time. A strict employee-specific grandfathering primitive exists,
-  but the current independent generator lacks structured entitlement evidence;
-  those cases remain draft compatibility scenarios and are not described as
-  entitlement-verified.
+- Temporal replay distinguishes effective time, recorded time, and policy
+  knowledge time. The independent generator now emits structured entitlement
+  evidence linked to the employee, policy ID/version, and relevant event, and
+  the evaluator consumes it in policy features and deterministic policy checks.
+  This is verified development implementation, not frozen empirical evidence.
 - UI verification exposed two failures hidden by green tests: delayed callbacks
   could access a closed database, and native Windows printer initialization
   emitted fatal `0x80040155` diagnostics while PDF tests passed. Owned timers
@@ -77,13 +109,11 @@
   retroactive policy amendments known at the original decision from those
   available during a later present-day review.
 - Employee-specific grandfathering evidence has a strict validation primitive:
-  a declared policy used outside its valid interval is rejected in strict mode
-  unless matching employee, policy ID, version, evidence reference, and
-  knowledge-time evidence are supplied. The independent generator still stores
-  only descriptive evidence strings and generic approval references, so its
-  grandfathered cases remain draft compatibility replay and **must not be
-  described as entitlement-verified**. Adding a structured observable
-  entitlement field remains a pending human-approved contract/scenario proposal.
+  a declared policy used outside its valid interval is rejected unless matching
+  employee, policy ID/version, event, evidence reference, and knowledge-time
+  evidence are supplied. The independent generator and artifact schema now
+  preserve that evidence explicitly. Existing pre-change artifacts remain
+  unverified for entitlement and must not be reinterpreted retroactively.
 - Coordinator verification of preserved artifact `e342bd4acf39b06b` remains:
   deterministic policy rules flag **39/72** rare-legitimate test histories while
   invariant rules flag **0/72**. This historical-policy result is distinct from
@@ -112,7 +142,12 @@
 - Deterministic checks produced 63 TP, 0 FP, and 45 FN, with 0/72 rare-legitimate histories flagged.
 - At equal additional review capacity, policy-aware minus raw Isolation Forest recall was +0.0278, 95% CI [-0.0278, +0.1019], paired sign-flip p=0.6875. No advantage was demonstrated; this does not establish equivalence.
 - The secondary AP difference was +0.0738 with unadjusted p=0.0122, but its all-comparison Holm-adjusted p was 1.0. It is not a confirmatory finding.
-- R7 remains partial: policy-version identity and future-effective exclusion are implemented; employee-specific grandfathering and explicit knowledge-time versus review-time views remain human-gated design work.
+- At this checkpoint R7 remained partial: policy-version identity and
+  future-effective exclusion were implemented, while employee-specific
+  grandfathering and explicit knowledge-time versus review-time views remained
+  human-gated. The later 30 October decision addendum and implementation work at
+  the top of this roadmap supersede that status without changing the historical
+  artifact.
 - Proposals 1 and 3-6 remain pending human approval. Expert review, protocol freeze, holdout authorization, and PR merge remain blocked on humans.
 
 ## Second External Audit — Invalidations And R1/R6 Repairs - 2026-10-30
@@ -185,7 +220,7 @@ An independent review (Codex, relayed by Muhammad Ibrahim Shoeb) correctly flagg
   - (c) **recall delta +0.0093, paired bootstrap 95% CI [-0.0463, +0.0833]** re-derived to four decimals with a fresh bootstrap (seed 20261030). No evidence of policy-aware advantage.
   - These remain **exploratory** readings from an unapproved scenario definition. A separate read-only auditor still needs to verify the raw rows, denominator, scenario membership, and the all-policy-transition attribution before any document cites them as settled.
 - **Feature development is paused.** Next work is paper completion and the supervisor package, not new scenarios.
-- **Correction to earlier framing:** "all remaining work is human-gated" was inaccurate. Unblocked, non-gated work includes paper completion, traceability checks, figure/table generation, citation verification (`scripts/verify_tdk_citations.py --require-local-artifact`), and independent artifact auditing. Human-gated items are specifically: scenario-definition approval, protocol freeze, expert-reviewer nomination, and holdout authorization.
+- **Correction to earlier framing:** "all remaining work is human-gated" was inaccurate. Unblocked, non-gated work includes paper completion, traceability checks, figure/table generation, citation verification (`scripts/verify_tdk_citations.py --require-local-artifact`), and independent artifact auditing. At this checkpoint the human-gated items included scenario-definition approval, protocol freeze, expert-reviewer nomination, and holdout authorization. The later addendum resolves constrained scenario compatibility; reviewer nomination, protocol freeze, and holdout authorization remain open.
 - The final holdout was not generated, inspected, scored, or unlocked. PR #1 remains draft and unmerged.
 
 ### Engineering facts (unchanged, accurate)

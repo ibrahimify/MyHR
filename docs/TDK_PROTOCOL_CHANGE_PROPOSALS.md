@@ -1,12 +1,47 @@
 # TDK Protocol Change Proposals
 
-Status: **PROPOSALS ONLY — PENDING HUMAN (SUPERVISOR) APPROVAL.**
+Status: **PARTIALLY AUTHOR-APPROVED FOR PROTOCOL PREPARATION - NOT FROZEN.**
 
 This document records proposed changes to scenario definitions, mechanisms, and
 evaluation details that were implemented in code but are **not** yet approved as
 protocol. Per `AGENTS.md`, scenario definitions must not be silently changed;
 proposed changes are recorded here separately for supervisor approval. Nothing in
-this document is frozen, and none of it authorizes holdout access.
+this document is frozen, and none of it authorizes holdout access. The dated
+decision addendum below records the project author's 30 October 2026 decisions;
+it is not represented as an independent supervisor signature.
+
+## Decision addendum - 30 October 2026
+
+The author approved the lawful-correction semantics and record-level eligibility
+requirements, with the following explicit compatibility contract:
+
+| Rare-legitimate pattern | Stable administration | Rapid expansion | Merger or migration | Required record-level evidence |
+| --- | --- | --- | --- | --- |
+| Grandfathered policy | Compatible | Compatible | Compatible | Employee-, policy-version-, and event-linked entitlement evidence known by the applicable review cutoff |
+| Recognized prior service | Compatible | Compatible | Compatible | Evidence-bearing recognized-service credit linked to the relevant decision |
+| Delayed bulk recording | Compatible | Compatible | Compatible | Effective date unchanged; later recorded date and backlog provenance retained |
+| Late correction | Compatible | Compatible | Compatible | Progression track, an existing promotion, valid one-to-one supersession, and a lawful corrected effective history |
+| Policy transition | Compatible | Incompatible under the current 2021-2025 hire window | Compatible | Progression track, existing promotion, and `hire date + 30 months <= 2022-12-31` |
+
+All four anomaly mechanisms may be combined with a compatible population and
+rare pattern only when the mechanism's source-event preconditions are met:
+`wrong_employee_link` needs distinct employee records; `missing_increment_import`
+needs an approved increment that can be omitted; `approval_bypass` needs a
+promotion with explicit invalid authorization state; and `batch_retry` needs an
+original event plus a traceable retry. A condition that cannot satisfy both the
+anomaly and rare-pattern preconditions must be omitted and reported, not forced.
+
+This approves Proposals 1, 4, 5, and 6 subject to the constraints above. It
+approves the compatibility boundary, not the exact `index % 5` frequency
+allocation in Proposal 3. The protocol-scale matrix must predeclare a balanced
+set of compatible cells and use 30 independent seeds per included condition
+unless a written justification is approved beforehand. Concrete generated
+examples remain subject to pre-freeze review. Proposal 2 remains superseded.
+
+The same decision round approved employee-linked entitlement evidence,
+decision-time and later-review temporal views, the primary endpoint, and the
+secondary Holm family. It modified the reviewer design and seed plan. Protocol
+freeze and holdout authorization were explicitly withheld.
 
 ---
 
@@ -39,7 +74,9 @@ and should be treated as a rare-legitimate case rather than an error.
 3. Is approving the erroneous event at filing time (vs a distinct pre-correction
    status) the correct administrative model?
 
-**Status:** Proposed. Not approved. Not frozen.
+**Status:** Approved with the addendum's lawful-history, eligibility, and
+evidence constraints. Exact protocol-scale examples and frequencies are not
+frozen.
 
 ---
 
@@ -67,7 +104,7 @@ the current policy. This is the core case motivating the bitemporal contract
 2. Should the transition cover increments and other event types, not only promotions?
 3. Is the legacy/reform two-epoch model sufficient, or are more epochs needed?
 
-**Status:** Proposed. Not approved. Not frozen.
+**Status:** Superseded by Proposal 4. Not part of the approved contract.
 
 ---
 
@@ -78,8 +115,9 @@ Adding two rare patterns changed the 12-scenario development matrix assignment f
 2,3,4 appear 2×). This is a **development-only** composition change. It does not
 define the holdout matrix, which remains undefined and locked under Decision 6.
 
-**Status:** Proposed for development use. Holdout matrix unaffected and still
-requires an independent frozen specification.
+**Status:** The exact `index % 5` allocation is not approved as the
+protocol-scale design. The amended compatibility boundary is approved; the
+balanced matrix and holdout remain unfrozen.
 
 ---
 
@@ -114,7 +152,8 @@ lawful legacy transition and are not selected.
 fixed `hire+30mo` transition date acceptable, or should it be distributed within
 the legacy epoch?
 
-**Status:** Proposed. Not approved. Not frozen.
+**Status:** Approved with the addendum's population, employee, policy-version,
+and event-evidence constraints. Not frozen.
 
 ## Proposal 5 — `late_correction` eligibility precondition (amends Proposal 1)
 
@@ -126,7 +165,7 @@ so some selected cases had no promotion to correct and produced empty causal
 events with misleading "a promotion was corrected" evidence text). With the
 precondition, every selected case has a real promotion to re-date and supersede.
 
-**Status:** Proposed. Not approved. Not frozen.
+**Status:** Approved. Not frozen.
 
 ## Proposal 6 — development matrix: skip unlawful `policy_transition` pairings (amends Proposal 3)
 
@@ -146,20 +185,20 @@ to 1. This is the scientifically correct tradeoff: forcing the pattern onto
 coverage is wanted, the legitimate levers are adjusting hire-year windows or
 adding a dedicated hosting-population scenario — not forcing the pattern.
 
-**Status:** Proposed. Not approved. Not frozen. Supervisor should decide whether
-1-scenario development coverage of `policy_transition` is sufficient or whether a
-dedicated hosting population should be added.
+**Status:** The prohibition on forced incompatible pairings is approved. The
+one-scenario development allocation is not accepted as the protocol-scale
+frequency plan; a balanced set of compatible cells must be frozen separately.
 
 ## Approval log
 
 | Proposal | Proposed | Supervisor decision | Date |
 | --- | --- | --- | --- |
-| 1 `late_correction` definition | 2026-10-30 | _pending_ | — |
+| 1 `late_correction` definition | 2026-10-30 | approved with lawful-history and evidence constraints | 2026-10-30 |
 | 2 `policy_transition` definition (SUPERSEDED by #4) | 2026-10-30 | superseded | — |
-| 3 development matrix composition (AMENDED by #6) | 2026-10-30 | _pending_ | — |
-| 4 corrected `policy_transition` construction | 2026-10-30 | _pending_ | — |
-| 5 `late_correction` eligibility precondition | 2026-10-30 | _pending_ | — |
-| 6 matrix skips unlawful `policy_transition` pairings | 2026-10-30 | _pending_ | — |
+| 3 development matrix composition (AMENDED by #6) | 2026-10-30 | exact frequency allocation not approved; replace at protocol scale with a predeclared balanced compatible-cell matrix | 2026-10-30 |
+| 4 corrected `policy_transition` construction | 2026-10-30 | approved with population and record-level eligibility constraints | 2026-10-30 |
+| 5 `late_correction` eligibility precondition | 2026-10-30 | approved | 2026-10-30 |
+| 6 matrix skips unlawful `policy_transition` pairings | 2026-10-30 | approved; forced incompatible pairings prohibited | 2026-10-30 |
 
 ## Superseded exploratory verification note
 
@@ -178,4 +217,7 @@ This note is retained as audit history only. The second audit invalidated the
 underlying rare-legitimate construction, so these numbers must not be used as a
 current false-alert result. The repaired development artifact
 `b866ae2aa1b4b479` records **0 of 72** deterministic alerts among test-split
-rare-legitimate histories. Its scenario definitions remain pending approval.
+rare-legitimate histories. Its scenario construction is retained as historical
+development evidence; the later decision addendum approves only the constrained
+compatibility and eligibility contract, not retroactive reinterpretation of
+this artifact or the final matrix.

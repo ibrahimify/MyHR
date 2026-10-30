@@ -123,6 +123,7 @@ def main() -> None:
         truth_rows = []
         event_rows = []
         policy_rows = []
+        entitlement_rows = []
         for spec in specs:
             world = generate_independent_world(spec)
             scenario = adapt_independent_world(world)
@@ -136,6 +137,7 @@ def main() -> None:
             truth_rows.extend(_record_truth_rows(world))
             event_rows.extend(_event_ledger_rows(world))
             policy_rows.extend(_policy_epoch_rows(world))
+            entitlement_rows.extend(_entitlement_evidence_rows(world))
             truth_counts = Counter(entry.category.value for entry in world.truth)
             config_rows.append({
                 **asdict(spec),
@@ -159,7 +161,7 @@ def main() -> None:
             "protocol_status": PROTOCOL_STATUS,
             "holdout_accessed": False,
             "run_purpose": "development",
-            "artifact_schema_version": 4,
+            "artifact_schema_version": 5,
             "analysis_plan_version": ANALYSIS_PLAN_VERSION,
             "truth_sidecars_required": True,
             "condition_count": len(condition_specs),
@@ -193,6 +195,7 @@ def main() -> None:
         _write_csv(run_dir / "record_truth.csv", truth_rows)
         _write_csv(run_dir / "administrative_events.csv", event_rows)
         _write_csv(run_dir / "policy_epochs.csv", policy_rows)
+        _write_csv(run_dir / "entitlement_evidence.csv", entitlement_rows)
         _write_csv(run_dir / "aggregate_metrics.csv", _aggregate_rows(metric_rows))
         _write_csv(run_dir / "paired_comparisons.csv", _paired_comparisons(metric_rows))
         _write_csv(run_dir / "robustness_slices.csv", _robustness_slices(metric_rows))
@@ -382,6 +385,21 @@ def _policy_epoch_rows(world: IndependentWorld) -> list[dict[str, object]]:
         ),
         "grandfather_previous_policy": policy.grandfather_previous_policy,
     } for policy in world.policies]
+
+
+def _entitlement_evidence_rows(
+    world: IndependentWorld,
+) -> list[dict[str, object]]:
+    return [{
+        "scenario_id": world.spec.scenario_id,
+        "entitlement_id": evidence.entitlement_id,
+        "employee_id": evidence.employee_id,
+        "policy_id": evidence.policy_id,
+        "policy_version": evidence.policy_version,
+        "relevant_event_id": evidence.relevant_event_id,
+        "evidence_reference": evidence.evidence_reference,
+        "recorded_at": evidence.recorded_at.isoformat(),
+    } for evidence in world.entitlement_evidence]
 
 
 if __name__ == "__main__":

@@ -6,7 +6,12 @@ Research title:
 
 **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**
 
-Human methodology decisions were recorded on 29 October 2026 in `TDK_SUPERVISOR_DECISIONS_2026-10-29.md`. They approve the design for implementation, not the implementation or protocol freeze. This protocol must be implemented, verified, and marked `FROZEN` at a recorded source revision before any holdout scenario is generated or executed.
+Human methodology decisions were recorded on 29 October 2026, with an author
+decision addendum on 30 October 2026, in
+`TDK_SUPERVISOR_DECISIONS_2026-10-29.md`. They approve the design for
+implementation and protocol preparation, not protocol freeze. This protocol
+must be implemented, verified, independently reviewed, and marked `FROZEN` at a
+recorded source revision before any holdout scenario is generated or executed.
 
 ## Research Questions
 
@@ -64,6 +69,30 @@ The final matrix must include multiple values for:
 
 The holdout matrix must cover policy transitions, lawful exceptions, administrative errors, populations, and repeated seeds. Its causal truth stays outside model inputs. At least one holdout scenario family must use a generation mechanism implemented independently from the detector's policy residual calculation.
 
+### Approved scenario compatibility boundary
+
+Protocol-scale conditions may combine any of the four anomaly mechanisms with a
+population and rare-legitimate pattern only when both interventions' source
+records and eligibility preconditions can be satisfied without contradiction.
+The approved population-pattern combinations are:
+
+| Population | Compatible rare-legitimate patterns |
+| --- | --- |
+| Stable administration | grandfathered policy, recognized prior service, delayed bulk recording, late correction, policy transition |
+| Rapid expansion | grandfathered policy, recognized prior service, delayed bulk recording, late correction |
+| Merger or migration | grandfathered policy, recognized prior service, delayed bulk recording, late correction, policy transition |
+
+`late_correction` requires a progression-track employee with an existing
+promotion, valid one-to-one correction provenance, and a lawful corrected
+history. `policy_transition` additionally requires that a 30-month legacy
+service requirement can be completed no later than 31 December 2022; it is
+therefore incompatible with the current rapid-expansion hire window.
+Grandfathering requires employee-, policy-version-, and event-linked entitlement
+evidence. Recognized prior service requires decision-linked service evidence.
+Delayed bulk recording changes recorded time, not effective time. Incompatible
+or infeasible cells are reported and omitted rather than populated with forced
+records. The final frequency allocation remains part of the unfrozen matrix.
+
 ## Comparisons And Ablations
 
 Every comparison uses the same scenario, split, model-seed budget, and evaluation records.
@@ -120,12 +149,22 @@ Counts must never be reported without denominators. Aggregate tables include bot
 
 ## Statistical Analysis
 
-- Use at least 30 independent scenario seeds per primary condition unless a documented power analysis supports another count.
+- Use 30 independent scenario seeds for every predeclared protocol-scale
+  condition unless a written power or feasibility justification for another
+  count is approved before that condition is run. Methods remain paired within
+  each scenario seed.
 - Analyze paired raw-versus-policy differences within the same scenario, with recall at fixed capacity as the primary difference.
 - Report mean and median differences, variability, 95% paired bootstrap confidence intervals, and a paired sign-flip/permutation test.
 - Treat scenario seeds, not individual records from one generated organization, as the primary independent units.
 - Report failures and negative findings. Do not select seeds or scenarios based on favorable outcomes.
-- Treat AP, precision, false-alert measures, rare-legitimate rates, utility, and per-class analyses as secondary; identify multiplicity handling before the holdout run.
+- Predeclare one confirmatory secondary family containing the paired
+  policy-aware-versus-raw differences in (1) AP, (2) rare-legitimate false-alert
+  rate, and (3) ordinary-legitimate false-alert rate. Apply Holm's step-down
+  adjustment across these three two-sided tests.
+- Report precision and total false alerts alongside the primary endpoint as
+  descriptive companion measures; at fixed queue size they are algebraically
+  tied to true positives. Treat threshold analyses, per-class results, controls,
+  ablations, and utility sensitivity as exploratory.
 
 ## Operational Utility
 
@@ -149,12 +188,44 @@ Every policy and administrative fact used by the final experiment must carry:
 - jurisdiction or applicability scope where relevant;
 - recognized-service evidence;
 - correction provenance linking amendments to the superseded record.
+- for any grandfathering or comparable exception, an entitlement evidence
+  record linked to the employee, applicable policy ID and version, relevant
+  administrative event, evidence reference, and recorded/knowledge time.
 
-Feature calculation must use the policy and facts valid for the decision being evaluated, while preserving later-recorded corrections. Prediction inputs must not contain causal truth, generated labels, or mechanism identifiers.
+Every historical decision is evaluated under two explicit views:
+
+- `known_then`: facts effective by the decision date and recorded by that date,
+  using policy knowledge available by that date;
+- `later_review`: the same effective decision horizon, while admitting facts,
+  corrections, and policy amendments recorded by the later review date.
+
+Both views must be tested and stored distinctly. Later-recorded evidence must
+not be silently treated as known at the original decision. Prediction inputs
+must not contain causal truth, generated labels, or mechanism identifiers.
 
 ## Blinded Expert Realism Review
 
-Before protocol freeze, two independent reviewers with complementary HR-policy and information-systems expertise review a predeclared sample of synthetic histories. They are blinded to generated labels, model scores, and model findings. Their initial judgments are preserved, agreement is reported, and disagreements are adjudicated against documented policy evidence. Genuinely ambiguous cases remain labelled ambiguous and are not silently forced into positive or negative ground truth.
+Before protocol freeze, two independent reviewers with complementary HR-policy
+and information-systems expertise review the same predeclared sample of 48
+synthetic histories. Reviewer identities and qualifications must be entered in
+the two empty nomination slots before execution. The sample is stratified as 12
+ordinary legitimate, 12 rare legitimate, 12 administrative-error, and 12
+ambiguous or evidence-insufficient histories, with coverage balanced across
+included populations, policy versions, and compatible mechanisms as far as the
+frozen candidate pool permits. Selection uses a recorded seed from development
+or validation candidates only and is independent of model scores.
+
+Reviewers are blinded to generated labels, model scores, model findings, and
+each other's first-pass ratings. Both receive the same cases in independently
+randomized order. Preserve initial judgments and reasons. Report raw agreement
+and unweighted Cohen's kappa with a 95% scenario-bootstrap interval for the
+four-category record-status item; report raw agreement for the remaining
+categorical items. After both first passes are locked, disagreements and any
+`Insufficient evidence` rating are reviewed jointly against cited policy and
+record evidence. Store the initial ratings, evidence citation, adjudicated
+outcome, and reason separately. If evidence does not resolve the case, retain it
+as ambiguous and exclude it from binary ground truth rather than forcing
+agreement.
 
 ## Duplicate-Detection Protocol
 
@@ -195,7 +266,9 @@ The holdout remains locked until all items are true:
 - invariant-rule boundary, fixed review capacity, zero-positive treatment, and secondary threshold objectives are frozen;
 - robustness scenario matrix is frozen;
 - bitemporal policy and administrative-evidence contract is implemented and tested;
-- blinded reviewer method, qualifications, sampling, agreement, and adjudication are recorded;
+- the two reviewer identities and qualifications are nominated, and the
+  predeclared sampling, agreement, and adjudication protocol is signed before
+  distribution;
 - analysis code produces complete denominators and uncertainty estimates;
 - artifact provenance is write-once and verified;
 - supervisor approves the protocol.
@@ -224,4 +297,16 @@ The v2 implementation currently provides:
 
 Implementation does not change the protocol status. The holdout remains locked until the checklist above is reviewed and the protocol is explicitly frozen with supervisor approval.
 
-The 29 October decisions supersede the earlier full-policy residual gate and AP-primary interpretation. As of 30 October 2026 the invariant-only residual boundary, recall-primary endpoint, and equal additional ML budget are implemented in development code. The bitemporal contract is only partial: policy-version identity and future-effective exclusion are implemented, while employee-level grandfathering entitlement and separate decision-time versus later-review knowledge views remain open. The blinded expert-review process and independently specified frozen holdout matrix are also unimplemented. Exact late-correction, policy-transition, and matrix-composition definitions remain pending human approval in `TDK_PROTOCOL_CHANGE_PROPOSALS.md`. Existing artifacts remain development diagnostics; the protocol is not frozen and the holdout is locked.
+The 29 October decisions supersede the earlier full-policy residual gate and
+AP-primary interpretation. The 30 October addendum approves lawful correction
+and transition eligibility, employee-linked entitlement evidence, explicit
+decision-time and later-review views, 30 repeated seeds per selected condition,
+and the three-endpoint Holm family. As of 30 October 2026 the invariant-only
+residual boundary, recall-primary endpoint, equal additional ML budget,
+entitlement evidence structure, temporal-view primitives, and population-pattern
+compatibility guard exist in development code and tests. They remain unfrozen.
+The exact protocol-scale frequency allocation, concrete example review, two
+human reviewer nominations, reviewer execution, environment freeze, independent
+final verification, and holdout authorization are incomplete. Existing
+artifacts remain development diagnostics; the protocol is not frozen and the
+holdout is locked.

@@ -180,7 +180,7 @@ The old AP values `0.3616` and `0.3621` are reproducible arithmetic but cannot a
 
 ### 8.4 Current repaired exploratory run
 
-Artifact `4feea4508de1bb05` contains 12 scenarios, 864 eligible test histories, 108 anomalies, and 72 generated rare-legitimate labels. Deterministic policy checks produced 63 TP, 0 FP, and 45 FN, with 0/72 generated rare-label alerts; 24 grandfathering labels lack independently established employee entitlement. At equal additional review capacity, policy-aware minus raw Isolation Forest recall was +0.0278, 95% CI [-0.0278, +0.1019], p=0.6875. Raw and policy-aware residual queues each reviewed 96 records; they found 36 and 39 anomalies respectively, with 60 and 57 false alerts. Wrong-policy context selected the identical queue as policy-matched context, while three single-policy-feature ablations each found 42 anomalies. These inspected development results neither demonstrate correct-policy value nor establish equivalence.
+Artifact `4feea4508de1bb05` contains 12 scenarios, 864 eligible test histories, 108 anomalies, and 72 generated rare-legitimate labels. Deterministic policy checks produced 63 TP, 0 FP, and 45 FN, with 0/72 generated rare-label alerts; 24 grandfathering rows in that immutable artifact lack employee-specific entitlement evidence. At equal additional review capacity, policy-aware minus raw Isolation Forest recall was +0.0278, 95% CI [-0.0278, +0.1019], p=0.6875. Raw and policy-aware residual queues each reviewed 96 records; they found 36 and 39 anomalies respectively, with 60 and 57 false alerts. Wrong-policy context selected the identical queue as policy-matched context, while three single-policy-feature ablations each found 42 anomalies. These inspected development results neither demonstrate correct-policy value nor establish equivalence. Later development code adds linked entitlement and separate temporal views, but this artifact is not retroactively reinterpreted.
 
 ## 9. What Is Verified, Inferred, Or Pending
 
@@ -196,24 +196,39 @@ Artifact `4feea4508de1bb05` contains 12 scenarios, 864 eligible test histories, 
 ### Qualified inference
 
 - Historical and intermediate transition readings are invalidated audit history, not current evidence.
-- A research-only temporal schema is partly implemented; employee-specific grandfathering and explicit knowledge-time/review-time semantics remain unfrozen.
+- Employee-linked entitlement, explicit `known_then`/`later_review` semantics,
+  and population-pattern compatibility exist in development code and tests but
+  remain unfrozen and need protocol-scale artifact verification.
 
-### Pending human decisions
+### Recorded author decisions - 30 October 2026
 
-- Scenario Proposals 1 and 3-6.
-- Employee-specific grandfathering semantics.
-- Knowledge-time and review-time views.
-- Expert reviewers, sample, agreement statistic, and adjudication rule.
-- Protocol-scale matrix, multiplicity family, protocol freeze, and holdout authorization.
+- Lawful correction and transition eligibility plus explicit compatible
+  population-pattern combinations are approved for protocol preparation.
+- Employee-, policy-version-, and event-linked entitlement is required.
+- Decision-time and later-review views must be tested separately.
+- Use 30 independent seeds per included protocol-scale condition unless a
+  written pre-run justification approves another count.
+- Fixed-capacity recall is primary. Holm adjustment covers AP,
+  rare-legitimate false-alert rate, and ordinary-legitimate false-alert rate.
+- The 48-case two-reviewer procedure is specified.
 
-See `TDK_SUPERVISOR_DECISION_SHEET.md`. Nothing there is approved until a human records a decision.
+### Human gates still open
+
+- Nominate the two qualified human reviewers and execute the blinded review.
+- Freeze the exact balanced compatible-cell matrix and concrete examples.
+- Verify protocol-scale development and validation artifacts and the secondary
+  analysis implementation.
+- Obtain separate dated human approval for protocol freeze and one holdout run.
+
+See `TDK_SUPERVISOR_DECISION_SHEET.md`. The holdout remains locked.
 
 ## 10. Limitations And Risks
 
 - All evaluation data are synthetic; external validity is unproven.
 - Original generator and detector share policy concepts, creating circularity risk.
 - The historical residual experiment erased its policy signal; the current run is still small and inspected.
-- Temporal replay is partial and cannot yet represent all grandfathering and late-knowledge cases.
+- Temporal and entitlement primitives are implemented but not yet verified in a
+  frozen protocol-scale experiment or migrated to the production schema.
 - Existing independent scenarios have one realization per population-mechanism cell and weak inferential power.
 - Threshold calibration for deployment is unresolved.
 - Cost parameters are assumptions.
@@ -231,17 +246,23 @@ See `TDK_SUPERVISOR_DECISION_SHEET.md`. Nothing there is approved until a human 
 - **Locked holdout:** inspected outputs cannot serve as final confirmation.
 - **Preserve unfavorable results:** scientific value depends on diagnosing failure, not manufacturing a win.
 
-These are current engineering and methodological boundaries. Concrete scenario and temporal semantics remain pending human approval.
+These are current engineering and methodological boundaries. Scenario
+compatibility, entitlement, and temporal semantics are author-approved for
+protocol preparation but remain unfrozen.
 
 ## 12. Unresolved Issues And Next Steps
 
-1. Obtain human answers on the updated `TDK_SUPERVISOR_DECISION_SHEET.md`.
-2. Implement only approved grandfathering and temporal-view semantics.
-3. Conduct blinded expert realism review without exposing model scores or generator labels.
-4. Run and audit protocol-scale development and validation after their matrix is approved.
-5. Freeze dependencies, hypotheses, endpoints, scenario matrix, seeds, and analysis at a dated revision.
-6. Only then authorize and evaluate the final holdout once.
-7. Keep duplicate detection and explanation usability separate from the primary progression experiment.
+1. Nominate Reviewer A (HR-policy) and Reviewer B (information systems).
+2. Review concrete lawful examples and freeze a balanced compatible-cell matrix.
+3. Verify linked entitlement and both temporal views in protocol-scale
+   development and validation artifacts using 30 seeds per included condition.
+4. Conduct the 48-case blinded expert realism review without exposing model
+   scores or generator labels.
+5. Independently verify the primary endpoint and three-test Holm family.
+6. Freeze dependencies, hypotheses, endpoints, matrix, seeds, and analysis at a
+   dated revision.
+7. Only then request authorization to evaluate the final holdout once.
+8. Keep duplicate detection and explanation usability separate from the primary progression experiment.
 
 ## 13. Reproduction And Verification
 

@@ -1,17 +1,23 @@
 # MyHR TDK Supervisor Decision Sheet
 
-**Nothing below is approved until a human records a decision. The final holdout remains locked.**
+**Author decisions were recorded on 30 October 2026. They do not constitute an
+independent supervisor signature. Protocol freeze and holdout access remain
+withheld.**
 
 The high-level choices recorded on 29 October remain the implementation direction. This sheet concerns concrete definitions exposed by the second audit and is required before protocol freeze.
 
-| Decision | Evidence and recommendation | Human response |
+| Decision | Recorded outcome | Remaining gate |
 | --- | --- | --- |
-| Scenario Proposals 1 and 3-6 | Repaired late-correction and transition cases now satisfy invariant checks, but their semantics and matrix frequency are not approved. Review the examples and approve, reject, or modify them. | [ ] Approve [ ] Reject [ ] Modify |
-| Employee-specific grandfathering | Policy identity alone cannot prove an employee's entitlement. Require an explicit entitlement/evidence record rather than infer grandfathering from a generated label. | [ ] Approve [ ] Reject [ ] Modify |
-| Knowledge-time and review-time views | Effective and recorded dates exist, but the exact view for "what was knowable then" versus "what is reviewable now" is not frozen. Define both before protocol-scale generation. | [ ] Approve [ ] Reject [ ] Modify |
-| Expert realism review | Use two blinded reviewers with HR-policy and information-systems expertise. Fix sample size, questionnaire, agreement statistic, adjudication, and ambiguity handling before showing cases. | [ ] Approve [ ] Reject [ ] Modify |
-| Protocol-scale matrix | Keep scenario seeds as units; predeclare populations, mechanisms, repeated seeds, and zero-positive handling. Do not select cells after inspecting results. | [ ] Approve [ ] Reject [ ] Modify |
-| Multiplicity | Keep fixed-capacity recall primary; treat AP as secondary; predeclare the full secondary family and Holm adjustment. | [ ] Approve [ ] Reject [ ] Modify |
-| Freeze and holdout | Authorize one holdout run only after all above decisions, expert review, clean development/validation artifacts, dependency lock, source revision, and independent audit are dated and frozen. | [ ] Approve [ ] Reject [ ] Modify |
+| Scenario semantics and compatibility | **Approved with constraints.** Accept lawful corrections and eligibility requirements. Stable and merger populations may host all five rare patterns; rapid expansion excludes policy transition. Exact 12-scenario frequency allocation is not approved as the protocol-scale matrix. | Review concrete examples and freeze a balanced compatible-cell matrix. |
+| Employee-specific entitlement | **Approved.** Require evidence linked to employee, policy ID/version, relevant event, evidence reference, and knowledge time. | Verify implementation and generated examples before freeze. |
+| Decision-time and later-review views | **Approved.** Test `known_then` separately from later review of the same effective horizon. | Verify both paths and preserve their outputs distinctly. |
+| Expert realism review | **Modified.** Two blinded complementary reviewers; 48 stratified cases; raw agreement plus unweighted Cohen's kappa; evidence-based adjudication with unresolved ambiguity retained. | Nominate Reviewer A and Reviewer B below, freeze sample/seed/checksum, then execute. |
+| Protocol-scale repetitions | **Modified.** Use 30 independent seeds per predeclared included condition unless a written justification is approved beforehand. Retain zero-positive scenarios; recall and AP are undefined for their metric-specific inference. | Freeze exact compatible cells and any justified exception before execution. |
+| Endpoint and multiplicity | **Approved.** Fixed-capacity recall primary. Holm-adjust the three secondary paired tests: AP, rare-legitimate false-alert rate, ordinary-legitimate false-alert rate. | Independently verify analysis implementation before freeze. |
+| Freeze and holdout | **Withheld.** No protocol freeze and no holdout run are authorized. | Obtain dated human sign-off only after all prerequisites and audits pass. |
 
-Reviewer: ____________________  Date: ____________________  Signature: ____________________
+Reviewer A (HR-policy): ____________________  Qualification: ____________________
+
+Reviewer B (information systems): ____________________  Qualification: ____________________
+
+Freeze approver: ____________________  Date: ____________________  Signature: ____________________

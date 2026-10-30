@@ -27,18 +27,50 @@ The adverse controls are more restrictive than the headline comparison: wrong-po
 - Provenance covers the effective-state resolver, and runtime measurement no longer resets a caller-owned memory trace.
 - Duplicate source and variant records share the same latent-person history. All three synthetic generators now enforce and test a minimum generated hire age of 18 years.
 
+## Decisions Recorded On 30 October
+
+- Lawful correction and transition cases are accepted only when explicit
+  employee and population eligibility checks pass. Stable-administration and
+  merger/migration populations may host all five rare patterns; rapid expansion
+  excludes legacy policy transition under the current hire window. The exact
+  balanced protocol-scale cell allocation is not frozen.
+- Grandfathering requires entitlement evidence linked to employee, policy
+  ID/version, relevant event, evidence reference, and knowledge time.
+- `known_then` and `later_review` are separate required temporal views.
+- Protocol-scale included conditions use 30 independent seeds unless a written
+  pre-run justification approves another count. Zero-positive scenarios remain
+  reported; recall and AP are undefined for their metric-specific inference.
+- Fixed-capacity recall is primary. Holm adjustment covers the three secondary
+  paired comparisons: AP, rare-legitimate false-alert rate, and
+  ordinary-legitimate false-alert rate.
+- The realism-review procedure is fixed at 48 stratified cases and two blinded
+  complementary reviewers, with raw agreement, unweighted Cohen's kappa, and
+  evidence-based adjudication. The two actual reviewers are not yet nominated.
+- Protocol freeze and one holdout run are explicitly withheld.
+
 ## Scientific Boundaries
 
-- The 12 scenarios are inspected development units and their definitions remain pending approval.
-- The temporal model is partial. Policy identity and future-effective exclusion are implemented; employee-specific grandfathering and explicit knowledge-time versus review-time views are not frozen.
+- The 12 scenarios are inspected development units. Their lawful compatibility
+  rules are approved, but their frequency allocation is not the frozen
+  protocol-scale matrix.
+- Employee-linked entitlement and explicit decision-time/later-review views now
+  exist in development code and tests. They have not yet been exercised and
+  independently verified in a protocol-scale artifact.
 - All data are synthetic. Expert realism review has not begun.
 - Duplicate detection is a separate task and current repaired code does not yet provide a protocol-scale benchmark result.
 - No holdout has been generated, inspected, scored, or unlocked.
 - No anomaly score may make a personnel decision automatically.
 
-## Human Decisions Required
+## Human Inputs Still Required
 
-The attached decision sheet asks for approval, rejection, or modification of repaired scenario proposals, grandfathering semantics, temporal views, expert-review design, protocol-scale matrix, multiplicity family, and eventual freeze conditions. Approval of prior high-level methodology does not automatically approve these concrete definitions.
+1. Nominate the HR-policy reviewer and information-systems reviewer and record
+   their qualifications.
+2. Review concrete generated examples and the proposed balanced compatible-cell
+   matrix before it is frozen.
+3. After protocol-scale development, validation, expert review, dependency lock,
+   and independent audit, sign or reject the separate protocol-freeze request.
+
+No current decision authorizes holdout generation or evaluation.
 
 ## Reproduce The Current Evidence
 
@@ -50,4 +82,8 @@ python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_devel
 
 ## Recommended Supervisor Outcome
 
-Review the decision sheet and concrete scenario examples. Do not authorize the final holdout yet. After pending semantics, expert review, protocol-scale development and validation, dependencies, analysis, and source revision are frozen and independently audited, the holdout may be authorized for one run only.
+Nominate the two reviewers and review the concrete scenario examples. Do not
+authorize the final holdout yet. After the approved semantics are verified in
+protocol-scale development and validation, the expert review is complete, and
+dependencies, analysis, and source revision are frozen and independently
+audited, a separate human decision may authorize one holdout run only.

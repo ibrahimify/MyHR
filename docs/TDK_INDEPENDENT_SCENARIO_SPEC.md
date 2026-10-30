@@ -19,7 +19,33 @@ Populations: stable administration, rapid expansion, and merger or migration.
 
 Causal errors: wrong-employee linkage, missing increment import, promotion approval bypass, and duplicate event from batch retry.
 
-Rare legitimate patterns: grandfathering, recognized prior service, and delayed bulk recording with unchanged effective dates.
+Rare legitimate patterns: grandfathering, recognized prior service, delayed
+bulk recording with unchanged effective dates, late correction, and historical
+policy transition.
+
+## Approved Compatibility Contract - 30 October 2026
+
+| Population | Grandfathering | Recognized service | Delayed recording | Late correction | Policy transition |
+| --- | --- | --- | --- | --- | --- |
+| Stable administration | yes | yes | yes | yes | yes |
+| Rapid expansion | yes | yes | yes | yes | no |
+| Merger or migration | yes | yes | yes | yes | yes |
+
+Compatibility is necessary but not sufficient. Grandfathering requires an
+entitlement record linked to employee, policy ID/version, relevant event,
+evidence reference, and knowledge time. Recognized service requires linked
+service evidence. Late correction requires a progression-track employee with an
+existing promotion, one-to-one correction provenance, and a lawful corrected
+history. Policy transition requires an existing promotion and completion of the
+30-month legacy requirement by 31 December 2022. Delayed recording must retain
+the original effective date. Any anomaly mechanism may be paired only when its
+own source-event preconditions also hold. Impossible combinations are reported
+and omitted, never forced.
+
+This compatibility boundary is author-approved for protocol preparation. The
+current 12-scenario development allocation is not the final balanced matrix.
+Each selected protocol-scale condition requires 30 independent seeds unless a
+written pre-run justification approves another count.
 
 The matrix contains all 12 population-by-error combinations. Every split contains ordinary, erroneous, and rare-legitimate histories. Event IDs are neutral hashes and labels remain separate until adaptation.
 
@@ -37,7 +63,16 @@ These findings are retained as development evidence. No detector feature will be
 
 ## Approved Expert-Review Method
 
-Before protocol freeze, prepare a human-approved sample of blinded history summaries without model scores or intended labels. Use two independent reviewers with complementary HR-policy and information-systems expertise. They classify each history as legitimate, erroneous, ambiguous, or insufficient information and rate realism. Preserve their initial reasons, report agreement using a statistic selected before distribution, adjudicate from documented policy evidence, and retain genuinely ambiguous cases. Do not change cases to improve model metrics. Exact reviewers, sample size, statistic, sampling seed, and packet checksum remain pending.
+Before protocol freeze, use the predeclared sample of 48 blinded history
+summaries without model scores or intended labels: 12 ordinary legitimate, 12
+rare legitimate, 12 administrative error, and 12 ambiguous or evidence-
+insufficient cases. Two independent reviewers with complementary HR-policy and
+information-systems expertise classify each history and rate realism. Preserve
+their initial reasons, report raw agreement and unweighted Cohen's kappa for
+record status, adjudicate from documented policy evidence, and retain genuinely
+ambiguous cases. Do not change cases to improve model metrics. The two human
+reviewers, qualification records, sampling output and seed, order seeds, and
+packet checksum remain pending.
 
 Only fictional histories and aggregate organizational assumptions may be used unless lawful access and safeguards for real data are approved.
 
@@ -51,4 +86,7 @@ Only fictional histories and aggregate organizational assumptions may be used un
 - recognized prior service and service interruptions;
 - explicit ambiguous/adjudication status.
 
-The supervisor should approve these assumptions before they enter a frozen detector or holdout specification.
+The author has approved these assumptions for protocol preparation. They still
+require implementation verification, concrete-example review, independent
+audit, and a separate dated human freeze decision before any holdout
+specification or run is authorized.

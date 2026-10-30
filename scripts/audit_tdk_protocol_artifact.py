@@ -87,6 +87,7 @@ def audit_artifact(run_dir: Path, repo_root: Path | None = None) -> dict[str, An
         prediction_rows,
         required=metadata.get("truth_sidecars_required") is True,
         protocol_version=str(metadata.get("protocol_version", "")),
+        artifact_schema_version=int(metadata.get("artifact_schema_version", 0)),
     )
 
     scenarios = {row["scenario_id"] for row in metric_rows}
@@ -509,8 +510,15 @@ def _verify_truth_sidecars(
     *,
     required: bool = False,
     protocol_version: str = "",
+    artifact_schema_version: int = 0,
 ) -> dict[str, Any]:
-    names = ("record_truth.csv", "administrative_events.csv", "policy_epochs.csv")
+    names = (
+        "record_truth.csv",
+        "administrative_events.csv",
+        "policy_epochs.csv",
+    )
+    if artifact_schema_version >= 5:
+        names += ("entitlement_evidence.csv",)
     existing = [name for name in names if (run_dir / name).is_file()]
     if not existing:
         if required:
@@ -522,6 +530,9 @@ def _verify_truth_sidecars(
     truth_rows = _read_csv(run_dir / names[0])
     event_rows = _read_csv(run_dir / names[1])
     policy_rows = _read_csv(run_dir / names[2])
+    entitlement_rows = (
+        _read_csv(run_dir / names[3]) if len(names) == 4 else []
+    )
     truth_keys = [(row["scenario_id"], row["employee_id"]) for row in truth_rows]
     if len(set(truth_keys)) != len(truth_keys):
         raise ArtifactAuditError("duplicate record truth rows")
@@ -575,6 +586,7 @@ def _verify_truth_sidecars(
             if not row["policy_version"] or not row["jurisdiction"]:
                 raise ArtifactAuditError("policy version or jurisdiction is empty")
             policy_by_key[(row["scenario_id"], row["policy_id"])] = {
+                "policy_version": row["policy_version"],
                 "effective_from": effective_from,
                 "effective_to": effective_to,
                 "recorded_at": recorded_at,
@@ -661,6 +673,63 @@ def _verify_truth_sidecars(
             _parse_iso_date(row["resolved_date"], "event resolved_date")
         if row["category"]:
             int(row["category"])
+
+    entitlement_by_event: dict[tuple[str, str, str], dict[str, str]] = {}
+    entitlement_ids: set[tuple[str, str]] = set()
+    for row in entitlement_rows:
+        entitlement_id = (row["scenario_id"], row["entitlement_id"])
+        if entitlement_id in entitlement_ids:
+            raise ArtifactAuditError("duplicate entitlement evidence ID")
+        entitlement_ids.add(entitlement_id)
+        employee_key = (row["scenario_id"], row["employee_id"])
+        if employee_key not in truth_key_set:
+            raise ArtifactAuditError("entitlement references unknown employee")
+        event_key = (
+            row["scenario_id"],
+            row["employee_id"],
+            row["relevant_event_id"],
+        )
+        event = events_by_key.get(event_key)
+        if event is None:
+            raise ArtifactAuditError("entitlement references unknown employee event")
+        policy = policy_by_key.get((row["scenario_id"], row["policy_id"]))
+        if policy is None or policy["policy_version"] != row["policy_version"]:
+            raise ArtifactAuditError("entitlement references unknown policy version")
+        if not row["evidence_reference"]:
+            raise ArtifactAuditError("entitlement evidence reference is empty")
+        recorded_at = _parse_iso_date(row["recorded_at"], "entitlement recorded_at")
+        event_recorded_at = _parse_iso_date(
+            event["recorded_date"], "event recorded_date"
+        )
+        if recorded_at > event_recorded_at:
+            raise ArtifactAuditError("entitlement was not known when event was recorded")
+        if event_key in entitlement_by_event:
+            raise ArtifactAuditError("multiple entitlement records reference one event")
+        entitlement_by_event[event_key] = row
+
+    if artifact_schema_version >= 5:
+        for event_key, event in events_by_key.items():
+            policy = policy_by_key[(event["scenario_id"], event["policy_id"])]
+            effective_date = _parse_iso_date(
+                event["effective_date"], "event effective_date"
+            )
+            in_interval = (
+                policy["effective_from"] <= effective_date
+                and (
+                    policy["effective_to"] is None
+                    or effective_date <= policy["effective_to"]
+                )
+            )
+            if not in_interval and policy["grandfather"]:
+                entitlement = entitlement_by_event.get(event_key)
+                if entitlement is None:
+                    raise ArtifactAuditError(
+                        "out-of-interval policy use lacks event-linked entitlement"
+                    )
+                if entitlement["policy_id"] != event["policy_id"]:
+                    raise ArtifactAuditError(
+                        "entitlement policy does not match the relevant event"
+                    )
 
     for row in event_rows:
         correction_id = row.get("correction_of_event_id", "")
@@ -757,6 +826,7 @@ def _verify_truth_sidecars(
         "record_truth_rows": len(truth_rows),
         "administrative_event_rows": len(event_rows),
         "policy_epoch_rows": len(policy_rows),
+        "entitlement_evidence_rows": len(entitlement_rows),
     }
 
 

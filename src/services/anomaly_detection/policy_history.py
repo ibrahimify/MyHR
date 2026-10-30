@@ -52,11 +52,12 @@ class PromotionPolicyAssessment:
 
 @dataclass(frozen=True)
 class GrandfatheringEvidence:
-    """Employee-specific evidence for using a policy outside its valid interval."""
+    """Employee- and event-specific authority to use an earlier policy."""
 
     employee_id: str
     policy_id: str
     policy_version: str
+    event_source_id: str
     evidence_reference: str
     recorded_at: date
 
@@ -64,6 +65,7 @@ class GrandfatheringEvidence:
         self,
         employee_id: str,
         epoch: PolicyEpoch,
+        event_source_id: str,
         known_at: date,
     ) -> bool:
         return (
@@ -71,6 +73,7 @@ class GrandfatheringEvidence:
             and self.employee_id == employee_id
             and self.policy_id == epoch.policy_id
             and self.policy_version == epoch.version
+            and self.event_source_id == event_source_id
             and self.recorded_at <= known_at
         )
 
@@ -200,7 +203,12 @@ def _policy_for_promotion(
             grandfathered = epoch.grandfather_previous_policy and (
                 grandfathering_evidence is None
                 or any(
-                    evidence.supports(employee_id, epoch, known_at)
+                    evidence.supports(
+                        employee_id,
+                        epoch,
+                        promotion.source_id,
+                        known_at,
+                    )
                     for evidence in grandfathering_evidence
                 )
             )
