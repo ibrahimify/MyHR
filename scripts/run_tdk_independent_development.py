@@ -11,7 +11,7 @@ import tempfile
 from collections import Counter
 from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
@@ -21,6 +21,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.run_tdk_protocol_experiment import (
+    ANALYSIS_PLAN_VERSION,
+    MIN_SEEDS_PER_CONDITION,
+    PRIMARY_COMPARISON,
+    PRIMARY_ENDPOINT,
+    SECONDARY_COMPARISON_METRICS,
     _aggregate_rows,
     _paired_comparisons,
     _robustness_slices,
@@ -28,11 +33,13 @@ from scripts.run_tdk_protocol_experiment import (
     _write_csv,
     _write_json,
     _write_manifest,
+    _validate_seed_replication,
 )
 from scripts.run_tdk_research_experiment import _provenance
 from src.research.independent_scenario_adapter import adapt_independent_world
 from src.research.independent_scenarios import (
     IndependentEvent,
+    IndependentScenarioSpec,
     IndependentWorld,
     TruthCategory,
     generate_independent_world,
@@ -71,6 +78,12 @@ def _staged_artifact_directory(final_dir: Path) -> Iterator[Path]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--employee-count", type=int, default=360)
+    parser.add_argument("--seeds-per-condition", type=int, default=30)
+    parser.add_argument(
+        "--seed-count-justification",
+        default="",
+        help="Required written justification when using fewer than 30 seeds per condition.",
+    )
     parser.add_argument("--review-budget", type=float, default=0.10)
     parser.add_argument("--target-validation-fpr", type=float, default=0.05)
     parser.add_argument(
@@ -79,14 +92,25 @@ def main() -> None:
         default=Path("research_outputs") / "independent_development",
     )
     args = parser.parse_args()
-    specs = independent_scenario_matrix(args.employee_count)
+    _validate_seed_replication(
+        args.seeds_per_condition,
+        args.seed_count_justification,
+    )
+    condition_specs = independent_scenario_matrix(args.employee_count)
+    specs = _replicate_independent_specs(
+        condition_specs,
+        args.seeds_per_condition,
+    )
     provenance = _provenance()
     identity = {
         "protocol_version": PROTOCOL_VERSION,
         "protocol_status": PROTOCOL_STATUS,
+        "analysis_plan_version": ANALYSIS_PLAN_VERSION,
         "specs": [asdict(spec) for spec in specs],
         "review_budget": args.review_budget,
         "target_validation_fpr": args.target_validation_fpr,
+        "seeds_per_condition": args.seeds_per_condition,
+        "seed_count_justification": args.seed_count_justification.strip(),
         "source_sha256": provenance["source_sha256"],
     }
     artifact_id = sha256(json.dumps(identity, sort_keys=True).encode("utf-8")).hexdigest()[:16]
@@ -115,6 +139,8 @@ def main() -> None:
             truth_counts = Counter(entry.category.value for entry in world.truth)
             config_rows.append({
                 **asdict(spec),
+                "condition_id": _condition_id(spec.scenario_id),
+                "seed_replicate": _seed_replicate(spec.scenario_id),
                 "truth_counts_json": json.dumps(dict(truth_counts), sort_keys=True),
                 "policy_cards_json": json.dumps(
                     [asdict(policy) for policy in world.policies],
@@ -133,12 +159,28 @@ def main() -> None:
             "protocol_status": PROTOCOL_STATUS,
             "holdout_accessed": False,
             "run_purpose": "development",
-            "artifact_schema_version": 3,
+            "artifact_schema_version": 4,
+            "analysis_plan_version": ANALYSIS_PLAN_VERSION,
             "truth_sidecars_required": True,
+            "condition_count": len(condition_specs),
             "scenario_count": len(specs),
+            "seeds_per_condition": args.seeds_per_condition,
+            "minimum_seeds_per_condition": MIN_SEEDS_PER_CONDITION,
+            "seed_count_justification": args.seed_count_justification.strip(),
             "employee_count_per_scenario": args.employee_count,
             "review_budget": args.review_budget,
             "target_validation_fpr": args.target_validation_fpr,
+            "analysis_plan": {
+                "primary_method": PRIMARY_COMPARISON[0],
+                "primary_operating_point": PRIMARY_COMPARISON[1],
+                "primary_endpoint": PRIMARY_ENDPOINT,
+                "secondary_comparison_family": list(SECONDARY_COMPARISON_METRICS),
+                "secondary_multiplicity_adjustment": "Holm",
+                "zero_positive_treatment": (
+                    "Retain scenario; recall and average precision are undefined and "
+                    "excluded only from their paired inference."
+                ),
+            },
             "provenance": provenance,
             "interpretation_warning": (
                 "Independent scenarios are adversarial development evidence, not a final holdout."
@@ -171,6 +213,38 @@ def main() -> None:
         "prediction_rows": len(prediction_rows),
         "holdout_accessed": False,
     }, indent=2, sort_keys=True))
+
+
+def _replicate_independent_specs(
+    conditions: tuple[IndependentScenarioSpec, ...],
+    seeds_per_condition: int,
+) -> tuple[IndependentScenarioSpec, ...]:
+    if seeds_per_condition < 1:
+        raise ValueError("seeds_per_condition must be positive")
+    replicated = []
+    for condition in conditions:
+        for replicate_index in range(seeds_per_condition):
+            offset = replicate_index * 1_000_003
+            spec = replace(
+                condition,
+                scenario_id=(
+                    f"{condition.scenario_id}-seed-{replicate_index + 1:02d}"
+                ),
+                seed=condition.seed + offset,
+                split_seed=condition.split_seed + offset,
+                model_seed=condition.model_seed + offset,
+            )
+            spec.validate()
+            replicated.append(spec)
+    return tuple(replicated)
+
+
+def _condition_id(scenario_id: str) -> str:
+    return scenario_id.rsplit("-seed-", 1)[0]
+
+
+def _seed_replicate(scenario_id: str) -> int:
+    return int(scenario_id.rsplit("-seed-", 1)[1])
 
 
 def _record_truth_rows(world: IndependentWorld) -> list[dict[str, object]]:

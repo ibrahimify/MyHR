@@ -7,7 +7,7 @@ import csv
 import json
 import sys
 from collections import defaultdict
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime, timezone
 from hashlib import sha256
 from itertools import product
@@ -22,6 +22,7 @@ if str(REPO_ROOT) not in sys.path:
 from scripts.run_tdk_research_experiment import _provenance
 from src.services.anomaly_detection.protocol_evaluation import evaluate_scenario
 from src.services.anomaly_detection.scenario_generation import (
+    ScenarioConfig,
     generate_scenario_dataset,
     scenario_matrix,
 )
@@ -29,6 +30,48 @@ from src.services.anomaly_detection.scenario_generation import (
 
 PROTOCOL_VERSION = "draft-v2.4-2026-10-16"
 PROTOCOL_STATUS = "draft_validation_holdout_locked"
+ANALYSIS_PLAN_VERSION = "approved-evaluation-v1-2026-10-30"
+MIN_SEEDS_PER_CONDITION = 30
+PRIMARY_COMPARISON = (
+    "rule_negative_isolation_forest",
+    "fixed_review_budget",
+)
+PRIMARY_ENDPOINT = "recall"
+SECONDARY_COMPARISON_METRICS = (
+    "average_precision",
+    "precision",
+    "false_positives",
+    "false_positive_rate",
+    "rare_legitimate_flagged_rate",
+    "ordinary_clean_flagged_rate",
+    "anomalies_found_per_100_reviews",
+    "rare_legitimate_reviews_per_1000_employees",
+    "missed_anomalies_per_1000_employees",
+    "inconsistent_dates_recall",
+    "frequent_promotions_recall",
+    "excessive_sanctions_recall",
+    "unusual_admin_interval_recall",
+)
+LEGACY_AUDITED_PAIR_METRICS = (
+    "precision",
+    "recall",
+    "f1",
+    "false_positive_rate",
+    "average_precision",
+    "alert_rate",
+    "rare_legitimate_flagged_rate",
+    "ordinary_clean_flagged_rate",
+    "anomalies_found_per_100_reviews",
+    "rare_legitimate_reviews_per_1000_employees",
+    "missed_anomalies_per_1000_employees",
+)
+PAIR_METRICS = LEGACY_AUDITED_PAIR_METRICS + (
+    "false_positives",
+    "inconsistent_dates_recall",
+    "frequent_promotions_recall",
+    "excessive_sanctions_recall",
+    "unusual_admin_interval_recall",
+)
 SUMMARY_METRICS = (
     "precision",
     "recall",
@@ -66,7 +109,18 @@ def main() -> None:
         required=True,
         choices=("development", "validation", "holdout"),
     )
-    parser.add_argument("--scenario-count", type=int, default=30)
+    parser.add_argument(
+        "--scenario-count",
+        type=int,
+        default=30,
+        help="Number of predeclared condition cells before seed replication.",
+    )
+    parser.add_argument("--seeds-per-condition", type=int, default=30)
+    parser.add_argument(
+        "--seed-count-justification",
+        default="",
+        help="Required written justification when using fewer than 30 seeds per condition.",
+    )
     parser.add_argument("--employee-count", type=int, default=600)
     parser.add_argument("--review-budget", type=float, default=0.10)
     parser.add_argument("--target-validation-fpr", type=float, default=0.05)
@@ -79,15 +133,31 @@ def main() -> None:
     if args.run_purpose == "holdout":
         raise RuntimeError("Holdout execution is locked while the protocol status is draft")
 
-    configs = scenario_matrix(args.run_purpose, args.scenario_count, args.employee_count)
+    _validate_seed_replication(
+        args.seeds_per_condition,
+        args.seed_count_justification,
+    )
+
+    condition_configs = scenario_matrix(
+        args.run_purpose,
+        args.scenario_count,
+        args.employee_count,
+    )
+    configs = _replicate_scenario_configs(
+        condition_configs,
+        args.seeds_per_condition,
+    )
     provenance = _provenance()
     identity = {
         "protocol_version": PROTOCOL_VERSION,
         "protocol_status": PROTOCOL_STATUS,
+        "analysis_plan_version": ANALYSIS_PLAN_VERSION,
         "run_purpose": args.run_purpose,
         "scenario_configs": [asdict(config) for config in configs],
         "review_budget": args.review_budget,
         "target_validation_fpr": args.target_validation_fpr,
+        "seeds_per_condition": args.seeds_per_condition,
+        "seed_count_justification": args.seed_count_justification.strip(),
         "source_sha256": provenance["source_sha256"],
     }
     artifact_id = sha256(json.dumps(identity, sort_keys=True).encode("utf-8")).hexdigest()[:16]
@@ -106,6 +176,8 @@ def main() -> None:
         prediction_rows.extend(evaluation.prediction_rows)
         dataset_rows.append({
             **asdict(config),
+            "condition_id": _condition_id(config.scenario_id),
+            "seed_replicate": _seed_replicate(config.scenario_id),
             "dataset_run_id": scenario.dataset.metadata.run_id,
             "schema_version": scenario.dataset.metadata.schema_version,
             "split_counts_json": json.dumps(scenario.dataset.metadata.split_counts, sort_keys=True),
@@ -126,12 +198,28 @@ def main() -> None:
         "artifact_id": artifact_id,
         "protocol_version": PROTOCOL_VERSION,
         "protocol_status": PROTOCOL_STATUS,
+        "analysis_plan_version": ANALYSIS_PLAN_VERSION,
         "holdout_accessed": False,
         "run_purpose": args.run_purpose,
+        "condition_count": len(condition_configs),
         "scenario_count": len(configs),
+        "seeds_per_condition": args.seeds_per_condition,
+        "minimum_seeds_per_condition": MIN_SEEDS_PER_CONDITION,
+        "seed_count_justification": args.seed_count_justification.strip(),
         "employee_count_per_scenario": args.employee_count,
         "review_budget": args.review_budget,
         "target_validation_fpr": args.target_validation_fpr,
+        "analysis_plan": {
+            "primary_method": PRIMARY_COMPARISON[0],
+            "primary_operating_point": PRIMARY_COMPARISON[1],
+            "primary_endpoint": PRIMARY_ENDPOINT,
+            "secondary_comparison_family": list(SECONDARY_COMPARISON_METRICS),
+            "secondary_multiplicity_adjustment": "Holm",
+            "zero_positive_treatment": (
+                "Retain scenario; recall and average precision are undefined and "
+                "excluded only from their paired inference."
+            ),
+        },
         "provenance": provenance,
         "interpretation_warning": (
             "Development and validation outputs are protocol checks, not final holdout evidence."
@@ -155,6 +243,53 @@ def main() -> None:
         "prediction_rows": len(prediction_rows),
         "holdout_accessed": False,
     }, indent=2, sort_keys=True))
+
+
+def _validate_seed_replication(
+    seeds_per_condition: int,
+    justification: str,
+) -> None:
+    if seeds_per_condition < 1:
+        raise ValueError("seeds_per_condition must be positive")
+    if (
+        seeds_per_condition < MIN_SEEDS_PER_CONDITION
+        and not justification.strip()
+    ):
+        raise ValueError(
+            "fewer than 30 seeds per condition requires a written justification"
+        )
+
+
+def _replicate_scenario_configs(
+    conditions: tuple[ScenarioConfig, ...],
+    seeds_per_condition: int,
+) -> tuple[ScenarioConfig, ...]:
+    if seeds_per_condition < 1:
+        raise ValueError("seeds_per_condition must be positive")
+    replicated = []
+    for condition in conditions:
+        for replicate_index in range(seeds_per_condition):
+            offset = replicate_index * 1_000_003
+            config = replace(
+                condition,
+                scenario_id=(
+                    f"{condition.scenario_id}-seed-{replicate_index + 1:02d}"
+                ),
+                dataset_seed=condition.dataset_seed + offset,
+                split_seed=condition.split_seed + offset,
+                model_seed=condition.model_seed + offset,
+            )
+            config.validate()
+            replicated.append(config)
+    return tuple(replicated)
+
+
+def _condition_id(scenario_id: str) -> str:
+    return scenario_id.rsplit("-seed-", 1)[0]
+
+
+def _seed_replicate(scenario_id: str) -> int:
+    return int(scenario_id.rsplit("-seed-", 1)[1])
 
 
 def _aggregate_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
@@ -215,19 +350,19 @@ def _paired_comparisons(rows: list[dict[str, object]]) -> list[dict[str, object]
                 "operating_point": operating_point,
                 "scenario_count": len(pairs),
             }
-            for metric in (
-                "precision",
-                "recall",
-                "f1",
-                "false_positive_rate",
-                "average_precision",
-                "alert_rate",
-                "rare_legitimate_flagged_rate",
-                "ordinary_clean_flagged_rate",
-                "anomalies_found_per_100_reviews",
-                "rare_legitimate_reviews_per_1000_employees",
-                "missed_anomalies_per_1000_employees",
-            ):
+            is_primary_comparison = (method, operating_point) == PRIMARY_COMPARISON
+            item["comparison_role"] = (
+                "primary_raw_vs_policy" if is_primary_comparison else "exploratory"
+            )
+            item["primary_endpoint"] = (
+                PRIMARY_ENDPOINT if is_primary_comparison else ""
+            )
+            item["secondary_family_declared_size"] = (
+                len(SECONDARY_COMPARISON_METRICS) if is_primary_comparison else 0
+            )
+            item["secondary_family_tested_size"] = 0
+            item["primary_recall_sign_flip_p"] = ""
+            for metric in PAIR_METRICS:
                 eligible_pairs = [
                     (raw, policy) for raw, policy in pairs
                     if raw.get(metric) not in {"", None}
@@ -245,6 +380,8 @@ def _paired_comparisons(rows: list[dict[str, object]]) -> list[dict[str, object]
                         "delta_sign_flip_p",
                     ):
                         item[f"{metric}_{suffix}"] = ""
+                    item[f"{metric}_delta_holm_all_p"] = ""
+                    item[f"{metric}_delta_holm_secondary_p"] = ""
                     continue
                 ci_low, ci_high = _bootstrap_mean_ci(
                     deltas,
@@ -259,18 +396,47 @@ def _paired_comparisons(rows: list[dict[str, object]]) -> list[dict[str, object]
                     deltas,
                     seed=_stable_seed("sign", method, operating_point, metric),
                 )
+                item[f"{metric}_delta_holm_all_p"] = ""
+                item[f"{metric}_delta_holm_secondary_p"] = ""
             comparisons.append(item)
     pvalue_locations = [
-        (item, key)
+        (item, f"{metric}_delta_sign_flip_p")
         for item in comparisons
-        for key in item
-        if key.endswith("_delta_sign_flip_p") and item[key] != ""
+        for metric in LEGACY_AUDITED_PAIR_METRICS
+        if item.get(f"{metric}_delta_sign_flip_p") not in {"", None}
     ]
     adjusted = _holm_adjusted_pvalues([
         float(item[key]) for item, key in pvalue_locations
     ])
     for (item, key), adjusted_pvalue in zip(pvalue_locations, adjusted):
         item[key.replace("_sign_flip_p", "_holm_all_p")] = adjusted_pvalue
+
+    primary_rows = [
+        item for item in comparisons
+        if (item["method"], item["operating_point"]) == PRIMARY_COMPARISON
+    ]
+    if len(primary_rows) > 1:
+        raise ValueError("primary comparison must produce at most one row")
+    if primary_rows:
+        primary = primary_rows[0]
+        secondary_locations = [
+            (metric, f"{metric}_delta_sign_flip_p")
+            for metric in SECONDARY_COMPARISON_METRICS
+            if primary.get(f"{metric}_delta_sign_flip_p") not in {"", None}
+        ]
+        secondary_adjusted = _holm_adjusted_pvalues([
+            float(primary[key]) for _, key in secondary_locations
+        ])
+        for (metric, _), adjusted_pvalue in zip(
+            secondary_locations,
+            secondary_adjusted,
+        ):
+            primary[f"{metric}_delta_holm_secondary_p"] = adjusted_pvalue
+        primary["secondary_family_tested_size"] = len(secondary_locations)
+        primary["primary_recall_sign_flip_p"] = primary.get(
+            "recall_delta_sign_flip_p",
+            "",
+        )
     return comparisons
 
 
@@ -304,10 +470,19 @@ def _robustness_slices(rows: list[dict[str, object]]) -> list[dict[str, object]]
                 "scenario_count": len(group),
             }
             for metric in SUMMARY_METRICS[:-1]:
-                values = [float(row[metric]) for row in group]
-                item[f"{metric}_mean"] = mean(values)
-                item[f"{metric}_min"] = min(values)
-                item[f"{metric}_max"] = max(values)
+                values = [
+                    float(row[metric]) for row in group
+                    if row.get(metric) not in {"", None}
+                ]
+                item[f"{metric}_scenario_count"] = len(values)
+                if values:
+                    item[f"{metric}_mean"] = mean(values)
+                    item[f"{metric}_min"] = min(values)
+                    item[f"{metric}_max"] = max(values)
+                else:
+                    item[f"{metric}_mean"] = ""
+                    item[f"{metric}_min"] = ""
+                    item[f"{metric}_max"] = ""
             output.append(item)
     return output
 

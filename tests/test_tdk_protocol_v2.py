@@ -41,7 +41,19 @@ from src.services.anomaly_detection.synthetic_data import (
     WorkforceHistoryRecord,
     serialize_dataset,
 )
-from scripts.run_tdk_protocol_experiment import _holm_adjusted_pvalues
+from scripts.run_tdk_independent_development import _replicate_independent_specs
+from scripts.run_tdk_protocol_experiment import (
+    MIN_SEEDS_PER_CONDITION,
+    PAIR_METRICS,
+    PRIMARY_COMPARISON,
+    SECONDARY_COMPARISON_METRICS,
+    _holm_adjusted_pvalues,
+    _paired_comparisons,
+    _replicate_scenario_configs,
+    _robustness_slices,
+    _validate_seed_replication,
+)
+from src.research.independent_scenarios import independent_scenario_matrix
 
 
 def _imported_modules(source: str) -> set[str]:
@@ -440,6 +452,57 @@ class ScenarioGenerationTests(unittest.TestCase):
 
 
 class ValidationProtocolTests(unittest.TestCase):
+    def test_protocol_conditions_have_thirty_independent_seed_replicates(self):
+        condition = scenario_matrix(
+            "development",
+            count=1,
+            employee_count=120,
+        )[0]
+
+        configs = _replicate_scenario_configs(
+            (condition,),
+            MIN_SEEDS_PER_CONDITION,
+        )
+
+        self.assertEqual(len(configs), 30)
+        self.assertEqual(len({item.scenario_id for item in configs}), 30)
+        self.assertEqual(len({item.dataset_seed for item in configs}), 30)
+        self.assertEqual(len({item.split_seed for item in configs}), 30)
+        self.assertEqual(len({item.model_seed for item in configs}), 30)
+        self.assertEqual({item.policy_profile for item in configs}, {condition.policy_profile})
+        self.assertEqual(
+            {item.population_profile for item in configs},
+            {condition.population_profile},
+        )
+        self.assertEqual(
+            {item.anomaly_mechanism for item in configs},
+            {condition.anomaly_mechanism},
+        )
+
+    def test_independent_conditions_have_thirty_seed_replicates(self):
+        condition = independent_scenario_matrix(employee_count=120)[0]
+
+        specs = _replicate_independent_specs(
+            (condition,),
+            MIN_SEEDS_PER_CONDITION,
+        )
+
+        self.assertEqual(len(specs), 30)
+        self.assertEqual(len({item.scenario_id for item in specs}), 30)
+        self.assertEqual(len({item.seed for item in specs}), 30)
+        self.assertEqual(len({item.split_seed for item in specs}), 30)
+        self.assertEqual(len({item.model_seed for item in specs}), 30)
+        self.assertEqual({item.population for item in specs}, {condition.population})
+        self.assertEqual({item.mechanism for item in specs}, {condition.mechanism})
+        self.assertEqual({item.rare_pattern for item in specs}, {condition.rare_pattern})
+
+    def test_fewer_than_thirty_seeds_requires_written_justification(self):
+        with self.assertRaisesRegex(ValueError, "written justification"):
+            _validate_seed_replication(2, "")
+
+        _validate_seed_replication(2, "Tiny regression fixture only.")
+        _validate_seed_replication(30, "")
+
     def test_fixed_review_budget_has_exact_alert_count(self):
         predictions = _top_budget_predictions(tuple(float(value) for value in range(20)), 0.10)
 
@@ -461,6 +524,91 @@ class ValidationProtocolTests(unittest.TestCase):
         adjusted = _holm_adjusted_pvalues([0.01, 0.03, 0.04])
 
         self.assertEqual(adjusted, [0.03, 0.06, 0.06])
+
+    def test_primary_and_secondary_inference_families_are_explicit(self):
+        rows = []
+        for scenario_id, zero_positive in (("s1", False), ("s2", True)):
+            for representation, offset in (
+                ("raw_matched", 0.0),
+                ("policy_matched", 0.1),
+            ):
+                row = {
+                    "scenario_id": scenario_id,
+                    "method": PRIMARY_COMPARISON[0],
+                    "representation": representation,
+                    "operating_point": PRIMARY_COMPARISON[1],
+                }
+                row.update({metric: 0.4 + offset for metric in PAIR_METRICS})
+                if zero_positive:
+                    row["recall"] = None
+                    row["average_precision"] = None
+                rows.append(row)
+
+        comparison = _paired_comparisons(rows)[0]
+
+        self.assertEqual(comparison["scenario_count"], 2)
+        self.assertEqual(comparison["comparison_role"], "primary_raw_vs_policy")
+        self.assertEqual(comparison["primary_endpoint"], "recall")
+        self.assertEqual(comparison["recall_scenario_count"], 1)
+        self.assertEqual(comparison["average_precision_scenario_count"], 1)
+        self.assertEqual(
+            comparison["secondary_family_declared_size"],
+            len(SECONDARY_COMPARISON_METRICS),
+        )
+        self.assertEqual(
+            comparison["secondary_family_tested_size"],
+            len(SECONDARY_COMPARISON_METRICS),
+        )
+        self.assertEqual(
+            comparison["primary_recall_sign_flip_p"],
+            comparison["recall_delta_sign_flip_p"],
+        )
+        for metric in SECONDARY_COMPARISON_METRICS:
+            self.assertIn(f"{metric}_delta_holm_secondary_p", comparison)
+
+    def test_zero_positive_scenarios_remain_in_robustness_output(self):
+        rows = []
+        for scenario_id, recall, average_precision in (
+            ("s1", None, None),
+            ("s2", 0.5, 0.6),
+        ):
+            row = {
+                "scenario_id": scenario_id,
+                "method": PRIMARY_COMPARISON[0],
+                "representation": "raw_matched",
+                "operating_point": PRIMARY_COMPARISON[1],
+                "policy_profile": "standard",
+                "population_profile": "balanced",
+                "anomaly_mechanism": "mixed_calendar",
+                "rare_pattern": "credit_mix",
+                "configured_anomaly_rate": 0.1,
+                "configured_rare_rate": 0.05,
+                "recall": recall,
+                "average_precision": average_precision,
+            }
+            for metric in (
+                "precision",
+                "f1",
+                "false_positive_rate",
+                "alert_rate",
+                "rare_legitimate_flagged_rate",
+                "ordinary_clean_flagged_rate",
+                "anomalies_found_per_100_reviews",
+                "rare_legitimate_reviews_per_1000_employees",
+                "missed_anomalies_per_1000_employees",
+            ):
+                row[metric] = 0.25
+            rows.append(row)
+
+        slices = _robustness_slices(rows)
+        policy_slice = next(
+            item for item in slices
+            if item["slice_dimension"] == "policy_profile"
+        )
+
+        self.assertEqual(policy_slice["scenario_count"], 2)
+        self.assertEqual(policy_slice["recall_scenario_count"], 1)
+        self.assertEqual(policy_slice["average_precision_scenario_count"], 1)
 
     def test_validation_f1_threshold_is_selected_only_from_supplied_validation_data(self):
         selection = _select_threshold(
@@ -625,8 +773,8 @@ class ValidationProtocolTests(unittest.TestCase):
 
         self.assertFalse(row["recall_defined"])
         self.assertFalse(row["average_precision_defined"])
-        self.assertEqual(row["recall"], "")
-        self.assertEqual(row["average_precision"], "")
+        self.assertIsNone(row["recall"])
+        self.assertIsNone(row["average_precision"])
 
 
 if __name__ == "__main__":
