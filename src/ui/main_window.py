@@ -179,6 +179,7 @@ class Sidebar(QWidget):
         ucl.setSpacing(10)
 
         display_name = self.user.full_name
+        self._display_name = display_name
         self.avatar = QLabel()
         avatar = self.avatar
         avatar.setFixedSize(32, 32)
@@ -304,6 +305,13 @@ class Sidebar(QWidget):
         self.brand_name_lbl.setStyleSheet(f"color: {tkn.text}; font-size: 20px; font-weight: 700; background: transparent; border: none;")
         self.brand_subtitle_lbl.setStyleSheet(f"color: {tkn.text_muted}; font-size: 12px; background: transparent; border: none;")
         self.name_lbl.setStyleSheet(f"color: {tkn.text}; font-size: 14px; font-weight: 500; background: transparent; border: none;")
+        self.name_lbl.setText(
+            self.name_lbl.fontMetrics().elidedText(
+                self._display_name,
+                Qt.ElideRight,
+                145,
+            )
+        )
         self.role_lbl.setStyleSheet(f"color: {tkn.text_muted}; font-size: 12px; background: transparent; border: none;")
         self.logout_btn.setIcon(app_icon("logout", color=tkn.text_muted, size=20))
         self.logout_btn.setStyleSheet(f"""

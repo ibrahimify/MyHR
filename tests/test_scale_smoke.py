@@ -390,6 +390,19 @@ class ScaleSmokeTests(unittest.TestCase):
         finally:
             sidebar.close()
 
+    def test_sidebar_elides_long_user_name_and_preserves_full_tooltip(self):
+        from src.ui.main_window import Sidebar
+
+        full_name = "System Administrator With A Long Display Name"
+        user = SimpleNamespace(id=1, username="admin", role="admin", full_name=full_name)
+        sidebar = Sidebar(user, on_navigate=lambda _key: None, on_logout=lambda: None)
+        try:
+            self.assertEqual(full_name, sidebar.name_lbl.toolTip())
+            self.assertNotEqual(full_name, sidebar.name_lbl.text())
+            self.assertTrue(sidebar.name_lbl.text().endswith("…"))
+        finally:
+            sidebar.close()
+
     def test_theme_switch_rebuilds_cached_pages_to_avoid_stale_styles(self):
         from src.ui.main_window import MainWindow
         from src.ui.theme import THEME_DARK, THEME_LIGHT, theme_manager
