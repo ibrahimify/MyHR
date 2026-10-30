@@ -352,7 +352,7 @@ CI answers whether the checked code and tests pass in the configured environment
 | Independent generator boundary | `src/research/independent_scenarios.py` |
 | Validation results | `validation_c5878ca7b927ccd2` artifact and audit |
 | Independent results (pre-fix development) | `independent_development_e342bd4acf39b06b` artifact and audit |
-| Current repaired independent results | `independent_development_b866ae2aa1b4b479` artifact and audit (commit `1942718`, status: verified) |
+| Current repaired independent results | `independent_development_4feea4508de1bb05` artifact and audit (commit `56597d3`, status: verified) |
 | Structural feature collapse | Independent hostile review and source trace |
 | Citation claims | Bibliography, provenance registry, and evidence ledger |
 | Holdout status | Protocol, artifact metadata, runner refusal, and roadmap |
@@ -392,9 +392,9 @@ Policy-aware features avoid 32 alerts among rare-legitimate histories, but the s
 
 The paired AP difference is +0.0194 with a stored interval from -0.0417 to 0.0889. Twenty-four of the thirty rule-negative validation scenarios contain no residual positive case and historically store AP as zero. The reported scenario means and interval therefore depend on this disputed convention. The original generator leaves too few informative residual scenarios to estimate incremental ML value convincingly; no alternative scenario-eligibility rule is selected after inspection.
 
-### 6.4 Historical Independent Stress Test Invalidated
+### 6.4 Historical Independent Stress Test Limited
 
-The first independent simulator run produced 12 test scenarios with 864 histories, 108 labelled anomalies, and 72 broadly labelled rare-legitimate histories. It recorded 39 apparent false alerts among those rare histories. Later semantic audits showed that this generator produced contradictory transition histories and invalid duplicate truth. The following numbers are retained solely to explain why the design was rejected; they are not current performance evidence.
+The first independent simulator run produced 12 test scenarios with 864 histories, 108 labelled anomalies, and 72 broadly labelled rare-legitimate histories. It recorded 39 deterministic-policy alerts among those rare histories. The stored artifact does not preserve employee-specific entitlement evidence or the realized rare mechanism per record, so the count cannot establish a mechanism-specific false-positive rate. Its duplicate truth was also later found invalid. The following residual-model numbers are retained to explain why the design was rejected; they are not current performance evidence.
 
 After deterministic filtering, 759 histories remain, including 42 labelled anomalies and 717 negatives. At equal nominal budget, both models raise 81 alerts.
 
@@ -405,7 +405,7 @@ After deterministic filtering, 759 histories remain, including 42 labelled anoma
 
 The stored paired AP difference is +0.0005 with interval [-0.1173, 0.1079], sign-flip p = 1.0, and adjusted exploratory p = 1.0. These values are arithmetically reproducible under the implemented convention. They are not evidence of equivalence or a policy effect.
 
-[[FIGURE:independent_ap.png|Figure 8. Primary exploratory recall comparison in repaired artifact b866ae2aa1b4b479. The interval crosses zero; the result does not demonstrate superiority or equivalence.]]
+[[FIGURE:independent_ap.png|Figure 8. Primary exploratory recall comparison in repaired artifact 4feea4508de1bb05. The interval crosses zero; the result does not demonstrate superiority or equivalence.]]
 
 ### 6.5 Historical Structural Failure of the Central Comparison
 
@@ -429,7 +429,7 @@ The audit still motivates temporal modeling as a requirements issue, but the cur
 
 ### 6.7 Corrected Exploratory Development Artifact
 
-Artifact `b866ae2aa1b4b479` was generated from clean commit `1942718` after the second-audit repairs. The strengthened artifact audit reports `verified`, 12 scenarios, 864 test histories, 108 anomalies, 72 rare-legitimate histories, and `holdout_accessed: false`. Deterministic policy checks produced 63 true positives, no false positives, and 45 false negatives; none of the 72 rare-legitimate histories was flagged.
+Artifact `4feea4508de1bb05` was generated from clean commit `56597d3` after the semantic and UI-lifecycle repairs. The strengthened artifact audit reports `verified`, 12 scenarios, 864 eligible test histories, 108 anomalies, 72 rare-legitimate histories, 900 metric rows, 64,800 prediction rows, and `holdout_accessed: false`. Deterministic policy checks produced 63 true positives, no false positives, and 45 false negatives; none of the 72 rare-legitimate histories was flagged.
 
 At the primary equal review capacity, policy-aware minus raw residual recall was +0.0278 across 12 paired scenarios. The paired 95% bootstrap interval was [-0.0278, +0.1019], and the sign-flip p-value was 0.6875. Precision difference was +0.0313 with interval [-0.0313, +0.1042]. Average precision favored the policy representation in this inspected development run, but AP is secondary, multiplicity-adjusted p-values are 1.0, and the scenario definitions remain pending approval. No superiority, inferiority, or equivalence claim follows.
 
@@ -538,7 +538,7 @@ The same principle applies to explanations. A reviewer should see which facts ar
 | Generator-detector circularity | Independent simulator, controls, preserved negative findings | Approved review method not yet executed; conceptual realism unverified |
 | Test-threshold leakage | Validation-only thresholds | Deployment calibration unresolved |
 | Favorable seed selection | Recorded seed matrix and write-once artifacts | More replicated scenario seeds needed |
-| Missing denominators | Counts and pooled/scenario metrics stored; undefined recall/AP eligibility implemented | Repaired artifact `b866ae2aa1b4b479` certified at commit `1942718`; protocol-scale development and validation remain needed |
+| Missing denominators | Counts and pooled/scenario metrics stored; undefined recall/AP eligibility implemented | Repaired artifact `4feea4508de1bb05` certified at commit `56597d3`; protocol-scale development and validation remain needed |
 | Historical policy replay | Research bitemporal contract and golden replay tests implemented | Production temporal schema and correction-case matrix not frozen |
 | Citation overstatement | Provenance registry and claim ledger | Two references remain metadata-only |
 | External validity | Fictional data protect privacy | No organizational validation |
@@ -552,7 +552,7 @@ The development experiments do not establish the expected advantage. They first 
 
 The historical-policy direction remains the most actionable, but its earlier quantification must be read with care. A preserved older artifact recorded that deterministic validation flagged 39 of 72 constructed rare-legitimate histories; that figure comes from an earlier generator and is retained only as historical development evidence. A second external audit (30 October 2026) later found that the policy-transition generator used to produce the 2026-10-30 artifacts constructed genuinely contradictory histories (promotions before hire, insufficient service), so an intermediate "8 of 72" reading was INVALIDATED: those alerts were responses to real contradictions, not false positives on lawful histories. The generator was repaired so transition cases are lawful by construction; see `TDK_SECOND_EXTERNAL_AUDIT_2026-10-30.md` and the roadmap repairs (R1–R10). No current figure should be presented as a historical-policy false-positive rate on lawful histories until the repaired scenarios are approved and re-evaluated.
 
-After the repairs, artifact `b866ae2aa1b4b479` was generated from clean commit `1942718` and passed the strengthened repository audit with `holdout_accessed: false`. Deterministic rules flagged 0 of 72 test-split rare-legitimate cases. The primary residual recall difference was +0.0278, 95% CI [-0.0278, +0.1019], sign-flip p=0.6875. No policy-aware advantage was demonstrated in this exploratory development run; the interval neither proves equivalence nor excludes a potentially useful effect. Scenario definitions remain pending human approval, the temporal model is partial, and the experiment contains only 12 inspected scenario units. Remaining work includes blinded realism review, protocol-scale development and validation, and an independently specified holdout matrix. After those checks, dependencies, analysis, and source revision require a separate dated freeze approval. Only then may the locked holdout run once.
+After the repairs, artifact `4feea4508de1bb05` was generated from clean commit `56597d3` and passed the strengthened repository audit with `holdout_accessed: false`. Deterministic policy rules flagged 0 of 72 test-split rare-legitimate cases. At an identical additional review budget, raw and policy-aware residual queues each reviewed 96 records; raw found 36/108 anomalies with 60 false alerts, while policy-aware found 39/108 with 57 false alerts. The scenario-level recall difference was +0.0278, 95% CI [-0.0278, +0.1019], sign-flip p=0.6875. No policy-aware advantage was demonstrated in this exploratory development run; the interval neither proves equivalence nor excludes a potentially useful effect. Scenario definitions remain pending human approval, the temporal model is partial, and the experiment contains only 12 inspected scenario units. Remaining work includes blinded realism review, protocol-scale development and validation, and an independently specified holdout matrix. After those checks, dependencies, analysis, and source revision require a separate dated freeze approval. Only then may the locked holdout run once.
 
 Duplicate detection remains a useful secondary experiment, and evidence-rich explanation remains a product contribution. Neither substitutes for a valid central anomaly-detection experiment. The present paper therefore offers a reproducible research platform, an honest diagnosis of a failed comparison, and a concrete path to a stronger confirmatory study.
 
@@ -597,7 +597,7 @@ pip install -r requirements.txt -r requirements-research.txt
 python -m unittest discover tests
 python scripts/verify_tdk_citations.py --require-local-artifact
 python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_development/independent_development_e342bd4acf39b06b
-python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_development/independent_development_b866ae2aa1b4b479
+python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_development/independent_development_4feea4508de1bb05
 ```
 
 No holdout command is included. The holdout runner remains unavailable until the protocol is frozen and approved.

@@ -1,5 +1,47 @@
 # TDK Autonomous Research Roadmap
 
+## Autonomous Audit And Repair Cycle - 2026-10-30
+
+- Generator plausibility audit reproduced 83 under-16 hires among 4,320
+  independent histories. Both generators now derive fictional birth dates from
+  hire dates. The repaired independent matrix has a minimum hire age of 18.007
+  years and zero under-16 cases. Duplicate histories, hard nonduplicates,
+  causal interventions, and partition containment have semantic regression
+  coverage.
+- Ambiguous truth is preserved but excluded explicitly from binary fitting and
+  evaluation. The truth sidecar records eligibility and exclusion reason; the
+  artifact auditor rejects prediction membership that disagrees with that mask.
+- The former hash-based policy-profile assignment is replaced by a deterministic
+  frequency-preserving permutation of observed policy-signal rows. All nine
+  raw, policy, ablation, wrong-policy, and shuffled-policy representations use
+  identical residual employee IDs, order, and fixed review capacity.
+- Temporal replay now distinguishes effective time, recorded time, and policy
+  knowledge time. A strict employee-specific grandfathering primitive exists,
+  but the current independent generator lacks structured entitlement evidence;
+  those cases remain draft compatibility scenarios and are not described as
+  entitlement-verified.
+- UI verification exposed two failures hidden by green tests: delayed callbacks
+  could access a closed database, and native Windows printer initialization
+  emitted fatal `0x80040155` diagnostics while PDF tests passed. Owned timers
+  are cancelled on window close, and all production PDF exports now use
+  `QPdfWriter`. A source-wide test prohibits reintroducing `QPrinter`.
+- Development artifact `4feea4508de1bb05` was generated from clean commit
+  `56597d3` and passed the corrected independent audit: 12 scenarios, 864
+  eligible test histories, 108 anomalies, 72 rare-legitimate histories, 900
+  metric rows, 64,800 prediction rows, complete truth sidecars, and
+  `holdout_accessed: false`.
+- Primary exploratory residual result: equal 96-record queues; raw found 36/108
+  anomalies with 60 false alerts, policy-aware found 39/108 with 57 false
+  alerts. Scenario-level recall delta is +0.0278, 95% CI [-0.0278, +0.1019],
+  paired sign-flip p=0.6875. No superiority or equivalence is established.
+- The preserved historical `39/72` is a constructed current-policy replay
+  counterexample with incomplete employee-entitlement provenance. It is distinct
+  from the malformed later `8/72`, whose false-positive interpretation remains
+  invalidated.
+- The final holdout remained locked and untouched. Expert review, protocol-scale
+  development and validation, dated protocol freeze, one-time holdout access,
+  final scientific conclusions, and PR merge remain human-gated.
+
 ## Policy Evaluation Semantics Engineering Repair - 2026-10-30
 
 - Ambiguous independent-review cases are no longer adapted as `CLEAN`. They

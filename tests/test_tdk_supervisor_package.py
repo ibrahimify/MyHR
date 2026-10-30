@@ -5,7 +5,12 @@ from pathlib import Path
 
 from docx import Document
 
-from scripts.generate_tdk_supervisor_package import TITLE, build_decision_sheet
+from scripts.generate_tdk_supervisor_package import (
+    CURRENT_ARTIFACT_DIR,
+    CURRENT_ARTIFACT_ID,
+    TITLE,
+    build_decision_sheet,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -34,7 +39,7 @@ class TdkSupervisorPackageTests(unittest.TestCase):
 
         required_statements = (
             "No policy-aware advantage was demonstrated in this exploratory development run",
-            "b866ae2aa1b4b479",
+            CURRENT_ARTIFACT_ID,
             "does not establish equivalence",
             "The final holdout has not been generated or accessed.",
         )
@@ -53,6 +58,10 @@ class TdkSupervisorPackageTests(unittest.TestCase):
         package_script = PACKAGE_SCRIPT.read_text(encoding="utf-8")
         self.assertIn("39/72 is a constructed specification counterexample", package_script)
         self.assertIn("8/72 was invalidated", package_script)
+        self.assertEqual(
+            "independent_development_4feea4508de1bb05",
+            CURRENT_ARTIFACT_DIR,
+        )
 
     def test_decision_sheet_is_one_landscape_page_source_with_pending_decisions(self):
         with tempfile.TemporaryDirectory() as directory:

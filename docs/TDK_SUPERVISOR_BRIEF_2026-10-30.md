@@ -12,7 +12,7 @@ MyHR is an offline employee-management and decision-support application. The TDK
 
 The repository implements deterministic validation, statistical baselines, raw and policy-aware Isolation Forest representations, wrong- and shuffled-policy controls, feature ablations, synthetic generators, duplicate-candidate detection, write-once artifacts, checksum auditing, and paired scenario-level analysis. An external audit exposed invalid scenario semantics and an incorrect duplicate-pair universe. Those defects were repaired with regression tests before generating the current artifact.
 
-The corrected exploratory artifact is `b866ae2aa1b4b479`, generated from clean commit `1942718`. Its audit status is verified and `holdout_accessed` is `false`. Across 12 scenarios it contains 864 test histories, 108 anomalies, and 72 rare-legitimate histories. Deterministic checks produced 63 TP, 0 FP, and 45 FN, with 0/72 rare-legitimate histories flagged.
+The current corrected exploratory artifact is `4feea4508de1bb05`, generated from clean commit `56597d3`. Its audit status is verified and `holdout_accessed` is `false`. Across 12 scenarios it contains 864 eligible test histories, 108 anomalies, and 72 rare-legitimate histories. Deterministic policy checks produced 63 TP, 0 FP, and 45 FN, with 0/72 rare-legitimate histories flagged.
 
 At identical additional review capacity, the scenario-level recall difference for policy-aware minus raw Isolation Forest was +0.0278, 95% CI [-0.0278, +0.1019], paired sign-flip p=0.6875. **No policy-aware advantage was demonstrated in this exploratory run.** The interval does not establish equivalence. The secondary AP difference was +0.0738 with unadjusted p=0.0122, but the all-comparison Holm-adjusted p was 1.0; it is not confirmatory.
 
@@ -42,7 +42,7 @@ The attached decision sheet asks for approval, rejection, or modification of rep
 ```powershell
 python -m unittest discover tests
 python scripts/verify_tdk_citations.py --require-local-artifact
-python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_development/independent_development_b866ae2aa1b4b479
+python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_development/independent_development_4feea4508de1bb05
 ```
 
 ## Recommended Supervisor Outcome

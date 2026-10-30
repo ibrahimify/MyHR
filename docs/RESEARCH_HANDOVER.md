@@ -12,9 +12,9 @@ MyHR is a standalone PySide6, SQLite, and SQLAlchemy employee-management applica
 
 The implementation now includes formal policy calculations, deterministic validation, synthetic generators, statistical baselines, raw and policy-aware Isolation Forest representations, duplicate-record detection, reproducible artifacts, checksums, statistical comparisons, literature tooling, and independent artifact auditing.
 
-The first independent rules-first artifact exposed a design failure: deterministic filtering consumed the signal intended for ML, so its AP comparison was scientifically vacuous. That failure is preserved as audit history. The corrected implementation uses invariant-only filtering, equal additional review budgets, and feature-variation guards. Artifact `b866ae2aa1b4b479`, generated from clean commit `1942718`, passed the strengthened audit. Its primary recall difference was +0.0278, 95% CI [-0.0278, +0.1019], paired sign-flip p=0.6875. No advantage was demonstrated in this exploratory run, and the interval does not establish equivalence.
+The first independent rules-first artifact exposed a design failure: deterministic filtering consumed the signal intended for ML, so its AP comparison was scientifically vacuous. That failure is preserved as audit history. The corrected implementation uses invariant-only filtering, equal additional review budgets, explicit ambiguity exclusion, and matched controls. Artifact `4feea4508de1bb05`, generated from clean commit `56597d3`, passed the strengthened audit. Its primary recall difference was +0.0278, 95% CI [-0.0278, +0.1019], paired sign-flip p=0.6875. No advantage was demonstrated in this exploratory run, and the interval does not establish equivalence.
 
-The second audit invalidated the historical `39/72` and intermediate `8/72` rare-legitimate interpretations because their generators produced genuine contradictions. The repaired artifact records 0/72 deterministic alerts among test-split rare-legitimate histories. This is development evidence under pending scenario definitions, not a real-world rate. The audit still exposed the need to define employee-specific grandfathering and separate knowledge-time from review-time explicitly.
+The historical `39/72` and intermediate `8/72` readings have different evidentiary status. Artifact `e342bd4acf39b06b` preserves the `39/72` count as a constructed current-policy replay counterexample, but it does not preserve employee-specific entitlement evidence or the realized mechanism per record, so it cannot support a prevalence estimate or a mechanism-specific false-positive rate. The later `8/72` interpretation is invalidated because its generator produced genuine contradictions. The repaired artifact records 0/72 deterministic alerts among test-split rare-legitimate histories. This is development evidence under pending scenario definitions, not a real-world rate.
 
 ## 2. Problem And Motivation
 
@@ -174,13 +174,13 @@ The rules-plus-ML cascades both raised 408 alerts. Raw IF produced `357 TP, 51 F
 
 ### 8.3 Historical independent stress test
 
-The 2026-10-17 artifact contained 864 test histories and exposed constant policy features after filtering. Its `39/72` rare-legitimate interpretation was later invalidated because those generated histories contained genuine contradictions.
+The 2026-10-17 artifact contained 864 test histories and exposed constant policy features after filtering. It directly stores a `39/72` deterministic-policy alert count among broadly labelled rare-legitimate histories, but incomplete entitlement and realized-mechanism provenance prevents interpreting that count as a mechanism-specific false-positive rate. The contradictory histories that invalidate the later `8/72` interpretation came from a different generator revision.
 
 The old AP values `0.3616` and `0.3621` are reproducible arithmetic but cannot answer the research question. They are retained only to document why the experimental architecture was repaired.
 
 ### 8.4 Current repaired exploratory run
 
-Artifact `b866ae2aa1b4b479` contains 12 scenarios, 864 test histories, 108 anomalies, and 72 rare-legitimate histories. Deterministic checks produced 63 TP, 0 FP, and 45 FN, with 0/72 rare-legitimate alerts. At equal additional review capacity, policy-aware minus raw Isolation Forest recall was +0.0278, 95% CI [-0.0278, +0.1019], p=0.6875. The secondary AP difference was +0.0738 with unadjusted p=0.0122, but its all-comparison Holm-adjusted p was 1.0. These inspected development results are neither confirmatory nor evidence of equivalence.
+Artifact `4feea4508de1bb05` contains 12 scenarios, 864 eligible test histories, 108 anomalies, and 72 rare-legitimate histories. Deterministic policy checks produced 63 TP, 0 FP, and 45 FN, with 0/72 rare-legitimate alerts. At equal additional review capacity, policy-aware minus raw Isolation Forest recall was +0.0278, 95% CI [-0.0278, +0.1019], p=0.6875. Raw and policy-aware residual queues each reviewed 96 records; they found 36 and 39 anomalies respectively, with 60 and 57 false alerts. These inspected development results are neither confirmatory nor evidence of equivalence.
 
 ## 9. What Is Verified, Inferred, Or Pending
 
@@ -248,7 +248,7 @@ These are current engineering and methodological boundaries. Concrete scenario a
 ```bash
 pip install -r requirements.txt -r requirements-research.txt
 python -m unittest discover tests
-python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_development/independent_development_b866ae2aa1b4b479
+python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_development/independent_development_4feea4508de1bb05
 ```
 
 Do not run any holdout command. The exact artifact location may be local or intentionally archived outside Git; consult `TDK_RESEARCH_VERIFICATION.md` before interpreting a missing path.

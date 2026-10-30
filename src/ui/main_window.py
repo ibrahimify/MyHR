@@ -188,6 +188,7 @@ class Sidebar(QWidget):
         ic.setSpacing(0)
         self.name_lbl = QLabel(display_name)
         name_lbl = self.name_lbl
+        name_lbl.setToolTip(display_name)
         self._theme_bound_labels.append((name_lbl, "user_name"))
         role_display = self.user.username if self.user.role == "admin" else t("role_hr")
         self.role_lbl = QLabel(role_display)
@@ -197,8 +198,7 @@ class Sidebar(QWidget):
         ic.addWidget(role_lbl)
 
         ucl.addWidget(avatar)
-        ucl.addLayout(ic)
-        ucl.addStretch()
+        ucl.addLayout(ic, 1)
         bl.addWidget(user_card)
 
         self.theme_card = QFrame()

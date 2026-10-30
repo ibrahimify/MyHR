@@ -30,11 +30,15 @@ GREEN = "0B6B45"
 LIGHT_GREEN = "E8F5EE"
 LIGHT_GRAY = "F2F2F2"
 BORDER = "D9D9D9"
+CURRENT_ARTIFACT_ID = "4feea4508de1bb05"
+CURRENT_ARTIFACT_DIR = f"independent_development_{CURRENT_ARTIFACT_ID}"
 
 
 def _save_figure(path: Path) -> None:
     plt.tight_layout()
     plt.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
+    if path.suffix.lower() == ".png":
+        plt.savefig(path.with_suffix(".svg"), bbox_inches="tight", facecolor="white")
     plt.close()
 
 
@@ -144,7 +148,7 @@ def generate_figures(repo: Path, assets: Path) -> None:
     ax.grid(axis="y", alpha=0.25)
     _save_figure(assets / "validation_counts.png")
 
-    paired_path = repo / "research_outputs" / "independent_development" / "independent_development_b866ae2aa1b4b479" / "paired_comparisons.csv"
+    paired_path = repo / "research_outputs" / "independent_development" / CURRENT_ARTIFACT_DIR / "paired_comparisons.csv"
     paired = pd.read_csv(paired_path)
     result = paired[(paired["method"] == "rule_negative_isolation_forest") & (paired["operating_point"] == "fixed_review_budget")].iloc[0]
     fig, ax = plt.subplots(figsize=(9, 4.8))
@@ -630,6 +634,11 @@ def main() -> int:
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
     output = args.output or (repo.parent / "TDK" / "final" / "2026-10-30-supervisor")
+    if output.exists() and any(output.iterdir()):
+        archive = output.parent / "archive" / "2026-10-30-pre-autonomous-audit-8d7b4e0"
+        if not archive.exists():
+            archive.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(output, archive)
     output.mkdir(parents=True, exist_ok=True)
     docx_path = output / "MyHR_TDK_Paper_Draft_EN.docx"
     pdf_path = output / "MyHR_TDK_Paper_Draft_EN.pdf"
@@ -638,6 +647,7 @@ def main() -> int:
         assets = Path(directory)
         generate_figures(repo, assets)
         build_docx(repo / "docs" / "TDK_PAPER_DRAFT.md", assets, docx_path)
+        shutil.copytree(assets, output / "figures", dirs_exist_ok=True)
     page_report = convert_with_word(docx_path, pdf_path, page_report_path)
     decision_docx = output / "_Supervisor_Decision_Sheet.docx"
     decision_pdf = output / "Supervisor_Decision_Sheet.pdf"
@@ -651,6 +661,59 @@ def main() -> int:
     verification = repo / "docs" / "TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-10-30.md"
     if verification.exists():
         shutil.copy2(verification, output / "Verification_Report.md")
+    artifact = repo / "research_outputs" / "independent_development" / CURRENT_ARTIFACT_DIR
+    data_dir = output / "data"
+    data_dir.mkdir(exist_ok=True)
+    for name in (
+        "metadata.json",
+        "manifest.json",
+        "scenario_configs.csv",
+        "scenario_metrics.csv",
+        "aggregate_metrics.csv",
+        "paired_comparisons.csv",
+    ):
+        shutil.copy2(artifact / name, data_dir / name)
+    revision = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    (output / "START_HERE.md").write_text(
+        "\n".join([
+            "# MyHR TDK Supervisor Review Draft",
+            "",
+            f"Reviewed branch: `research/policy-aware-anomaly` at `{revision}`.",
+            "",
+            "## Start Here",
+            "",
+            "1. Read `README.md` for the research question, verified findings, and limitations.",
+            "2. Read `MyHR_TDK_Paper_Draft_EN.pdf` for the complete English manuscript.",
+            "3. Use `Supervisor_Decision_Sheet.pdf` for the remaining human decisions.",
+            "4. Check `Verification_Report.md` for tests, citations, artifact audit, page count, and hashes.",
+            "5. Inspect `figures/` and `data/` for reproducible plots and their underlying tables.",
+            "",
+            "## Verified Development Evidence",
+            "",
+            f"- Artifact: `{CURRENT_ARTIFACT_DIR}`.",
+            "- 12 scenarios, 864 eligible test histories, 108 anomalies, and 72 rare-legitimate histories.",
+            "- Equal 96-record residual queues: raw found 36 anomalies; policy-aware found 39.",
+            "- Recall delta: +0.0278, 95% CI [-0.0278, +0.1019], paired sign-flip p=0.6875.",
+            "- Interpretation: no advantage demonstrated; equivalence is not established.",
+            "",
+            "## Remaining Limitations And Decisions",
+            "",
+            "- Synthetic scenario realism still requires two blinded human reviewers.",
+            "- Employee-specific grandfathering is not represented as structured generator evidence.",
+            "- Protocol-scale development and validation remain outstanding.",
+            "- Protocol freeze, final holdout access, scientific conclusions, PR merge, and final submission require human authorization.",
+            "",
+            "The final holdout was not generated, inspected, scored, or unlocked.",
+            "",
+        ]),
+        encoding="utf-8",
+    )
     print(json.dumps({"docx": str(docx_path), "pdf": str(pdf_path), "decision_sheet": str(decision_pdf), **page_report}, indent=2))
     return 0
 

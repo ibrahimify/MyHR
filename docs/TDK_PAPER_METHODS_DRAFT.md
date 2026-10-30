@@ -32,7 +32,7 @@ Raw and policy-aware representations are paired within each scenario. Wrong-poli
 
 An early rule-negative experiment removed every positive service-deficit history, leaving all three policy-specific matched features constant at zero. Its AP difference cannot be interpreted as evidence for or against incremental policy context. This failure is preserved as a design diagnostic; it is not the current result.
 
-The corrected code retains zero-positive scenarios and their denominators, marks recall and AP undefined when appropriate, and excludes only undefined values from metric-specific paired inference. Artifact `b866ae2aa1b4b479`, generated from clean commit `1942718`, passed the strengthened audit: 12 scenarios, 864 test histories, 108 anomalies, 72 rare-legitimate histories, and `holdout_accessed: false`. At equal additional review capacity, the primary scenario-level recall difference for policy-aware minus raw Isolation Forest was +0.0278, 95% bootstrap interval [-0.0278, +0.1019], paired sign-flip p=0.6875. No advantage was demonstrated in this exploratory development run; the interval does not establish equivalence. New protocol-scale development and validation artifacts are still required before protocol freeze.
+The corrected code retains zero-positive scenarios and their denominators, marks recall and AP undefined when appropriate, and excludes only undefined values from metric-specific paired inference. Artifact `4feea4508de1bb05`, generated from clean commit `56597d3`, passed the strengthened audit: 12 scenarios, 864 eligible test histories, 108 anomalies, 72 rare-legitimate histories, 900 metric rows, 64,800 prediction rows, and `holdout_accessed: false`. At equal additional review capacity, the primary scenario-level recall difference for policy-aware minus raw Isolation Forest was +0.0278, 95% bootstrap interval [-0.0278, +0.1019], paired sign-flip p=0.6875. No advantage was demonstrated in this exploratory development run; the interval does not establish equivalence. New protocol-scale development and validation artifacts are still required before protocol freeze.
 
 ## Development Evaluation
 
@@ -58,7 +58,7 @@ Future independent development artifacts also write normalized truth, administra
 | Independent generator boundary | `src/research/independent_scenarios.py`, `tests/test_independent_scenarios.py` |
 | Stored model and metric implementation | `src/services/anomaly_detection/protocol_evaluation.py` |
 | Independent development run | `research_outputs/independent_development/independent_development_e342bd4acf39b06b/metadata.json` |
-| Current repaired independent development run | `research_outputs/independent_development/independent_development_b866ae2aa1b4b479/metadata.json` (status: verified, commit `1942718`) |
+| Current repaired independent development run | `research_outputs/independent_development/independent_development_4feea4508de1bb05/metadata.json` (status: verified, commit `56597d3`) |
 | Per-record scores and denominators | Same artifact: `record_predictions.csv`, `scenario_metrics.csv` |
 | Paired development summaries | Same artifact: `paired_comparisons.csv` |
 | Integrity and source hashes | Same artifact: `manifest.json`; adjacent `.audit.json` |
