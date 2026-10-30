@@ -15,7 +15,7 @@ Workforce progression systems apply promotion, commendation, sanction, and salar
 
 The study uses MyHR, an offline HR decision-support application, as the experimental platform. A formal progression model specifies service requirements, commendation credits, sanction delays, policy changes, and annual increments independent of promotion. Isolation Forest models analyse sanction frequencies, promotion intervals, and administrative-event patterns using raw and policy-conditioned features. Deterministic validation addresses explicit inconsistencies, while eligibility explanations present the applicable rules, adjustments, and supporting records. A separate similarity-based matching component identifies potential duplicate employee records. Anomaly and duplicate alerts support human review rather than automatic personnel decisions or record merging.
 
-Evaluation uses reproducible synthetic histories containing documented injected errors and rare legitimate cases, with separate training, validation, and test partitions. Comparisons include rule checks, contextual statistical baselines, and Isolation Forest models with and without policy-conditioned features. Measures include precision, recall, F1 score, false-positive rate, review workload, and runtime. Duplicate detection is compared separately against exact and normalized-exact matching. Successive development experiments exposed and repaired defects in synthetic ground truth, temporal replay, pairwise evaluation, and artifact verification. In the latest corrected exploratory progression artifact, deterministic rules flagged 0 of 72 test-split rare-legitimate histories, while policy-aware minus raw recall at equal review capacity was +0.0185 with a 95% paired interval from -0.0278 to +0.0741. No advantage was demonstrated, and the interval does not establish equivalence. Employee-specific grandfathering, distinct knowledge-time replay, expert realism review, exact scenario approval, and confirmatory holdout evaluation remain incomplete.
+Evaluation uses reproducible synthetic histories containing documented injected errors and rare legitimate cases, with separate training, validation, and test partitions. Comparisons include rule checks, contextual statistical baselines, and Isolation Forest models with and without policy-conditioned features. Measures include precision, recall, F1 score, false-positive rate, review workload, and runtime. Duplicate detection is evaluated separately. Successive audits exposed and repaired defects in synthetic truth, temporal replay, pairwise evaluation, and provenance. In the latest clean exploratory progression artifact, deterministic rules flagged 0 of 72 test-split rare-legitimate histories. Policy-aware minus raw recall at equal review capacity was +0.0278 with a 95% paired interval from -0.0278 to +0.1019 and sign-flip p=0.6875. No advantage was demonstrated, and the interval does not establish equivalence. Employee-specific grandfathering, distinct knowledge-time replay, expert realism review, exact scenario approval, and confirmatory holdout evaluation remain incomplete.
 
 Keywords: machine learning, anomaly detection, Isolation Forest, workforce progression, rule-based decision support, synthetic data, duplicate detection, explainability
 
@@ -57,7 +57,7 @@ Synthetic histories provide known ground truth without exposing private employee
 
 The implemented work contributes: a formal progression model shared with the application; deterministic validation with evidence-rich findings; raw and policy-aware feature families; statistical and Isolation Forest baselines; validation-only thresholds; equal-budget comparisons; wrong-policy, shuffled-policy, and ablation controls; an independent development simulator; write-once experiment artifacts with checksums; independent re-computation of stored metrics; and a separate duplicate-candidate experiment.
 
-The development evidence also contributes a negative methodological result. After explicit policy findings are removed, all three policy-specific residual features in the current matched representation are constant zero. The saved comparison therefore cannot estimate incremental value from policy context. The close average-precision values must not be interpreted as a tie, equivalence, inferiority, or superiority. A second finding shows that replaying one current policy across historical decisions creates a deterministic specification failure in constructed transition histories. This motivates effective-time and recorded-time modelling, but it does not estimate real-world prevalence.
+The development evidence contributes an important negative methodological result. In an early residual design, deterministic filtering consumed the policy signal and forced all three policy-specific features to constant zero. That comparison was structurally unable to test the hypothesis and was preserved rather than presented as a null result. A later audit also invalidated apparent transition false alerts because the generator had created genuine contradictions. Both failures motivated the corrected design and stronger provenance checks.
 
 The paper makes no claim that policy-aware machine learning is universally better, that current synthetic rates generalize to organizations, or that the system should automate promotion, sanction, salary, or record-merging decisions. The final holdout has not been generated or accessed.
 
@@ -352,7 +352,7 @@ CI answers whether the checked code and tests pass in the configured environment
 | Independent generator boundary | `src/research/independent_scenarios.py` |
 | Validation results | `validation_c5878ca7b927ccd2` artifact and audit |
 | Independent results (pre-fix development) | `independent_development_e342bd4acf39b06b` artifact and audit |
-| Clean-revision independent results | `independent_development_62f482ce6ff477b9` artifact and audit (commit `bbc59f8`, status: verified) |
+| Current repaired independent results | `independent_development_b866ae2aa1b4b479` artifact and audit (commit `1942718`, status: verified) |
 | Structural feature collapse | Independent hostile review and source trace |
 | Citation claims | Bibliography, provenance registry, and evidence ledger |
 | Holdout status | Protocol, artifact metadata, runner refusal, and roadmap |
@@ -392,9 +392,9 @@ Policy-aware features avoid 32 alerts among rare-legitimate histories, but the s
 
 The paired AP difference is +0.0194 with a stored interval from -0.0417 to 0.0889. Twenty-four of the thirty rule-negative validation scenarios contain no residual positive case and historically store AP as zero. The reported scenario means and interval therefore depend on this disputed convention. The original generator leaves too few informative residual scenarios to estimate incremental ML value convincingly; no alternative scenario-eligibility rule is selected after inspection.
 
-### 6.4 Independent Development Stress Test
+### 6.4 Historical Independent Stress Test Invalidated
 
-The independent simulator produces 12 test scenarios with 864 histories, 108 labelled anomalies, and 72 broadly labelled rare-legitimate histories. Deterministic checks raise 105 alerts: 66 true positives and 39 false positives. All 39 false positives are among the 72 rare-legitimate histories, so the directly auditable rare-case false-alert proportion is 39/72 = 54.17%.
+The first independent simulator run produced 12 test scenarios with 864 histories, 108 labelled anomalies, and 72 broadly labelled rare-legitimate histories. It recorded 39 apparent false alerts among those rare histories. Later semantic audits showed that this generator produced contradictory transition histories and invalid duplicate truth. The following numbers are retained solely to explain why the design was rejected; they are not current performance evidence.
 
 After deterministic filtering, 759 histories remain, including 42 labelled anomalies and 717 negatives. At equal nominal budget, both models raise 81 alerts.
 
@@ -405,53 +405,47 @@ After deterministic filtering, 759 histories remain, including 42 labelled anoma
 
 The stored paired AP difference is +0.0005 with interval [-0.1173, 0.1079], sign-flip p = 1.0, and adjusted exploratory p = 1.0. These values are arithmetically reproducible under the implemented convention. They are not evidence of equivalence or a policy effect.
 
-[[FIGURE:independent_ap.png|Figure 8. Scenario-level residual AP in the independent stress test. Six scenarios have no residual positives and historically store AP as zero; they are marked separately.]]
+[[FIGURE:independent_ap.png|Figure 8. Invalidated historical residual AP. The figure documents a rejected experiment and must not be interpreted as current model performance.]]
 
-### 6.5 Structural Failure of the Central Comparison
+### 6.5 Historical Structural Failure of the Central Comparison
 
-The policy-aware residual representation contains a six-feature common core plus policy service deficit, policy deficit ratio, and unexplained-short-promotion indicator. The deterministic residual filter keeps only records with no policy finding. The same policy assessment emits a finding whenever service deficit is positive. Consequently, every retained record has zero for all three policy-specific features.
+In the historical residual design, the policy-aware representation contained a six-feature common core plus policy service deficit, policy deficit ratio, and an unexplained-short-promotion indicator. The full-policy residual filter kept only records with no policy finding. The same policy assessment emitted a finding whenever service deficit was positive. Consequently, every retained record had zero for all three policy-specific features.
 
 The policy-aware model therefore has no varying policy signal. Its effective varying dimension is the six-feature common core, whereas the matched raw model retains three additional varying raw features. Differences in ranking cannot be attributed to policy context. The experiment as designed could not test the primary hypothesis.
 
 This is stronger and more precise than describing the result as merely inconclusive. An inconclusive estimate would arise from valid but uncertain evidence. Here the intended explanatory variable is structurally absent after filtering. The correct response is to preserve the run, diagnose the design, and seek approval for a new estimand rather than tune features against inspected outcomes.
 
-[[FIGURE:feature_collapse.png|Figure 9. Deterministic filtering removes every positive service-deficit history, forcing the three policy-specific residual features to constant zero.]]
+[[FIGURE:feature_collapse.png|Figure 9. Historical design failure and corrected architecture. The original rule gate consumed the signal intended for ML; the repaired design limits the primary gate to invariant contradictions and assigns equal additional ML review capacity.]]
 
 Six of the twelve scenarios also contain no residual positive case. The implementation stores AP as zero for these scenarios, while the approved future design treats recall and AP as undefined and excludes those scenarios from paired inference for those metrics under a predeclared eligibility rule. Including structural zeros halves both reported AP means and changes uncertainty. Restricting the development calculation to the six informative scenarios still yields a very wide interval and does not establish an advantage. The approved rule must be implemented and frozen before generating any confirmatory scenario.
 
-### 6.6 Historical-Policy False Alerts
+### 6.6 Invalidated Historical-Policy Interpretation
 
-The stored artifact directly supports 39 deterministic false alerts among 72 broadly labelled rare-legitimate histories. Scenario-level patterns contain 24 grandfathered-policy, 24 recognized-prior-service, and 24 delayed-bulk-recording histories. Stored predictions produce 19/24, 20/24, and 0/24 alerts respectively.
+The preserved `39/72` and later `8/72` readings do not estimate false alerts on lawful transition histories. The second audit showed that the corresponding generators created genuine contradictions, including promotions before hire and insufficient service. Those alerts were therefore responses to defective records, not evidence that current-policy replay rejected lawful decisions. Both interpretations are invalidated.
 
-Source regeneration shows that some non-progression employees assigned to transition-pattern scenarios realize delayed-recording cases instead. It finds 39 actually instantiated policy-transition histories and flags all 39. Because the original artifact does not store the realized mechanism per record, the 39/39 attribution cannot be reconstructed from saved rows alone. The paper therefore treats 39/72 as the auditable artifact result and 39/39 as qualified source-regeneration evidence.
+[[FIGURE:policy_alerts.png|Figure 10. Audit history of the transition scenario. Earlier apparent false-alert readings were invalidated; the repaired exploratory run records 0/72 deterministic alerts among test-split rare-legitimate histories.]]
 
-[[FIGURE:policy_alerts.png|Figure 10. Deterministic false alerts by nominal rare-legitimate scenario pattern. These constructed counts expose a missing historical-policy contract and do not estimate real-world prevalence.]]
+The audit still motivates temporal modeling as a requirements issue, but the current experiments do not quantify its real-world frequency or benefit. Policy identity, version, effective time, recorded time, recognized service, and correction provenance are represented in research records. Employee-specific grandfathering and separate decision-time versus later-review replay remain incomplete.
 
-The finding demonstrates the existence of a specification failure: current-policy replay can reject a lawful historical decision. It does not demonstrate how frequently organizations encounter that failure. The technical requirement is nevertheless clear. Historical validation needs the effective policy, recorded policy evidence, and correction history applicable to each decision.
+### 6.7 Corrected Exploratory Development Artifact
 
-### 6.7 Preliminary Duplicate Experiment
+Artifact `b866ae2aa1b4b479` was generated from clean commit `1942718` after the second-audit repairs. The strengthened artifact audit reports `verified`, 12 scenarios, 864 test histories, 108 anomalies, 72 rare-legitimate histories, and `holdout_accessed: false`. Deterministic policy checks produced 63 true positives, no false positives, and 45 false negatives; none of the 72 rare-legitimate histories was flagged.
 
-A legacy development output generated 1,000 records, including 20 duplicate-labelled records and 19 ground-truth duplicate pairs. Exact matching returned one false candidate and found no duplicate pair. Normalized exact matching produced 20 candidates, including 19 true-positive pairs and one false positive. Weighted similarity at threshold 0.70 produced 31 candidates, including 19 true-positive pairs and 12 false positives.
+At the primary equal review capacity, policy-aware minus raw residual recall was +0.0278 across 12 paired scenarios. The paired 95% bootstrap interval was [-0.0278, +0.1019], and the sign-flip p-value was 0.6875. Precision difference was +0.0313 with interval [-0.0313, +0.1042]. Average precision favored the policy representation in this inspected development run, but AP is secondary, multiplicity-adjusted p-values are 1.0, and the scenario definitions remain pending approval. No superiority, inferiority, or equivalence claim follows.
 
-| Preliminary duplicate method | Candidates | TP | FP | FN | Precision | Recall | F1 |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Exact | 1 | 0 | 1 | 19 | 0.000 | 0.000 | 0.000 |
-| Normalized exact | 20 | 19 | 1 | 0 | 0.950 | 1.000 | 0.974 |
-| Similarity, threshold 0.70 | 31 | 19 | 12 | 0 | 0.613 | 1.000 | 0.760 |
+The corrected duplicate evaluation uses an explicit evaluation universe and set membership for every TP, FP, FN, and TN. Exact methods use the complete partition-local pair universe, while similarity methods report blocking recall and metrics within their declared candidate universe separately.
 
-These values are exploratory and come from one early seed. The legacy directory has saved aggregate metrics and candidate rows but no write-once manifest or preserved pair-truth sidecar, so the table is metric-level evidence rather than an independently reconstructable pair benchmark. It illustrates the precision-workload tradeoff but is not a final entity-resolution result. A future development artifact would need the current write-once schema, validation-selected thresholds, entity-disjoint scenarios, blocking recall, hard nonduplicates, uncertainty across seeds, and candidate workload per 1,000 records. The historical output is preserved unchanged.
-
-[[FIGURE:duplicate_results.png|Figure 11. Preliminary duplicate-candidate precision and recall. The single-seed legacy result is secondary metric-level evidence only.]]
+[[FIGURE:duplicate_results.png|Figure 11. Duplicate-evaluation contract after repair. Pair ground truth is entity-contained; blocking recall, candidate-universe classification, end-to-end matching, workload, runtime, and memory are reported separately. No final duplicate-performance claim is made.]]
 
 ### 6.8 Result Summary
 
-The original scenario family demonstrates that the pipeline, controls, artifacts, and audits work, but it is too coupled to support a transfer claim. The independent simulator exposes a historical-policy failure and breaks source-code coupling, but its residual comparison erases policy variation. These are not favorable performance results. They are useful design evidence because the reproducible infrastructure makes the failures visible rather than concealing them.
+The historical runs demonstrate why passing tests and reproducible arithmetic are insufficient when labels or evaluation universes are wrong. The corrected exploratory artifact demonstrates that the repaired pipeline executes reproducibly, but its 12 inspected scenarios are below protocol scale and use scenario definitions pending approval. Its primary interval crosses zero. The current evidence therefore supports the framework and its auditability, not a performance or product-effectiveness claim.
 
 ### 6.9 Robustness Slices and What They Can Show
 
 The stored artifacts include slices by policy profile, population profile, anomaly mechanism, rare pattern, prevalence, and operating point. These tables are useful for diagnosing whether a method's behavior is concentrated in one constructed condition. They are not independent experiments when several slices reuse the same scenario histories. Consequently, the paper does not count every slice as a new sample or select the slice with the most favorable difference.
 
-In the independent run, only wrong-link and missing-import errors remain sufficiently represented after deterministic filtering. Approval-bypass and batch-retry cases are largely consumed by direct checks. Mechanism-specific residual comparisons therefore describe the surviving task rather than the full anomaly taxonomy. The current policy features cannot explain differences within those surviving mechanisms because they are constant.
+Mechanism-specific residual comparisons describe the surviving rule-negative task rather than the full anomaly taxonomy. The repaired artifact preserves per-mechanism counts and feature-variation checks, but twelve inspected scenarios are too few to separate population, mechanism, rare pattern, and random realization. These slices remain diagnostics rather than confirmatory subgroup effects.
 
 Population slices similarly combine organizational assumptions with one random realization per population-mechanism cell. A merger-migration scenario may contain more delayed records than a stable-administration scenario, but one realization cannot establish a general population effect. A redesigned validation matrix needs repeated seeds within each cell, preserving scenario seed as the unit while allowing variability to be estimated separately from configured factors.
 
@@ -467,17 +461,17 @@ total cost = review_count * review_cost
 
 Each cost is a sensitivity parameter. Review time can be estimated operationally; the cost of missing an error or escalating a legitimate exception depends on organizational context and cannot be inferred from synthetic labels. The paper therefore reports how conclusions change across cost ratios rather than choosing one ratio that favors a method.
 
-The current residual comparison does not justify a utility advantage. Raw and policy-labelled models raise the same number of alerts, and the policy-labelled model finds one fewer anomaly in the independent run. In the original validation run, fewer rare-legitimate alerts are offset by more ordinary-clean alerts. Any favorable utility result would depend on assigning a larger assumed cost to the rare-legitimate subgroup. That may be a defensible organizational preference, but it must be declared and reviewed rather than hidden inside a score.
+The current residual comparison does not justify a utility advantage. Although both representations receive the same review budget, the primary recall interval crosses zero and operational costs remain assumptions. Any favorable utility result can depend on the relative cost assigned to missed anomalies, rare-legitimate reviews, and ordinary false alerts. Those weights must be declared and reviewed rather than hidden inside a score.
 
 ## 7 Discussion and Threats to Validity
 
 ### 7.1 Answer to the Research Questions Today
 
-The current evidence cannot answer whether policy context improves residual anomaly ranking. The intended policy variables are constant in the independent residual population. The original generator favors the policy representation but is conceptually coupled to it. No superiority, inferiority, or equivalence conclusion follows.
+The corrected exploratory run did not demonstrate that policy context improves residual anomaly ranking. Its primary recall difference was positive but imprecise, with a paired interval crossing zero. The original generator remains conceptually coupled to the policy representation, and the repaired independent scenarios remain inspected and pending approval. No superiority, inferiority, or equivalence conclusion follows.
 
 The advantage also cannot be assessed across changed policies and populations because the valid central comparison has not yet been defined. Development infrastructure already varies these factors, but variation alone is insufficient when the representation being tested collapses.
 
-The rare-legitimate objective remains operationally important. The original validation run shows that reducing alerts in one legitimate subgroup can merely move the same number of false alerts elsewhere. The historical-policy stress test shows that a missing policy version can systematically escalate constructed lawful histories. A valid future experiment must therefore report both subgroup and total false alerts at equal workload.
+The rare-legitimate objective remains operationally important. The original validation run shows that reducing alerts in one legitimate subgroup can merely move the same number of false alerts elsewhere. The invalidated transition scenarios show why generated lawful status must be checked semantically before interpreting subgroup metrics. A valid future experiment must therefore report both subgroup and total false alerts at equal workload.
 
 ### 7.2 Rules First, ML Second
 
@@ -501,7 +495,7 @@ The draft protocol expects at least 30 independent scenario seeds per primary co
 
 Synthetic labels establish correctness relative to the generator, not organizational truth. No private employee data were used, which is a privacy strength but an external-validity limitation. Feature ranges, policy transitions, missing-data mechanisms, and utility costs require domain calibration. A blinded review by qualified domain reviewers can test plausibility and evidence sufficiency, but reviewer qualifications, sample size, agreement measure, and adjudication rule remain pending.
 
-The policy-transition result is constructed to expose a missing contract. It should be interpreted as a counterexample, not a rate estimate. Likewise, high deterministic recall in the original generator does not imply that rules will find nearly every real administrative error.
+The repaired policy-transition scenario is a proposed contract test, not a rate estimate, and still requires human approval. Likewise, high deterministic recall in a synthetic generator does not imply that rules will find nearly every real administrative error.
 
 ### 7.6 Temporal Validity
 
@@ -535,7 +529,7 @@ The approval refines the hypothesis after inspecting development diagnostics; it
 
 ### 7.11 Practical Implications for MyHR
 
-The historical-policy finding has product value even before the ML hypothesis is resolved. A client importing old promotion records needs the system to distinguish the policy effective at the decision date from the policy active today. Without that evidence, MyHR should display an indeterminate status and request review rather than assert a violation. Import templates and migration tools would need policy identifiers, effective dates, recorded dates, and evidence for recognized service or corrections.
+Historical-policy handling remains a product requirement even though the earlier false-alert quantification was invalidated. A client importing old promotion records needs the system to distinguish the policy effective at the decision date from the policy active today. Without that evidence, MyHR should display an indeterminate status and request review rather than assert a violation. Import templates and migration tools would need policy identifiers, effective dates, recorded dates, and evidence for recognized service or corrections.
 
 The same principle applies to explanations. A reviewer should see which facts are present, which assumptions were inferred, and which evidence is missing. A model score can prioritize the record, but an incomplete history should not be converted into a confident personnel judgement. These requirements make the application safer and also create better research data because future labels can distinguish missing evidence from confirmed error.
 
@@ -544,7 +538,7 @@ The same principle applies to explanations. A reviewer should see which facts ar
 | Generator-detector circularity | Independent simulator, controls, preserved negative findings | Approved review method not yet executed; conceptual realism unverified |
 | Test-threshold leakage | Validation-only thresholds | Deployment calibration unresolved |
 | Favorable seed selection | Recorded seed matrix and write-once artifacts | More replicated scenario seeds needed |
-| Missing denominators | Counts and pooled/scenario metrics stored; undefined recall/AP eligibility implemented | Clean-revision independent artifact `62f482ce6ff477b9` independently certified at commit `bbc59f8`; new protocol-scale development artifacts still needed |
+| Missing denominators | Counts and pooled/scenario metrics stored; undefined recall/AP eligibility implemented | Repaired artifact `b866ae2aa1b4b479` certified at commit `1942718`; protocol-scale development and validation remain needed |
 | Historical policy replay | Research bitemporal contract and golden replay tests implemented | Production temporal schema and correction-case matrix not frozen |
 | Citation overstatement | Provenance registry and claim ledger | Two references remain metadata-only |
 | External validity | Fictional data protect privacy | No organizational validation |
@@ -558,7 +552,7 @@ The development experiments do not establish the expected advantage. Instead, th
 
 The historical-policy direction remains the most actionable, but its earlier quantification must be read with care. A preserved older artifact recorded that deterministic validation flagged 39 of 72 constructed rare-legitimate histories; that figure comes from an earlier generator and is retained only as historical development evidence. A second external audit (30 October 2026) later found that the policy-transition generator used to produce the 2026-10-30 artifacts constructed genuinely contradictory histories (promotions before hire, insufficient service), so an intermediate "8 of 72" reading was INVALIDATED: those alerts were responses to real contradictions, not false positives on lawful histories. The generator was repaired so transition cases are lawful by construction; see `TDK_SECOND_EXTERNAL_AUDIT_2026-10-30.md` and the roadmap repairs (R1–R10). No current figure should be presented as a historical-policy false-positive rate on lawful histories until the repaired scenarios are approved and re-evaluated.
 
-After the repairs, a corrected development artifact (`274067cbb57f1dc2`) was generated from a clean committed revision and passed the repository artifact audit (status: verified, `holdout_accessed: false`). With lawful transition histories, deterministic rules flag 0 of 72 test-split rare-legitimate cases. The primary residual endpoint shows a recall difference of +0.0185, 95% CI [−0.028, +0.074], with sign-flip p=0.75. No policy-aware advantage was demonstrated in this exploratory development run; the interval does not establish equivalence or prove that no useful effect exists. The scenario definitions remain pending human approval, and the artifact predates the final duplicate candidate-universe repair, so its duplicate candidate-set metrics are not used. Remaining work includes blinded expert-realism review and an independently specified holdout matrix. After replicated checks, the dependencies, analysis, and source revision require a separate dated freeze approval. Only then may the locked holdout run once. The final conclusion must report whatever that holdout shows, including a negative or inconclusive result.
+After the repairs, artifact `b866ae2aa1b4b479` was generated from clean commit `1942718` and passed the strengthened repository audit with `holdout_accessed: false`. Deterministic rules flagged 0 of 72 test-split rare-legitimate cases. The primary residual recall difference was +0.0278, 95% CI [-0.0278, +0.1019], sign-flip p=0.6875. No policy-aware advantage was demonstrated in this exploratory development run; the interval neither proves equivalence nor excludes a potentially useful effect. Scenario definitions remain pending human approval, the temporal model is partial, and the experiment contains only 12 inspected scenario units. Remaining work includes blinded realism review, protocol-scale development and validation, and an independently specified holdout matrix. After those checks, dependencies, analysis, and source revision require a separate dated freeze approval. Only then may the locked holdout run once.
 
 Duplicate detection remains a useful secondary experiment, and evidence-rich explanation remains a product contribution. Neither substitutes for a valid central anomaly-detection experiment. The present paper therefore offers a reproducible research platform, an honest diagnosis of a failed comparison, and a concrete path to a stronger confirmatory study.
 
@@ -602,8 +596,8 @@ Duplicate detection remains a useful secondary experiment, and evidence-rich exp
 pip install -r requirements.txt -r requirements-research.txt
 python -m unittest discover tests
 python scripts/verify_tdk_citations.py --require-local-artifact
-python scripts/audit_tdk_protocol_artifact.py research_outputs/independent_development/independent_development_e342bd4acf39b06b
-python scripts/audit_tdk_protocol_artifact.py research_outputs/independent_development/independent_development_62f482ce6ff477b9
+python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_development/independent_development_e342bd4acf39b06b
+python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_development/independent_development_b866ae2aa1b4b479
 ```
 
 No holdout command is included. The holdout runner remains unavailable until the protocol is frozen and approved.

@@ -144,61 +144,61 @@ def generate_figures(repo: Path, assets: Path) -> None:
     ax.grid(axis="y", alpha=0.25)
     _save_figure(assets / "validation_counts.png")
 
-    metrics_path = repo / "research_outputs" / "independent_development" / "independent_development_e342bd4acf39b06b" / "scenario_metrics.csv"
-    metrics = pd.read_csv(metrics_path)
-    selected = metrics[(metrics["method"] == "rule_negative_isolation_forest") & (metrics["operating_point"] == "fixed_review_budget")]
-    scenario_col = "scenario_id" if "scenario_id" in selected.columns else "scenario"
-    pivot = selected.pivot_table(index=scenario_col, columns="representation", values="average_precision", aggfunc="first").sort_index()
-    positives = selected.groupby(scenario_col)["positive_count"].max() if "positive_count" in selected.columns else pd.Series(1, index=pivot.index)
-    fig, ax = plt.subplots(figsize=(10, 5.2))
-    positions = range(len(pivot))
-    ax.plot(positions, pivot.get("raw_matched"), marker="o", label="Raw", color="#333333")
-    ax.plot(positions, pivot.get("policy_matched"), marker="s", label="Policy-labelled", color="#16834F")
-    for i, scenario in enumerate(pivot.index):
-        if positives.get(scenario, 1) == 0:
-            ax.axvspan(i - 0.35, i + 0.35, color="#FDECEC", alpha=0.8)
-    ax.set_xticks(list(positions), [str(x).replace("ind-dev-", "") for x in pivot.index])
-    ax.set_xlabel("Independent development scenario")
-    ax.set_ylabel("Stored scenario average precision")
-    ax.set_ylim(-0.03, 1.05)
-    ax.legend(frameon=False)
+    paired_path = repo / "research_outputs" / "independent_development" / "independent_development_b866ae2aa1b4b479" / "paired_comparisons.csv"
+    paired = pd.read_csv(paired_path)
+    result = paired[(paired["method"] == "rule_negative_isolation_forest") & (paired["operating_point"] == "fixed_review_budget")].iloc[0]
+    fig, ax = plt.subplots(figsize=(9, 4.8))
+    mean = float(result["recall_delta_mean"])
+    low = float(result["recall_delta_ci95_low"])
+    high = float(result["recall_delta_ci95_high"])
+    ax.errorbar([0], [mean], yerr=[[mean - low], [high - mean]], fmt="o", color="#16834F", capsize=8, markersize=9)
+    ax.axhline(0, color="#333333", linewidth=1.2)
+    ax.set_xlim(-0.8, 0.8)
+    ax.set_ylim(-0.06, 0.13)
+    ax.set_xticks([0], ["Policy-aware minus raw IF"])
+    ax.set_ylabel("Scenario-level recall difference")
+    ax.set_title("Primary exploratory comparison at equal review capacity", fontweight="bold")
+    ax.text(0, -0.047, "Mean +0.0278; 95% CI [-0.0278, +0.1019]; p=0.6875", ha="center", fontsize=10)
     ax.grid(axis="y", alpha=0.25)
-    ax.text(0.01, -0.22, "Red bands mark scenarios with no residual positives; their stored AP=0 convention is disputed.", transform=ax.transAxes, fontsize=10)
     _save_figure(assets / "independent_ap.png")
 
-    fig, ax = plt.subplots(figsize=(9, 4.6))
-    feature_names = ["Service deficit", "Deficit ratio", "Unexplained short promotion"]
-    ax.bar(feature_names, [0, 0, 0], color="#16834F")
-    ax.set_ylim(0, 1)
-    ax.set_ylabel("Number of distinct positive values after filtering")
-    ax.text(1, 0.45, "All policy-specific residual features\nare constant zero", ha="center", va="center", fontsize=16, fontweight="bold", color="#B42318")
-    ax.grid(axis="y", alpha=0.2)
+    fig, ax = plt.subplots(figsize=(10, 4.6))
+    ax.axis("off")
+    stages = [
+        (0.03, "Historical design", "Rule filter consumed\npolicy signal", "FDECEC", "B42318"),
+        (0.37, "Audit finding", "Comparison was\nstructurally vacuous", "FFF4D6", "C58A00"),
+        (0.71, "Corrected design", "Invariant filter + equal\nresidual ML budget", LIGHT_GREEN, GREEN),
+    ]
+    for x0, title, body, color, edge in stages:
+        _diagram_box(ax, x0, 0.25, 0.26, 0.5, f"{title}\n\n{body}", color, edge)
+    for start, end in [((0.29, 0.5), (0.37, 0.5)), ((0.63, 0.5), (0.71, 0.5))]:
+        ax.annotate("", xy=end, xytext=start, xycoords=ax.transAxes, textcoords=ax.transAxes, arrowprops={"arrowstyle": "->", "lw": 1.4})
+    ax.text(0.5, 0.94, "Design failure preserved as audit evidence", transform=ax.transAxes, ha="center", fontsize=13, fontweight="bold")
     _save_figure(assets / "feature_collapse.png")
 
     fig, ax = plt.subplots(figsize=(9, 4.8))
-    labels = ["Grandfathered\npolicy", "Recognized prior\nservice", "Delayed bulk\nrecording"]
-    values = [19, 20, 0]
-    bars = ax.bar(labels, values, color=["#C58A00", "#C58A00", "#16834F"])
-    ax.set_ylim(0, 24)
-    ax.set_ylabel("False alerts among 24 nominal rare cases")
+    labels = ["Historical\n39/72", "Intermediate\n8/72", "Repaired\n0/72"]
+    values = [39, 8, 0]
+    colors = ["#B42318", "#C58A00", "#16834F"]
+    bars = ax.bar(labels, values, color=colors)
+    ax.set_ylim(0, 45)
+    ax.set_ylabel("Deterministic alerts among 72 labelled rare-legitimate cases")
     for bar, value in zip(bars, values):
-        ax.text(bar.get_x() + bar.get_width() / 2, value + 0.7, f"{value}/24", ha="center", fontsize=11, fontweight="bold")
+        ax.text(bar.get_x() + bar.get_width() / 2, value + 1, f"{value}/72", ha="center", fontsize=11, fontweight="bold")
+    ax.text(0.5, -0.22, "The first two interpretations were invalidated by audit; 0/72 is exploratory development evidence.", transform=ax.transAxes, ha="center", fontsize=10)
     ax.grid(axis="y", alpha=0.25)
     _save_figure(assets / "policy_alerts.png")
 
-    duplicate_path = repo / "research_outputs" / "ff34fffafa77" / "duplicate_metrics.csv"
-    duplicate = pd.read_csv(duplicate_path)
-    names = ["Exact", "Normalized exact", "Similarity 0.70"]
-    x = range(3)
-    fig, ax = plt.subplots(figsize=(9, 4.8))
-    ax.bar([i - 0.18 for i in x], duplicate["precision"], width=0.36, label="Precision", color="#16834F")
-    ax.bar([i + 0.18 for i in x], duplicate["recall"], width=0.36, label="Recall", color="#4C78A8")
-    ax.set_xticks(list(x), names)
-    ax.set_ylim(0, 1.08)
-    ax.set_ylabel("Metric value")
-    ax.legend(frameon=False)
-    ax.grid(axis="y", alpha=0.25)
-    ax.text(0.01, -0.20, "Single-seed development diagnostic; not a validated entity-resolution benchmark.", transform=ax.transAxes, fontsize=10)
+    fig, ax = plt.subplots(figsize=(10, 4.8))
+    ax.axis("off")
+    duplicate_stages = ["Partition-local\nrecord set", "Declared pair\nuniverse", "Blocking and\nsimilarity", "Predicted pairs", "TP/FP/FN/TN\nfrom set membership"]
+    for i, label in enumerate(duplicate_stages):
+        x0 = 0.02 + i * 0.195
+        _diagram_box(ax, x0, 0.35, 0.16, 0.3, label)
+        if i < len(duplicate_stages) - 1:
+            ax.annotate("", xy=(x0 + 0.19, 0.5), xytext=(x0 + 0.16, 0.5), xycoords=ax.transAxes, textcoords=ax.transAxes, arrowprops={"arrowstyle": "->", "lw": 1.2})
+    ax.text(0.5, 0.88, "Duplicate-detection evaluation contract", transform=ax.transAxes, ha="center", fontsize=13, fontweight="bold")
+    ax.text(0.5, 0.13, "Current repair prevents true negatives from being inferred by capping an incorrectly defined universe.", transform=ax.transAxes, ha="center", fontsize=10)
     _save_figure(assets / "duplicate_results.png")
 
 
@@ -542,12 +542,13 @@ def build_decision_sheet(output: Path) -> None:
     identity.paragraph_format.space_after = Pt(6)
 
     rows = [
-        ("1. Primary estimand", "Redesign the residual task, or make the end-to-end rules-plus-ML queue primary.", "Recommendation: redesign; preserve the current run as development evidence."),
-        ("2. Primary endpoint", "Choose scenario-level AP only for predeclared positive-eligible scenarios, or use fixed-capacity outcomes.", "Recommendation: predeclare eligibility and never remove scenarios after inspection."),
-        ("3. Review capacity", "Report all deterministic findings, then allocate the same fixed ML budget among rule-negative histories.", "Recommendation: keep rule evidence and isolate the ML comparison."),
-        ("4. Historical policy", "Store policy version, jurisdiction, effective time, recorded time, recognized service, and correction provenance.", "Recommendation: approve the complete temporal evidence contract."),
-        ("5. Expert realism review", "Use two independent blinded reviewers with recorded reasons, disagreement, and adjudication.", "Recommendation: approve only after reviewer qualifications and sampling are fixed."),
-        ("6. Holdout design", "Freeze a conceptually independent matrix with repeated seeds and per-record causal truth.", "Recommendation: do not reuse the inspected development generator as confirmatory evidence."),
+        ("1. Scenario proposals", "Approve, reject, or modify Proposals 1 and 3-6: lawful late corrections, transitions, eligibility, and matrix composition.", "Recommendation: approve the repaired semantics only after checking the concrete examples."),
+        ("2. Grandfathering", "Choose whether entitlement follows employee, event, policy epoch, or an explicit evidence record.", "Recommendation: require explicit entitlement evidence; do not infer it from labels."),
+        ("3. Temporal views", "Define knowledge-time and review-time views for late facts and corrections.", "Recommendation: freeze both views before generating protocol-scale evidence."),
+        ("4. Expert review", "Name two blinded reviewers and fix sample, questions, agreement statistic, and adjudication rule.", "Recommendation: HR-policy plus information-systems expertise."),
+        ("5. Experiment scale", "Approve repeated scenario seeds, population cells, and zero-positive handling for development and validation.", "Recommendation: scenario seeds remain the statistical units."),
+        ("6. Multiplicity", "Confirm the secondary comparison family and Holm adjustment before the next evaluation.", "Recommendation: keep recall primary and AP secondary."),
+        ("7. Freeze and holdout", "After all above items and artifacts pass audit, grant or withhold a dated protocol freeze and one-time holdout authorization.", "Recommendation: withhold authorization until every prerequisite is signed."),
     ]
     table = document.add_table(rows=1, cols=2)
     table.alignment = WD_TABLE_ALIGNMENT.CENTER

@@ -161,7 +161,7 @@ dedicated hosting population should be added.
 | 5 `late_correction` eligibility precondition | 2026-10-30 | _pending_ | — |
 | 6 matrix skips unlawful `policy_transition` pairings | 2026-10-30 | _pending_ | — |
 
-## Pending independent verification
+## Superseded exploratory verification note
 
 The exploratory readings from artifact `db1a15646d9e76ba` were re-derived through
 an independent code path (`scripts/reproduce_db1a15646d9e76ba_readings.py`) by the
@@ -174,6 +174,8 @@ separate read-only auditor (human or distinct agent) must still verify:
 - scenario membership of the 8 flagged records;
 - that all 8 flags are `policy_transition` cases and none are `late_correction`.
 
-Corrected denominator statement for all documents: **8 of 72 test-split
-rare-legitimate records (11.1%)**; scenario-level, **8 of 12 policy-transition
-test cases (66.7%)**; **0 of 60** other-pattern test cases.
+This note is retained as audit history only. The second audit invalidated the
+underlying rare-legitimate construction, so these numbers must not be used as a
+current false-alert result. The repaired development artifact
+`b866ae2aa1b4b479` records **0 of 72** deterministic alerts among test-split
+rare-legitimate histories. Its scenario definitions remain pending approval.

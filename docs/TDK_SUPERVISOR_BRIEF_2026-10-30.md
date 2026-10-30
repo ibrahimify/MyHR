@@ -4,89 +4,47 @@ Review date: 30 October 2026
 
 Research title: **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**
 
-Status: **Supervisor review draft. Development evidence only. Draft protocol. Final holdout locked.**
+Status: **Supervisor-review draft. Development evidence only. Draft protocol. Final holdout locked.**
 
 ## Five-Minute Summary
 
-MyHR is an offline employee-management and decision-support application with formal promotion, commendation, sanction, annual-increment, performance-review, reporting, and audit workflows. The TDK research asks whether adding explicit progression-policy context to anomaly-detection features reduces unnecessary alerts on legitimate exceptional histories without hiding genuine administrative errors.
+MyHR is an offline employee-management and decision-support application. The TDK study asks whether explicit progression-policy context improves anomaly ranking at the same human review capacity, without increasing false alerts on legitimate exceptional histories.
 
-The research infrastructure is substantially implemented and tested: deterministic validation, raw and policy-aware features, IQR and z-score baselines, Isolation Forest, validation-only thresholds, equal-review-budget comparisons, wrong-policy and shuffled-policy controls, feature ablations, synthetic and independent scenario generators, duplicate-candidate detection, write-once artifacts, checksum manifests, citation provenance, and independent audits.
+The repository implements deterministic validation, statistical baselines, raw and policy-aware Isolation Forest representations, wrong- and shuffled-policy controls, feature ablations, synthetic generators, duplicate-candidate detection, write-once artifacts, checksum auditing, and paired scenario-level analysis. An external audit exposed invalid scenario semantics and an incorrect duplicate-pair universe. Those defects were repaired with regression tests before generating the current artifact.
 
-The current experiment does **not** establish that policy-aware Isolation Forest is better. This is not being hidden or repaired through favorable tuning. The independent review found that the deterministic filter removes every case with a positive policy deficit, leaving all three policy-specific residual features constant zero. The residual comparison therefore has no policy signal and cannot test the central hypothesis.
+The corrected exploratory artifact is `b866ae2aa1b4b479`, generated from clean commit `1942718`. Its audit status is verified and `holdout_accessed` is `false`. Across 12 scenarios it contains 864 test histories, 108 anomalies, and 72 rare-legitimate histories. Deterministic checks produced 63 TP, 0 FP, and 45 FN, with 0/72 rare-legitimate histories flagged.
 
-The strongest current engineering finding is historical-policy handling. Deterministic current-policy replay flagged `39/72` constructed rare-legitimate histories. Source regeneration associates the flagged histories with realized policy transitions, but the immutable artifact does not preserve that per-record mechanism. The directly auditable claim remains `39/72`; the result demonstrates a specification failure, not real-world prevalence.
+At identical additional review capacity, the scenario-level recall difference for policy-aware minus raw Isolation Forest was +0.0278, 95% CI [-0.0278, +0.1019], paired sign-flip p=0.6875. **No policy-aware advantage was demonstrated in this exploratory run.** The interval does not establish equivalence. The secondary AP difference was +0.0738 with unadjusted p=0.0122, but the all-comparison Holm-adjusted p was 1.0; it is not confirmatory.
 
-## Research Questions
+## What The Audit Changed
 
-1. Does explicit policy context improve anomaly ranking beyond raw administrative features and deterministic checks?
-2. Does any advantage remain across populations, anomaly mechanisms, policies, prevalence levels, and seeds?
-3. At equal review capacity, can policy context reduce false alerts on legitimate exceptional histories without missing genuine errors or moving false alerts elsewhere?
+- Historical `39/72` and intermediate `8/72` rare-legitimate interpretations were invalidated because their generators created genuine contradictions. They remain audit history, not evidence.
+- Duplicate metrics now use explicit pair-set membership. Exact methods use the complete partition-local pair universe; similarity evaluation uses its declared blocking universe. True negatives are no longer repaired by capping a wrong count.
+- Correction histories reject duplicate identifiers, branched corrections, cross-type corrections, self-corrections, and cycles.
+- Provenance covers the effective-state resolver, and runtime measurement no longer resets a caller-owned memory trace.
+- Duplicate source and variant records share the same latent-person history and satisfy an adult-at-hire plausibility check.
 
-## Implemented Work
+## Scientific Boundaries
 
-- Formal progression arithmetic shared with the application.
-- Policy-engine parity and golden-history tests.
-- Deterministic checks with explainable findings.
-- Raw, policy-aware, wrong-policy, shuffled-policy, and ablation representations.
-- IQR, z-score, and Isolation Forest comparisons.
-- Validation-selected thresholds and fixed-capacity evaluation.
-- Original and independently implemented synthetic scenario families.
-- Paired scenario analysis, intervals, sign-flip tests, workload measures, and sensitivity analysis.
-- Separate duplicate-record candidate experiment.
-- Write-once artifacts containing revision, dependencies, seeds, predictions, metrics, and checksums.
-- Independent result and citation audits.
-- GitHub Actions regression CI and secret scanning.
+- The 12 scenarios are inspected development units and their definitions remain pending approval.
+- The temporal model is partial. Policy identity and future-effective exclusion are implemented; employee-specific grandfathering and explicit knowledge-time versus review-time views are not frozen.
+- All data are synthetic. Expert realism review has not begun.
+- Duplicate detection is a separate task and current repaired code does not yet provide a protocol-scale benchmark result.
+- No holdout has been generated, inspected, scored, or unlocked.
+- No anomaly score may make a personnel decision automatically.
 
-## Verified Development Findings
+## Human Decisions Required
 
-| Finding | Verified evidence | Correct interpretation |
-| --- | --- | --- |
-| Validation rules found `351/360` generated anomalies | 30-scenario validation artifact | Strong generator interaction; not general real-world recall |
-| Independent residual set contains 759 histories and 42 anomalies | Stored predictions and independent audit | Correct denominator for residual comparison |
-| Raw IF: 81 alerts, 26 TP, 55 FP, 16 FN | Stored predictions | Development diagnostic only |
-| Policy-labelled IF: 81 alerts, 25 TP, 56 FP, 17 FN | Stored predictions | Development diagnostic only |
-| AP `0.3616` versus `0.3621` | Independently recomputed | Scientifically vacuous because policy features are constant |
-| Six of twelve scenarios have no residual positives | Scenario metrics | Approved future rule marks recall and AP undefined and excludes those scenarios from paired inference for those metrics; implementation and freeze remain pending |
-| Deterministic checks flagged `39/72` rare-legitimate histories | Stored predictions | Constructed historical-policy failure, not prevalence |
+The attached decision sheet asks for approval, rejection, or modification of repaired scenario proposals, grandfathering semantics, temporal views, expert-review design, protocol-scale matrix, multiplicity family, and eventual freeze conditions. Approval of prior high-level methodology does not automatically approve these concrete definitions.
 
-## What Must Not Be Concluded
-
-- Policy-aware Isolation Forest does not currently outperform, tie, or underperform raw Isolation Forest in a scientifically interpretable comparison.
-- The current AP difference is not a meaningful null result.
-- The synthetic rates do not estimate organizational prevalence.
-- The preliminary duplicate experiment is not a validated entity-resolution benchmark.
-- No holdout or confirmatory result exists.
-- No anomaly score may trigger an automatic personnel decision or record merge.
-
-## Decisions Recorded
-
-The supervisor answers relayed on 29 October 2026 record these choices:
-
-1. primary estimand and residual redesign;
-2. primary endpoint and zero-positive scenarios;
-3. deterministic-rule and equal-ML review capacity;
-4. effective-time and recorded-time historical policy model;
-5. blinded expert-realism review;
-6. conceptually independent holdout design.
-
-The approved choices are documented in `TDK_SUPERVISOR_DECISIONS_2026-10-29.md`. Implementation, protocol freeze, and holdout access remain pending and cannot be approved by an AI agent.
-
-## Paper Status
-
-An English supervisor-review manuscript has been prepared using the official 30-35-page main-text requirements. Introduction, related work, formal model, methods, implementation, development results, limitations, conclusion, references, and appendices are drafted. The methodology is approved for implementation, but confirmatory wording and any final result remain blocked until the implementation is verified and the protocol is separately frozen.
-
-## Verification
+## Reproduce The Current Evidence
 
 ```powershell
 python -m unittest discover tests
 python scripts/verify_tdk_citations.py --require-local-artifact
-python scripts/audit_tdk_protocol_artifact.py research_outputs/protocol_v2_verified/validation_c5878ca7b927ccd2
-python scripts/audit_tdk_protocol_artifact.py research_outputs/independent_development/independent_development_e342bd4acf39b06b
+python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_development/independent_development_b866ae2aa1b4b479
 ```
 
-Do not run a holdout command. The implementation intentionally refuses that run purpose.
+## Recommended Supervisor Outcome
 
-## Next Review Outcome
-
-Implement only the six recorded methodology decisions, rerun development and validation, and present the verified redesign for a separate protocol-freeze decision. Execute the final holdout exactly once only after that dated freeze approval. Until then, retain the current work as development evidence and do not claim confirmatory superiority.
-
+Review the decision sheet and concrete scenario examples. Do not authorize the final holdout yet. After pending semantics, expert review, protocol-scale development and validation, dependencies, analysis, and source revision are frozen and independently audited, the holdout may be authorized for one run only.

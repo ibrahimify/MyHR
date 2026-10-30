@@ -2,7 +2,7 @@
 
 Research title: **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**
 
-Status date: 2026-10-18
+Status date: 2026-10-30
 
 Status: development research only. The experiment protocol is draft, all existing results are development or validation diagnostics, the research pull request is unmerged, and the final holdout remains undefined and locked.
 
@@ -12,9 +12,9 @@ MyHR is a standalone PySide6, SQLite, and SQLAlchemy employee-management applica
 
 The implementation now includes formal policy calculations, deterministic validation, synthetic generators, statistical baselines, raw and policy-aware Isolation Forest representations, duplicate-record detection, reproducible artifacts, checksums, statistical comparisons, literature tooling, and independent artifact auditing.
 
-The main scientific result so far is a limitation, not a victory claim. In the preserved 2026-10-17 independent rules-first artifact, deterministic filtering makes all three policy-specific residual features constant zero. The remaining raw-versus-policy-aware AP comparison therefore cannot test the central hypothesis. The values `0.3621` and `0.3616` are arithmetically reproducible but scientifically vacuous as evidence about policy context. The corrected implementation now uses invariant-only filtering and a family-wide feature-variation guard, but no clean-revision development or validation artifact has yet replaced that historical evidence.
+The first independent rules-first artifact exposed a design failure: deterministic filtering consumed the signal intended for ML, so its AP comparison was scientifically vacuous. That failure is preserved as audit history. The corrected implementation uses invariant-only filtering, equal additional review budgets, and feature-variation guards. Artifact `b866ae2aa1b4b479`, generated from clean commit `1942718`, passed the strengthened audit. Its primary recall difference was +0.0278, 95% CI [-0.0278, +0.1019], paired sign-flip p=0.6875. No advantage was demonstrated in this exploratory run, and the interval does not establish equivalence.
 
-A second important finding is actionable: deterministic current-policy checks flagged 39 of 72 broadly labelled rare-legitimate histories. Source regeneration found that all 39 realised policy-transition histories were flagged, but the old stored artifact cannot prove that per-record mechanism attribution. This motivates a historical, bitemporal policy model while also showing why provenance must be stored in future artifacts.
+The second audit invalidated the historical `39/72` and intermediate `8/72` rare-legitimate interpretations because their generators produced genuine contradictions. The repaired artifact records 0/72 deterministic alerts among test-split rare-legitimate histories. This is development evidence under pending scenario definitions, not a real-world rate. The audit still exposed the need to define employee-specific grandfathering and separate knowledge-time from review-time explicitly.
 
 ## 2. Problem And Motivation
 
@@ -172,38 +172,39 @@ Across 30 validation scenarios and 3,600 test records, deterministic rules found
 
 The rules-plus-ML cascades both raised 408 alerts. Raw IF produced `357 TP, 51 FP, 3 FN`; policy-aware IF produced `358 TP, 50 FP, 2 FN`. The paired AP difference was small and not persuasive. After removing deterministic findings, only 9 anomalies remained among 3,249 records. Both residual models raised 340 alerts and 331 false positives. Policy-aware features reduced rare-legitimate alerts from `59/200` to `27/200`, but moved the same 32 false alerts to ordinary-clean records. Total precision and workload did not improve.
 
-### 8.3 Independent development stress test
+### 8.3 Historical independent stress test
 
-Twelve independent development scenarios contain 864 test histories, 108 labelled anomalies, and 72 broadly labelled rare-legitimate histories. Deterministic checks raised 105 alerts, with 66 true positives and 39 false positives. The directly reproducible rare-legitimate rate is `39/72 = 54.17%`.
+The 2026-10-17 artifact contained 864 test histories and exposed constant policy features after filtering. Its `39/72` rare-legitimate interpretation was later invalidated because those generated histories contained genuine contradictions.
 
-After deterministic filtering, 759 histories and 42 anomalies remained. At equal budget, raw IF raised 81 alerts with `26 TP, 55 FP, 16 FN`; policy-aware IF raised 81 alerts with `25 TP, 56 FP, 17 FN`. Scenario-mean AP was `0.3616` and `0.3621`, respectively, with paired difference `+0.0005` and stored interval `[-0.1173, 0.1079]`.
+The old AP values `0.3616` and `0.3621` are reproducible arithmetic but cannot answer the research question. They are retained only to document why the experimental architecture was repaired.
 
-These AP values must not be interpreted. All policy-specific residual features are zero, six scenarios have no residual positives, and the two models do not receive a meaningful raw-versus-policy comparison. The independent simulator remains valuable because it exposed this failure and the historical-policy problem.
+### 8.4 Current repaired exploratory run
+
+Artifact `b866ae2aa1b4b479` contains 12 scenarios, 864 test histories, 108 anomalies, and 72 rare-legitimate histories. Deterministic checks produced 63 TP, 0 FP, and 45 FN, with 0/72 rare-legitimate alerts. At equal additional review capacity, policy-aware minus raw Isolation Forest recall was +0.0278, 95% CI [-0.0278, +0.1019], p=0.6875. The secondary AP difference was +0.0738 with unadjusted p=0.0122, but its all-comparison Holm-adjusted p was 1.0. These inspected development results are neither confirmatory nor evidence of equivalence.
 
 ## 9. What Is Verified, Inferred, Or Pending
 
 ### Verified from stored artifacts and code
 
 - Artifact checksums and recorded source hashes pass the auditor.
-- The independent artifact contains 864 test histories, 108 anomalies, 72 rare-legitimate histories, and 759 rule-negative histories with 42 residual anomalies.
-- Stored residual AP values and paired statistics can be recomputed.
-- The policy-specific residual features are constant zero.
-- Deterministic rules flag 39 of 72 rare-legitimate histories in the stored artifact.
+- The current artifact contains 864 test histories, 108 anomalies, and 72 rare-legitimate histories.
+- Stored confusion counts, paired statistics, intervals, and multiplicity adjustments can be recomputed.
+- Deterministic rules flag 0 of 72 rare-legitimate histories in the current artifact.
+- The explicit duplicate-pair universe and effective-state resolver have semantic regression tests.
 - No holdout has been generated or accessed.
 
 ### Qualified inference
 
-- Deterministic source regeneration finds 39 realised transition histories and flags all 39. The original artifact does not preserve enough per-record mechanism evidence to reproduce this statement without regeneration.
-- Historical-policy modelling is strongly motivated. A research-only bitemporal schema is implemented and tested; production-database migration and final HR semantics remain unfrozen.
+- Historical and intermediate transition readings are invalidated audit history, not current evidence.
+- A research-only temporal schema is partly implemented; employee-specific grandfathering and explicit knowledge-time/review-time semantics remain unfrozen.
 
 ### Pending human decisions
 
-- Primary hypothesis and residual design.
-- Primary endpoint and handling of zero-positive scenarios.
-- Review-capacity rule.
-- Historical policy and evidence schema.
-- Expert-review protocol.
-- Holdout scenario design and protocol freeze.
+- Scenario Proposals 1 and 3-6.
+- Employee-specific grandfathering semantics.
+- Knowledge-time and review-time views.
+- Expert reviewers, sample, agreement statistic, and adjudication rule.
+- Protocol-scale matrix, multiplicity family, protocol freeze, and holdout authorization.
 
 See `TDK_SUPERVISOR_DECISION_SHEET.md`. Nothing there is approved until a human records a decision.
 
@@ -211,9 +212,8 @@ See `TDK_SUPERVISOR_DECISION_SHEET.md`. Nothing there is approved until a human 
 
 - All evaluation data are synthetic; external validity is unproven.
 - Original generator and detector share policy concepts, creating circularity risk.
-- The independent residual experiment erased its policy signal.
-- Current-policy replay cannot faithfully reconstruct historical policy decisions.
-- Six of twelve scenarios have undefined residual AP under a conventional interpretation.
+- The historical residual experiment erased its policy signal; the current run is still small and inspected.
+- Temporal replay is partial and cannot yet represent all grandfathering and late-knowledge cases.
 - Existing independent scenarios have one realization per population-mechanism cell and weak inferential power.
 - Threshold calibration for deployment is unresolved.
 - Cost parameters are assumptions.
@@ -231,26 +231,24 @@ See `TDK_SUPERVISOR_DECISION_SHEET.md`. Nothing there is approved until a human 
 - **Locked holdout:** inspected outputs cannot serve as final confirmation.
 - **Preserve unfavorable results:** scientific value depends on diagnosing failure, not manufacturing a win.
 
-These are current engineering and methodological boundaries. The specific redesign options remain pending human approval.
+These are current engineering and methodological boundaries. Concrete scenario and temporal semantics remain pending human approval.
 
 ## 12. Unresolved Issues And Next Steps
 
-1. Obtain human answers on `TDK_SUPERVISOR_DECISION_SHEET.md`.
-2. Preserve per-record realised mechanism and causal evidence in future development artifacts.
-3. After approval, implement a historical policy model with effective time, recorded time, policy version, recognised service, and correction provenance.
-4. Redesign the residual task so policy-aware features vary after deterministic filtering without encoding the answer by construction.
-5. Define primary-eligible scenarios and zero-positive handling before running them.
-6. Conduct the blinded expert realism review without exposing model scores or generator labels.
-7. Freeze exact dependencies, hypotheses, endpoints, scenario matrix, seeds, and analysis.
-8. Only then generate and evaluate the final holdout once.
-9. Keep duplicate detection and an optional explanation usability study as secondary work.
+1. Obtain human answers on the updated `TDK_SUPERVISOR_DECISION_SHEET.md`.
+2. Implement only approved grandfathering and temporal-view semantics.
+3. Conduct blinded expert realism review without exposing model scores or generator labels.
+4. Run and audit protocol-scale development and validation after their matrix is approved.
+5. Freeze dependencies, hypotheses, endpoints, scenario matrix, seeds, and analysis at a dated revision.
+6. Only then authorize and evaluate the final holdout once.
+7. Keep duplicate detection and explanation usability separate from the primary progression experiment.
 
 ## 13. Reproduction And Verification
 
 ```bash
 pip install -r requirements.txt -r requirements-research.txt
 python -m unittest discover tests
-python scripts/audit_tdk_protocol_artifact.py research_outputs/independent_development/independent_development_e342bd4acf39b06b
+python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_development/independent_development_b866ae2aa1b4b479
 ```
 
 Do not run any holdout command. The exact artifact location may be local or intentionally archived outside Git; consult `TDK_RESEARCH_VERIFICATION.md` before interpreting a missing path.

@@ -33,19 +33,19 @@ class TdkSupervisorPackageTests(unittest.TestCase):
 
         required_statements = (
             "No policy-aware advantage was demonstrated in this exploratory development run",
-            "274067cbb57f1dc2",
+            "b866ae2aa1b4b479",
             "does not establish equivalence",
             "The final holdout has not been generated or accessed.",
         )
         for statement in required_statements:
             self.assertIn(statement, text)
-        self.assertIn("Twenty-four of the thirty rule-negative validation scenarios", text)
-        self.assertIn("20 duplicate-labelled records and 19 ground-truth duplicate pairs", text)
+        self.assertIn("0 of 72", text)
+        self.assertIn("explicit evaluation universe", text)
         self.assertIn("this is a design inference applied to the present experiment", text)
         self.assertNotRegex(text, r"(?i)policy-aware (?:isolation forest )?(?:outperforms|is superior)")
         self.assertNotRegex(text, r"(?i)run[_ -]purpose\s*[=:]\s*holdout")
 
-    def test_decision_sheet_is_one_landscape_page_source_with_six_decisions(self):
+    def test_decision_sheet_is_one_landscape_page_source_with_pending_decisions(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "decision.docx"
             build_decision_sheet(output)
@@ -54,12 +54,12 @@ class TdkSupervisorPackageTests(unittest.TestCase):
         section = document.sections[0]
         self.assertGreater(section.page_width, section.page_height)
         self.assertEqual(1, len(document.tables))
-        self.assertEqual(7, len(document.tables[0].rows))
+        self.assertEqual(8, len(document.tables[0].rows))
         all_text = "\n".join(
             cell.text for row in document.tables[0].rows for cell in row.cells
         )
-        self.assertIn("Primary estimand", all_text)
-        self.assertIn("Holdout design", all_text)
+        self.assertIn("Scenario proposals", all_text)
+        self.assertIn("Freeze and holdout", all_text)
         self.assertIn("[ ] Approve", all_text)
 
 

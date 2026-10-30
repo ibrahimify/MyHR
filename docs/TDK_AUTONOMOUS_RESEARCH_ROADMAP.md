@@ -1,5 +1,15 @@
 # TDK Autonomous Research Roadmap
 
+## Codex Takeover Checkpoint - 2026-10-30
+
+- Commit `1942718` completes the second-audit correctness repairs, including explicit duplicate-pair universes, correction-graph validation, complete provenance, nested memory-measurement safety, and source/variant history consistency.
+- Certified development artifact `b866ae2aa1b4b479` was generated from the clean revision and passed the strengthened audit. It contains 12 scenarios, 864 test histories, 108 anomalies, and 72 rare-legitimate histories; `holdout_accessed` is `false`.
+- Deterministic checks produced 63 TP, 0 FP, and 45 FN, with 0/72 rare-legitimate histories flagged.
+- At equal additional review capacity, policy-aware minus raw Isolation Forest recall was +0.0278, 95% CI [-0.0278, +0.1019], paired sign-flip p=0.6875. No advantage was demonstrated; this does not establish equivalence.
+- The secondary AP difference was +0.0738 with unadjusted p=0.0122, but its all-comparison Holm-adjusted p was 1.0. It is not a confirmatory finding.
+- R7 remains partial: policy-version identity and future-effective exclusion are implemented; employee-specific grandfathering and explicit knowledge-time versus review-time views remain human-gated design work.
+- Proposals 1 and 3-6 remain pending human approval. Expert review, protocol freeze, holdout authorization, and PR merge remain blocked on humans.
+
 ## Second External Audit — Invalidations And R1/R6 Repairs - 2026-10-30
 
 A second independent repository audit (imported verbatim to `docs/TDK_SECOND_EXTERNAL_AUDIT_2026-10-30.md`, reviewed revision `4ee488b`) found serious ground-truth defects that the 212 green tests missed because those tests checked metadata, not meaning. Kiro independently reproduced the confirmed findings before acting. This entry supersedes the scientific interpretations below where they conflict.

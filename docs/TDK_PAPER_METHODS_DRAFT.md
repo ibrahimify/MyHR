@@ -28,11 +28,11 @@ Deterministic checks identify explicit date contradictions, duplicate event refe
 
 Raw and policy-aware representations are paired within each scenario. Wrong-policy, shuffled-policy, and single-feature ablations are retained even when unfavorable. Operational comparisons use equal nominal review capacity, while deterministic findings are currently retained above that capacity floor.
 
-## Critical Development Limitation
+## Historical Failure And Corrected Development Run
 
-The stored rule-negative experiment first removes all histories flagged by the policy validator. That same validator removes every positive service-deficit history, leaving all three policy-specific matched features constant at zero. Consequently, the saved policy-aware residual model has no varying policy-specific signal. Its reported AP difference cannot be interpreted as evidence for or against incremental policy context.
+An early rule-negative experiment removed every positive service-deficit history, leaving all three policy-specific matched features constant at zero. Its AP difference cannot be interpreted as evidence for or against incremental policy context. This failure is preserved as a design diagnostic; it is not the current result.
 
-Six of twelve historical independent scenarios also had no residual positives, and the old implementation stored AP as zero. The corrected code retains zero-positive scenarios and their denominators, marks recall and AP undefined, and excludes only those undefined metric values from paired inference. A clean-revision independent development artifact (`62f482ce6ff477b9`, commit `bbc59f8`) has been generated and independently audited: 12 scenarios, 864 test histories, 108 anomalies, primary recall delta mean +0.037, 95% CI [−0.037, +0.111], sign-flip p=0.516. This confirms the corrected pipeline is executable; new protocol-scale development and validation artifacts are still required before protocol freeze.
+The corrected code retains zero-positive scenarios and their denominators, marks recall and AP undefined when appropriate, and excludes only undefined values from metric-specific paired inference. Artifact `b866ae2aa1b4b479`, generated from clean commit `1942718`, passed the strengthened audit: 12 scenarios, 864 test histories, 108 anomalies, 72 rare-legitimate histories, and `holdout_accessed: false`. At equal additional review capacity, the primary scenario-level recall difference for policy-aware minus raw Isolation Forest was +0.0278, 95% bootstrap interval [-0.0278, +0.1019], paired sign-flip p=0.6875. No advantage was demonstrated in this exploratory development run; the interval does not establish equivalence. New protocol-scale development and validation artifacts are still required before protocol freeze.
 
 ## Development Evaluation
 
@@ -58,7 +58,7 @@ Future independent development artifacts also write normalized truth, administra
 | Independent generator boundary | `src/research/independent_scenarios.py`, `tests/test_independent_scenarios.py` |
 | Stored model and metric implementation | `src/services/anomaly_detection/protocol_evaluation.py` |
 | Independent development run | `research_outputs/independent_development/independent_development_e342bd4acf39b06b/metadata.json` |
-| Clean-revision independent development run | `research_outputs/independent_development/independent_development_62f482ce6ff477b9/metadata.json` (status: verified, commit `bbc59f8`) |
+| Current repaired independent development run | `research_outputs/independent_development/independent_development_b866ae2aa1b4b479/metadata.json` (status: verified, commit `1942718`) |
 | Per-record scores and denominators | Same artifact: `record_predictions.csv`, `scenario_metrics.csv` |
 | Paired development summaries | Same artifact: `paired_comparisons.csv` |
 | Integrity and source hashes | Same artifact: `manifest.json`; adjacent `.audit.json` |
