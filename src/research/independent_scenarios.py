@@ -603,13 +603,17 @@ def _apply_rare_case(
             # The policy_id must reflect the policy applicable at that (wrong)
             # date, exactly as a real mis-filed record would have been stamped.
             erroneous_date = _add_months(original.effective_date, -12)
+            # The mis-filed promotion was approved at the time (the error was
+            # in the recorded date, not the approval). The correction later
+            # supersedes it. Approval status stays within the audited domain
+            # {approved, bypassed}; the correction_of link marks it superseded.
             erroneous = IndependentEvent(
                 **{**original.__dict__,
                    "event_id": f"ERR-{original.event_id}",
                    "effective_date": erroneous_date,
                    "recorded_date": erroneous_date + timedelta(days=3),
                    "policy_id": _policy_id_for_date(erroneous_date),
-                   "approval_status": "pending_correction",
+                   "approval_status": "approved",
                    }
             )
             # Correction event supersedes the erroneous one
