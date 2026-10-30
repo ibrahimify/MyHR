@@ -8,6 +8,11 @@ from hashlib import sha256
 from random import Random
 
 
+_MIN_GENERATED_HIRE_AGE = 18
+# Keep the old 32-value RNG range width so unrelated generation does not drift.
+_MAX_GENERATED_HIRE_AGE = 49
+
+
 class DatasetSplit(str, Enum):
     TRAIN = "train"
     VALIDATION = "validation"
@@ -471,6 +476,15 @@ def generate_synthetic_dataset(config: ExperimentConfig) -> SyntheticDataset:
         for kind_idx, kind in enumerate(hard_nonduplicate_kinds):
             anchor = pool[kind_idx * 2]
             target_record = pool[kind_idx * 2 + 1]
+            if (
+                kind is HardNonduplicateKind.SHARED_BIRTHDAY
+                and target_record.identity.date_of_birth
+                < anchor.identity.date_of_birth
+            ):
+                # Copy the older person's DOB onto the younger person. Because
+                # both original DOB/hire pairs are plausible, moving the target
+                # DOB earlier cannot make its age at hire implausibly young.
+                anchor, target_record = target_record, anchor
             modified = _apply_hard_nonduplicate(target_record, kind, anchor)
             for list_idx, r in enumerate(records):
                 if r.identity.employee_id == target_record.identity.employee_id:
@@ -694,7 +708,7 @@ def _base_record(index: int, split: DatasetSplit, rng: Random) -> WorkforceHisto
         identity=EmployeeIdentity(
             employee_id=f"EMP-{employee_number:04d}",
             full_name=full_name,
-            date_of_birth=_safe_date(rng.randint(1970, 2001), rng.randint(1, 12), rng.randint(1, 28)),
+            date_of_birth=_birth_date_for_hire(hire_date, rng),
             national_id=f"NID-{employee_number:06d}",
             email=f"{first_name.lower()}.{last_name.lower()}{employee_number}@synthetic.myhr",
         ),
@@ -1074,6 +1088,21 @@ def _dataclass_with_dates(instance: object) -> dict[str, object]:
 
 def _safe_date(year: int, month: int, day: int) -> date:
     return date(year, max(1, min(month, 12)), max(1, min(day, 28)))
+
+
+def _birth_date_for_hire(hire_date: date, rng: Random) -> date:
+    """Generate a fictional DOB whose realized age is tied to hire date."""
+
+    age_at_hire = rng.randint(
+        _MIN_GENERATED_HIRE_AGE,
+        _MAX_GENERATED_HIRE_AGE,
+    )
+    month = rng.randint(1, 12)
+    day = rng.randint(1, 28)
+    birth_year = hire_date.year - age_at_hire
+    if (month, day) > (hire_date.month, hire_date.day):
+        birth_year -= 1
+    return date(birth_year, month, day)
 
 
 def _shorten_name(full_name: str) -> str:

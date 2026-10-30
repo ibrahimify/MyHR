@@ -15,6 +15,9 @@ from random import Random
 
 
 REFERENCE_DATE = date(2026, 12, 31)
+_MIN_GENERATED_HIRE_AGE = 18
+# Keep the old 37-value RNG range width so unrelated generation does not drift.
+_MAX_GENERATED_HIRE_AGE = 54
 
 
 class IndependentSplit(str, Enum):
@@ -541,7 +544,7 @@ def _base_employee(
         current_level=current_level,
         department=("Operations", "Engineering", "Finance")[index % 3],
         role="Specialist" if track is IndependentTrack.PROGRESSION else "Support",
-        date_of_birth=date(rng.randint(1965, 2001), rng.randint(1, 12), rng.randint(1, 28)),
+        date_of_birth=_birth_date_for_hire(hire_date, rng),
         hire_date=hire_date,
         events=tuple(sorted(events, key=lambda item: (item.effective_date, item.event_id))),
     )
@@ -819,3 +822,23 @@ def _add_months(value: date, months: int) -> date:
     year = value.year + month_index // 12
     month = month_index % 12 + 1
     return date(year, month, min(value.day, 28))
+
+
+def _birth_date_for_hire(hire_date: date, rng: Random) -> date:
+    """Generate DOB and hire date as one plausible pair.
+
+    The sampled age is a realism constraint for fictional data, not a legal
+    minimum-employment-age claim. Account for whether the birthday has occurred
+    by the hire date so the realized age equals the sampled age.
+    """
+
+    age_at_hire = rng.randint(
+        _MIN_GENERATED_HIRE_AGE,
+        _MAX_GENERATED_HIRE_AGE,
+    )
+    month = rng.randint(1, 12)
+    day = rng.randint(1, 28)
+    birth_year = hire_date.year - age_at_hire
+    if (month, day) > (hire_date.month, hire_date.day):
+        birth_year -= 1
+    return date(birth_year, month, day)
