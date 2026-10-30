@@ -8,7 +8,7 @@ Status: supervisor-review draft; development evidence only; draft protocol; fina
 
 - Branch: `research/policy-aware-anomaly`.
 - Repaired scientific artifact source: clean commit `56597d3b7119dde8bbd26df4ef303f32d39d3dff`.
-- Integrated source and synthetic screenshot verified at `373f3c8` before this report-only update.
+- Integrated source includes the repaired generators, adverse controls, current manuscript, and synthetic screenshot. The generated package record below binds the package to its exact source revision.
 - Pull request #1 remains open, draft, and unmerged.
 - Issue #10 remains the scientific protocol blocker.
 - No holdout command was executed.
@@ -34,8 +34,8 @@ python -m pytest tests/test_tdk_supervisor_package.py -q
 python scripts/generate_tdk_supervisor_package.py
 ```
 
-- Full local suite: 274 tests and 9 subtests passed in 167.33 seconds.
-- Package regression tests: 3 passed.
+- Full local suite: 278 tests and 9 subtests passed in 158.56 seconds.
+- Package regression tests: 6 passed.
 - Citation verification: valid; 18 bibliography entries, 18 cited entries, 18 provenance records, and 15 claim records; local artifacts verified.
 - Citation limitation: `lit-holm-procedure` and `lit-reliability-method` remain explicitly metadata-only. The verifier also reports 16 legacy text-hash mismatches while accepting the current provenance records; these are preserved as a migration warning, not hidden.
 - Artifact audit: `verified`; complete truth sidecars and manifest; `holdout_accessed: false`.
@@ -43,7 +43,7 @@ python scripts/generate_tdk_supervisor_package.py
 
 ## Render And Visual Inspection
 
-The final page count, page-image inspection, package hashes, and CI run are recorded after generation. They must not be inferred from an older package.
+The package generator appends an exact generated-package record containing the source revision, Word page count, main-text page count, and SHA-256 hashes. Visual inspection is recorded only after the generated PDF and decision sheet have been rasterized and reviewed. CI remains pending until the conditionally authorized push.
 
 ## Claims Explicitly Excluded
 

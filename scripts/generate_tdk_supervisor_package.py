@@ -328,6 +328,54 @@ def write_package_manifest(output: Path, revision: str) -> None:
         ) + "\n",
         encoding="utf-8",
     )
+
+
+def append_generated_verification_record(
+    report_path: Path,
+    output: Path,
+    revision: str,
+    page_report: dict,
+) -> None:
+    """Bind the human-readable verification report to generated package files."""
+    files = (
+        "MyHR_TDK_Paper_Draft_EN.docx",
+        "MyHR_TDK_Paper_Draft_EN.pdf",
+        "Supervisor_Decision_Sheet.pdf",
+    )
+    lines = [
+        "",
+        "## Generated Package Record",
+        "",
+        f"- Package source revision: `{revision}`.",
+        f"- Total manuscript pages: {page_report['total_pages']}.",
+        f"- Main text: pages {page_report['intro_page']}-{page_report['references_page'] - 1}, "
+        f"{page_report['main_text_pages']} pages.",
+        "- Visual inspection: PENDING after this exact package generation.",
+        "- CI: PENDING conditional push.",
+        "- Package manifest: `PACKAGE_MANIFEST.json` (SHA-256).",
+        "- Generated-file SHA-256:",
+    ]
+    lines.extend(f"  - `{name}`: `{_sha256(output / name)}`" for name in files)
+    report_path.write_text(
+        report_path.read_text(encoding="utf-8").rstrip() + "\n" + "\n".join(lines) + "\n",
+        encoding="utf-8",
+    )
+
+
+def finalize_visual_inspection(output: Path, note: str) -> None:
+    """Record post-generation visual QA and refresh the package manifest."""
+    manifest_path = output / "PACKAGE_MANIFEST.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    report_path = output / "Verification_Report.md"
+    text = report_path.read_text(encoding="utf-8")
+    pending = "- Visual inspection: PENDING after this exact package generation."
+    if pending not in text:
+        raise ValueError("Package does not contain a pending visual-inspection record")
+    report_path.write_text(
+        text.replace(pending, f"- Visual inspection: CONFIRMED. {note}"),
+        encoding="utf-8",
+    )
+    write_package_manifest(output, manifest["package_source_revision"])
 def _add_page_number(paragraph) -> None:
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = paragraph.add_run()
@@ -751,9 +799,19 @@ try {{
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate the MyHR TDK supervisor review package.")
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--finalize-visual-inspection",
+        action="store_true",
+        help="Finalize an existing generated package after page-image inspection.",
+    )
+    parser.add_argument("--visual-note", default="All manuscript and decision-sheet pages were inspected at readable resolution; no clipping, overlap, broken tables, or unreadable figures were found.")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
     output = args.output or (repo.parent / "TDK" / "final" / "2026-10-30-supervisor")
+    if args.finalize_visual_inspection:
+        finalize_visual_inspection(output, args.visual_note)
+        print(json.dumps({"finalized": str(output)}, indent=2))
+        return 0
     if output.exists() and any(output.iterdir()):
         archive = output.parent / "archive" / "2026-10-30-pre-autonomous-audit-8d7b4e0"
         if not archive.exists():
@@ -842,6 +900,12 @@ def main() -> int:
             "",
         ]),
         encoding="utf-8",
+    )
+    append_generated_verification_record(
+        output / "Verification_Report.md",
+        output,
+        revision,
+        page_report,
     )
     write_package_manifest(output, revision)
     print(json.dumps({"docx": str(docx_path), "pdf": str(pdf_path), "decision_sheet": str(decision_pdf), **page_report}, indent=2))

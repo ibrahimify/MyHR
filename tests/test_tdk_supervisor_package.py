@@ -11,7 +11,9 @@ from scripts.generate_tdk_supervisor_package import (
     CURRENT_ARTIFACT_ID,
     TITLE,
     add_inline_markdown,
+    append_generated_verification_record,
     build_decision_sheet,
+    finalize_visual_inspection,
     write_figure_data,
     write_package_manifest,
 )
@@ -107,6 +109,38 @@ class TdkSupervisorPackageTests(unittest.TestCase):
         self.assertIn("evidence.txt", manifest["files"])
         self.assertIn("figure_data.csv", manifest["files"])
         self.assertNotIn("PACKAGE_MANIFEST.json", manifest["files"])
+
+    def test_generated_verification_record_requires_post_render_finalization(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            report = output / "Verification_Report.md"
+            report.write_text("# Verification\n", encoding="utf-8")
+            for name in (
+                "MyHR_TDK_Paper_Draft_EN.docx",
+                "MyHR_TDK_Paper_Draft_EN.pdf",
+                "Supervisor_Decision_Sheet.pdf",
+            ):
+                (output / name).write_bytes(name.encode("ascii"))
+            page_report = {
+                "total_pages": 39,
+                "intro_page": 3,
+                "references_page": 37,
+                "main_text_pages": 34,
+            }
+            append_generated_verification_record(report, output, "abc123", page_report)
+            write_package_manifest(output, "abc123")
+            pending = report.read_text(encoding="utf-8")
+            self.assertIn("Visual inspection: PENDING", pending)
+            self.assertIn("Main text: pages 3-36, 34 pages", pending)
+
+            finalize_visual_inspection(output, "Every page was inspected.")
+            finalized = report.read_text(encoding="utf-8")
+            manifest = json.loads((output / "PACKAGE_MANIFEST.json").read_text(encoding="utf-8"))
+
+        self.assertIn("Visual inspection: CONFIRMED. Every page was inspected.", finalized)
+        self.assertNotIn("Visual inspection: PENDING", finalized)
+        self.assertEqual("abc123", manifest["package_source_revision"])
+        self.assertIn("Verification_Report.md", manifest["files"])
 
 
 if __name__ == "__main__":
