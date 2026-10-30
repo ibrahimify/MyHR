@@ -6,6 +6,7 @@ import argparse
 import csv
 import json
 import subprocess
+import sys
 from collections import defaultdict
 from datetime import date
 from hashlib import sha256
@@ -14,6 +15,11 @@ from math import isfinite
 from pathlib import Path
 from statistics import mean, median, stdev
 from typing import Any
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 
 COUNT_COLUMNS = (

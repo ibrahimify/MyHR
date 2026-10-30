@@ -32,6 +32,28 @@
   The final holdout remains undefined, locked, ungenerated, uninspected, and
   unscored.
 
+## Decision Implementation Verification - 2026-10-30
+
+- Exact policy versions now travel with each independent administrative event;
+  policy epochs and artifact joins use policy ID plus version rather than a
+  lossy one-version-per-ID mapping.
+- Schema v6 stores event-linked entitlement evidence and paired `known_then`
+  and `later_review` diagnostics for test-split promotion decisions. The
+  artifact auditor independently rejects missing evidence, mismatched policy
+  versions, incomplete view pairs, later knowledge leaking into `known_then`,
+  seed-replication defects, and altered primary/secondary inference metadata.
+- Clean-revision engineering artifact `4d918cffe255e5d0` was generated from
+  commit `c2c0a48` with one seed per condition under the written justification
+  "Engineering verification smoke artifact only; not used for scientific
+  inference." It passed the independent audit with 12 development scenarios,
+  40 entitlement records, 628 temporal-view rows, and
+  `holdout_accessed: false`. This verifies plumbing and reproducibility only;
+  it is not protocol-scale evidence and its model results must not be cited.
+- The approved protocol-scale design still requires 30 seeds per included
+  condition. Human reviewer identities, reviewer execution, exact balanced
+  matrix freeze, environment freeze, and separate holdout authorization remain
+  open.
+
 ## Autonomous Audit And Repair Cycle - 2026-10-30
 
 - Final independent methodology review reproduced the current arithmetic but

@@ -222,6 +222,15 @@ Artifact `4feea4508de1bb05` contains 12 scenarios, 864 eligible test histories, 
 
 See `TDK_SUPERVISOR_DECISION_SHEET.md`. The holdout remains locked.
 
+### Latest engineering verification
+
+Schema-v6 development artifact `4d918cffe255e5d0` verifies the new evidence
+plumbing from clean commit `c2c0a48`: 40 employee/policy-version/event-linked
+entitlement rows and 628 paired `known_then`/`later_review` rows passed the
+independent artifact audit. It used one seed per condition under an explicit
+engineering-smoke justification and is not scientific performance evidence.
+The approved 30-seed protocol-scale experiment has not been executed.
+
 ## 10. Limitations And Risks
 
 - All evaluation data are synthetic; external validity is unproven.
