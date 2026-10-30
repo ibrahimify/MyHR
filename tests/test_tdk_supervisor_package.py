@@ -1,4 +1,5 @@
 import re
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,6 +12,8 @@ from scripts.generate_tdk_supervisor_package import (
     TITLE,
     add_inline_markdown,
     build_decision_sheet,
+    write_figure_data,
+    write_package_manifest,
 )
 
 
@@ -31,6 +34,8 @@ class TdkSupervisorPackageTests(unittest.TestCase):
         figures = re.findall(r"\[\[FIGURE:([^|]+)\|([^\]]+)\]\]", text)
         self.assertEqual(11, len(figures))
         self.assertEqual(len(figures), len({name for name, _ in figures}))
+        self.assertIn(("primary_recall.png", "Figure 8. Primary exploratory recall comparison in repaired artifact 4feea4508de1bb05. The interval crosses zero; the result does not demonstrate superiority or equivalence."), figures)
+        self.assertNotIn("independent_ap.png", text)
         self.assertNotIn("**Keywords:**", text)
         for marker in ("TODO", "TBD", "PLACEHOLDER"):
             self.assertNotIn(marker, text)
@@ -89,6 +94,19 @@ class TdkSupervisorPackageTests(unittest.TestCase):
         self.assertEqual("Artifact abc123 is verified.", paragraph.text)
         self.assertEqual("Consolas", paragraph.runs[1].font.name)
         self.assertTrue(paragraph.runs[3].bold)
+
+    def test_package_manifest_and_figure_data_are_self_contained(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            (output / "evidence.txt").write_text("verified\n", encoding="utf-8")
+            write_figure_data(output)
+            write_package_manifest(output, "abc123")
+            manifest = json.loads((output / "PACKAGE_MANIFEST.json").read_text(encoding="utf-8"))
+
+        self.assertEqual("abc123", manifest["package_source_revision"])
+        self.assertIn("evidence.txt", manifest["files"])
+        self.assertIn("figure_data.csv", manifest["files"])
+        self.assertNotIn("PACKAGE_MANIFEST.json", manifest["files"])
 
 
 if __name__ == "__main__":

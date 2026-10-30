@@ -405,7 +405,7 @@ After deterministic filtering, 759 histories remain, including 42 labelled anoma
 
 The stored paired AP difference is +0.0005 with interval [-0.1173, 0.1079], sign-flip p = 1.0, and adjusted exploratory p = 1.0. These values are arithmetically reproducible under the implemented convention. They are not evidence of equivalence or a policy effect.
 
-[[FIGURE:independent_ap.png|Figure 8. Primary exploratory recall comparison in repaired artifact 4feea4508de1bb05. The interval crosses zero; the result does not demonstrate superiority or equivalence.]]
+[[FIGURE:primary_recall.png|Figure 8. Primary exploratory recall comparison in repaired artifact 4feea4508de1bb05. The interval crosses zero; the result does not demonstrate superiority or equivalence.]]
 
 ### 6.5 Historical Structural Failure of the Central Comparison
 
@@ -596,11 +596,10 @@ Duplicate detection remains a useful secondary experiment, and evidence-rich exp
 pip install -r requirements.txt -r requirements-research.txt
 python -m unittest discover tests
 python scripts/verify_tdk_citations.py --require-local-artifact
-python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_development/independent_development_e342bd4acf39b06b
 python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_development/independent_development_4feea4508de1bb05
 ```
 
-No holdout command is included. The holdout runner remains unavailable until the protocol is frozen and approved.
+No holdout command is included. The holdout runner remains unavailable until the protocol is frozen and approved. Historical artifacts used for audit-history figures predate the current provenance schema and are preserved as inherited evidence rather than presented as passing the current auditor.
 
 ## Appendix B Recorded Decisions and Pending Freeze Work
 

@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import tempfile
 import textwrap
+from hashlib import sha256
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -32,6 +33,16 @@ LIGHT_GRAY = "F2F2F2"
 BORDER = "D9D9D9"
 CURRENT_ARTIFACT_ID = "4feea4508de1bb05"
 CURRENT_ARTIFACT_DIR = f"independent_development_{CURRENT_ARTIFACT_ID}"
+VALIDATION_COUNTS = {
+    "Rules": {"true_positives": 351, "false_positives": 0, "false_negatives": 9},
+    "Rules + raw IF": {"true_positives": 357, "false_positives": 51, "false_negatives": 3},
+    "Rules + policy IF": {"true_positives": 358, "false_positives": 50, "false_negatives": 2},
+}
+POLICY_ALERT_HISTORY = {
+    "Historical": {"alerts": 39, "denominator": 72},
+    "Intermediate": {"alerts": 8, "denominator": 72},
+    "Repaired": {"alerts": 0, "denominator": 72},
+}
 
 
 def _save_figure(path: Path) -> None:
@@ -133,10 +144,10 @@ def generate_figures(repo: Path, assets: Path) -> None:
     ax.text(0.5, 0.85, "Reproducible artifact lifecycle", transform=ax.transAxes, ha="center", fontsize=13, fontweight="bold")
     _save_figure(assets / "artifact_lifecycle.png")
 
-    methods = ["Rules", "Rules + raw IF", "Rules + policy IF"]
-    tp = [351, 357, 358]
-    fp = [0, 51, 50]
-    fn = [9, 3, 2]
+    methods = list(VALIDATION_COUNTS)
+    tp = [VALIDATION_COUNTS[method]["true_positives"] for method in methods]
+    fp = [VALIDATION_COUNTS[method]["false_positives"] for method in methods]
+    fn = [VALIDATION_COUNTS[method]["false_negatives"] for method in methods]
     x = range(len(methods))
     fig, ax = plt.subplots(figsize=(9, 5))
     ax.bar([i - 0.25 for i in x], tp, width=0.25, label="True positives", color="#16834F")
@@ -164,7 +175,7 @@ def generate_figures(repo: Path, assets: Path) -> None:
     ax.set_title("Primary exploratory comparison at equal review capacity", fontweight="bold")
     ax.text(0, -0.047, "Mean +0.0278; 95% CI [-0.0278, +0.1019]; p=0.6875", ha="center", fontsize=10)
     ax.grid(axis="y", alpha=0.25)
-    _save_figure(assets / "independent_ap.png")
+    _save_figure(assets / "primary_recall.png")
 
     fig, ax = plt.subplots(figsize=(10, 4.6))
     ax.axis("off")
@@ -181,8 +192,11 @@ def generate_figures(repo: Path, assets: Path) -> None:
     _save_figure(assets / "feature_collapse.png")
 
     fig, ax = plt.subplots(figsize=(9, 4.8))
-    labels = ["Historical\n39/72", "Intermediate\n8/72", "Repaired\n0/72"]
-    values = [39, 8, 0]
+    labels = [
+        f"{name}\n{item['alerts']}/{item['denominator']}"
+        for name, item in POLICY_ALERT_HISTORY.items()
+    ]
+    values = [item["alerts"] for item in POLICY_ALERT_HISTORY.values()]
     colors = ["#B42318", "#C58A00", "#16834F"]
     bars = ax.bar(labels, values, color=colors)
     ax.set_ylim(0, 45)
@@ -232,6 +246,88 @@ def _set_cell_borders(cell) -> None:
         element.set(qn("w:color"), BORDER)
 
 
+def _sha256(path: Path) -> str:
+    digest = sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def write_figure_data(output: Path) -> None:
+    rows = []
+    for method, values in VALIDATION_COUNTS.items():
+        for metric, value in values.items():
+            rows.append({
+                "figure": "Figure 7",
+                "series": method,
+                "metric": metric,
+                "value": value,
+                "denominator": 360,
+                "evidence_status": "legacy inherited evidence; fails current provenance schema",
+                "source": "legacy/validation_c5878ca7b927ccd2/aggregate_metrics.csv",
+            })
+    rows.extend([
+        {
+            "figure": "Figure 8",
+            "series": "policy-aware minus raw IF",
+            "metric": metric,
+            "value": value,
+            "denominator": 12,
+            "evidence_status": "current verified development artifact",
+            "source": "paired_comparisons.csv",
+        }
+        for metric, value in (
+            ("recall_delta_mean", 0.0277777777777777),
+            ("recall_delta_ci95_low", -0.0277777777777777),
+            ("recall_delta_ci95_high", 0.1018518518518518),
+            ("sign_flip_p", 0.6875),
+        )
+    ])
+    sources = {
+        "Historical": "legacy/independent_development_e342bd4acf39b06b/aggregate_metrics.csv",
+        "Intermediate": "legacy/independent_development_db1a15646d9e76ba/aggregate_metrics.csv",
+        "Repaired": "aggregate_metrics.csv",
+    }
+    statuses = {
+        "Historical": "legacy counterexample; incomplete entitlement provenance",
+        "Intermediate": "invalidated interpretation; contradictory generated histories",
+        "Repaired": "current verified exploratory development evidence",
+    }
+    for series, values in POLICY_ALERT_HISTORY.items():
+        rows.append({
+            "figure": "Figure 10",
+            "series": series,
+            "metric": "rare_legitimate_alerts",
+            "value": values["alerts"],
+            "denominator": values["denominator"],
+            "evidence_status": statuses[series],
+            "source": sources[series],
+        })
+    with (output / "figure_data.csv").open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def write_package_manifest(output: Path, revision: str) -> None:
+    files = {
+        str(path.relative_to(output)).replace("\\", "/"): _sha256(path)
+        for path in sorted(output.rglob("*"))
+        if path.is_file() and path.name != "PACKAGE_MANIFEST.json"
+    }
+    (output / "PACKAGE_MANIFEST.json").write_text(
+        json.dumps(
+            {
+                "algorithm": "sha256",
+                "package_source_revision": revision,
+                "files": files,
+            },
+            indent=2,
+            sort_keys=True,
+        ) + "\n",
+        encoding="utf-8",
+    )
 def _add_page_number(paragraph) -> None:
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = paragraph.add_run()
@@ -671,6 +767,8 @@ def main() -> int:
         assets = Path(directory)
         generate_figures(repo, assets)
         build_docx(repo / "docs" / "TDK_PAPER_DRAFT.md", assets, docx_path)
+        for stale_name in ("independent_ap.png", "independent_ap.svg"):
+            (output / "figures" / stale_name).unlink(missing_ok=True)
         shutil.copytree(assets, output / "figures", dirs_exist_ok=True)
     page_report = convert_with_word(docx_path, pdf_path, page_report_path)
     decision_docx = output / "_Supervisor_Decision_Sheet.docx"
@@ -688,15 +786,20 @@ def main() -> int:
     artifact = repo / "research_outputs" / "independent_development" / CURRENT_ARTIFACT_DIR
     data_dir = output / "data"
     data_dir.mkdir(exist_ok=True)
-    for name in (
-        "metadata.json",
-        "manifest.json",
-        "scenario_configs.csv",
-        "scenario_metrics.csv",
-        "aggregate_metrics.csv",
-        "paired_comparisons.csv",
-    ):
+    artifact_manifest = json.loads((artifact / "manifest.json").read_text(encoding="utf-8"))
+    for name in artifact_manifest["files"]:
         shutil.copy2(artifact / name, data_dir / name)
+    legacy_sources = {
+        "validation_c5878ca7b927ccd2": repo / "research_outputs" / "protocol_v2_verified" / "validation_c5878ca7b927ccd2",
+        "independent_development_e342bd4acf39b06b": repo / "research_outputs" / "independent_development" / "independent_development_e342bd4acf39b06b",
+        "independent_development_db1a15646d9e76ba": repo / "research_outputs" / "independent_development" / "independent_development_db1a15646d9e76ba",
+    }
+    for label, source in legacy_sources.items():
+        destination = data_dir / "legacy" / label
+        destination.mkdir(parents=True, exist_ok=True)
+        for name in ("README.md", "metadata.json", "manifest.json", "aggregate_metrics.csv", "paired_comparisons.csv"):
+            shutil.copy2(source / name, destination / name)
+    write_figure_data(data_dir)
     revision = subprocess.run(
         ["git", "rev-parse", "HEAD"],
         cwd=repo,
@@ -738,6 +841,7 @@ def main() -> int:
         ]),
         encoding="utf-8",
     )
+    write_package_manifest(output, revision)
     print(json.dumps({"docx": str(docx_path), "pdf": str(pdf_path), "decision_sheet": str(decision_pdf), **page_report}, indent=2))
     return 0
 

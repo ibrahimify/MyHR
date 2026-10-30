@@ -7,7 +7,7 @@ Status: supervisor-review draft; development evidence only; draft protocol; fina
 ## Source And Tracker State
 
 - Branch: `research/policy-aware-anomaly`.
-- Repaired scientific artifact source: clean commit `56597d3b7119fbe929f5d44b839c9447e6e03f73`.
+- Repaired scientific artifact source: clean commit `56597d3b7119dde8bbd26df4ef303f32d39d3dff`.
 - Integrated source and synthetic screenshot verified at `373f3c8` before this report-only update.
 - Pull request #1 remains open, draft, and unmerged.
 - Issue #10 remains the scientific protocol blocker.
