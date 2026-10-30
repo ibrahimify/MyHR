@@ -1,74 +1,92 @@
 # TDK Protocol Change Proposals
 
-Status: **SIX METHODOLOGY DECISIONS RECORDED 29 OCTOBER 2026. THOSE DECISIONS ARE APPROVED FOR IMPLEMENTATION; UNADDRESSED PROPOSALS, PROTOCOL FREEZE, AND HOLDOUT ACCESS REMAIN UNAPPROVED.**
+Status: **PROPOSALS ONLY — PENDING HUMAN (SUPERVISOR) APPROVAL.**
 
-The authoritative decision record is `TDK_SUPERVISOR_DECISIONS_2026-10-29.md`. An AI agent or automated reviewer cannot approve implementation completeness, protocol freeze, or holdout access.
+This document records proposed changes to scenario definitions, mechanisms, and
+evaluation details that were implemented in code but are **not** yet approved as
+protocol. Per `AGENTS.md`, scenario definitions must not be silently changed;
+proposed changes are recorded here separately for supervisor approval. Nothing in
+this document is frozen, and none of it authorizes holdout access.
 
-## 1. Primary Confirmatory Question
+---
 
-- Population: invariant-negative records from independently generated residual-error scenarios.
-- Comparison: dimension-matched policy-aware versus raw Isolation Forest.
-- Endpoint: paired scenario-level recall difference at identical fixed additional ML review capacity.
-- Independent unit: scenario, not employee record.
-- Inference: two-sided paired permutation test and 95% scenario-clustered bootstrap interval.
-- Companion outcomes: precision, total false alerts, and rare-legitimate false-alert rates.
-- Secondary ranking endpoint: Average Precision.
+## Proposal 1 — `late_correction` rare-legitimate scenario definition
 
-## 2. Scenario Eligibility
+Proposed 2026-10-30. Implemented in code at commit `0f1f32c`
+(`src/research/independent_scenarios.py`, `_apply_rare_case`). Tested, but the
+*definition* below is a proposal, not an approved specification.
 
-Primary scenarios must be predeclared as residual causal mechanisms, not selected after inspection. Explicit rule-violation scenarios remain secondary. Zero-positive scenarios are retained and reported, marked undefined for recall and AP, and excluded from paired inference for those metrics under the frozen eligibility rule; they are never assigned zero.
+**Intent:** Model a promotion that was initially recorded with an erroneous date
+and later corrected, so that the corrected (effective) history is policy-compliant
+and should be treated as a rare-legitimate case rather than an error.
 
-## 3. Operational Capacity
+**Proposed mechanism (exact, for review):**
 
-Apply identical invariant checks to both primary pipelines and preserve those findings. Allocate an identical additional ML review budget on the same remaining records. Report the invariant-rule baseline and complete workflow queue separately.
+- Take the last promotion event in the base history as the original.
+- Inject an erroneous copy with the effective date moved **−12 months**, stamped
+  with the policy applicable at that earlier date (`_policy_id_for_date`), recorded
+  3 days after its (wrong) effective date, `approval_status="approved"`.
+- Inject a correction event carrying `correction_of_event_id` pointing to the
+  erroneous event, recorded 14 days after the true effective date,
+  `approval_status="approved"`.
+- The correction supersedes the erroneous event; `assess_promotion_history` drops
+  any promotion whose `source_id` is referenced by a visible `correction_of_source_id`.
 
-## 4. Secondary Multiplicity
+**Open questions for the supervisor:**
 
-Status: **Not decided by the 29 October supervisor answers; retain as a draft analysis proposal.**
+1. Is −12 months the right mis-dating magnitude, or should it vary across scenarios?
+2. Should more than one correction case per scenario be injected?
+3. Is approving the erroneous event at filing time (vs a distinct pre-correction
+   status) the correct administrative model?
 
-Average Precision, rare-legitimate rate, ordinary-clean rate, F1, precision, false-positive rate, per-class recall, and utility analyses are secondary. Their tests are exploratory and receive the frozen multiplicity procedure across the generated comparison family.
+**Status:** Proposed. Not approved. Not frozen.
 
-## 5. Policy-Version Context
+---
 
-Adopt a bitemporal contract containing policy versions, applicability, recognized service, effective times, recorded times, and correction provenance before final scenario freeze. Current single-policy evaluation falsely classifies some lawful transition histories.
+## Proposal 2 — `policy_transition` rare-legitimate scenario definition
 
-## 6. Threshold Deployment Study
+Proposed 2026-10-30. Implemented in code at commit `0bfa585` / `3e9edd2`
+(`src/research/independent_scenarios.py`, `_apply_rare_case`).
 
-Status: **Not decided by the 29 October supervisor answers; secondary proposal only.**
+**Intent:** Model an employee promoted under an earlier policy epoch whose service
+requirement must be evaluated under the policy effective at the promotion date, not
+the current policy. This is the core case motivating the bitemporal contract
+(Supervisor Decision 4).
 
-Keep validation-F1 and target-FPR thresholds secondary. Compare organization-specific calibration against a global threshold before deployment claims. An infeasible target FPR must be reported, not forced.
+**Proposed mechanism (exact, for review):**
 
-## 7. Utility Interpretation
+- Re-stamp the promotion event to `policy_id="legacy-pre-2023"` with effective date
+  `2022-06-01` and recorded date `2022-06-03`.
+- The promotion satisfies the then-current (legacy) service requirement even where
+  the current `reform-2023` policy would reject it.
 
-Status: **Not decided by the 29 October supervisor answers; secondary proposal only.**
+**Open questions for the supervisor:**
 
-Charge review cost to every alert, missed-error cost to false negatives, and additional escalation harm to rare-legitimate false alerts. Report multiple cost profiles without declaring one correct.
+1. Is a single fixed `2022-06-01` effective date acceptable, or should transition
+   dates be distributed across the legacy epoch?
+2. Should the transition cover increments and other event types, not only promotions?
+3. Is the legacy/reform two-epoch model sufficient, or are more epochs needed?
 
-## 8. Residual Feature Validity
+**Status:** Proposed. Not approved. Not frozen.
 
-**DECISION RECORDED.** The primary experiment retains the residual raw-versus-policy-aware comparison but restricts deterministic filtering to invariant contradictions. The complete rules-plus-ML workflow is secondary. The 2026-10-17 artifact remains development evidence because its filter forced every policy-specific feature in `policy_matched` to zero.
+---
 
-Options considered:
+## Proposal 3 — development matrix composition change
 
-1. **Explicit-contradictions residual design:** deterministic rules remove only mechanically provable contradictions, while graded policy deviations remain available to both raw and policy-aware residual models. Benefit: preserves a residual research question. Risk: changing the rule boundary may create overlap or weaken product validation.
-2. **Counterfactual policy-context design:** retain deterministic findings, then compare features derived from the applicable historical policy against matched raw timing features on separately designed ambiguous histories. Benefit: tests genuinely varying policy context. Risk: requires an approved policy-version and bitemporal contract before implementation.
-3. **End-to-end review-queue design:** make the transparent rules-plus-ML workflow the primary operational estimand and treat residual model comparisons as exploratory. Benefit: aligns with the product workflow. Risk: makes the isolated causal contribution of policy-aware ML harder to identify.
+Adding two rare patterns changed the 12-scenario development matrix assignment from
+`index % 3` (3 patterns, 4 each) to `index % 5` (patterns 0,1 appear 3×; patterns
+2,3,4 appear 2×). This is a **development-only** composition change. It does not
+define the holdout matrix, which remains undefined and locked under Decision 6.
 
-The supervisor selected option 1, supplemented by the historical-policy contract in option 2 and secondary workflow reporting from option 3. This requires new development scenarios and tests. Existing inspected artifacts remain development evidence and cannot become confirmatory evidence.
+**Status:** Proposed for development use. Holdout matrix unaffected and still
+requires an independent frozen specification.
 
-## 9. Eligible Scenario And Truth Contract
+---
 
-**DECISION RECORDED.** Six of twelve independent development scenarios contain no rule-negative positives. Future zero-positive scenarios remain in denominator tables, their recall and AP are marked undefined, and they do not enter paired inference for those metrics. This treatment must be frozen before evaluation and cannot be changed after inspecting results.
+## Approval log
 
-The approved boundary requires detector-inaccessible causal truth plus policy versions, effective time, recorded time, recognized service, and correction provenance. Realized mechanism, employee track, and the exact sidecar schema remain implementation proposals to be frozen before evaluation.
-
-## Recorded Decisions And Remaining Gate
-
-1. Residual raw-versus-policy-aware ML remains primary with invariant-only filtering.
-2. Recall at equal fixed additional review capacity is primary; AP is secondary.
-3. Invariant findings are preserved, while both ML representations receive the same additional budget.
-4. A bitemporal historical-policy contract is approved for implementation.
-5. Two blinded complementary reviewers, preserved judgments, agreement, and evidence-based adjudication are approved.
-6. An independently specified repeated-seed holdout matrix with detector-inaccessible causal truth is approved for implementation.
-
-External calibration data were not addressed by the recorded decisions and may not be used without separate authorization. The protocol remains draft and the holdout remains locked until implementation, verification, exact environment freeze, and explicit dated freeze approval are complete.
+| Proposal | Proposed | Supervisor decision | Date |
+| --- | --- | --- | --- |
+| 1 `late_correction` definition | 2026-10-30 | _pending_ | — |
+| 2 `policy_transition` definition | 2026-10-30 | _pending_ | — |
+| 3 development matrix composition | 2026-10-30 | _pending_ | — |

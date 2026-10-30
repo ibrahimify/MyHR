@@ -1,16 +1,29 @@
 # TDK Autonomous Research Roadmap
 
-## Certified Artifact With New Scenario Families - 2026-10-30
+## Scientific-Scope Correction For New Scenario Families - 2026-10-30
 
-- Adding `late_correction` and `policy_transition` to `rare_legitimate_patterns()` changed the 12-scenario development matrix composition (patterns now assigned `index % 5`: patterns 0,1 appear 3x; patterns 2,3,4 appear 2x). This genuinely exercises the new mechanisms in the development run.
-- **Two bugs found and fixed while generating the artifact** (the harness exposed them before they could corrupt evidence):
-  - `assess_promotion_history` evaluated both a correction-superseded promotion and its correction as independent events, and the re-dated erroneous event fell outside its declared policy epoch (crash: "declared policy reform-2023 is not applicable"). Fix: exclude any promotion whose `source_id` appears as a `correction_of_source_id` on a visible event (bitemporal "preserve later-recorded corrections" rule); stamp the erroneous event with the policy applicable at its earlier date. Commit `3e9edd2`.
-  - The erroneous event used `approval_status="pending_correction"`, outside the auditor's accepted domain `{approved, bypassed}`. Fix: use `approved` (the mis-filing was approved at the time; the error was the date). Commit `0f1f32c`.
-- **Certified artifact `db1a15646d9e76ba`** generated from clean commit `0f1f32c`. Audit status: **verified**. `holdout_accessed: false`. 12 scenarios, 864 test histories, 108 anomalies, 72 rare-legitimate, 57,562 administrative events, 24 policy epochs, 4,320 truth rows.
-- Primary residual endpoint (`fixed_review_budget`, `rule_negative_isolation_forest`): recall delta mean `+0.009`, 95% CI `[-0.046, +0.083]`, sign-flip p=1.0. **No evidence of policy-aware advantage** — consistent with prior artifact `62f482ce6ff477b9`. AP delta mean `+0.021` (secondary).
-- New scientific signal: deterministic current-policy rules now flag **8/72 rare-legitimate histories** (prior artifact: 0/72). The new late-correction and policy-transition scenarios surface exactly the lawful-but-unusual false alerts that motivate the bitemporal contract. This is a preserved finding, not a tuned result.
-- All 212 tests pass (210 + 2 new supersession regression tests).
+An independent review (Codex, relayed by Muhammad Ibrahim Shoeb) correctly flagged that the preceding entry overstated the scientific standing of the new scenario work. This entry supersedes it on interpretation; the engineering facts below remain accurate.
+
+- **Artifact `db1a15646d9e76ba` is an EXPLORATORY development artifact, not confirmatory evidence.** The auditor returned `verified`, which attests only to reproducibility of the implemented arithmetic, provenance integrity, and `holdout_accessed: false`. It does not attest to scientific validity, approved scenario definitions, or any policy-aware claim.
+- **The `late_correction` and `policy_transition` scenario definitions are PENDING HUMAN APPROVAL.** Supervisor Decision 4 (2026-10-29) approves the bitemporal *contract capability* (policy versions, recognized service, correction provenance, effective/recorded time) and Decision 6 requires the holdout matrix to *cover* policy transitions and lawful exceptions. Neither decision approves the specific implementation details added here: the −12-month mis-dating mechanism, the `legacy-pre-2023` re-stamp with a 2022-06-01 effective date, one-record-per-pattern injection, or the `index % 5` matrix composition. Per AGENTS.md ("Do not silently change ... scenario definitions ... Record proposed changes separately for supervisor approval"), these are recorded as a pending proposal in `TDK_PROTOCOL_CHANGE_PROPOSALS.md` and must not be treated as frozen.
+- **The readings were independently reproduced read-only** by `scripts/reproduce_db1a15646d9e76ba_readings.py`, which reads only the artifact CSVs and does not import the generator, `protocol_evaluation.py`, or the auditor:
+  - (a) **8 rare-legitimate deterministic false alerts confirmed.** Denominator clarification: the auditor's displayed `8/72` uses the per-displayed-scenario rare-legitimate count; the pooled denominator across all 12 test scenarios is `8/348`. The numerator 8 is identical under both; counts are always reported with their denominator.
+  - (b) **All 8 flags came from `policy_transition` scenarios, zero from `late_correction`.** This is the expected and useful signal: the current-policy deterministic check falsely flags legacy-epoch promotions, which is exactly what the bitemporal contract is meant to address. The supersession fix means `late_correction` histories are correctly not flagged.
+  - (c) **recall delta +0.0093, paired bootstrap 95% CI [-0.0463, +0.0833] confirmed** to four decimals with an independent fresh bootstrap (seed 20261030). No evidence of policy-aware advantage.
+  - These remain **exploratory** readings from an unapproved scenario definition; independent reproduction establishes arithmetic reproducibility, not scientific validity.
+- **Feature development is paused.** Next work is paper completion and the supervisor package, not new scenarios.
+- **Correction to earlier framing:** "all remaining work is human-gated" was inaccurate. Unblocked, non-gated work includes paper completion, traceability checks, figure/table generation, citation verification (`scripts/verify_tdk_citations.py --require-local-artifact`), and independent artifact auditing. Human-gated items are specifically: scenario-definition approval, protocol freeze, expert-reviewer nomination, and holdout authorization.
 - The final holdout was not generated, inspected, scored, or unlocked. PR #1 remains draft and unmerged.
+
+### Engineering facts (unchanged, accurate)
+
+- Adding `late_correction` and `policy_transition` to `rare_legitimate_patterns()` changed the 12-scenario development matrix composition (patterns assigned `index % 5`).
+- Two real bugs were found and fixed while generating the artifact:
+  - `assess_promotion_history` evaluated both a correction-superseded promotion and its correction as independent events, and the re-dated erroneous event fell outside its declared policy epoch. Fix: exclude any promotion whose `source_id` appears as a `correction_of_source_id` on a visible event; stamp the erroneous event with the policy applicable at its earlier date. Commit `3e9edd2`.
+  - The erroneous event used an approval status outside the auditor's accepted domain. Fix: use `approved`. Commit `0f1f32c`.
+- Artifact `db1a15646d9e76ba` was generated from clean commit `0f1f32c`: 12 scenarios, 864 test histories, 108 anomalies, 72 rare-legitimate, 57,562 administrative events, 24 policy epochs, 4,320 truth rows.
+- Provisional readings (pending independent reproduction): primary residual endpoint recall delta mean `+0.009`, 95% CI `[-0.046, +0.083]`, sign-flip p=1.0 (no evidence of advantage); deterministic rules flagged 8/72 rare-legitimate histories.
+- All 212 tests pass.
 
 ## Runtime/Memory Reporting And Late-Correction Scenarios - 2026-10-30
 
