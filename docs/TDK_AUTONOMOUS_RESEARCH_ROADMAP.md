@@ -1,5 +1,13 @@
 # TDK Autonomous Research Roadmap
 
+## Runtime/Memory Reporting And Late-Correction Scenarios - 2026-10-30
+
+- **Runtime/memory reporting for duplicate detection** (audit gap closed): `evaluate_duplicate_detection` now measures `blocking_time_s`, `scoring_time_s`, and `peak_memory_bytes` (tracemalloc). Added computed properties `candidates_per_1000_records` and `false_matches_per_1000_records` (zero-safe). 8 new tests (`DuplicateRuntimeMemoryTests`). Commit `14dc1cd`.
+- **Late-correction scenario family** (audit gap closed): added `late_correction` and `policy_transition` to `rare_legitimate_patterns()`. `late_correction` injects an erroneous event and a `correction_of_event_id`-linked correction; `policy_transition` re-stamps a promotion to the `legacy-pre-2023` epoch. Both produce rare-legitimate records not flagged by invariant rules. 10 new tests (`LateCorrectionAndPolicyTransitionScenarioTests`). Commit `0bfa585`.
+- All 210 tests pass after both changes.
+- Remaining blockers: blinded expert review (reviewers unnamed); protocol freeze (pending dated supervisor approval); holdout (locked until freeze).
+- The final holdout was not generated, inspected, scored, or unlocked. PR #1 remains draft and unmerged.
+
 ## Latent-Person-First Duplicates And Hard Nonduplicates - 2026-10-30
 
 - Root gap from audit: duplicate records were derived from an existing source record in the dataset. Partition containment was enforced by a pointer-chain check after the fact, not by construction.
