@@ -117,6 +117,7 @@ class IndependentEvent:
     effective_date: date
     recorded_date: date
     policy_id: str
+    policy_version: str
     level_before: str | None = None
     level_after: str | None = None
     category: int | None = None
@@ -308,6 +309,7 @@ def generate_independent_world(spec: IndependentScenarioSpec) -> IndependentWorl
                 policy = next(
                     card for card in policies
                     if card.policy_id == promotion.policy_id
+                    and card.version == promotion.policy_version
                 )
                 entitlement_evidence.append(IndependentEntitlementEvidence(
                     entitlement_id=f"ENT-{employee.employee_id}-{promotion.event_id}",
@@ -520,6 +522,7 @@ def _base_employee(
     )
     employee_id = f"I-{index + 1:05d}"
     events = [_event(
+        policies,
         spec.seed,
         index,
         0,
@@ -531,6 +534,7 @@ def _base_employee(
     sequence = 1
     while increment_date <= REFERENCE_DATE:
         events.append(_event(
+            policies,
             spec.seed, index, sequence, IndependentEventKind.SALARY_INCREMENT,
             increment_date, _policy_id_for_date(increment_date),
         ))
@@ -542,6 +546,7 @@ def _base_employee(
         promotion_date = _add_months(hire_date, 36)
         if promotion_date <= REFERENCE_DATE:
             events.append(_event(
+                policies,
                 spec.seed, index, sequence, IndependentEventKind.PROMOTION,
                 promotion_date, _policy_id_for_date(promotion_date),
                 level_before="L7", level_after="L6",
@@ -551,6 +556,7 @@ def _base_employee(
             second_promotion_date = _add_months(promotion_date, 36)
             if second_promotion_date <= REFERENCE_DATE:
                 events.append(_event(
+                    policies,
                     spec.seed,
                     index,
                     sequence,
@@ -566,6 +572,7 @@ def _base_employee(
     commendation_date = _add_months(hire_date, 9)
     if rng.random() < 0.28 and commendation_date <= REFERENCE_DATE:
         events.append(_event(
+            policies,
             spec.seed,
             index,
             sequence,
@@ -580,6 +587,7 @@ def _base_employee(
     resolved_date = sanction_date + timedelta(days=90)
     if rng.random() < 0.18 and resolved_date <= REFERENCE_DATE:
         events.append(_event(
+            policies,
             spec.seed,
             index,
             sequence,
@@ -595,6 +603,7 @@ def _base_employee(
     review_count = 0
     while review_date <= REFERENCE_DATE and review_count < 5:
         events.append(_event(
+            policies,
             spec.seed,
             index,
             sequence,
@@ -630,6 +639,7 @@ def _apply_error(
         start = max(employee.hire_date, date(2024, 1, 1))
         for offset in range(5):
             injected = _event(
+                policies,
                 rng.randint(1, 1_000_000), offset, len(events), IndependentEventKind.SANCTION,
                 start + timedelta(days=offset * 45), "reform-2023", category=1,
             )
@@ -647,6 +657,7 @@ def _apply_error(
     elif mechanism == "approval_bypass":
         events = [event for event in events if event.kind is not IndependentEventKind.PROMOTION]
         injected = _event(
+            policies,
             rng.randint(1, 1_000_000), 2, len(events), IndependentEventKind.PROMOTION,
             _add_months(employee.hire_date, 36),
             _policy_id_for_date(_add_months(employee.hire_date, 36)),
@@ -660,6 +671,7 @@ def _apply_error(
         increments = [event for event in events if event.kind is IndependentEventKind.SALARY_INCREMENT]
         anchor = increments[-1] if increments else events[0]
         injected = _event(
+            policies,
             rng.randint(1, 1_000_000), 3, len(events), IndependentEventKind.SALARY_INCREMENT,
             anchor.effective_date, anchor.policy_id,
             retry_of_event_id=anchor.event_id,
@@ -686,6 +698,7 @@ def _apply_rare_case(
             date(2023, 1, 1),
         )
         injected = _event(
+            policies,
             rng.randint(1, 1_000_000), 4, len(events), IndependentEventKind.PROMOTION,
             promotion_date, "legacy-pre-2023",
             level_before="L7", level_after="L6",
@@ -697,6 +710,7 @@ def _apply_rare_case(
     elif pattern == "recognized_prior_service":
         events = [event for event in events if event.kind is not IndependentEventKind.PROMOTION]
         injected = _event(
+            policies,
             rng.randint(1, 1_000_000), 5, len(events), IndependentEventKind.PROMOTION,
             _add_months(employee.hire_date, 24),
             _policy_id_for_date(_add_months(employee.hire_date, 24)),
@@ -747,6 +761,11 @@ def _apply_rare_case(
                    "effective_date": erroneous_date,
                    "recorded_date": erroneous_date + timedelta(days=3),
                    "policy_id": _policy_id_for_date(erroneous_date),
+                   "policy_version": _policy_version_for_event(
+                       policies,
+                       _policy_id_for_date(erroneous_date),
+                       erroneous_date,
+                   ),
                    "approval_status": "approved",
                    }
             )
@@ -795,6 +814,7 @@ def _apply_rare_case(
             if event.kind is not IndependentEventKind.PROMOTION
         ]
         legacy_promotion = _event(
+            policies,
             rng.randint(1, 1_000_000),
             6,
             len(non_promotions),
@@ -852,6 +872,7 @@ def _replace_events(
 
 
 def _event(
+    policies: tuple[IndependentPolicyCard, ...],
     seed: int,
     employee_index: int,
     sequence: int,
@@ -873,8 +894,37 @@ def _event(
             effective_date + timedelta(days=(employee_index + sequence) % 19),
         ),
         policy_id=policy_id,
+        policy_version=_policy_version_for_event(
+            policies, policy_id, effective_date
+        ),
         approval_reference=approval_reference,
         **kwargs,
+    )
+
+
+def _policy_version_for_event(
+    policies: tuple[IndependentPolicyCard, ...],
+    policy_id: str,
+    effective_date: date,
+) -> str:
+    """Resolve the exact policy version stamped on an event at creation time."""
+
+    matching_id = [card for card in policies if card.policy_id == policy_id]
+    effective = [
+        card
+        for card in matching_id
+        if card.effective_from <= effective_date
+        and (card.effective_to is None or effective_date <= card.effective_to)
+    ]
+    if len(effective) == 1:
+        return effective[0].version
+    # A uniquely named earlier policy may be selected after its effective
+    # period when an explicit grandfathering entitlement authorizes it.
+    if not effective and len(matching_id) == 1:
+        return matching_id[0].version
+    raise ValueError(
+        "cannot resolve one policy version for event: "
+        f"policy_id={policy_id!r}, effective_date={effective_date.isoformat()}"
     )
 
 

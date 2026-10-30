@@ -65,7 +65,6 @@ def adapt_independent_world(world: IndependentWorld) -> ScenarioDataset:
     """Expose observable records to the detector and attach truth for evaluation."""
 
     truth_by_employee = {entry.employee_id: entry for entry in world.truth}
-    policy_versions = {card.policy_id: card.version for card in world.policies}
     records = []
     for employee in world.employees:
         truth = truth_by_employee[employee.employee_id]
@@ -88,7 +87,7 @@ def adapt_independent_world(world: IndependentWorld) -> ScenarioDataset:
             role=employee.role,
             hire_date=employee.hire_date,
             events=tuple(
-                _event(event, policy_versions) for event in employee.events
+                _event(event) for event in employee.events
             ),
             anomaly_labels=_labels(truth.category, truth.mechanism),
             observation_date=REFERENCE_DATE,
@@ -184,7 +183,7 @@ def _event_kind(value: IndependentEventKind) -> AdministrativeEventType:
     return AdministrativeEventType(value.value)
 
 
-def _event(value, policy_versions: dict[str, str]) -> AdministrativeEvent:
+def _event(value) -> AdministrativeEvent:
     return AdministrativeEvent(
         event_type=_event_kind(value.kind),
         event_date=value.effective_date,
@@ -200,7 +199,7 @@ def _event(value, policy_versions: dict[str, str]) -> AdministrativeEvent:
         ),
         recorded_date=value.recorded_date,
         policy_id=value.policy_id,
-        policy_version=policy_versions[value.policy_id],
+        policy_version=value.policy_version,
         approval_reference=value.approval_reference,
         approval_status=value.approval_status,
         recognized_service_months=value.recognized_service_months,

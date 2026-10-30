@@ -4,12 +4,14 @@ import re
 import tempfile
 import unittest
 from dataclasses import replace
+from datetime import date
 from pathlib import Path
 
 from src.research.independent_scenario_adapter import adapt_independent_world
 from src.research.independent_scenarios import (
     REFERENCE_DATE,
     IndependentEventKind,
+    IndependentPolicyCard,
     IndependentScenarioSpec,
     IndependentSplit,
     TruthCategory,
@@ -18,6 +20,7 @@ from src.research.independent_scenarios import (
     generate_independent_world,
     independent_scenario_matrix,
     population_families,
+    _event as create_independent_event,
 )
 from src.services.anomaly_detection.deterministic_checks import validate_record_with_policy
 from scripts.run_tdk_independent_development import (
@@ -32,6 +35,70 @@ from scripts.audit_tdk_protocol_artifact import _verify_truth_sidecars
 
 
 class IndependentScenarioTests(unittest.TestCase):
+    def test_event_preserves_exact_version_when_policy_id_is_reused(self):
+        policies = (
+            IndependentPolicyCard(
+                policy_id="shared-progression-policy",
+                version="1.0",
+                effective_from=date(2020, 1, 1),
+                effective_to=date(2022, 12, 31),
+                recorded_at=date(2019, 12, 1),
+                jurisdiction="organization-wide",
+                service_months_by_level={"L7": 30},
+                grandfather_previous_policy=False,
+            ),
+            IndependentPolicyCard(
+                policy_id="shared-progression-policy",
+                version="2.0",
+                effective_from=date(2023, 1, 1),
+                effective_to=None,
+                recorded_at=date(2022, 10, 1),
+                jurisdiction="organization-wide",
+                service_months_by_level={"L7": 36},
+                grandfather_previous_policy=True,
+            ),
+        )
+        legacy_event = create_independent_event(
+            policies,
+            1,
+            0,
+            0,
+            IndependentEventKind.HIRE,
+            date(2022, 6, 1),
+            "shared-progression-policy",
+        )
+        reform_event = create_independent_event(
+            policies,
+            1,
+            0,
+            1,
+            IndependentEventKind.SALARY_INCREMENT,
+            date(2024, 6, 1),
+            "shared-progression-policy",
+        )
+
+        world = generate_independent_world(independent_scenario_matrix(120)[0])
+        employee = replace(
+            world.employees[0],
+            events=(legacy_event, reform_event),
+        )
+        adapted = adapt_independent_world(replace(
+            world,
+            policies=policies,
+            employees=(employee, *world.employees[1:]),
+        ))
+        adapted_employee = next(
+            record for record in adapted.dataset.records
+            if record.identity.employee_id == employee.employee_id
+        )
+
+        self.assertEqual(legacy_event.policy_version, "1.0")
+        self.assertEqual(reform_event.policy_version, "2.0")
+        self.assertEqual(
+            [event.policy_version for event in adapted_employee.events],
+            ["1.0", "2.0"],
+        )
+
     def test_compatible_rare_patterns_are_explicit_for_every_population(self):
         compatibility = compatible_rare_patterns_by_population()
 
