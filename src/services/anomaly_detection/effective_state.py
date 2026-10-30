@@ -16,9 +16,11 @@ history, and feature extraction:
   ``correction_of_source_id`` is superseded. The correction carries the
   effective fact; the superseded record is preserved as raw audit evidence but
   excluded from the effective state.
-- GRAPH VALIDATION: invalid correction graphs are rejected with ``ValueError``
-  rather than silently hiding events: a self-reference, a cycle, or a reference
-  to a source that does not exist among visible events.
+- GRAPH VALIDATION: structurally invalid correction graphs are rejected with
+  ``CorrectionGraphError`` rather than silently hiding events: a self-reference
+  or a cycle. A correction whose target is not among the currently visible
+  events is treated as legitimate partial visibility (nothing to supersede),
+  not as an error.
 
 Consumers can ask for the effective events (visible, superseded removed) or the
 raw visible events (for audit-volume features), keeping "corrected-state
@@ -34,19 +36,39 @@ class CorrectionGraphError(ValueError):
     """Raised when a correction graph is malformed (self-link, cycle, dangling)."""
 
 
+def _event_is_visible(event: AdministrativeEvent, observation_date) -> bool:
+    """An event is visible as of ``observation_date`` when both:
+
+    - it has been RECORDED by then (``recorded_date <= observation_date``), and
+    - it has taken EFFECT by then (``event_date <= observation_date``).
+
+    The second condition (finding R7.3) excludes a promotion that is already
+    recorded but whose effective date is still in the future — such an event is
+    a planned/advance-recorded fact, not a completed one, and must not be counted
+    as a completed promotion in a current-history snapshot. A ``None``
+    observation date means no as-of cutoff (all events visible).
+    """
+    if observation_date is None:
+        return True
+    if event.recorded_date is not None and event.recorded_date > observation_date:
+        return False
+    if event.event_date > observation_date:
+        return False
+    return True
+
+
 def visible_events(
     record: WorkforceHistoryRecord,
 ) -> tuple[AdministrativeEvent, ...]:
     """Return events visible as of the record's observation date, date-sorted.
 
-    Does NOT remove superseded events — this is the raw audit view. Use
-    ``effective_events`` for the corrected state.
+    Visibility requires both recorded-by and effective-by the observation date
+    (see ``_event_is_visible``). Does NOT remove superseded events — this is the
+    raw audit view. Use ``effective_events`` for the corrected state.
     """
     visible = (
         event for event in record.events
-        if record.observation_date is None
-        or event.recorded_date is None
-        or event.recorded_date <= record.observation_date
+        if _event_is_visible(event, record.observation_date)
     )
     return tuple(sorted(visible, key=lambda event: (event.event_date, event.source_id)))
 
@@ -58,8 +80,12 @@ def superseded_source_ids(
 
     Validates the correction graph and raises ``CorrectionGraphError`` on:
       - a self-referencing correction (event corrects itself);
-      - a correction whose target source_id does not exist among ``events``;
       - a cycle in the correction chain.
+
+    A correction whose target source_id is not present among ``events`` is NOT
+    an error: under the bitemporal contract the target may simply be invisible
+    as of the observation date (recorded later, or effective later). Such a
+    correction has nothing visible to supersede and is skipped.
     """
     by_id: dict[str, AdministrativeEvent] = {}
     for event in events:

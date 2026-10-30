@@ -442,5 +442,88 @@ class R5CorrectionSemanticsTests(unittest.TestCase):
         )
 
 
+class R7BitemporalEnforcementTests(unittest.TestCase):
+    """R7: version identity and effective-time semantics must be enforced."""
+
+    def _record(self, events, observation_date=None):
+        return syn.WorkforceHistoryRecord(
+            syn.EmployeeIdentity("A", "A", date(1990, 1, 1)),
+            syn.DatasetSplit.TEST,
+            syn.EmploymentTrack.PROMOTION,
+            "L6", "D", "R", date(2019, 1, 1),
+            tuple(events),
+            observation_date=observation_date,
+        )
+
+    def test_unknown_policy_version_is_rejected(self):
+        """R7.1: a promotion naming a real policy ID but a nonexistent version
+        must be rejected, not silently accepted."""
+        from src.services.anomaly_detection.policy_history import (
+            assess_promotion_history, PolicyEpoch,
+        )
+        from src.services.anomaly_detection.policy_model import PromotionPolicy
+        hire = syn.AdministrativeEvent(syn.AdministrativeEventType.HIRE, date(2019, 1, 1), "H")
+        promo = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.PROMOTION, date(2023, 6, 1), "P",
+            level_before="L7", level_after="L6", recorded_date=date(2023, 6, 2),
+            policy_id="POL", policy_version="not-a-real-version",
+        )
+        epoch = PolicyEpoch(
+            "POL", "1", date(2019, 1, 1), None, date(2019, 1, 1),
+            "organization-wide", PromotionPolicy(),
+        )
+        with self.assertRaises(ValueError):
+            assess_promotion_history(self._record([hire, promo]), PromotionPolicy(), (epoch,))
+
+    def test_matching_policy_version_is_accepted(self):
+        """R7.1 complement: the correct version must still be accepted."""
+        from src.services.anomaly_detection.policy_history import (
+            assess_promotion_history, PolicyEpoch,
+        )
+        from src.services.anomaly_detection.policy_model import PromotionPolicy
+        hire = syn.AdministrativeEvent(syn.AdministrativeEventType.HIRE, date(2019, 1, 1), "H")
+        promo = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.PROMOTION, date(2023, 6, 1), "P",
+            level_before="L7", level_after="L6", recorded_date=date(2023, 6, 2),
+            policy_id="POL", policy_version="1",
+        )
+        epoch = PolicyEpoch(
+            "POL", "1", date(2019, 1, 1), None, date(2019, 1, 1),
+            "organization-wide", PromotionPolicy(),
+        )
+        assessments = assess_promotion_history(self._record([hire, promo]), PromotionPolicy(), (epoch,))
+        self.assertTrue(assessments)
+
+    def test_future_effective_promotion_not_counted_as_completed(self):
+        """R7.3: a promotion whose effective date is after the observation date
+        must not be counted as a completed promotion, even if already recorded."""
+        from src.services.anomaly_detection.features import extract_raw_features
+        hire = syn.AdministrativeEvent(syn.AdministrativeEventType.HIRE, date(2019, 1, 1), "H")
+        future_promo = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.PROMOTION, date(2027, 1, 1), "F",
+            level_before="L7", level_after="L6", recorded_date=date(2026, 1, 1),
+        )
+        record = self._record([hire, future_promo], observation_date=date(2026, 12, 31))
+        self.assertEqual(
+            extract_raw_features(record).values["promotion_count"], 0.0,
+            "a future-effective promotion was counted as completed",
+        )
+
+    def test_future_effective_promotion_not_assessed(self):
+        """R7.3 complement: policy assessment must also exclude future-effective."""
+        from src.services.anomaly_detection.policy_history import assess_promotion_history
+        from src.services.anomaly_detection.policy_model import PromotionPolicy
+        hire = syn.AdministrativeEvent(syn.AdministrativeEventType.HIRE, date(2019, 1, 1), "H")
+        future_promo = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.PROMOTION, date(2027, 1, 1), "F",
+            level_before="L7", level_after="L6", recorded_date=date(2026, 1, 1),
+        )
+        record = self._record([hire, future_promo], observation_date=date(2026, 12, 31))
+        self.assertEqual(
+            len(assess_promotion_history(record, PromotionPolicy())), 0,
+            "a future-effective promotion was assessed as completed",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

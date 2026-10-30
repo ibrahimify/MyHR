@@ -120,10 +120,28 @@ def _policy_for_promotion(
         if epoch.applies(promotion.event_date, known_at, promotion.jurisdiction)
     ]
     if promotion.policy_id:
-        matching_id = [
+        # A declared policy must match by ID AND, when a version is named, by
+        # version (finding R7.1). A promotion that names a real policy ID with a
+        # nonexistent version must be rejected, not silently accepted.
+        id_matches = [
             epoch for epoch in policy_epochs
             if epoch.policy_id == promotion.policy_id
-            and epoch.recorded_at <= known_at
+        ]
+        if promotion.policy_version is not None:
+            version_matches = [
+                epoch for epoch in id_matches
+                if epoch.version == promotion.policy_version
+            ]
+            if not version_matches:
+                raise ValueError(
+                    f"declared policy {promotion.policy_id!r} version "
+                    f"{promotion.policy_version!r} does not exist for "
+                    f"promotion {promotion.source_id}"
+                )
+            id_matches = version_matches
+        matching_id = [
+            epoch for epoch in id_matches
+            if epoch.recorded_at <= known_at
             and epoch.jurisdiction == promotion.jurisdiction
             and (
                 epoch.applies(

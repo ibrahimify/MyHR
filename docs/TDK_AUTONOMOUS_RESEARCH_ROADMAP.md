@@ -33,7 +33,13 @@ A second independent repository audit (imported verbatim to `docs/TDK_SECOND_EXT
 - Independently re-derived (code-path, read-only, not an independent review): 0/72 flagged and +0.0185 confirmed from raw CSVs.
 - This is an EXPLORATORY development artifact from scenario definitions still PENDING supervisor approval (Proposals 1,4,5,6). It is not confirmatory evidence. The invalidated `db1a15646d9e76ba` is preserved unchanged.
 
-**STILL OPEN (next):** R5 (correction semantics across rules/features), R7 (bitemporal/version enforcement), R8 (hard-nonduplicate co-partitioning), R9 (memory measurement/exports), R10 (provenance completeness), R11 (paper/doc reconciliation). Each with a failing test first and independent verification. Holdout stays locked.
+**R5 and R7 — FIXED and independently verified (2026-10-30, local):**
+
+- **R5 (correction semantics).** New central `effective_state` resolver (visibility + supersession + graph validation) used by policy history, deterministic checks, and features. Corrected +6mo commendation now yields 1mo (was 7); corrected unresolved sanction yields 0 delay; superseded invalid promotion not flagged; self-link/cycle raise; invisible correction does not supersede. Independent auditor: all checks PASS. Local commit `63c5dcf`.
+- **R7 (bitemporal/version enforcement).** `_policy_for_promotion` now rejects a promotion naming a real policy ID with a nonexistent version (R7.1). The `effective_state` resolver now also excludes future-effective events (`event_date > observation_date`), so an already-recorded but not-yet-effective promotion is not counted as completed (R7.3). Independent auditor: 13/13 PASS, including guards against over-exclusion. Note: R7.2 (employee-level grandfathering entitlement) and R7.4 (knowledge-time vs observation-time dual views) are deeper modeling items left as documented limitations for the protocol, not silently claimed as complete.
+- 234 tests pass.
+
+**STILL OPEN (next):** R8 (hard-nonduplicate co-partitioning), R9 (memory measurement/exports), R10 (provenance completeness), R11 (paper/doc reconciliation). Each with a failing test first and independent verification. Holdout stays locked.
 
 ## Scientific-Scope Correction For New Scenario Families - 2026-10-30
 
