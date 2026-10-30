@@ -1,16 +1,23 @@
-"""Read-only independent reproduction of three exploratory readings from
+"""Read-only code-path re-derivation of three exploratory readings from
 artifact db1a15646d9e76ba.
+
+IMPORTANT: this is a code-path re-derivation, NOT an independent review. The
+same author implemented both the scenario code and this script, so a match
+confirms arithmetic reproducibility only. A separate read-only auditor or human
+must still verify the raw rows, denominator, and scenario membership before the
+readings are cited as settled.
 
 This script is deliberately standalone. It reads ONLY the artifact's raw CSV
 files and recomputes:
 
-  (a) the 8/72 rare-legitimate deterministic false-alert count;
-  (b) which rare-legitimate mechanisms produced those flags;
+  (a) the rare-legitimate deterministic false-alert count on the TEST split
+      (8 of 72 test-split rare-legitimate records = 11.1%);
+  (b) which rare patterns produced those flags;
   (c) the primary residual recall delta (fixed_review_budget) and its paired
       95% bootstrap confidence interval.
 
 It does not import protocol_evaluation.py, the generator, or the auditor, so a
-match provides evidence independent of those code paths. It never touches a
+match re-derives the values through a different code path. It never touches a
 holdout path and writes nothing.
 
 Usage:
@@ -35,24 +42,28 @@ def _read_csv(name: str) -> list[dict[str, str]]:
 
 
 def reproduce_rare_legitimate_false_alerts() -> tuple[int, int, dict[str, int]]:
-    """(a) and (b): count rare-legitimate records flagged by the deterministic
-    policy rules, and attribute them to their rare-legitimate mechanism.
+    """(a) and (b): count TEST-SPLIT rare-legitimate records flagged by the
+    deterministic policy rules, and attribute them to their rare pattern.
 
-    A rare-legitimate record is identified from record_truth.csv
-    (truth_category == 'rare_legitimate'). A deterministic flag is a
-    record_predictions row with method 'deterministic_policy_rules' and
-    predicted_anomaly truthy, at the rules_fixed operating point.
+    Only the test split is evaluated, so the denominator is the test-split
+    rare-legitimate count (not the all-splits count). A rare-legitimate record
+    is identified from record_truth.csv (truth_category == 'rare_legitimate'
+    AND split == 'test'). A deterministic flag is a record_predictions row with
+    method 'deterministic_policy_rules' and predicted_anomaly truthy at the
+    rules_fixed operating point. Predictions exist only for the test split, so
+    restricting the truth population to the test split is the correct, matched
+    denominator.
     """
     truth = _read_csv("record_truth.csv")
     predictions = _read_csv("record_predictions.csv")
 
     rare_by_key: dict[tuple[str, str], str] = {}
     for row in truth:
-        if row["truth_category"] == "rare_legitimate":
+        if row["truth_category"] == "rare_legitimate" and row["split"] == "test":
             key = (row["scenario_id"], row["employee_id"])
             rare_by_key[key] = row["nominal_rare_pattern"] or row["realized_mechanism"]
 
-    rare_total = len(rare_by_key)
+    rare_total = len(rare_by_key)  # test-split rare-legitimate denominator
 
     flagged_mechanisms: dict[str, int] = {}
     flagged_keys: set[tuple[str, str]] = set()
@@ -129,15 +140,18 @@ def reproduce_primary_recall_delta() -> tuple[float, tuple[float, float], int]:
 
 
 def main() -> None:
-    print(f"Independent read-only reproduction of {ARTIFACT.name}")
+    print(f"Read-only code-path re-derivation (NOT an independent review) of {ARTIFACT.name}")
     print("=" * 70)
 
     flagged, total, mechanisms = reproduce_rare_legitimate_false_alerts()
-    print("\n(a) Rare-legitimate deterministic false alerts")
-    print(f"    reproduced: {flagged}/{total}")
-    print("\n(b) Mechanisms that produced the flags")
+    rate = (flagged / total * 100) if total else 0.0
+    print("\n(a) Rare-legitimate deterministic false alerts (TEST split, pooled)")
+    print(f"    reproduced: {flagged}/{total} test-split rare-legitimate = {rate:.1f}%")
+    print("\n(b) Rare patterns that produced the flags")
     for mechanism, count in sorted(mechanisms.items()):
         print(f"    {mechanism}: {count}")
+    if set(mechanisms) == {"policy_transition"}:
+        print("    (all flags attributable to policy_transition; zero from late_correction)")
 
     mean_delta, (lo, hi), n = reproduce_primary_recall_delta()
     print("\n(c) Primary residual recall delta (fixed_review_budget)")

@@ -90,3 +90,20 @@ requires an independent frozen specification.
 | 1 `late_correction` definition | 2026-10-30 | _pending_ | — |
 | 2 `policy_transition` definition | 2026-10-30 | _pending_ | — |
 | 3 development matrix composition | 2026-10-30 | _pending_ | — |
+
+## Pending independent verification
+
+The exploratory readings from artifact `db1a15646d9e76ba` were re-derived through
+an independent code path (`scripts/reproduce_db1a15646d9e76ba_readings.py`) by the
+same author who wrote the scenario code. This is **not** an independent review. A
+separate read-only auditor (human or distinct agent) must still verify:
+
+- the raw `record_predictions.csv` / `record_truth.csv` rows;
+- that the denominator is the **test-split** rare-legitimate count (72), not the
+  all-splits count (348);
+- scenario membership of the 8 flagged records;
+- that all 8 flags are `policy_transition` cases and none are `late_correction`.
+
+Corrected denominator statement for all documents: **8 of 72 test-split
+rare-legitimate records (11.1%)**; scenario-level, **8 of 12 policy-transition
+test cases (66.7%)**; **0 of 60** other-pattern test cases.
