@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
-from .effective_state import effective_events
+from .effective_state import TemporalView, effective_events
 from .policy_model import PromotionPolicy, PromotionRaceInput, calculate_promotion_race
 from .synthetic_data import AdministrativeEvent, AdministrativeEventType, WorkforceHistoryRecord
 
@@ -50,18 +50,50 @@ class PromotionPolicyAssessment:
         return self.required_service_months or 1
 
 
+@dataclass(frozen=True)
+class GrandfatheringEvidence:
+    """Employee-specific evidence for using a policy outside its valid interval."""
+
+    employee_id: str
+    policy_id: str
+    policy_version: str
+    evidence_reference: str
+    recorded_at: date
+
+    def supports(
+        self,
+        employee_id: str,
+        epoch: PolicyEpoch,
+        known_at: date,
+    ) -> bool:
+        return (
+            bool(self.evidence_reference)
+            and self.employee_id == employee_id
+            and self.policy_id == epoch.policy_id
+            and self.policy_version == epoch.version
+            and self.recorded_at <= known_at
+        )
+
+
 def assess_promotion_history(
     record: WorkforceHistoryRecord,
     policy: PromotionPolicy,
     policy_epochs: tuple[PolicyEpoch, ...] = (),
+    temporal_view: TemporalView | None = None,
+    grandfathering_evidence: tuple[GrandfatheringEvidence, ...] | None = None,
 ) -> tuple[PromotionPolicyAssessment, ...]:
-    """Evaluate every completed promotion under the supplied policy."""
+    """Evaluate every completed promotion under the supplied policy.
+
+    Passing ``grandfathering_evidence`` opts into employee-specific entitlement
+    enforcement. ``None`` preserves draft-scenario compatibility and must not be
+    described as verified grandfathering.
+    """
 
     # Use the central effective-state resolver so promotions, commendations, and
     # sanctions all see the SAME corrected state. Superseded facts (of any type)
     # are excluded; correction events carry the effective fact. A malformed
     # correction graph raises rather than silently hiding events (finding R5).
-    events = effective_events(record)
+    events = effective_events(record, temporal_view)
     promotions = tuple(
         event for event in events
         if event.event_type is AdministrativeEventType.PROMOTION
@@ -72,7 +104,17 @@ def assess_promotion_history(
         if promotion.level_before is None:
             previous_level_start = promotion.event_date
             continue
-        applicable_policy = _policy_for_promotion(promotion, policy, policy_epochs)
+        applicable_policy = _policy_for_promotion(
+            promotion,
+            policy,
+            policy_epochs,
+            employee_id=record.identity.employee_id,
+            policy_known_at=(
+                temporal_view.policy_known_through
+                if temporal_view is not None else None
+            ),
+            grandfathering_evidence=grandfathering_evidence,
+        )
         observed_months = (
             _months_between(previous_level_start, promotion.event_date)
             + max(0, promotion.recognized_service_months)
@@ -111,10 +153,14 @@ def _policy_for_promotion(
     promotion: AdministrativeEvent,
     fallback: PromotionPolicy,
     policy_epochs: tuple[PolicyEpoch, ...],
+    *,
+    employee_id: str,
+    policy_known_at: date | None = None,
+    grandfathering_evidence: tuple[GrandfatheringEvidence, ...] | None = None,
 ) -> PromotionPolicy:
     if not policy_epochs:
         return fallback
-    known_at = promotion.recorded_date or promotion.event_date
+    known_at = policy_known_at or promotion.recorded_date or promotion.event_date
     applicable = [
         epoch for epoch in policy_epochs
         if epoch.applies(promotion.event_date, known_at, promotion.jurisdiction)
@@ -139,19 +185,27 @@ def _policy_for_promotion(
                     f"promotion {promotion.source_id}"
                 )
             id_matches = version_matches
-        matching_id = [
-            epoch for epoch in id_matches
-            if epoch.recorded_at <= known_at
-            and epoch.jurisdiction == promotion.jurisdiction
-            and (
-                epoch.applies(
-                    promotion.event_date,
-                    known_at,
-                    promotion.jurisdiction,
-                )
-                or epoch.grandfather_previous_policy
+        matching_id = []
+        for epoch in id_matches:
+            if (
+                epoch.recorded_at > known_at
+                or epoch.jurisdiction != promotion.jurisdiction
+            ):
+                continue
+            in_interval = epoch.applies(
+                promotion.event_date,
+                known_at,
+                promotion.jurisdiction,
             )
-        ]
+            grandfathered = epoch.grandfather_previous_policy and (
+                grandfathering_evidence is None
+                or any(
+                    evidence.supports(employee_id, epoch, known_at)
+                    for evidence in grandfathering_evidence
+                )
+            )
+            if in_interval or grandfathered:
+                matching_id.append(epoch)
         if not matching_id:
             raise ValueError(
                 f"declared policy {promotion.policy_id} is not applicable to "

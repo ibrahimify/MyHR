@@ -1,5 +1,45 @@
 # TDK Autonomous Research Roadmap
 
+## Policy Evaluation Semantics Engineering Repair - 2026-10-30
+
+- Ambiguous independent-review cases are no longer adapted as `CLEAN`. They
+  remain in the dataset and truth sidecar with an explicit evaluation-eligible
+  mask and exclusion reason, while fitting, threshold selection, and test
+  evaluation use eligible records only. The artifact auditor enforces this
+  membership when the mask is present.
+- Effective-state replay now exposes separate effective-time, recorded-time,
+  and policy-knowledge cutoffs. Semantic fixtures distinguish the facts and
+  retroactive policy amendments known at the original decision from those
+  available during a later present-day review.
+- Employee-specific grandfathering evidence has a strict validation primitive:
+  a declared policy used outside its valid interval is rejected in strict mode
+  unless matching employee, policy ID, version, evidence reference, and
+  knowledge-time evidence are supplied. The independent generator still stores
+  only descriptive evidence strings and generic approval references, so its
+  grandfathered cases remain draft compatibility replay and **must not be
+  described as entitlement-verified**. Adding a structured observable
+  entitlement field remains a pending human-approved contract/scenario proposal.
+- Coordinator verification of preserved artifact `e342bd4acf39b06b` remains:
+  deterministic policy rules flag **39/72** rare-legitimate test histories while
+  invariant rules flag **0/72**. This historical-policy result is distinct from
+  the later malformed-generator **8/72** interpretation, which remains
+  invalidated; neither artifact was modified or regenerated here.
+- The former hash-selected stock-profile control was not a shuffle. It is now a
+  deterministic frequency-preserving permutation of the observed joint policy
+  signal rows: every policy-signal assignment is used exactly once, while each
+  employee's common raw features remain fixed.
+- All predeclared raw, policy, ablation, wrong-policy, and shuffled-policy
+  representations now run on the same invariant-negative residual population.
+  Semantic tests verify identical eligible employee IDs in identical order and
+  equal fixed review budgets; the artifact auditor independently checks residual
+  population and budget equality.
+- Validation: 6 focused semantic tests pass; 114 targeted research/auditor tests
+  pass; 250 non-UI repository tests pass. An attempted UI-inclusive run emitted
+  a pre-existing Windows COM registration diagnostic (`0x80040155`) from the
+  audit-log PDF smoke test, so that UI path is not claimed as verified here.
+- No hypothesis, endpoint, scenario definition, source artifact, or holdout was
+  changed, generated, inspected, scored, or unlocked.
+
 ## Codex Takeover Checkpoint - 2026-10-30
 
 - Commit `1942718` completes the second-audit correctness repairs, including explicit duplicate-pair universes, correction-graph validation, complete provenance, nested memory-measurement safety, and source/variant history consistency.

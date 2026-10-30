@@ -376,6 +376,33 @@ def _verify_primary_pair_populations(
             _verify_top_score_selection(raw, raw_alerts)
             _verify_top_score_selection(policy, policy_alerts)
 
+        residual_groups = {
+            representation: rows
+            for (candidate_scenario, method, representation, point), rows
+            in predictions.items()
+            if candidate_scenario == scenario_id
+            and method == "rule_negative_isolation_forest"
+            and point == operating_point
+        }
+        reference_ids = set(raw_by_id)
+        for representation, rows in residual_groups.items():
+            if {row["employee_id"] for row in rows} != reference_ids:
+                raise ArtifactAuditError(
+                    "residual control population differs for "
+                    f"{scenario_id}/{operating_point}/{representation}"
+                )
+        if operating_point == "fixed_review_budget":
+            alert_counts = {
+                representation: sum(
+                    _parse_bool(row["predicted_anomaly"]) for row in rows
+                )
+                for representation, rows in residual_groups.items()
+            }
+            if len(set(alert_counts.values())) > 1:
+                raise ArtifactAuditError(
+                    f"residual control review budgets differ: {alert_counts}"
+                )
+
 
 def _verify_top_score_selection(
     rows: list[dict[str, str]],
@@ -500,6 +527,25 @@ def _verify_truth_sidecars(
     }
     if not prediction_keys.issubset(truth_key_set):
         raise ArtifactAuditError("predictions reference employees missing from record truth")
+    if truth_rows and "evaluation_eligible" in truth_rows[0]:
+        eligible_test_keys = {
+            (row["scenario_id"], row["employee_id"])
+            for row in truth_rows
+            if row["split"] == "test" and _parse_bool(row["evaluation_eligible"])
+        }
+        ineligible_keys = {
+            (row["scenario_id"], row["employee_id"])
+            for row in truth_rows
+            if not _parse_bool(row["evaluation_eligible"])
+        }
+        if prediction_keys & ineligible_keys:
+            raise ArtifactAuditError(
+                "evaluation-ineligible employees appear in predictions"
+            )
+        if prediction_keys != eligible_test_keys:
+            raise ArtifactAuditError(
+                "prediction membership does not match eligible test truth"
+            )
 
     policy_keys = [(row["scenario_id"], row["policy_id"]) for row in policy_rows]
     if len(set(policy_keys)) != len(policy_keys):

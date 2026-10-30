@@ -29,6 +29,9 @@ features" and "correction-volume features" explicitly distinct.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import date
+
 from .synthetic_data import AdministrativeEvent, WorkforceHistoryRecord
 
 
@@ -36,39 +39,82 @@ class CorrectionGraphError(ValueError):
     """Raised when a correction graph is malformed (self-link, cycle, dangling)."""
 
 
-def _event_is_visible(event: AdministrativeEvent, observation_date) -> bool:
-    """An event is visible as of ``observation_date`` when both:
+@dataclass(frozen=True)
+class TemporalView:
+    """Independent effective-time, knowledge-time, and policy-time cutoffs.
 
-    - it has been RECORDED by then (``recorded_date <= observation_date``), and
-    - it has taken EFFECT by then (``event_date <= observation_date``).
+    ``known_then`` reconstructs what was visible at an earlier decision.
+    ``present_review`` keeps that decision's effective horizon while admitting
+    facts and policy amendments learned by a later review date.
+    """
+
+    effective_through: date | None
+    recorded_through: date | None
+    policy_known_through: date | None
+
+    @classmethod
+    def known_then(cls, decision_date: date) -> "TemporalView":
+        return cls(decision_date, decision_date, decision_date)
+
+    @classmethod
+    def present_review(
+        cls,
+        decision_date: date,
+        review_date: date,
+    ) -> "TemporalView":
+        if review_date < decision_date:
+            raise ValueError("review_date cannot precede decision_date")
+        return cls(decision_date, review_date, review_date)
+
+
+def _default_view(record: WorkforceHistoryRecord) -> TemporalView:
+    return TemporalView(
+        effective_through=record.observation_date,
+        recorded_through=record.observation_date,
+        policy_known_through=None,
+    )
+
+
+def _event_is_visible(event: AdministrativeEvent, view: TemporalView) -> bool:
+    """An event is visible in a temporal view when both:
+
+    - it has been recorded by ``recorded_through``; and
+    - it has taken effect by ``effective_through``.
 
     The second condition (finding R7.3) excludes a promotion that is already
     recorded but whose effective date is still in the future — such an event is
     a planned/advance-recorded fact, not a completed one, and must not be counted
     as a completed promotion in a current-history snapshot. A ``None``
-    observation date means no as-of cutoff (all events visible).
+    A ``None`` cutoff leaves that temporal dimension unbounded.
     """
-    if observation_date is None:
-        return True
-    if event.recorded_date is not None and event.recorded_date > observation_date:
+    if (
+        view.recorded_through is not None
+        and event.recorded_date is not None
+        and event.recorded_date > view.recorded_through
+    ):
         return False
-    if event.event_date > observation_date:
+    if (
+        view.effective_through is not None
+        and event.event_date > view.effective_through
+    ):
         return False
     return True
 
 
 def visible_events(
     record: WorkforceHistoryRecord,
+    temporal_view: TemporalView | None = None,
 ) -> tuple[AdministrativeEvent, ...]:
-    """Return events visible as of the record's observation date, date-sorted.
+    """Return events visible in the requested temporal view, date-sorted.
 
-    Visibility requires both recorded-by and effective-by the observation date
+    The default uses the record observation date for both temporal dimensions
     (see ``_event_is_visible``). Does NOT remove superseded events — this is the
     raw audit view. Use ``effective_events`` for the corrected state.
     """
+    view = temporal_view or _default_view(record)
     visible = (
         event for event in record.events
-        if _event_is_visible(event, record.observation_date)
+        if _event_is_visible(event, view)
     )
     return tuple(sorted(visible, key=lambda event: (event.event_date, event.source_id)))
 
@@ -145,6 +191,7 @@ def superseded_source_ids(
 
 def effective_events(
     record: WorkforceHistoryRecord,
+    temporal_view: TemporalView | None = None,
 ) -> tuple[AdministrativeEvent, ...]:
     """Return the effective (corrected-state) events for the record.
 
@@ -152,6 +199,6 @@ def effective_events(
     events themselves remain (they carry the effective fact). Raises
     ``CorrectionGraphError`` on a malformed correction graph.
     """
-    events = visible_events(record)
+    events = visible_events(record, temporal_view)
     superseded = superseded_source_ids(events)
     return tuple(event for event in events if event.source_id not in superseded)

@@ -34,6 +34,9 @@ from .independent_scenarios import (
 @dataclass(frozen=True)
 class AdapterPopulation:
     profile_id: str
+    evaluation_eligible_by_employee_id: dict[str, bool]
+    evaluation_exclusion_reason_by_employee_id: dict[str, str]
+    truth_category_by_employee_id: dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -81,7 +84,7 @@ def adapt_independent_world(world: IndependentWorld) -> ScenarioDataset:
             events=tuple(
                 _event(event, policy_versions) for event in employee.events
             ),
-            anomaly_labels=(_label(truth.category, truth.mechanism),),
+            anomaly_labels=_labels(truth.category, truth.mechanism),
             observation_date=REFERENCE_DATE,
         ))
     labels = Counter(label.value for record in records for label in record.anomaly_labels)
@@ -120,7 +123,23 @@ def adapt_independent_world(world: IndependentWorld) -> ScenarioDataset:
             )
             for card in world.policies
         ),
-        population=AdapterPopulation(spec.population),  # type: ignore[arg-type]
+        population=AdapterPopulation(  # type: ignore[arg-type]
+            profile_id=spec.population,
+            evaluation_eligible_by_employee_id={
+                entry.employee_id: (
+                    entry.category is not TruthCategory.AMBIGUOUS_REVIEW_CASE
+                )
+                for entry in world.truth
+            },
+            evaluation_exclusion_reason_by_employee_id={
+                entry.employee_id: "ambiguous_review_case"
+                for entry in world.truth
+                if entry.category is TruthCategory.AMBIGUOUS_REVIEW_CASE
+            },
+            truth_category_by_employee_id={
+                entry.employee_id: entry.category.value for entry in world.truth
+            },
+        ),
         dataset=SyntheticDataset(
             records=tuple(records),
             metadata=SyntheticDatasetMetadata(
@@ -169,14 +188,18 @@ def _event(value, policy_versions: dict[str, str]) -> AdministrativeEvent:
     )
 
 
-def _label(category: TruthCategory, mechanism: str) -> AnomalyType:
-    if category in {TruthCategory.ORDINARY_LEGITIMATE, TruthCategory.AMBIGUOUS_REVIEW_CASE}:
-        return AnomalyType.CLEAN
+def _labels(category: TruthCategory, mechanism: str) -> tuple[AnomalyType, ...]:
+    if category is TruthCategory.AMBIGUOUS_REVIEW_CASE:
+        # Ambiguous cases remain present for review and provenance but are not
+        # coerced into either side of the binary evaluation target.
+        return ()
+    if category is TruthCategory.ORDINARY_LEGITIMATE:
+        return (AnomalyType.CLEAN,)
     if category is TruthCategory.RARE_LEGITIMATE:
-        return AnomalyType.POLICY_LEGITIMATE_RARE_CASE
-    return {
+        return (AnomalyType.POLICY_LEGITIMATE_RARE_CASE,)
+    return ({
         "wrong_employee_link": AnomalyType.EXCESSIVE_SANCTIONS,
         "missing_increment_import": AnomalyType.UNUSUAL_ADMIN_INTERVAL,
         "approval_bypass": AnomalyType.FREQUENT_PROMOTIONS,
         "batch_retry": AnomalyType.UNUSUAL_ADMIN_INTERVAL,
-    }[mechanism]
+    }[mechanism],)

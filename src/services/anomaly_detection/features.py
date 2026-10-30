@@ -3,8 +3,13 @@
 from dataclasses import dataclass
 from datetime import date
 
-from .effective_state import effective_events
-from .policy_history import PolicyEpoch, PromotionPolicyAssessment, assess_promotion_history
+from .effective_state import TemporalView, effective_events
+from .policy_history import (
+    GrandfatheringEvidence,
+    PolicyEpoch,
+    PromotionPolicyAssessment,
+    assess_promotion_history,
+)
 from .policy_model import PromotionPolicy
 from .synthetic_data import AdministrativeEvent, AdministrativeEventType, EmploymentTrack, WorkforceHistoryRecord
 
@@ -25,10 +30,13 @@ def supported_feature_sets() -> tuple[str, str]:
     return RAW_FEATURE_SET, POLICY_AWARE_FEATURE_SET
 
 
-def extract_raw_features(record: WorkforceHistoryRecord) -> FeatureVector:
+def extract_raw_features(
+    record: WorkforceHistoryRecord,
+    temporal_view: TemporalView | None = None,
+) -> FeatureVector:
     """Extract policy-agnostic event-count and interval features."""
 
-    events = _sorted_events(record)
+    events = _sorted_events(record, temporal_view)
     promotions = _events_of_type(events, AdministrativeEventType.PROMOTION)
     increments = _events_of_type(events, AdministrativeEventType.SALARY_INCREMENT)
     sanctions = _events_of_type(events, AdministrativeEventType.SANCTION)
@@ -54,13 +62,20 @@ def extract_policy_aware_features(
     record: WorkforceHistoryRecord,
     policy: PromotionPolicy | None = None,
     policy_epochs: tuple[PolicyEpoch, ...] = (),
+    temporal_view: TemporalView | None = None,
+    grandfathering_evidence: tuple[GrandfatheringEvidence, ...] | None = None,
 ) -> FeatureVector:
     """Extract features that condition raw history on explicit progression policy."""
 
     policy = policy or PromotionPolicy()
-    raw = extract_raw_features(record).values
-    events = _sorted_events(record)
-    assessments = assess_promotion_history(record, policy, policy_epochs)
+    raw = extract_raw_features(record, temporal_view).values
+    assessments = assess_promotion_history(
+        record,
+        policy,
+        policy_epochs,
+        temporal_view,
+        grandfathering_evidence,
+    )
     service_context = _promotion_service_context(assessments)
 
     values = dict(raw)
@@ -130,14 +145,17 @@ def _promotion_service_context(
     }
 
 
-def _sorted_events(record: WorkforceHistoryRecord) -> tuple[AdministrativeEvent, ...]:
+def _sorted_events(
+    record: WorkforceHistoryRecord,
+    temporal_view: TemporalView | None = None,
+) -> tuple[AdministrativeEvent, ...]:
     # Both raw and policy-aware features compute over the effective (corrected)
     # state via the central resolver (finding R5), so the two representations
     # differ only in policy-awareness, not in correction handling. A superseded
     # invalid fact does not silently feed one representation and not the other.
     # Correction *volume* (how often a history was amended) is a distinct signal
     # that can be added as an explicit feature rather than leaking through here.
-    return effective_events(record)
+    return effective_events(record, temporal_view)
 
 
 def _events_of_type(

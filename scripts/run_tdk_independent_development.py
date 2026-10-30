@@ -34,6 +34,7 @@ from src.research.independent_scenario_adapter import adapt_independent_world
 from src.research.independent_scenarios import (
     IndependentEvent,
     IndependentWorld,
+    TruthCategory,
     generate_independent_world,
     independent_scenario_matrix,
 )
@@ -207,6 +208,13 @@ def _record_truth_rows(world: IndependentWorld) -> list[dict[str, object]]:
             "employee_id": truth.employee_id,
             "split": employee.split.value,
             "truth_category": truth.category.value,
+            "evaluation_eligible": (
+                truth.category is not TruthCategory.AMBIGUOUS_REVIEW_CASE
+            ),
+            "evaluation_exclusion_reason": (
+                "ambiguous_review_case"
+                if truth.category is TruthCategory.AMBIGUOUS_REVIEW_CASE else ""
+            ),
             "nominal_anomaly_mechanism": world.spec.mechanism,
             "nominal_rare_pattern": world.spec.rare_pattern,
             "realized_mechanism": truth.realized_mechanism,

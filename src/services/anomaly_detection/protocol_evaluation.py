@@ -318,9 +318,8 @@ def evaluate_scenario(
     metric_rows.append(row)
     prediction_rows.extend(records)
 
-    representations = {item.name: item for item in feature_representations()}
-    for representation_name in ("raw_matched", "policy_matched"):
-        representation = representations[representation_name]
+    for representation in feature_representations():
+        representation_name = representation.name
         residual_train = tuple(
             record for record, score in zip(train, invariant_rule_train_scores)
             if score <= 0
@@ -451,7 +450,16 @@ def evaluate_scenario(
 
 
 def _records(scenario: ScenarioDataset, split: DatasetSplit) -> tuple[WorkforceHistoryRecord, ...]:
-    return tuple(record for record in scenario.dataset.records if record.split is split)
+    eligibility = getattr(
+        scenario.population,
+        "evaluation_eligible_by_employee_id",
+        {},
+    )
+    return tuple(
+        record for record in scenario.dataset.records
+        if record.split is split
+        and eligibility.get(record.identity.employee_id, True)
+    )
 
 
 def _vectors(
@@ -461,6 +469,19 @@ def _vectors(
 ) -> tuple[FeatureVector, ...]:
     if representation.policy_mode == "raw":
         return tuple(extract_raw_features(record) for record in records)
+    if representation.policy_mode == "shuffled":
+        observed = tuple(
+            extract_policy_aware_features(
+                record,
+                scenario.policy,
+                scenario.policy_epochs,
+            )
+            for record in records
+        )
+        return _frequency_preserving_policy_permutation(
+            observed,
+            scenario.config.model_seed,
+        )
     wrong_policy = _wrong_policy(scenario.config.policy_profile)
     vectors = []
     for record in records:
@@ -469,9 +490,6 @@ def _vectors(
             policy_epochs = scenario.policy_epochs
         elif representation.policy_mode == "wrong":
             policy = wrong_policy
-            policy_epochs = ()
-        elif representation.policy_mode == "shuffled":
-            policy = _shuffled_policy(record.identity.employee_id, scenario.config.model_seed)
             policy_epochs = ()
         else:
             raise ValueError(f"unsupported policy mode: {representation.policy_mode}")
@@ -486,11 +504,43 @@ def _wrong_policy(true_profile: str) -> PromotionPolicy:
     return profiles[profile_names[(index + 1) % len(profile_names)]]
 
 
-def _shuffled_policy(employee_id: str, seed: int) -> PromotionPolicy:
-    profiles = policy_profiles()
-    names = tuple(profiles)
-    digest = sha256(f"{seed}:{employee_id}".encode("utf-8")).digest()
-    return profiles[names[int.from_bytes(digest[:4], "big") % len(names)]]
+def _frequency_preserving_policy_permutation(
+    vectors: tuple[FeatureVector, ...],
+    seed: int,
+) -> tuple[FeatureVector, ...]:
+    """Permute observed policy signals without changing their frequencies.
+
+    The former control selected one of three stock profiles by employee hash;
+    that was random reassignment, not a shuffle of the scenario's observed
+    policy context. This rotation uses every observed policy-signal row exactly
+    once and is deterministic for a scenario/model seed.
+    """
+
+    if len(vectors) < 2:
+        return vectors
+    policy_columns = (
+        "policy_service_deficit_months",
+        "policy_service_deficit_ratio",
+        "policy_unexplained_short_promotion",
+    )
+    order = sorted(
+        range(len(vectors)),
+        key=lambda index: sha256(
+            f"{seed}:{vectors[index].employee_id}".encode("utf-8")
+        ).digest(),
+    )
+    donor_by_target = {
+        target: order[(position + 1) % len(order)]
+        for position, target in enumerate(order)
+    }
+    permuted = []
+    for target_index, vector in enumerate(vectors):
+        donor = vectors[donor_by_target[target_index]]
+        values = dict(vector.values)
+        for column in policy_columns:
+            values[column] = donor.values[column]
+        permuted.append(FeatureVector(vector.employee_id, vector.feature_set, values))
+    return tuple(permuted)
 
 
 def _select_threshold(
@@ -753,6 +803,7 @@ def _evaluation_output(
         "predicted_anomaly": predicted,
         "ground_truth_anomaly": expected,
         "labels": "|".join(label.value for label in record.anomaly_labels),
+        "evaluation_eligible": True,
     } for record, score, predicted, expected in zip(records, scores, predictions, y_true)]
     return row, prediction_rows
 
