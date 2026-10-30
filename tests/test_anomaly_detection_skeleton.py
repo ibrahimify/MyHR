@@ -536,7 +536,12 @@ class AnomalyDetectionSkeletonTests(unittest.TestCase):
         self.assertEqual(normalized_similarity("known", ""), 0.0)
 
     def test_similarity_default_matches_current_protocol_threshold(self):
-        self.assertEqual(find_similarity_duplicate_candidates.__defaults__, (0.70,))
+        # Check the threshold default by signature inspection rather than the
+        # brittle positional __defaults__ tuple (the function also accepts an
+        # optional blocked_pairs argument for R9 blocking reuse).
+        import inspect
+        default = inspect.signature(find_similarity_duplicate_candidates).parameters["threshold"].default
+        self.assertEqual(default, 0.70)
 
     def test_duplicate_threshold_is_selected_on_validation_and_scored_on_test(self):
         dataset = generate_synthetic_dataset(ExperimentConfig(

@@ -184,6 +184,10 @@ class WorkforceHistoryRecord:
     # Explicit mechanism for hard nonduplicates.  Set only on records
     # intentionally generated as confusable-but-distinct individuals.
     hard_nonduplicate_kind: HardNonduplicateKind | None = None
+    # The anchor employee_id whose surface features this hard nonduplicate was
+    # made to resemble. Recorded so the intended difficult pair is traceable and
+    # verifiable as jointly present in one partition.
+    hard_nonduplicate_anchor_id: str | None = None
 
     @property
     def has_anomaly(self) -> bool:
@@ -422,27 +426,35 @@ def generate_synthetic_dataset(config: ExperimentConfig) -> SyntheticDataset:
         records.append(record)
 
     # --- Hard nonduplicate injection ---
-    # Add one explicit hard nonduplicate record for each HardNonduplicateKind,
-    # provided enough clean records exist as anchors. Cluster members (duplicate
-    # sources, tagged with latent_person_id) are EXCLUDED so a hard-nonduplicate
-    # mutation can never overwrite a canonical duplicate-source identity.
+    # Add one explicit hard nonduplicate record for each HardNonduplicateKind.
+    # Each (anchor, target) pair must be CO-PARTITIONED so the intended difficult
+    # negative is jointly present in the evaluated split (finding R8). We prefer
+    # the TEST split (the evaluated partition) and fall back to whichever split
+    # has enough clean records. Cluster members (duplicate sources, tagged with
+    # latent_person_id) are excluded so a hard-nonduplicate mutation can never
+    # overwrite a canonical duplicate-source identity. The anchor employee_id is
+    # recorded on the target so the pair is traceable.
     hard_nonduplicate_kinds = list(HardNonduplicateKind)
-    clean_records = [
-        r for r in records
-        if r.anomaly_labels == (AnomalyType.CLEAN,)
-        and r.latent_person_id is None
-    ]
-    if len(clean_records) >= 2 * len(hard_nonduplicate_kinds):
-        # Use a deterministic sub-RNG seeded from the main seed so insertion
-        # does not perturb the main RNG sequence.
-        hard_rng = Random(config.seed ^ 0xDEAD_BEEF)
-        hard_rng.shuffle(clean_records)
+    hard_rng = Random(config.seed ^ 0xDEAD_BEEF)
+    clean_by_split: dict[DatasetSplit, list[WorkforceHistoryRecord]] = {}
+    for r in records:
+        if r.anomaly_labels == (AnomalyType.CLEAN,) and r.latent_person_id is None:
+            clean_by_split.setdefault(r.split, []).append(r)
+    # Order splits by preference: TEST first, then VALIDATION, then TRAIN.
+    split_preference = [DatasetSplit.TEST, DatasetSplit.VALIDATION, DatasetSplit.TRAIN]
+    needed = 2 * len(hard_nonduplicate_kinds)
+    host_split = next(
+        (s for s in split_preference if len(clean_by_split.get(s, [])) >= needed),
+        None,
+    )
+    if host_split is not None:
+        pool = list(clean_by_split[host_split])
+        hard_rng.shuffle(pool)
+        used_ids: set[str] = set()
         for kind_idx, kind in enumerate(hard_nonduplicate_kinds):
-            anchor = clean_records[kind_idx * 2]
-            target_idx = kind_idx * 2 + 1
-            target_record = clean_records[target_idx]
+            anchor = pool[kind_idx * 2]
+            target_record = pool[kind_idx * 2 + 1]
             modified = _apply_hard_nonduplicate(target_record, kind, anchor)
-            # Replace the target record in the main list.
             for list_idx, r in enumerate(records):
                 if r.identity.employee_id == target_record.identity.employee_id:
                     records[list_idx] = modified
@@ -980,6 +992,7 @@ def _apply_hard_nonduplicate(
         identity=identity,
         anomaly_labels=(AnomalyType.CLEAN,),
         hard_nonduplicate_kind=kind,
+        hard_nonduplicate_anchor_id=anchor.identity.employee_id,
         duplicate_of_employee_id=None,
         latent_person_id=None,
     )
@@ -1014,6 +1027,7 @@ def _record_to_dict(record: WorkforceHistoryRecord) -> dict[str, object]:
         "hard_nonduplicate_kind": (
             record.hard_nonduplicate_kind.value if record.hard_nonduplicate_kind else None
         ),
+        "hard_nonduplicate_anchor_id": record.hard_nonduplicate_anchor_id,
         "observation_date": (
             record.observation_date.isoformat() if record.observation_date else None
         ),

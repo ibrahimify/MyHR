@@ -39,7 +39,14 @@ A second independent repository audit (imported verbatim to `docs/TDK_SECOND_EXT
 - **R7 (bitemporal/version enforcement).** `_policy_for_promotion` now rejects a promotion naming a real policy ID with a nonexistent version (R7.1). The `effective_state` resolver now also excludes future-effective events (`event_date > observation_date`), so an already-recorded but not-yet-effective promotion is not counted as completed (R7.3). Independent auditor: 13/13 PASS, including guards against over-exclusion. Note: R7.2 (employee-level grandfathering entitlement) and R7.4 (knowledge-time vs observation-time dual views) are deeper modeling items left as documented limitations for the protocol, not silently claimed as complete.
 - 234 tests pass.
 
-**STILL OPEN (next):** R8 (hard-nonduplicate co-partitioning), R9 (memory measurement/exports), R10 (provenance completeness), R11 (paper/doc reconciliation). Each with a failing test first and independent verification. Holdout stays locked.
+**R8, R9, R10 — FIXED and independently verified (2026-10-30, local):**
+
+- **R8 (hard-nonduplicate co-partitioning).** Added `hard_nonduplicate_anchor_id` field; injection now selects anchor+target from the SAME split (preferring TEST, with VALIDATION/TRAIN fallback), so the intended difficult pair is jointly present in the evaluated partition and traceable. Independent auditor: all 4 hard pairs co-partitioned and in TEST across seeds 2026/2027/2028; none leak into true pairs. Fallback regime also covered by test.
+- **R9 (memory measurement/exports).** `peak_memory_bytes` now uses `tracemalloc.get_traced_memory()` (true high-water mark, not retained snapshot diff); `tracemalloc.stop()` in a `finally`, caller tracing state preserved; blocking computed once and reused via a `blocked_pairs` argument (no double blocking); CSV export now includes `blocking_time_s`, `scoring_time_s`, `peak_memory_bytes`. Independent auditor: all structural guarantees PASS, candidate equivalence confirmed.
+- **R10 (provenance completeness).** The artifact auditor now requires provenance `source_sha256` to cover the COMPLETE `PROVENANCE_SOURCE_PATHS` set, not an arbitrary non-empty subset. Independent auditor: subset rejected, complete set accepted, and artifact `274067cbb57f1dc2` still audits "verified" under the stricter check.
+- Two brittle pre-existing tests updated to match corrected behavior (threshold-default inspection; audit fixtures now supply complete provenance). 244 tests pass.
+
+**STILL OPEN (last):** R11 (paper/protocol/status/package reconciliation — documentation only). Holdout stays locked.
 
 ## Scientific-Scope Correction For New Scenario Families - 2026-10-30
 

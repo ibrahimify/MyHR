@@ -17,6 +17,27 @@ from scripts.audit_tdk_protocol_artifact import (
     audit_artifact,
 )
 from scripts.run_tdk_protocol_experiment import _paired_comparisons
+from scripts.run_tdk_research_experiment import PROVENANCE_SOURCE_PATHS
+
+
+def _complete_source_hashes() -> dict:
+    """Build the COMPLETE required source-hash map at HEAD.
+
+    The artifact auditor now enforces that provenance covers every required
+    source path (finding R10), so fixtures must supply the full set rather than
+    a single stand-in file.
+    """
+    import subprocess
+
+    repo_root = Path.cwd()
+    hashes = {}
+    for path in PROVENANCE_SOURCE_PATHS:
+        content = subprocess.run(
+            ["git", "show", f"HEAD:{path}"],
+            cwd=repo_root, capture_output=True,
+        ).stdout
+        hashes[path] = sha256(content).hexdigest()
+    return hashes
 
 
 class ProtocolArtifactAuditTests(unittest.TestCase):
@@ -280,9 +301,7 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
             "provenance": {
                 "git_commit": "HEAD",
                 "git_dirty": False,
-                "source_sha256": {
-                    "AGENTS.md": sha256(Path("AGENTS.md").read_bytes()).hexdigest(),
-                },
+                "source_sha256": _complete_source_hashes(),
             },
         }
         (run_dir / "metadata.json").write_text(

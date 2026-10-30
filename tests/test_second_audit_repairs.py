@@ -442,6 +442,203 @@ class R5CorrectionSemanticsTests(unittest.TestCase):
         )
 
 
+class R8HardNonduplicateCoPartitionTests(unittest.TestCase):
+    """R8: a hard-nonduplicate pair must be jointly present in one partition
+    (preferably TEST) and the anchor relationship must be recorded, so the
+    intended difficult pair is actually evaluated together."""
+
+    def _dataset(self, seed: int = 2026, n: int = 1000):
+        return syn.generate_synthetic_dataset(
+            syn.ExperimentConfig(
+                seed=seed, employee_count=n,
+                anomaly_rate=0.10, rare_legitimate_rate=0.04,
+            )
+        )
+
+    def test_hard_nonduplicate_anchor_is_recorded(self):
+        dataset = self._dataset()
+        hard = [r for r in dataset.records if r.hard_nonduplicate_kind is not None]
+        self.assertGreater(len(hard), 0)
+        for r in hard:
+            self.assertIsNotNone(
+                r.hard_nonduplicate_anchor_id,
+                f"hard nonduplicate {r.identity.employee_id} has no recorded anchor",
+            )
+
+    def test_hard_nonduplicate_pair_is_co_partitioned(self):
+        dataset = self._dataset()
+        by_id = {r.identity.employee_id: r for r in dataset.records}
+        hard = [r for r in dataset.records if r.hard_nonduplicate_kind is not None]
+        for r in hard:
+            anchor = by_id.get(r.hard_nonduplicate_anchor_id)
+            self.assertIsNotNone(anchor, f"anchor {r.hard_nonduplicate_anchor_id} not found")
+            self.assertEqual(
+                r.split, anchor.split,
+                f"hard pair {r.identity.employee_id}/{anchor.identity.employee_id} "
+                f"spans partitions {r.split.value}/{anchor.split.value}",
+            )
+
+    def test_hard_nonduplicate_pairs_prefer_test_split(self):
+        """At least one hard pair should land in the test split so the evaluated
+        partition actually contains difficult negatives."""
+        dataset = self._dataset()
+        by_id = {r.identity.employee_id: r for r in dataset.records}
+        hard = [r for r in dataset.records if r.hard_nonduplicate_kind is not None]
+        test_pairs = [
+            r for r in hard
+            if r.split is syn.DatasetSplit.TEST
+            and by_id.get(r.hard_nonduplicate_anchor_id) is not None
+            and by_id[r.hard_nonduplicate_anchor_id].split is syn.DatasetSplit.TEST
+        ]
+        self.assertGreater(
+            len(test_pairs), 0,
+            "no hard-nonduplicate pair is jointly present in the test split",
+        )
+
+    def test_hard_nonduplicates_still_not_true_duplicates(self):
+        from src.services.anomaly_detection.duplicate_detection import _true_duplicate_pairs
+        dataset = self._dataset()
+        records = tuple(r for r in dataset.records if r.split is syn.DatasetSplit.TEST)
+        true_pairs = _true_duplicate_pairs(records)
+        hard_ids = {r.identity.employee_id for r in dataset.records if r.hard_nonduplicate_kind is not None}
+        for left, right in true_pairs:
+            self.assertNotIn(left, hard_ids)
+            self.assertNotIn(right, hard_ids)
+
+    def test_hard_pairs_co_partitioned_in_fallback_regime(self):
+        """When the test split is too small to host all hard pairs, the generator
+        must still keep each pair co-partitioned (falling back to a larger split),
+        never splitting a pair across partitions."""
+        # Small employee count makes the test split too small for 2*4 clean
+        # anchors, exercising the VALIDATION/TRAIN fallback host-split path.
+        dataset = syn.generate_synthetic_dataset(
+            syn.ExperimentConfig(
+                seed=2026, employee_count=120,
+                anomaly_rate=0.10, rare_legitimate_rate=0.04,
+            )
+        )
+        by_id = {r.identity.employee_id: r for r in dataset.records}
+        hard = [r for r in dataset.records if r.hard_nonduplicate_kind is not None]
+        for r in hard:
+            anchor = by_id.get(r.hard_nonduplicate_anchor_id)
+            self.assertIsNotNone(anchor)
+            self.assertEqual(
+                r.split, anchor.split,
+                f"fallback regime split a hard pair across "
+                f"{r.split.value}/{anchor.split.value}",
+            )
+
+
+class R10ProvenanceCompletenessTests(unittest.TestCase):
+    """R10: source-provenance verification must require the COMPLETE required
+    source-path set, not accept an arbitrary non-empty subset."""
+
+    def _metadata(self, revision: str, source_hashes: dict) -> dict:
+        return {
+            "provenance": {
+                "git_dirty": False,
+                "git_commit": revision,
+                "source_sha256": source_hashes,
+            }
+        }
+
+    def test_partial_source_hashes_are_rejected(self):
+        from scripts.audit_tdk_protocol_artifact import _verify_source_revision, ArtifactAuditError
+        from scripts.run_tdk_research_experiment import PROVENANCE_SOURCE_PATHS
+        from hashlib import sha256
+        import subprocess
+        from pathlib import Path
+        repo_root = Path(__file__).resolve().parent.parent
+        revision = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=repo_root, capture_output=True, text=True
+        ).stdout.strip()
+        # Build a metadata with only ONE of the required source paths hashed.
+        one_path = PROVENANCE_SOURCE_PATHS[0]
+        content = subprocess.run(
+            ["git", "show", f"{revision}:{one_path}"], cwd=repo_root, capture_output=True
+        ).stdout
+        partial = {one_path: sha256(content).hexdigest()}
+        with self.assertRaises(ArtifactAuditError):
+            _verify_source_revision(self._metadata(revision, partial), repo_root)
+
+    def test_complete_source_hashes_are_accepted(self):
+        from scripts.audit_tdk_protocol_artifact import _verify_source_revision
+        from scripts.run_tdk_research_experiment import PROVENANCE_SOURCE_PATHS
+        from hashlib import sha256
+        import subprocess
+        from pathlib import Path
+        repo_root = Path(__file__).resolve().parent.parent
+        revision = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=repo_root, capture_output=True, text=True
+        ).stdout.strip()
+        complete = {}
+        for p in PROVENANCE_SOURCE_PATHS:
+            content = subprocess.run(
+                ["git", "show", f"{revision}:{p}"], cwd=repo_root, capture_output=True
+            ).stdout
+            complete[p] = sha256(content).hexdigest()
+        # Should not raise.
+        _verify_source_revision(self._metadata(revision, complete), repo_root)
+
+
+class R9MemoryAndExportTests(unittest.TestCase):
+    """R9: peak memory must be true high-water allocation; caller tracing must be
+    preserved; blocking must not run twice; exports must carry timing+memory."""
+
+    def _dataset(self, seed: int = 2026, n: int = 400):
+        return syn.generate_synthetic_dataset(
+            syn.ExperimentConfig(
+                seed=seed, employee_count=n,
+                anomaly_rate=0.10, rare_legitimate_rate=0.04,
+            )
+        )
+
+    def test_peak_memory_reflects_transient_allocation(self):
+        """peak_memory_bytes must be a plausible high-water mark (> a few KB for a
+        real evaluation), not a tiny retained-snapshot diff."""
+        from src.services.anomaly_detection.duplicate_detection import evaluate_duplicate_detection
+        ev = evaluate_duplicate_detection(self._dataset(), "similarity")
+        # A real similarity evaluation over 400 records allocates well beyond a
+        # few hundred bytes transiently. The old retained-diff metric reported
+        # implausibly small values. Require a non-trivial positive peak.
+        self.assertGreater(ev.peak_memory_bytes, 1000)
+
+    def test_tracemalloc_state_preserved_when_caller_was_tracing(self):
+        """If the caller had tracemalloc running, it must still be running after."""
+        import tracemalloc
+        from src.services.anomaly_detection.duplicate_detection import evaluate_duplicate_detection
+        was_tracing_before = tracemalloc.is_tracing()
+        tracemalloc.start()
+        try:
+            evaluate_duplicate_detection(self._dataset(), "exact")
+            self.assertTrue(
+                tracemalloc.is_tracing(),
+                "evaluate_duplicate_detection stopped the caller's tracemalloc",
+            )
+        finally:
+            tracemalloc.stop()
+        # Restore prior state expectation (test started untraced).
+        self.assertFalse(was_tracing_before)
+
+    def test_tracemalloc_not_left_running_when_caller_was_not_tracing(self):
+        import tracemalloc
+        from src.services.anomaly_detection.duplicate_detection import evaluate_duplicate_detection
+        self.assertFalse(tracemalloc.is_tracing())
+        evaluate_duplicate_detection(self._dataset(), "exact")
+        self.assertFalse(
+            tracemalloc.is_tracing(),
+            "evaluate_duplicate_detection left tracemalloc running",
+        )
+
+    def test_export_includes_timing_and_memory_columns(self):
+        from scripts.run_tdk_research_experiment import _duplicate_rows
+        metric_rows, _ = _duplicate_rows(self._dataset())
+        self.assertTrue(metric_rows)
+        for row in metric_rows:
+            for col in ("blocking_time_s", "scoring_time_s", "peak_memory_bytes"):
+                self.assertIn(col, row, f"export missing {col}")
+
+
 class R7BitemporalEnforcementTests(unittest.TestCase):
     """R7: version identity and effective-time semantics must be enforced."""
 

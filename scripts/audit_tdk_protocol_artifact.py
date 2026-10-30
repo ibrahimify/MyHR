@@ -141,6 +141,16 @@ def _verify_source_revision(metadata: dict[str, Any], repo_root: Path) -> None:
     hashes = provenance.get("source_sha256", {})
     if not revision or not isinstance(hashes, dict) or not hashes:
         raise ArtifactAuditError("source revision provenance is incomplete")
+    # Enforce COMPLETE required-source coverage (finding R10): a non-empty subset
+    # is not sufficient. Every declared provenance source path must be present,
+    # so provenance cannot be partially stripped and still certify.
+    from scripts.run_tdk_research_experiment import PROVENANCE_SOURCE_PATHS
+
+    missing = [path for path in PROVENANCE_SOURCE_PATHS if path not in hashes]
+    if missing:
+        raise ArtifactAuditError(
+            "source provenance is missing required paths: " + ", ".join(sorted(missing))
+        )
     revision_check = subprocess.run(
         ["git", "rev-parse", "--verify", f"{revision}^{{commit}}"],
         cwd=repo_root,

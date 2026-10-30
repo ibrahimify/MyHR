@@ -147,13 +147,20 @@ def find_normalized_exact_duplicate_candidates(
 def find_similarity_duplicate_candidates(
     records: tuple[WorkforceHistoryRecord, ...],
     threshold: float = 0.70,
+    blocked_pairs: tuple[tuple[WorkforceHistoryRecord, WorkforceHistoryRecord], ...] | None = None,
 ) -> tuple[DuplicateCandidate, ...]:
-    """Find likely duplicates with weighted similarity across identity fields."""
+    """Find likely duplicates with weighted similarity across identity fields.
+
+    If ``blocked_pairs`` is provided, it is reused instead of recomputing the
+    blocking step (finding R9: blocking previously ran twice — once in the timed
+    blocking phase and again here).
+    """
 
     if not 0 <= threshold <= 1:
         raise ValueError("threshold must be in the range [0, 1]")
+    pairs = blocked_pairs if blocked_pairs is not None else _blocked_similarity_pairs(records)
     candidates: list[DuplicateCandidate] = []
-    for left, right in _blocked_similarity_pairs(records):
+    for left, right in pairs:
         name_score = normalized_similarity(left.identity.full_name, right.identity.full_name)
         dob_match = (
             left.identity.date_of_birth is not None
@@ -198,45 +205,57 @@ def evaluate_duplicate_detection(
     tracemalloc allocation across the full evaluation.  Both are stored on
     the returned DuplicateEvaluation for protocol reporting.
     """
-    tracemalloc.start()
-    snapshot_before = tracemalloc.take_snapshot()
+    # Memory accounting (finding R9): measure the true high-water mark of
+    # Python allocations during this evaluation via tracemalloc.get_traced_memory,
+    # NOT a retained snapshot diff (which under-reports transient buffers).
+    # Preserve the caller's tracing state: if the caller was already tracing we
+    # do not stop it, and we reset the peak so our reading is scoped to this call.
+    caller_was_tracing = tracemalloc.is_tracing()
+    if not caller_was_tracing:
+        tracemalloc.start()
+    tracemalloc.reset_peak()
 
     records = tuple(record for record in dataset.records if record.split is split)
     scored_candidates: tuple[DuplicateCandidate, ...] = ()
     threshold_used: float | None = None
+    try:
+        # --- Blocking phase (timed once) ---
+        block_start = time.perf_counter()
+        blocked_pairs_raw = tuple(_blocked_similarity_pairs(records))
+        blocking_time_s = time.perf_counter() - block_start
 
-    # --- Blocking phase (timed) ---
-    block_start = time.perf_counter()
-    blocked_pairs_raw = tuple(_blocked_similarity_pairs(records))
-    blocking_time_s = time.perf_counter() - block_start
+        blocked_pairs = {
+            _pair_key(left.identity.employee_id, right.identity.employee_id)
+            for left, right in blocked_pairs_raw
+        }
 
-    blocked_pairs = {
-        _pair_key(left.identity.employee_id, right.identity.employee_id)
-        for left, right in blocked_pairs_raw
-    }
+        # --- Scoring / candidate selection phase (timed) ---
+        # Pass the already-computed blocked pairs so blocking is not recomputed
+        # inside scoring (finding R9: blocking previously ran twice).
+        score_start = time.perf_counter()
+        if method == "exact":
+            candidates = find_exact_duplicate_candidates(records)
+        elif method == "normalized_exact":
+            candidates = find_normalized_exact_duplicate_candidates(records)
+        elif method == "similarity":
+            scored_candidates = _scored_similarity_candidates(
+                records, blocked_pairs=blocked_pairs_raw
+            )
+            candidates = tuple(
+                candidate for candidate in scored_candidates
+                if candidate.score >= threshold
+            )
+            threshold_used = threshold
+        else:
+            raise ValueError(f"Unsupported duplicate detection method: {method}")
+        scoring_time_s = time.perf_counter() - score_start
 
-    # --- Scoring / candidate selection phase (timed) ---
-    score_start = time.perf_counter()
-    if method == "exact":
-        candidates = find_exact_duplicate_candidates(records)
-    elif method == "normalized_exact":
-        candidates = find_normalized_exact_duplicate_candidates(records)
-    elif method == "similarity":
-        scored_candidates = _scored_similarity_candidates(records)
-        candidates = tuple(
-            candidate for candidate in scored_candidates
-            if candidate.score >= threshold
-        )
-        threshold_used = threshold
-    else:
-        raise ValueError(f"Unsupported duplicate detection method: {method}")
-    scoring_time_s = time.perf_counter() - score_start
-
-    # --- Peak memory ---
-    snapshot_after = tracemalloc.take_snapshot()
-    tracemalloc.stop()
-    top_stats = snapshot_after.compare_to(snapshot_before, "lineno")
-    peak_memory_bytes = max((stat.size_diff for stat in top_stats), default=0)
+        # True peak allocation for this call, in bytes.
+        _current, peak_memory_bytes = tracemalloc.get_traced_memory()
+    finally:
+        # Only stop tracing if we started it; never disturb a caller's tracing.
+        if not caller_was_tracing:
+            tracemalloc.stop()
 
     predicted_pairs = {_pair_key(candidate.left_employee_id, candidate.right_employee_id) for candidate in candidates}
     true_pairs = _true_duplicate_pairs(records)
@@ -481,5 +500,8 @@ def _identifier_similarity(left: str | None, right: str | None) -> float:
 
 def _scored_similarity_candidates(
     records: tuple[WorkforceHistoryRecord, ...],
+    blocked_pairs: tuple[tuple[WorkforceHistoryRecord, WorkforceHistoryRecord], ...] | None = None,
 ) -> tuple[DuplicateCandidate, ...]:
-    return find_similarity_duplicate_candidates(records, threshold=0.0)
+    return find_similarity_duplicate_candidates(
+        records, threshold=0.0, blocked_pairs=blocked_pairs
+    )

@@ -333,6 +333,9 @@ def _duplicate_rows(dataset: Any) -> tuple[list[dict[str, Any]], list[dict[str, 
                 "" if evaluation.candidate_average_precision is None
                 else evaluation.candidate_average_precision
             ),
+            "blocking_time_s": evaluation.blocking_time_s,
+            "scoring_time_s": evaluation.scoring_time_s,
+            "peak_memory_bytes": evaluation.peak_memory_bytes,
             **{
                 f"candidate_{key}": value
                 for key, value in _metrics_dict(
