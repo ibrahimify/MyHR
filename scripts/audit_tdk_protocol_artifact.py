@@ -206,7 +206,7 @@ def _expected_metric_suffixes(protocol_version: str) -> set[tuple[str, str, str]
     if protocol_version not in supported:
         return None
     validation_points = {"fixed_review_budget", "validation_f1", "validation_target_fpr"}
-    paired_methods = {"iqr", "z_score", "rule_negative_isolation_forest"}
+    paired_methods = {"iqr", "z_score"}
     result = {
         (method, representation, point)
         for method in paired_methods
@@ -221,6 +221,10 @@ def _expected_metric_suffixes(protocol_version: str) -> set[tuple[str, str, str]
     }
     result.update({
         ("isolation_forest", representation, point)
+        for representation in isolation_representations for point in validation_points
+    })
+    result.update({
+        ("rule_negative_isolation_forest", representation, point)
         for representation in isolation_representations for point in validation_points
     })
     result.update({

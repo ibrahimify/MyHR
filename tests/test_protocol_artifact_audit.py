@@ -278,6 +278,7 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
         protocol = "independent-development-v1-2026-10-16"
         expected = _expected_metric_suffixes(protocol)
         self.assertIsNotNone(expected)
+        self.assertEqual(len(expected), 74)
         rows = [{
             "scenario_id": "s1", "method": method,
             "representation": representation, "operating_point": operating_point,
@@ -288,6 +289,33 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
         _verify_declared_matrix(metadata, configs, rows)
         with self.assertRaisesRegex(ArtifactAuditError, "metric matrix is incomplete"):
             _verify_declared_matrix(metadata, configs, rows[:-1])
+
+    def test_v2_matrix_includes_every_residual_control(self):
+        expected = _expected_metric_suffixes(
+            "independent-development-v2-2026-10-29"
+        )
+        self.assertIsNotNone(expected)
+        self.assertEqual(len(expected), 75)
+        residual_representations = {
+            representation
+            for method, representation, point in expected
+            if method == "rule_negative_isolation_forest"
+            and point == "fixed_review_budget"
+        }
+        self.assertEqual(
+            residual_representations,
+            {
+                "raw_matched",
+                "policy_matched",
+                "policy_deficit_months_ablation",
+                "policy_deficit_ratio_ablation",
+                "policy_unexplained_ablation",
+                "raw_interval_ablation",
+                "raw_without_commendation",
+                "shuffled_policy_control",
+                "wrong_policy_control",
+            },
+        )
 
     @staticmethod
     def _write_fixture(run_dir: Path) -> None:
