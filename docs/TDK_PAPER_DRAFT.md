@@ -421,9 +421,9 @@ Six of the twelve scenarios also contain no residual positive case. The implemen
 
 ### 6.6 Invalidated Historical-Policy Interpretation
 
-The preserved `39/72` and later `8/72` readings do not estimate false alerts on lawful transition histories. The second audit showed that the corresponding generators created genuine contradictions, including promotions before hire and insufficient service. Those alerts were therefore responses to defective records, not evidence that current-policy replay rejected lawful decisions. Both interpretations are invalidated.
+The preserved `39/72` and later `8/72` readings have different evidentiary status and must not be conflated. Artifact `e342bd4acf39b06b` directly supports the historical count `39/72` across broadly labelled rare-legitimate test histories. At source revision `0ad4e96`, its grandfathered and recognized-service cases were encoded as lawful constructed counterexamples but deliberately evaluated through a current-policy-only adapter; the result is therefore a designed specification counterexample, not an estimate of organizational prevalence or a mechanism-specific rate. By contrast, the second audit showed that the later generator behind `8/72` created genuine contradictions, including promotions before hire and insufficient service. Only that `8/72` false-positive interpretation is invalidated by the semantic defect.
 
-[[FIGURE:policy_alerts.png|Figure 10. Audit history of the transition scenario. Earlier apparent false-alert readings were invalidated; the repaired exploratory run records 0/72 deterministic alerts among test-split rare-legitimate histories.]]
+[[FIGURE:policy_alerts.png|Figure 10. Audit history of the rare-legitimate checks. The historical 39/72 is a constructed specification counterexample, the later 8/72 false-positive interpretation is invalidated, and the repaired exploratory run records 0/72 deterministic alerts among test-split rare-legitimate histories.]]
 
 The audit still motivates temporal modeling as a requirements issue, but the current experiments do not quantify its real-world frequency or benefit. Policy identity, version, effective time, recorded time, recognized service, and correction provenance are represented in research records. Employee-specific grandfathering and separate decision-time versus later-review replay remain incomplete.
 

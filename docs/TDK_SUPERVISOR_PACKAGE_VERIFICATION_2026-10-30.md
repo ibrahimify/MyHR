@@ -53,13 +53,22 @@ python scripts/generate_tdk_supervisor_package.py
 
 A package should not be treated as final if a hash changes without a corresponding regenerated verification record.
 
+Source wording and UI-lifecycle corrections made after the execution record above are intentionally not represented by those rendered files or hashes. The recorded package remains a historical supervisor draft; do not regenerate or relabel it as current until the coordinator integrates the bounded changes and starts a new verification pass.
+
 ## Claims Explicitly Excluded
 
-- Invalidated `39/72` and `8/72` readings are not current evidence.
+- The historical `39/72` is not a prevalence estimate or a current model-performance result; it is a constructed specification counterexample from artifact `e342bd4acf39b06b`.
+- The intermediate `8/72` false-positive interpretation is invalidated because the later generator produced contradictory histories.
 - The historical constant-feature comparison is not a null, tie, or equivalence result.
 - The secondary AP result is not confirmatory.
 - Synthetic rates are not estimates of organizational prevalence.
 - No final holdout or real-world validation result exists.
+
+## UI Screenshot Provenance
+
+- Figure 2 uses `docs/media/screenshots/employee.png`; the package generator copies that exact file to its temporary `myhr_ui.png` asset.
+- The screenshot first entered the repository in commit `44e5f45` on 22 May 2026. No automated capture command, viewport, theme, demo-data revision, or redaction record was preserved, so it should be treated as illustrative product media rather than reproducible research evidence.
+- A replacement capture should use only authorized synthetic/demo records: initialize the local demo database, launch `python main.py`, select the Employees page in the light theme at a recorded display size and scale, verify that no private data or credentials are visible, capture the application window, and record the source revision, database seed command, viewport, scale, theme, and output SHA-256 beside the image.
 
 ## Remaining Human Gates
 

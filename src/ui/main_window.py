@@ -389,10 +389,43 @@ class MainWindow(QMainWindow):
         self._pending_navigation = None
         self._navigation_token = 0
         self._nav_skeleton = None
+        self._scheduled_timers = set()
+        self._closing = False
         self._build()
         self.showMaximized()
-        QTimer.singleShot(350, self._enable_page_animations)
-        QTimer.singleShot(900, self._preload_page_classes)
+        self._schedule(350, self._enable_page_animations)
+        self._schedule(900, self._preload_page_classes)
+
+    def _schedule(self, delay_ms, callback):
+        if self._closing:
+            return None
+        timer = QTimer(self)
+        timer.setSingleShot(True)
+
+        def run_callback():
+            self._scheduled_timers.discard(timer)
+            timer.deleteLater()
+            if not self._closing:
+                callback()
+
+        timer.timeout.connect(run_callback)
+        self._scheduled_timers.add(timer)
+        timer.start(delay_ms)
+        return timer
+
+    def closeEvent(self, event):
+        self._closing = True
+        self._pending_navigation = None
+        self._navigation_token += 1
+        for timer in tuple(self._scheduled_timers):
+            timer.stop()
+            timer.deleteLater()
+        self._scheduled_timers.clear()
+        try:
+            theme_manager.theme_changed.disconnect(self._handle_theme_changed)
+        except (RuntimeError, TypeError):
+            pass
+        super().closeEvent(event)
 
     def _build(self):
         central = QWidget()
@@ -447,7 +480,7 @@ class MainWindow(QMainWindow):
         for page in stale_pages:
             self.stack.removeWidget(page)
             page.setParent(None)
-            QTimer.singleShot(1000, page.deleteLater)
+            self._schedule(1000, page.deleteLater)
         if current_page is not None:
             self.stack.removeWidget(current_page)
             current_page.close()
@@ -477,7 +510,7 @@ class MainWindow(QMainWindow):
             ("import_data", "ImportDataPage"),
         ]
         for index, (module_name, class_name) in enumerate(modules):
-            QTimer.singleShot(70 * index, lambda m=module_name, c=class_name: self._safe_preload_page_class(m, c))
+            self._schedule(70 * index, lambda m=module_name, c=class_name: self._safe_preload_page_class(m, c))
 
     def _safe_preload_page_class(self, module_name, class_name):
         try:
@@ -586,7 +619,7 @@ class MainWindow(QMainWindow):
             self._pending_navigation = (key, open_active_sanctions, token)
             self.sidebar._set_active(key)
             self._show_navigation_skeleton(key)
-            QTimer.singleShot(55, lambda: self._finish_pending_navigation(token))
+            self._schedule(55, lambda: self._finish_pending_navigation(token))
             return
         self._perform_navigation(key, open_active_sanctions, animate=animate)
 
@@ -627,7 +660,7 @@ class MainWindow(QMainWindow):
         self.sidebar._set_active(key)
         if hasattr(page, "refresh"):
             if animate and self._page_animation_ready and was_cached:
-                QTimer.singleShot(140, page.refresh)
+                self._schedule(140, page.refresh)
             else:
                 page.refresh()
         if animate and self._page_animation_ready:
@@ -640,7 +673,7 @@ class MainWindow(QMainWindow):
             page.open_active_sanctions()
 
     def _schedule_inactive_page_discard(self, active_key):
-        QTimer.singleShot(450, lambda key=active_key: self._discard_inactive_pages(key))
+        self._schedule(450, lambda key=active_key: self._discard_inactive_pages(key))
 
     def _navigate_to_employee(self, emp_db_id: int):
         if "employees" in self._pages_cache:

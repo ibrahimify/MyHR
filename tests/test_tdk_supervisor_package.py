@@ -10,6 +10,7 @@ from scripts.generate_tdk_supervisor_package import TITLE, build_decision_sheet
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PAPER_SOURCE = REPO_ROOT / "docs" / "TDK_PAPER_DRAFT.md"
+PACKAGE_SCRIPT = REPO_ROOT / "scripts" / "generate_tdk_supervisor_package.py"
 
 
 class TdkSupervisorPackageTests(unittest.TestCase):
@@ -40,10 +41,16 @@ class TdkSupervisorPackageTests(unittest.TestCase):
         for statement in required_statements:
             self.assertIn(statement, text)
         self.assertIn("0 of 72", text)
+        self.assertIn("Only that `8/72` false-positive interpretation is invalidated", text)
+        self.assertIn("designed specification counterexample", text)
+        self.assertNotIn("Both interpretations are invalidated", text)
         self.assertIn("explicit evaluation universe", text)
         self.assertIn("this is a design inference applied to the present experiment", text)
         self.assertNotRegex(text, r"(?i)policy-aware (?:isolation forest )?(?:outperforms|is superior)")
         self.assertNotRegex(text, r"(?i)run[_ -]purpose\s*[=:]\s*holdout")
+        package_script = PACKAGE_SCRIPT.read_text(encoding="utf-8")
+        self.assertIn("39/72 is a constructed specification counterexample", package_script)
+        self.assertIn("8/72 was invalidated", package_script)
 
     def test_decision_sheet_is_one_landscape_page_source_with_pending_decisions(self):
         with tempfile.TemporaryDirectory() as directory:

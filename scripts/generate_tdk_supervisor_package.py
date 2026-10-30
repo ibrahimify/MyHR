@@ -185,7 +185,7 @@ def generate_figures(repo: Path, assets: Path) -> None:
     ax.set_ylabel("Deterministic alerts among 72 labelled rare-legitimate cases")
     for bar, value in zip(bars, values):
         ax.text(bar.get_x() + bar.get_width() / 2, value + 1, f"{value}/72", ha="center", fontsize=11, fontweight="bold")
-    ax.text(0.5, -0.22, "The first two interpretations were invalidated by audit; 0/72 is exploratory development evidence.", transform=ax.transAxes, ha="center", fontsize=10)
+    ax.text(0.5, -0.22, "39/72 is a constructed specification counterexample; 8/72 was invalidated; 0/72 is exploratory evidence.", transform=ax.transAxes, ha="center", fontsize=10)
     ax.grid(axis="y", alpha=0.25)
     _save_figure(assets / "policy_alerts.png")
 

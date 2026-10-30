@@ -1,6 +1,7 @@
 import os
 import csv
 import json
+import sys
 import tempfile
 import unittest
 from types import SimpleNamespace
@@ -8,6 +9,7 @@ from unittest.mock import patch
 from src.core.time import utc_now
 
 from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
 import src.database.connection as db
@@ -42,6 +44,68 @@ class DashboardSmokeTests(unittest.TestCase):
             os.remove(cls._tmp.name)
         except OSError:
             pass
+
+    def test_main_window_constructs_every_page_without_async_exceptions(self):
+        from PySide6.QtTest import QTest
+
+        from src.ui.main_window import MainWindow, _PlaceholderPage
+
+        user = SimpleNamespace(id=1, username="admin", role="admin", full_name="Smoke Test")
+        expected_types = {
+            "dashboard": "DashboardPage",
+            "employees": "EmployeesPage",
+            "hierarchy": "HierarchyPage",
+            "promotions": "PromotionsPage",
+            "commendations": "CommendationsPage",
+            "sanctions": "SanctionsPage",
+            "audit_log": "AuditLogPage",
+            "import_data": "ImportDataPage",
+            "settings": "SettingsPage",
+        }
+        async_exceptions = []
+        original_hook = sys.excepthook
+        sys.excepthook = lambda kind, value, traceback: async_exceptions.append(value)
+        window = MainWindow(user)
+        try:
+            for key, expected_type in expected_types.items():
+                with self.subTest(page=key):
+                    page = window._get_page(key)
+                    self.assertNotIsInstance(page, _PlaceholderPage)
+                    self.assertEqual(expected_type, type(page).__name__)
+            QTest.qWait(1100)
+        finally:
+            window.close()
+            QTest.qWait(20)
+            sys.excepthook = original_hook
+
+        self.assertEqual([], async_exceptions)
+
+    def test_closing_window_cancels_delayed_database_refresh(self):
+        from PySide6.QtTest import QTest
+
+        from src.ui.main_window import MainWindow
+
+        user = SimpleNamespace(id=1, username="admin", role="admin", full_name="Smoke Test")
+        window = MainWindow(user)
+        audit_page = window._get_page("audit_log")
+        window.stack.setCurrentWidget(audit_page)
+        window._page_animation_ready = True
+        async_exceptions = []
+        original_hook = sys.excepthook
+        sys.excepthook = lambda kind, value, traceback: async_exceptions.append(value)
+        failure = OperationalError("SELECT * FROM audit_log", {}, Exception("database closed"))
+        try:
+            with patch.object(audit_page, "refresh", side_effect=failure) as refresh:
+                window._navigate("audit_log")
+                window.close()
+                QTest.qWait(220)
+                refresh.assert_not_called()
+        finally:
+            window.close()
+            QTest.qWait(20)
+            sys.excepthook = original_hook
+
+        self.assertEqual([], async_exceptions)
 
     def test_priority_signal_view_buttons_route_to_expected_pages(self):
         from PySide6.QtWidgets import QPushButton
