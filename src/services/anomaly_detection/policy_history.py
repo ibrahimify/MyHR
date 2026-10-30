@@ -65,9 +65,20 @@ def assess_promotion_history(
         ),
         key=lambda event: (event.event_date, event.source_id),
     ))
+    # A correction supersedes the event it amends. The superseded record is no
+    # longer the effective fact (bitemporal contract: preserve later-recorded
+    # corrections), so it must not be independently evaluated as its own
+    # promotion. Only corrections that are themselves visible by the
+    # observation date can supersede an event.
+    superseded_source_ids = frozenset(
+        event.correction_of_source_id
+        for event in events
+        if event.correction_of_source_id is not None
+    )
     promotions = tuple(
         event for event in events
         if event.event_type is AdministrativeEventType.PROMOTION
+        and event.source_id not in superseded_source_ids
     )
     assessments = []
     previous_level_start = record.hire_date

@@ -456,6 +456,42 @@ class LateCorrectionAndPolicyTransitionScenarioTests(unittest.TestCase):
                     f"rare-legitimate {record.identity.employee_id} flagged by invariant rules: {findings}",
                 )
 
+    def test_late_correction_policy_assessment_does_not_raise(self):
+        """Regression: assess_promotion_history must not raise on a superseded,
+        re-dated erroneous promotion event (policy epoch boundary bug)."""
+        from src.services.anomaly_detection.policy_history import assess_promotion_history
+        world = generate_independent_world(self._spec("late_correction"))
+        scenario = adapt_independent_world(world)
+        for record in scenario.dataset.records:
+            # Must not raise ValueError about inapplicable policy.
+            assess_promotion_history(record, scenario.policy, scenario.policy_epochs)
+
+    def test_late_correction_superseded_event_excluded_from_assessment(self):
+        """A promotion superseded by a correction must not be assessed twice."""
+        from src.services.anomaly_detection.policy_history import assess_promotion_history
+        world = generate_independent_world(self._spec("late_correction"))
+        scenario = adapt_independent_world(world)
+        rare_ids = {
+            t.employee_id for t in world.truth if t.category.value == "rare_legitimate"
+        }
+        for record in scenario.dataset.records:
+            if record.identity.employee_id not in rare_ids:
+                continue
+            superseded = {
+                e.correction_of_source_id
+                for e in record.events
+                if e.correction_of_source_id is not None
+            }
+            if not superseded:
+                continue
+            assessments = assess_promotion_history(record, scenario.policy, scenario.policy_epochs)
+            assessed_ids = {a.event_source_id for a in assessments}
+            for superseded_id in superseded:
+                self.assertNotIn(
+                    superseded_id, assessed_ids,
+                    f"superseded event {superseded_id} was assessed for {record.identity.employee_id}",
+                )
+
     # --- policy_transition ---
 
     def test_policy_transition_spec_validates(self):

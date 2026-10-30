@@ -599,13 +599,16 @@ def _apply_rare_case(
         promotion_events = [e for e in events if e.kind is IndependentEventKind.PROMOTION]
         if promotion_events:
             original = promotion_events[-1]
-            # Original event had an erroneous effective date one year earlier
+            # Original event had an erroneous effective date one year earlier.
+            # The policy_id must reflect the policy applicable at that (wrong)
+            # date, exactly as a real mis-filed record would have been stamped.
             erroneous_date = _add_months(original.effective_date, -12)
             erroneous = IndependentEvent(
                 **{**original.__dict__,
                    "event_id": f"ERR-{original.event_id}",
                    "effective_date": erroneous_date,
                    "recorded_date": erroneous_date + timedelta(days=3),
+                   "policy_id": _policy_id_for_date(erroneous_date),
                    "approval_status": "pending_correction",
                    }
             )
