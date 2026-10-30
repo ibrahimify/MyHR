@@ -2,74 +2,72 @@
 
 Date: 30 October 2026
 
-Status: development evidence only; draft protocol; final holdout locked.
+Status: supervisor-review draft; development evidence only; draft protocol; final holdout locked.
 
 ## Source And Tracker State
 
-- Branch: `research/policy-aware-anomaly`
-- Scientific implementation checkpoint: `1942718e69ccf34d3e628767b5316e0467f63a52`
-- Pull request: #1 remains open, draft, and unmerged.
+- Branch: `research/policy-aware-anomaly`.
+- Repaired scientific artifact source: clean commit `56597d3b7119fbe929f5d44b839c9447e6e03f73`.
+- Integrated source and synthetic screenshot verified at `373f3c8` before this report-only update.
+- Pull request #1 remains open, draft, and unmerged.
 - Issue #10 remains the scientific protocol blocker.
 - No holdout command was executed.
 
 ## Current Artifact
 
-- ID: `independent_development_b866ae2aa1b4b479`
-- Provenance: clean commit `1942718`; Python 3.13.5; NumPy 2.5.4; pandas 2.3.3; scikit-learn 1.9.1; SciPy 1.18.1.
-- Audit: verified with complete manifest, source hashes, stored denominators, paired comparisons, and `holdout_accessed: false`.
-- Data: 12 scenarios; 864 test histories; 108 anomalies; 72 rare-legitimate histories.
-- Deterministic result: 63 TP, 0 FP, 45 FN; 0/72 rare-legitimate alerts.
-- Primary exploratory comparison: recall delta +0.0278, 95% CI [-0.0278, +0.1019], sign-flip p=0.6875.
-- Interpretation: no advantage demonstrated; no equivalence claim.
+- ID: `independent_development_4feea4508de1bb05`.
+- Audit status: `verified`; `holdout_accessed: false`.
+- Data: 12 scenarios; 864 eligible test histories; 108 anomalies; 72 rare-legitimate histories; 900 metric rows; 64,800 prediction rows.
+- Truth sidecars: 4,320 record rows, 57,547 administrative events, and 24 policy epochs.
+- Deterministic policy checks: 63 TP, 0 FP, 45 FN; 0/72 rare-legitimate alerts.
+- Equal residual review queues: 96 records per model. Raw Isolation Forest found 36 anomalies with 60 false alerts; policy-aware Isolation Forest found 39 with 57 false alerts.
+- Primary exploratory recall difference: +0.0278, 95% CI [-0.0278, +0.1019], paired sign-flip p=0.6875.
+- Interpretation: no policy-aware advantage was demonstrated; the interval does not establish equivalence.
 
-## Required Verification Commands
+## Verification Commands And Results
 
 ```powershell
-python -m unittest discover tests
+python -m pytest -q
 python scripts/verify_tdk_citations.py --require-local-artifact
-python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_development/independent_development_b866ae2aa1b4b479
+python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_development/independent_development_4feea4508de1bb05
+python -m pytest tests/test_tdk_supervisor_package.py -q
 python scripts/generate_tdk_supervisor_package.py
 ```
 
-## Final Execution Record
-
-- Manuscript/package source revision: `f1f00b38711a2225d3d05a99195dcb1ec5adb5f7`.
-- Full local suite: 256 tests passed in 126.742 seconds.
+- Full local suite: 274 tests and 9 subtests passed in 167.33 seconds.
 - Package regression tests: 3 passed.
-- Citation verification: valid; 18 bibliography entries, 18 provenance records, 15 claim records, local artifacts verified. Two claims remain explicitly metadata-only and are not presented as verified evidence.
-- Artifact audit: `verified`; 12 scenarios; 46,656 prediction rows; complete truth sidecars; `holdout_accessed: false`.
-- Document render: 38 total pages, introduction starts on page 3, references start on page 36, 33 pages of main text.
-- Visual inspection: all 38 manuscript pages plus the one-page decision sheet inspected at page-image resolution; no clipping, overlap, unreadable figure labels, or broken tables found after the final correction pass.
-- GitHub CI for source revision: push run `41003519077` passed. The matching pull-request run is recorded separately by GitHub.
+- Citation verification: valid; 18 bibliography entries, 18 cited entries, 18 provenance records, and 15 claim records; local artifacts verified.
+- Citation limitation: `lit-holm-procedure` and `lit-reliability-method` remain explicitly metadata-only. The verifier also reports 16 legacy text-hash mismatches while accepting the current provenance records; these are preserved as a migration warning, not hidden.
+- Artifact audit: `verified`; complete truth sidecars and manifest; `holdout_accessed: false`.
+- Asynchronous UI/PDF regressions: owned timers are cancelled on close, all production PDF exports use `QPdfWriter`, and source-wide regression coverage prohibits `QPrinter` and `QtPrintSupport`.
 
-### Package SHA-256
+## Render And Visual Inspection
 
-| File | SHA-256 |
-| --- | --- |
-| `MyHR_TDK_Paper_Draft_EN.docx` | `C3E1E9EED970F6763F57B97F138B6402E1F78C9E556350B38691C2417D4AD0F9` |
-| `MyHR_TDK_Paper_Draft_EN.pdf` | `CE8BFC0013B6D7025B73AB918BAF50539D7EBE4765211F942CD26CFB734F72B7` |
-| `Supervisor_Decision_Sheet.pdf` | `41063C42479EEB1E477F749FC715705F86224C9781573BF2875F98624A187653` |
-| `README.md` | `66AB75CE848BD68A1DEE173F08E810412F28CFB4396D168AF50B09915959B752` |
-
-A package should not be treated as final if a hash changes without a corresponding regenerated verification record.
-
-Source wording and UI-lifecycle corrections made after the execution record above are intentionally not represented by those rendered files or hashes. The recorded package remains a historical supervisor draft; do not regenerate or relabel it as current until the coordinator integrates the bounded changes and starts a new verification pass.
+The final page count, page-image inspection, package hashes, and CI run are recorded after generation. They must not be inferred from an older package.
 
 ## Claims Explicitly Excluded
 
-- The historical `39/72` is the `deterministic_policy_rules` result in artifact `e342bd4acf39b06b`; `deterministic_rules` recorded 0/72. It is a constructed specification counterexample, not a prevalence estimate or current model-performance result, and the artifact omits employee-specific entitlement evidence and per-record realized mechanisms.
-- The intermediate `8/72` false-positive interpretation is invalidated because the later generator produced contradictory histories.
+- The historical `39/72` count is stored for `deterministic_policy_rules` in artifact `e342bd4acf39b06b`, while `deterministic_rules` recorded 0/72. It is a constructed current-policy replay counterexample with incomplete employee-entitlement and realized-mechanism provenance, not a prevalence estimate or mechanism-specific false-positive rate.
+- The later `8/72` false-positive interpretation is invalidated because that generator produced genuine contradictions. It must not be conflated with the historical `39/72` artifact.
 - The historical constant-feature comparison is not a null, tie, or equivalence result.
-- The secondary AP result is not confirmatory.
+- The current secondary AP result is exploratory and not confirmatory.
 - Synthetic rates are not estimates of organizational prevalence.
 - No final holdout or real-world validation result exists.
 
 ## UI Screenshot Provenance
 
-- Figure 2 uses `docs/media/screenshots/employee.png`; the package generator copies that exact file to its temporary `myhr_ui.png` asset.
-- The screenshot first entered the repository in commit `44e5f45` on 22 May 2026. No automated capture command, viewport, theme, demo-data revision, or redaction record was preserved, so it should be treated as illustrative product media rather than reproducible research evidence.
-- A replacement capture should use only authorized synthetic/demo records: initialize the local demo database, launch `python main.py`, select the Employees page in the light theme at a recorded display size and scale, verify that no private data or credentials are visible, capture the application window, and record the source revision, database seed command, viewport, scale, theme, and output SHA-256 beside the image.
+- `docs/media/screenshots/employee.png` was captured from commit `a936bfbad83d5175a3b548e35b2ea832be93e916` by `scripts/capture_tdk_demo_screenshots.py`.
+- The capture uses a temporary synthetic database generated by `scripts/seed_demo_company.py`, employee `EMP-0034`, the Performance view, the light theme, and a 1920 x 1080 viewport.
+- The screenshot contains no private data. Its SHA-256 is `cfda181fc8250405eb3815fb11fa853bdde4f88c638280058a60816446f495d2` and is independently recorded in `employee.provenance.json`.
+- Pixel inspection confirmed that the relevant controls, charts, labels, history rows, and sidebar identity are visible without overlap. Long sidebar names use deliberate ellipsis with the full value available as a tooltip.
 
 ## Remaining Human Gates
 
-Scenario proposals 1 and 3-6, grandfathering semantics, temporal views, expert reviewers and sampling, protocol-scale design, multiplicity, protocol freeze, holdout access, scientific conclusions, and PR merge remain human decisions.
+- Two independent blinded expert reviewers and their sampling protocol.
+- Employee-specific grandfathering semantics and evidence contract.
+- Approval of the concrete protocol-scale scenario matrix and repeated-seed design.
+- Dated protocol and environment freeze.
+- One-time final holdout authorization.
+- Final scientific conclusions, PR merge, and conference upload.
+
+The repaired development pipeline and supervisor draft can be reviewed now. The TDK research is not final until these gates are completed.
