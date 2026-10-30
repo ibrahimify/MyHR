@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 from src.core.time import utc_now
@@ -796,6 +797,15 @@ class DashboardSmokeTests(unittest.TestCase):
 
         self.assertFalse(hasattr(audit_log, "QPrinter"))
         self.assertTrue(hasattr(audit_log, "QPdfWriter"))
+
+    def test_production_pdf_exports_avoid_native_printer_api(self):
+        source_root = Path(__file__).resolve().parents[1] / "src"
+        offenders = []
+        for path in source_root.rglob("*.py"):
+            source = path.read_text(encoding="utf-8")
+            if "QPrinter" in source or "QtPrintSupport" in source:
+                offenders.append(str(path.relative_to(source_root)))
+        self.assertEqual([], offenders)
 
     def test_audit_target_uses_readable_record_names(self):
         from datetime import datetime
