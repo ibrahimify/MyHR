@@ -31,7 +31,27 @@ python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_devel
 python scripts/generate_tdk_supervisor_package.py
 ```
 
-The final execution results, CI URL, page count, rendered-page inspection, and package file hashes are recorded after generation. A package should not be treated as final if any check fails.
+## Final Execution Record
+
+- Manuscript/package source revision: `f1f00b38711a2225d3d05a99195dcb1ec5adb5f7`.
+- Full local suite: 256 tests passed in 126.742 seconds.
+- Package regression tests: 3 passed.
+- Citation verification: valid; 18 bibliography entries, 18 provenance records, 15 claim records, local artifacts verified. Two claims remain explicitly metadata-only and are not presented as verified evidence.
+- Artifact audit: `verified`; 12 scenarios; 46,656 prediction rows; complete truth sidecars; `holdout_accessed: false`.
+- Document render: 38 total pages, introduction starts on page 3, references start on page 36, 33 pages of main text.
+- Visual inspection: all 38 manuscript pages plus the one-page decision sheet inspected at page-image resolution; no clipping, overlap, unreadable figure labels, or broken tables found after the final correction pass.
+- GitHub CI for source revision: push run `41003519077` passed. The matching pull-request run is recorded separately by GitHub.
+
+### Package SHA-256
+
+| File | SHA-256 |
+| --- | --- |
+| `MyHR_TDK_Paper_Draft_EN.docx` | `C3E1E9EED970F6763F57B97F138B6402E1F78C9E556350B38691C2417D4AD0F9` |
+| `MyHR_TDK_Paper_Draft_EN.pdf` | `CE8BFC0013B6D7025B73AB918BAF50539D7EBE4765211F942CD26CFB734F72B7` |
+| `Supervisor_Decision_Sheet.pdf` | `41063C42479EEB1E477F749FC715705F86224C9781573BF2875F98624A187653` |
+| `README.md` | `66AB75CE848BD68A1DEE173F08E810412F28CFB4396D168AF50B09915959B752` |
+
+A package should not be treated as final if a hash changes without a corresponding regenerated verification record.
 
 ## Claims Explicitly Excluded
 
