@@ -18,7 +18,7 @@ At identical additional review capacity, the scenario-level recall difference fo
 
 ## What The Audit Changed
 
-- Historical `39/72` and intermediate `8/72` have different status. The older `39/72` is reproducible evidence of a deliberately constructed current-policy replay failure, but it is not a prevalence estimate and its `39/39` mechanism attribution requires source regeneration. The `8/72` false-positive interpretation is invalidated because that later generator created genuine contradictions.
+- Historical `39/72` and intermediate `8/72` have different status. In artifact `e342bd4acf39b06b`, `deterministic_policy_rules` flagged 39/72 broadly labelled rare-legitimate test histories while `deterministic_rules` flagged 0/72. The old source constructs 30-month grandfathered and 24-month recognized-service promotions with narrative evidence, but the stored artifact omits employee-specific entitlement evidence and per-record realized mechanisms; `39/72` is therefore a constructed current-policy replay counterexample, not a prevalence estimate or artifact-supported mechanism-specific rate. The `8/72` false-positive interpretation is invalidated because that later generator created genuine contradictions.
 - Duplicate metrics now use explicit pair-set membership. Exact methods use the complete partition-local pair universe; similarity evaluation uses its declared blocking universe. True negatives are no longer repaired by capping a wrong count.
 - Correction histories reject duplicate identifiers, branched corrections, cross-type corrections, self-corrections, and cycles.
 - Provenance covers the effective-state resolver, and runtime measurement no longer resets a caller-owned memory trace.

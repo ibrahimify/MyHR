@@ -57,7 +57,7 @@ Source wording and UI-lifecycle corrections made after the execution record abov
 
 ## Claims Explicitly Excluded
 
-- The historical `39/72` is not a prevalence estimate or a current model-performance result; it is a constructed specification counterexample from artifact `e342bd4acf39b06b`.
+- The historical `39/72` is the `deterministic_policy_rules` result in artifact `e342bd4acf39b06b`; `deterministic_rules` recorded 0/72. It is a constructed specification counterexample, not a prevalence estimate or current model-performance result, and the artifact omits employee-specific entitlement evidence and per-record realized mechanisms.
 - The intermediate `8/72` false-positive interpretation is invalidated because the later generator produced contradictory histories.
 - The historical constant-feature comparison is not a null, tie, or equivalence result.
 - The secondary AP result is not confirmatory.

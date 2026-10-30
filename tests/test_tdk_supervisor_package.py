@@ -43,6 +43,8 @@ class TdkSupervisorPackageTests(unittest.TestCase):
         self.assertIn("0 of 72", text)
         self.assertIn("Only that `8/72` false-positive interpretation is invalidated", text)
         self.assertIn("designed specification counterexample", text)
+        self.assertIn("`deterministic_rules` result is `0/72`", text)
+        self.assertIn("does not preserve employee-specific entitlement evidence", text)
         self.assertNotIn("Both interpretations are invalidated", text)
         self.assertIn("explicit evaluation universe", text)
         self.assertIn("this is a design inference applied to the present experiment", text)

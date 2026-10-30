@@ -12,8 +12,7 @@ from collections import Counter
 from datetime import datetime, timedelta
 from html import escape
 from PySide6.QtCore import QMarginsF, Qt, QSize
-from PySide6.QtGui import QColor, QFont, QPageLayout, QPageSize, QTextDocument
-from PySide6.QtPrintSupport import QPrinter
+from PySide6.QtGui import QColor, QFont, QPageLayout, QPageSize, QPdfWriter, QTextDocument
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
     QFrame, QTableWidget, QTableWidgetItem, QHeaderView,
@@ -959,10 +958,9 @@ def _audit_pdf_row(row):
 
 
 def _write_audit_pdf(path, html):
-    printer = QPrinter(QPrinter.HighResolution)
-    printer.setOutputFormat(QPrinter.PdfFormat)
-    printer.setOutputFileName(path)
-    printer.setPageLayout(QPageLayout(
+    writer = QPdfWriter(path)
+    writer.setResolution(300)
+    writer.setPageLayout(QPageLayout(
         QPageSize(QPageSize.A4),
         QPageLayout.Landscape,
         QMarginsF(10, 10, 10, 10),
@@ -970,9 +968,9 @@ def _write_audit_pdf(path, html):
     ))
     document = QTextDocument()
     document.setDefaultFont(QFont("Segoe UI", 9))
-    document.setPageSize(printer.pageLayout().paintRectPoints().size())
+    document.setPageSize(writer.pageLayout().paintRectPoints().size())
     document.setHtml(html)
-    document.print_(printer)
+    document.print_(writer)
 
 
 def _html(value):

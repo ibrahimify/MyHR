@@ -791,6 +791,12 @@ class DashboardSmokeTests(unittest.TestCase):
             except OSError:
                 pass
 
+    def test_audit_pdf_uses_direct_pdf_writer(self):
+        from src.ui.pages import audit_log
+
+        self.assertFalse(hasattr(audit_log, "QPrinter"))
+        self.assertTrue(hasattr(audit_log, "QPdfWriter"))
+
     def test_audit_target_uses_readable_record_names(self):
         from datetime import datetime
 
