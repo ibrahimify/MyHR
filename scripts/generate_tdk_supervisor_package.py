@@ -326,6 +326,26 @@ def _parse_table(lines: list[str]) -> list[list[str]]:
     return rows
 
 
+def add_inline_markdown(paragraph, text: str) -> None:
+    """Render the small inline Markdown subset used by the paper source."""
+    cursor = 0
+    for match in re.finditer(r"(`[^`]+`|\*\*[^*]+\*\*)", text):
+        if match.start() > cursor:
+            paragraph.add_run(text[cursor : match.start()])
+        token = match.group(0)
+        if token.startswith("`"):
+            run = paragraph.add_run(token[1:-1])
+            run.font.name = "Consolas"
+            run._element.rPr.rFonts.set(qn("w:eastAsia"), "Consolas")
+            run.font.size = Pt(10)
+        else:
+            run = paragraph.add_run(token[2:-2])
+            run.bold = True
+        cursor = match.end()
+    if cursor < len(text):
+        paragraph.add_run(text[cursor:])
+
+
 def add_table(document: Document, rows: list[list[str]]) -> None:
     if not rows:
         return
@@ -343,7 +363,8 @@ def add_table(document: Document, rows: list[list[str]]) -> None:
         for column_index in range(width):
             cell = table.cell(row_index, column_index)
             text = row[column_index] if column_index < len(row) else ""
-            cell.text = text
+            cell.text = ""
+            add_inline_markdown(cell.paragraphs[0], text)
             cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
             _set_cell_borders(cell)
             if row_index == 0:
@@ -358,8 +379,9 @@ def add_table(document: Document, rows: list[list[str]]) -> None:
                 paragraph.paragraph_format.space_before = Pt(2)
                 paragraph.paragraph_format.line_spacing = 1.0
                 for run in paragraph.runs:
-                    run.font.name = "Times New Roman"
-                    run.font.size = Pt(9.5)
+                    if run.font.name != "Consolas":
+                        run.font.name = "Times New Roman"
+                        run.font.size = Pt(9.5)
     if len(rows) <= 6:
         for row in table.rows[:-1]:
             for cell in row.cells:
@@ -426,7 +448,7 @@ def build_docx(source: Path, assets: Path, output: Path) -> None:
                 paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
                 if after_heading:
                     paragraph.paragraph_format.keep_together = True
-                paragraph.add_run(content)
+                add_inline_markdown(paragraph, content)
                 after_heading = False
             paragraph_lines = []
 
@@ -498,13 +520,15 @@ def build_docx(source: Path, assets: Path, output: Path) -> None:
             continue
         if re.match(r"^\d+\. ", line):
             flush_paragraph()
-            paragraph = document.add_paragraph(line.strip())
+            paragraph = document.add_paragraph()
+            add_inline_markdown(paragraph, line.strip())
             paragraph.paragraph_format.left_indent = Cm(0.7)
             paragraph.paragraph_format.first_line_indent = Cm(-0.5)
             continue
         if line.startswith("- "):
             flush_paragraph()
-            document.add_paragraph(line[2:].strip(), style="List Bullet")
+            paragraph = document.add_paragraph(style="List Bullet")
+            add_inline_markdown(paragraph, line[2:].strip())
             continue
         if not line.strip():
             flush_paragraph()

@@ -9,6 +9,7 @@ from scripts.generate_tdk_supervisor_package import (
     CURRENT_ARTIFACT_DIR,
     CURRENT_ARTIFACT_ID,
     TITLE,
+    add_inline_markdown,
     build_decision_sheet,
 )
 
@@ -79,6 +80,15 @@ class TdkSupervisorPackageTests(unittest.TestCase):
         self.assertIn("Scenario proposals", all_text)
         self.assertIn("Freeze and holdout", all_text)
         self.assertIn("[ ] Approve", all_text)
+
+    def test_inline_markdown_is_rendered_without_literal_source_markers(self):
+        document = Document()
+        paragraph = document.add_paragraph()
+        add_inline_markdown(paragraph, "Artifact `abc123` is **verified**.")
+
+        self.assertEqual("Artifact abc123 is verified.", paragraph.text)
+        self.assertEqual("Consolas", paragraph.runs[1].font.name)
+        self.assertTrue(paragraph.runs[3].bold)
 
 
 if __name__ == "__main__":
