@@ -14,6 +14,7 @@ corresponding fix:
 """
 
 import unittest
+from datetime import date
 from unittest.mock import patch
 
 import src.services.anomaly_detection.synthetic_data as syn
@@ -283,6 +284,162 @@ class R2R3R4GeneratorIntegrityTests(unittest.TestCase):
                 if emp.current_level != last.level_after:
                     offenders.append((world.spec.scenario_id, emp.employee_id, emp.current_level, last.level_after))
         self.assertEqual(offenders, [], f"{len(offenders)} histories with current_level != last promotion level: {offenders[:5]}")
+
+
+class R5CorrectionSemanticsTests(unittest.TestCase):
+    """R5: corrections must have consistent meaning across rules and features.
+
+    Supersession must apply to ALL fact types (not just promotions), and invalid
+    correction graphs (self-links, cycles, dangling targets) must be rejected
+    rather than silently hiding events.
+    """
+
+    def _record(self, events, observation_date=None):
+        return syn.WorkforceHistoryRecord(
+            syn.EmployeeIdentity("A", "A", date(1990, 1, 1)),
+            syn.DatasetSplit.TEST,
+            syn.EmploymentTrack.PROMOTION,
+            "L6", "D", "R", date(2020, 1, 1),
+            tuple(events),
+            observation_date=observation_date,
+        )
+
+    def test_corrected_commendation_supersedes_old_credit(self):
+        """R5.1: correcting a +6mo commendation to +1mo must yield 1 month, not 7."""
+        from src.services.anomaly_detection.policy_history import assess_promotion_history
+        from src.services.anomaly_detection.policy_model import PromotionPolicy
+        old = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.COMMENDATION, date(2021, 1, 1), "C1",
+            category=3, recorded_date=date(2021, 1, 1),
+        )
+        correction = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.COMMENDATION, date(2021, 1, 1), "C2",
+            category=1, recorded_date=date(2022, 1, 1), correction_of_source_id="C1",
+        )
+        promo = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.PROMOTION, date(2023, 1, 1), "P",
+            level_before="L7", level_after="L6",
+        )
+        assessments = assess_promotion_history(
+            self._record([old, correction, promo]), PromotionPolicy()
+        )
+        self.assertTrue(assessments)
+        # Only the corrected commendation (category 1) should contribute; the
+        # superseded category-3 commendation must not also be counted.
+        policy = PromotionPolicy()
+        expected = policy.commendation_credit(1)
+        self.assertEqual(assessments[0].commendation_credit_months, expected)
+
+    def test_superseded_invalid_promotion_does_not_remove_corrected_history(self):
+        """R5.2: invariant filtering must not flag a superseded invalid promotion."""
+        from src.services.anomaly_detection.deterministic_checks import validate_invariant_record
+        h = syn.AdministrativeEvent(syn.AdministrativeEventType.HIRE, date(2020, 1, 1), "H")
+        old = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.PROMOTION, date(2021, 1, 1), "ERR",
+            level_before="L7", level_after="L8", recorded_date=date(2021, 1, 1),
+        )
+        correction = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.PROMOTION, date(2023, 1, 1), "COR",
+            level_before="L7", level_after="L6", recorded_date=date(2023, 1, 2),
+            correction_of_source_id="ERR",
+        )
+        findings = validate_invariant_record(
+            self._record([h, old, correction], date(2024, 1, 1))
+        )
+        self.assertEqual(findings, ())
+
+    def test_self_correction_does_not_silently_hide_promotion(self):
+        """R5.3: a self-referencing correction must not vanish the event silently."""
+        from src.services.anomaly_detection.policy_history import assess_promotion_history
+        from src.services.anomaly_detection.policy_model import PromotionPolicy
+        promo = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.PROMOTION, date(2020, 2, 1), "P",
+            level_before="L7", level_after="L6", correction_of_source_id="P",
+        )
+        # Either raise (reject invalid graph) or keep the promotion; must NOT
+        # silently erase it.
+        try:
+            assessments = assess_promotion_history(self._record([promo]), PromotionPolicy())
+        except ValueError:
+            return  # rejecting the invalid self-link is acceptable
+        self.assertTrue(
+            assessments,
+            "self-correction silently erased the promotion instead of being rejected",
+        )
+
+    def test_invisible_correction_does_not_supersede_or_raise(self):
+        """R5 edge: a correction not yet visible (recorded after the observation
+        date) must not supersede its target and must not raise — partial
+        visibility is a legitimate bitemporal state, not a malformed graph."""
+        from src.services.anomaly_detection.effective_state import effective_events
+        old = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.PROMOTION, date(2021, 1, 1), "OLD",
+            level_before="L7", level_after="L6", recorded_date=date(2021, 1, 1),
+        )
+        future_correction = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.PROMOTION, date(2021, 1, 1), "COR",
+            level_before="L7", level_after="L6", recorded_date=date(2027, 1, 1),
+            correction_of_source_id="OLD",
+        )
+        record = self._record([old, future_correction], observation_date=date(2026, 12, 31))
+        effective = effective_events(record)
+        ids = {e.source_id for e in effective}
+        self.assertIn("OLD", ids, "visible original was wrongly superseded by an invisible correction")
+        self.assertNotIn("COR", ids, "invisible correction should not be present")
+
+    def test_correction_graph_rejects_self_and_cycle(self):
+        """R5: self-links and cycles are always malformed and must raise."""
+        from src.services.anomaly_detection.effective_state import (
+            superseded_source_ids,
+            CorrectionGraphError,
+        )
+        self_link = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.COMMENDATION, date(2021, 1, 1), "X",
+            category=1, recorded_date=date(2021, 1, 1), correction_of_source_id="X",
+        )
+        with self.assertRaises(CorrectionGraphError):
+            superseded_source_ids((self_link,))
+        a = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.COMMENDATION, date(2021, 1, 1), "A",
+            category=1, recorded_date=date(2021, 1, 1), correction_of_source_id="B",
+        )
+        b = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.COMMENDATION, date(2021, 1, 2), "B",
+            category=1, recorded_date=date(2021, 1, 2), correction_of_source_id="A",
+        )
+        with self.assertRaises(CorrectionGraphError):
+            superseded_source_ids((a, b))
+
+    def test_superseded_sanction_delay_not_double_counted(self):
+        """R5 generalization: correcting a sanction must not keep the old delay."""
+        from src.services.anomaly_detection.policy_history import assess_promotion_history
+        from src.services.anomaly_detection.policy_model import PromotionPolicy
+        hire = syn.AdministrativeEvent(syn.AdministrativeEventType.HIRE, date(2019, 1, 1), "H")
+        old_sanction = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.SANCTION, date(2021, 6, 1), "S1",
+            category=2, recorded_date=date(2021, 6, 1), is_resolved=False,
+        )
+        # Correction resolves the sanction (no active delay).
+        correction = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.SANCTION, date(2021, 6, 1), "S2",
+            category=2, recorded_date=date(2022, 1, 1), is_resolved=True,
+            resolved_date=date(2021, 7, 1), correction_of_source_id="S1",
+        )
+        promo = syn.AdministrativeEvent(
+            syn.AdministrativeEventType.PROMOTION, date(2023, 1, 1), "P",
+            level_before="L7", level_after="L6",
+        )
+        assessments = assess_promotion_history(
+            self._record([hire, old_sanction, correction, promo]), PromotionPolicy()
+        )
+        self.assertTrue(assessments)
+        # The superseded unresolved sanction must not contribute an active delay.
+        policy = PromotionPolicy()
+        resolved_only_delay = assessments[0].sanction_delay_months
+        self.assertEqual(
+            resolved_only_delay, 0,
+            "superseded unresolved sanction still contributed an active delay",
+        )
 
 
 if __name__ == "__main__":

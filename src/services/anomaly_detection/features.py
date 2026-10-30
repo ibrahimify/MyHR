@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from datetime import date
 
+from .effective_state import effective_events
 from .policy_history import PolicyEpoch, PromotionPolicyAssessment, assess_promotion_history
 from .policy_model import PromotionPolicy
 from .synthetic_data import AdministrativeEvent, AdministrativeEventType, EmploymentTrack, WorkforceHistoryRecord
@@ -130,13 +131,13 @@ def _promotion_service_context(
 
 
 def _sorted_events(record: WorkforceHistoryRecord) -> tuple[AdministrativeEvent, ...]:
-    visible = (
-        event for event in record.events
-        if record.observation_date is None
-        or event.recorded_date is None
-        or event.recorded_date <= record.observation_date
-    )
-    return tuple(sorted(visible, key=lambda event: (event.event_date, event.source_id)))
+    # Both raw and policy-aware features compute over the effective (corrected)
+    # state via the central resolver (finding R5), so the two representations
+    # differ only in policy-awareness, not in correction handling. A superseded
+    # invalid fact does not silently feed one representation and not the other.
+    # Correction *volume* (how often a history was amended) is a distinct signal
+    # that can be added as an explicit feature rather than leaking through here.
+    return effective_events(record)
 
 
 def _events_of_type(

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
+from .effective_state import effective_events
 from .policy_model import PromotionPolicy, PromotionRaceInput, calculate_promotion_race
 from .synthetic_data import AdministrativeEvent, AdministrativeEventType, WorkforceHistoryRecord
 
@@ -56,29 +57,14 @@ def assess_promotion_history(
 ) -> tuple[PromotionPolicyAssessment, ...]:
     """Evaluate every completed promotion under the supplied policy."""
 
-    events = tuple(sorted(
-        (
-            event for event in record.events
-            if record.observation_date is None
-            or event.recorded_date is None
-            or event.recorded_date <= record.observation_date
-        ),
-        key=lambda event: (event.event_date, event.source_id),
-    ))
-    # A correction supersedes the event it amends. The superseded record is no
-    # longer the effective fact (bitemporal contract: preserve later-recorded
-    # corrections), so it must not be independently evaluated as its own
-    # promotion. Only corrections that are themselves visible by the
-    # observation date can supersede an event.
-    superseded_source_ids = frozenset(
-        event.correction_of_source_id
-        for event in events
-        if event.correction_of_source_id is not None
-    )
+    # Use the central effective-state resolver so promotions, commendations, and
+    # sanctions all see the SAME corrected state. Superseded facts (of any type)
+    # are excluded; correction events carry the effective fact. A malformed
+    # correction graph raises rather than silently hiding events (finding R5).
+    events = effective_events(record)
     promotions = tuple(
         event for event in events
         if event.event_type is AdministrativeEventType.PROMOTION
-        and event.source_id not in superseded_source_ids
     )
     assessments = []
     previous_level_start = record.hire_date

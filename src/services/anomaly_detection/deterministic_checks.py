@@ -13,6 +13,7 @@ from .synthetic_data import (
     SyntheticDataset,
     WorkforceHistoryRecord,
 )
+from .effective_state import effective_events
 from .policy_model import PromotionPolicy
 
 
@@ -61,7 +62,7 @@ def validate_invariant_record(
 
     findings: list[ValidationFinding] = []
     employee_id = record.identity.employee_id
-    events = _visible_events(record)
+    events = _effective_record_events(record)
     hire_events = [event for event in events if event.event_type is AdministrativeEventType.HIRE]
 
     if not hire_events:
@@ -108,7 +109,7 @@ def validate_invariant_record(
 def validate_record(record: WorkforceHistoryRecord) -> tuple[ValidationFinding, ...]:
     """Return structural and fixed administrative-interval findings."""
 
-    events = _visible_events(record)
+    events = _effective_record_events(record)
     findings = list(validate_invariant_record(record))
     findings.extend(_validate_short_promotion_intervals(record, events))
     findings.extend(_validate_salary_increment_intervals(record, events))
@@ -126,7 +127,7 @@ def validate_record_with_policy(
 
     findings = list(validate_record(record))
     for event in _events_of_type(
-        _visible_events(record), AdministrativeEventType.PROMOTION
+        _effective_record_events(record), AdministrativeEventType.PROMOTION
     ):
         if event.approval_status == "bypassed":
             findings.append(ValidationFinding(
@@ -284,18 +285,15 @@ def _events_of_type(
     return tuple(event for event in events if event.event_type is event_type)
 
 
-def _visible_events(
+def _effective_record_events(
     record: WorkforceHistoryRecord,
 ) -> tuple[AdministrativeEvent, ...]:
-    return tuple(sorted(
-        (
-            event for event in record.events
-            if record.observation_date is None
-            or event.recorded_date is None
-            or event.recorded_date <= record.observation_date
-        ),
-        key=lambda event: (event.event_date, event.source_id),
-    ))
+    # Use the central effective-state resolver (finding R5): invariant checks
+    # evaluate the corrected state, so a superseded invalid record (e.g. a
+    # wrongly recorded promotion that was later corrected) is not flagged as a
+    # contradiction. Superseded records remain available as raw audit evidence
+    # via effective_state.visible_events for correction-volume features.
+    return effective_events(record)
 
 
 def _level_progresses(level_before: str, level_after: str) -> bool:
@@ -309,3 +307,4 @@ def _level_progresses(level_before: str, level_after: str) -> bool:
 
 def _months_between(start: date, end: date) -> int:
     return (end.year - start.year) * 12 + end.month - start.month
+

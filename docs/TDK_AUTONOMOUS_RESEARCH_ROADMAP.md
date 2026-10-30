@@ -25,7 +25,15 @@ A second independent repository audit (imported verbatim to `docs/TDK_SECOND_EXT
 - Independent read-only auditor re-derived all three from generated data: R2/R3/R4 all PASS, no test-value shortcuts, 12 scenarios intact.
 - 224 tests pass (219 + 5 new R2/R3/R4 semantic regression tests).
 
-**STILL OPEN (next):** regenerate a corrected development artifact from a clean committed revision and audit it (replacing the invalidated `db1a15646d9e76ba` interpretations); then R5 (correction semantics across rules/features), R7 (bitemporal/version enforcement), R8 (hard-nonduplicate co-partitioning), R9 (memory measurement/exports), R10 (provenance completeness), R11 (paper/doc reconciliation). Each with a failing test first and independent verification. Holdout stays locked.
+**CORRECTED ARTIFACT REGENERATED (2026-10-30, local commit `abaf175`):**
+
+- New development artifact `274067cbb57f1dc2` generated from the clean committed R1–R4/R6 fixes. Audit status: **verified**, `holdout_accessed: false`. 12 scenarios, 864 test histories, 57,547 administrative events, 24 policy epochs, 4,320 truth rows.
+- **Deterministic policy rules now flag 0/72 test-split rare-legitimate histories** (was 8/72 with the broken `policy_transition` generator). This directly confirms the R2 fix: once the transition histories are genuinely lawful, the current-policy checks correctly leave them unflagged. The invalid `8/72` "false positives on lawful histories" reading is replaced by a clean `0/72`.
+- Primary residual endpoint (`fixed_review_budget`): recall delta mean `+0.0185`, 95% CI `[-0.0278, +0.0741]`, sign-flip p=0.75. Still **no evidence of policy-aware advantage** — the honest null result persists with correct data.
+- Independently re-derived (code-path, read-only, not an independent review): 0/72 flagged and +0.0185 confirmed from raw CSVs.
+- This is an EXPLORATORY development artifact from scenario definitions still PENDING supervisor approval (Proposals 1,4,5,6). It is not confirmatory evidence. The invalidated `db1a15646d9e76ba` is preserved unchanged.
+
+**STILL OPEN (next):** R5 (correction semantics across rules/features), R7 (bitemporal/version enforcement), R8 (hard-nonduplicate co-partitioning), R9 (memory measurement/exports), R10 (provenance completeness), R11 (paper/doc reconciliation). Each with a failing test first and independent verification. Holdout stays locked.
 
 ## Scientific-Scope Correction For New Scenario Families - 2026-10-30
 
