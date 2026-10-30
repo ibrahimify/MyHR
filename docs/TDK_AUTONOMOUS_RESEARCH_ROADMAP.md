@@ -1,5 +1,32 @@
 # TDK Autonomous Research Roadmap
 
+## Second External Audit — Invalidations And R1/R6 Repairs - 2026-10-30
+
+A second independent repository audit (imported verbatim to `docs/TDK_SECOND_EXTERNAL_AUDIT_2026-10-30.md`, reviewed revision `4ee488b`) found serious ground-truth defects that the 212 green tests missed because those tests checked metadata, not meaning. Kiro independently reproduced the confirmed findings before acting. This entry supersedes the scientific interpretations below where they conflict.
+
+**INVALIDATED SCIENTIFIC INTERPRETATIONS (do not cite):**
+
+- **The `8/72` policy-transition reading is INVALIDATED (finding R2, confirmed).** The `policy_transition` generator forced every promotion to 2022-06-01 regardless of hire date or prior promotions, creating promotions-before-hire, insufficient-service, and same-day double promotions. The 8 deterministic flags are responses to **genuine contradictions**, not false positives on lawful histories. The earlier framing ("8/12 policy-transition cases falsely flagged", "lawful-but-unusual false alerts motivating the bitemporal contract") must not be used. The arithmetic (`8` flags) is reproducible; its interpretation as a lawful-history false-positive rate is wrong.
+- **The latent-person-first duplicate "fix" (commit `c98f416`) was broken (finding R1, confirmed).** Duplicate variants were derived from a fresh latent person, but the linked source kept an unrelated base identity — only the `latent_person_id` tag was shared. All 20/20 duplicate/source pairs were unrelated identities. The duplicate-matching ground truth was invalid, so any duplicate-detection result from that code is not interpretable.
+- **Artifact `db1a15646d9e76ba` is preserved UNCHANGED as invalidated exploratory evidence.** It is not deleted or rewritten (per audit guidance). It must not be cited as a valid estimate of false-alert behavior or duplicate-matcher quality. A corrected development artifact must be regenerated only after R1–R4 are fixed and the scenario definitions are approved.
+
+**REPAIRS COMPLETED THIS SESSION (local only, not pushed):**
+
+- **R1 (duplicate ground truth) — FIXED and independently verified.** The source record of each duplicate cluster now receives the latent person's canonical identity (`_canonical_latent_identity`), so source and variant are genuinely the same person. Cluster members are excluded from hard-nonduplicate mutation. New regression tests (`tests/test_second_audit_repairs.py::R1*`) check identity *derivation*, not just tags; the audit's own adversarial check `test_source_identity_comes_from_shared_latent_person` now passes. A read-only independent auditor confirmed 20/20 source identities match the latent person, 0 mismatches, partition containment intact, 0 hard-nonduplicates carrying a latent tag.
+- **R6 (candidate confusion counts) — FIXED and independently verified.** `confusion_counts_for_pairs` now subtracts false negatives from true negatives and caps the positive total at the candidate universe, so counts conserve (TP+FP+FN+TN ≤ universe; == universe when all pairs are in-universe). New regression tests (`R6*`) and the audit's `test_candidate_confusion_counts_partition_candidate_universe` pass. Independent auditor confirmed 0 count-overflow and 0 negative-TN cases across a real call-site sweep; one docstring-vs-degenerate-case precision gap was tightened.
+- 219 tests pass (212 + 7 new semantic regression tests). Holdout remains locked. No feature expansion. No push/merge.
+
+**R2/R3/R4 — FIXED and independently verified (2026-10-30, local only):**
+
+- **R2 (lawful transition construction).** `policy_transition` now rebuilds a single legacy-epoch L7->L6 promotion at `hire+30 months` (within the legacy epoch, on/after hire), stamped `legacy-pre-2023`. Zero invariant findings on all policy_transition rare cases; no promotion-before-hire, no same-day double. Eligibility requires `hire+30mo <= 2022-12-31`. Recorded as Proposal 4 (supersedes Proposal 2) in `TDK_PROTOCOL_CHANGE_PROPOSALS.md`.
+- **R3 (no-op rare cases).** `late_correction` and `policy_transition` eligibility now require a PROGRESSION-track employee with an existing promotion. Across `independent_scenario_matrix(360)`, 0 rare-legitimate cases have empty causal events (was 12/58 late_correction + 22/58 policy_transition). Recorded as Proposal 5.
+- **R4 (current-level corruption).** `_replace_events` now sets `current_level` to the last effective (non-superseded) promotion's `level_after` instead of hardcoding `L6`. 0/4320 histories mismatch (was 240/4320).
+- **Scenario-definition side effect (Proposal 6):** honest eligibility revealed `rapid_expansion` (hired 2021+) cannot host a lawful legacy transition, so the matrix now skips that pairing; `policy_transition` appears on 1 development scenario instead of 2. Recorded as a pending proposal; reduced coverage is the correct tradeoff, pending supervisor decision.
+- Independent read-only auditor re-derived all three from generated data: R2/R3/R4 all PASS, no test-value shortcuts, 12 scenarios intact.
+- 224 tests pass (219 + 5 new R2/R3/R4 semantic regression tests).
+
+**STILL OPEN (next):** regenerate a corrected development artifact from a clean committed revision and audit it (replacing the invalidated `db1a15646d9e76ba` interpretations); then R5 (correction semantics across rules/features), R7 (bitemporal/version enforcement), R8 (hard-nonduplicate co-partitioning), R9 (memory measurement/exports), R10 (provenance completeness), R11 (paper/doc reconciliation). Each with a failing test first and independent verification. Holdout stays locked.
+
 ## Scientific-Scope Correction For New Scenario Families - 2026-10-30
 
 An independent review (Codex, relayed by Muhammad Ibrahim Shoeb) correctly flagged that the preceding entry overstated the scientific standing of the new scenario work. This entry supersedes it on interpretation; the engineering facts below remain accurate.

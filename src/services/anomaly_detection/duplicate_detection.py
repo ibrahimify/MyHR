@@ -316,12 +316,43 @@ def confusion_counts_for_pairs(
     true_pairs: set[tuple[str, str]],
     candidate_pair_count: int,
 ) -> BinaryClassificationMetrics:
-    """Return candidate-set metrics without counting unblocked pairs as negatives."""
+    """Return candidate-set confusion counts over a bounded candidate universe.
+
+    Universe semantics: ``candidate_pair_count`` is the size of the candidate
+    universe (e.g. the blocked pair set).  The four confusion counts partition
+    that universe, so TP + FP + FN + TN must never exceed ``candidate_pair_count``
+    and, when every predicted and true pair lies inside the universe, must sum to
+    exactly ``candidate_pair_count`` with::
+
+        TN = candidate_pair_count - TP - FP - FN
+
+    Predicted or true pairs may legitimately lie *outside* the universe: an
+    exact/email match not surfaced by the similarity block, or a true pair that
+    was never blocked.  Those out-of-universe positives must not corrupt the
+    negative count.  TP/FP are derived from predicted pairs and FN from the
+    remaining true pairs; ``true_negatives`` is the universe size minus the
+    positive classes, capped at zero.
+
+    Guarantee: when every predicted and true pair lies inside the universe (the
+    normal case at every real call site, where the blocked universe dwarfs the
+    positive counts), TP + FP + FN + TN == ``candidate_pair_count`` exactly and
+    TN >= 0.  In the degenerate case where out-of-universe positives alone exceed
+    ``candidate_pair_count``, TN is floored at 0 and the raw positive counts
+    (TP/FP/FN) are reported unclamped, so their sum may exceed the universe; this
+    does not occur in the experiment and is preserved only so positive counts
+    stay faithful to the supplied inputs.
+    """
 
     true_positives = len(predicted_pairs & true_pairs)
     false_positives = len(predicted_pairs - true_pairs)
     false_negatives = len(true_pairs - predicted_pairs)
-    true_negatives = candidate_pair_count - true_positives - false_positives
+    # Cap the positive classes at the universe so out-of-universe pairs cannot
+    # drive the negative count below zero or push the total past the universe.
+    positive_total = min(
+        true_positives + false_positives + false_negatives,
+        candidate_pair_count,
+    )
+    true_negatives = candidate_pair_count - positive_total
     return BinaryClassificationMetrics(
         true_positives=true_positives,
         false_positives=false_positives,

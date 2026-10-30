@@ -161,17 +161,58 @@ def rare_legitimate_patterns() -> tuple[str, ...]:
     )
 
 
+# Single source of truth for the per-population hire-year windows. Used both by
+# _base_employee (to draw hire dates) and by independent_scenario_matrix (to
+# decide which rare patterns a population can lawfully host).
+_HIRE_YEAR_RANGES: dict[str, tuple[int, int]] = {
+    "stable_administration": (2012, 2020),
+    "rapid_expansion": (2021, 2025),
+    "merger_migration": (2015, 2024),
+}
+
+# The legacy service requirement a policy_transition promotion must satisfy, and
+# the last day of the legacy policy epoch. A population can host a lawful
+# policy_transition case only if its earliest possible hire can reach a
+# legacy-epoch promotion that meets this requirement.
+_LEGACY_L7_SERVICE_MONTHS = 30
+_LEGACY_EPOCH_END = date(2022, 12, 31)
+
+
+def _population_can_host_policy_transition(population: str) -> bool:
+    """True when the population's earliest hire can earn a lawful legacy-epoch
+    promotion (hire + legacy L7 service <= legacy epoch end)."""
+
+    first_year, _ = _HIRE_YEAR_RANGES[population]
+    earliest_hire = date(first_year, 1, 1)
+    return _add_months(earliest_hire, _LEGACY_L7_SERVICE_MONTHS) <= _LEGACY_EPOCH_END
+
+
 def independent_scenario_matrix(
     employee_count: int = 360,
 ) -> tuple[IndependentScenarioSpec, ...]:
     """Return 12 predeclared development-only scenarios."""
 
     specs = []
+    patterns = rare_legitimate_patterns()
     for index, (population, mechanism) in enumerate(
         (population, mechanism)
         for population in population_families()
         for mechanism in anomaly_mechanisms()
     ):
+        # Assign the rare pattern by the stable index cycle, but never pair
+        # policy_transition with a population whose hire window cannot host a
+        # lawful legacy-epoch promotion (e.g. rapid_expansion, hired 2021+).
+        # Pairing it there would be scientifically invalid: no lawful legacy
+        # transition case exists, so the only way to fill the slot would be to
+        # fabricate a promotion that violates the legacy service/epoch rules.
+        # When the cycle lands on policy_transition for such a population, we
+        # deterministically advance to the next pattern in the cycle instead.
+        rare_pattern = patterns[index % len(patterns)]
+        if (
+            rare_pattern == "policy_transition"
+            and not _population_can_host_policy_transition(population)
+        ):
+            rare_pattern = patterns[(index + 1) % len(patterns)]
         specs.append(IndependentScenarioSpec(
             scenario_id=f"ind-dev-{index + 1:02d}",
             run_purpose="independent_development",
@@ -181,7 +222,7 @@ def independent_scenario_matrix(
             employee_count=employee_count,
             population=population,
             mechanism=mechanism,
-            rare_pattern=rare_legitimate_patterns()[index % len(rare_legitimate_patterns())],
+            rare_pattern=rare_pattern,
         ))
     return tuple(specs)
 
@@ -357,9 +398,36 @@ def _eligible_for_rare_case(
             employee.track is IndependentTrack.PROGRESSION
             and _add_months(employee.hire_date, 24) <= REFERENCE_DATE
         )
+    if pattern == "late_correction":
+        # The late-correction intervention re-dates and supersedes an EXISTING
+        # promotion, so the employee must be on the progression track and
+        # already carry at least one promotion event to correct (R3).
+        return (
+            employee.track is IndependentTrack.PROGRESSION
+            and _has_promotion(employee)
+        )
+    if pattern == "policy_transition":
+        # The transition intervention rebuilds a single legacy-epoch promotion,
+        # so the employee must already have a promotion to transition (R3) and
+        # must have been hired early enough that a legacy-epoch (<= 2022-12-31)
+        # promotion can still satisfy the legacy L7 service requirement of 30
+        # months.  Otherwise no lawful legacy-epoch promotion exists for them.
+        return (
+            employee.track is IndependentTrack.PROGRESSION
+            and _has_promotion(employee)
+            and _add_months(employee.hire_date, 30) <= date(2022, 12, 31)
+        )
+    # Remaining patterns operate on salary increments (delayed_bulk_recording).
     return any(
         event.kind is IndependentEventKind.SALARY_INCREMENT
         and event.effective_date + timedelta(days=120) <= REFERENCE_DATE
+        for event in employee.events
+    )
+
+
+def _has_promotion(employee: IndependentEmployeeLedger) -> bool:
+    return any(
+        event.kind is IndependentEventKind.PROMOTION
         for event in employee.events
     )
 
@@ -371,12 +439,7 @@ def _base_employee(
     policies: tuple[IndependentPolicyCard, ...],
     rng: Random,
 ) -> IndependentEmployeeLedger:
-    hire_ranges = {
-        "stable_administration": (2012, 2020),
-        "rapid_expansion": (2021, 2025),
-        "merger_migration": (2015, 2024),
-    }
-    first_year, last_year = hire_ranges[spec.population]
+    first_year, last_year = _HIRE_YEAR_RANGES[spec.population]
     hire_date = date(rng.randint(first_year, last_year), rng.randint(1, 12), rng.randint(1, 28))
     track_probability = 0.82 if spec.population != "rapid_expansion" else 0.68
     track = (
@@ -633,30 +696,46 @@ def _apply_rare_case(
         evidence = "An initially mis-dated promotion was corrected via a formal amendment; the amended date satisfies the applicable policy."
         mechanism = "late_correction"
     else:  # policy_transition
-        # Employee was hired under the legacy policy and promoted under the
-        # reform-2023 policy.  Their service requirement is evaluated under
-        # the policy effective at the promotion date, not the current policy.
-        # This is the core scenario motivating the bitemporal contract.
-        events_out = []
-        causal_events_list = []
-        for event in events:
-            if event.kind is IndependentEventKind.PROMOTION:
-                # Re-stamp the promotion to use the legacy policy explicitly
-                legacy_id = "legacy-pre-2023"
-                updated = IndependentEvent(
-                    **{**event.__dict__,
-                       "policy_id": legacy_id,
-                       "effective_date": date(2022, 6, 1),
-                       "recorded_date": date(2022, 6, 3),
-                       }
-                )
-                events_out.append(updated)
-                causal_events_list.append(updated)
-            else:
-                events_out.append(event)
-        events = events_out
-        causal_events = tuple(causal_events_list)
-        evidence = "Promotion evaluated under the legacy-pre-2023 policy epoch applicable at the promotion date; this satisfies the then-current service requirement even though the current policy requires more service."
+        # Employee was hired under the legacy-pre-2023 policy and earned a
+        # single lawful promotion inside that epoch.  The service requirement
+        # is evaluated under the policy effective at the promotion date, not
+        # the current reform-2023 policy.  This is the core scenario motivating
+        # the bitemporal contract.
+        #
+        # Eligibility (see _eligible_for_rare_case) guarantees the employee is
+        # on the progression track, already has a promotion, and was hired
+        # early enough that a legacy-epoch promotion can meet the legacy L7
+        # service requirement (30 months) on/before 2022-12-31.  We therefore
+        # rebuild the promotion history as a SINGLE legacy-epoch L7->L6
+        # promotion at a lawful date, discarding any stacked second promotion
+        # so there is no same-day double promotion and no order violation.
+        legacy_service_months = 30
+        legacy_epoch_end = date(2022, 12, 31)
+        # Earliest lawful date: hire + legacy L7 service requirement. This is
+        # on/after hire_date by construction and, by eligibility, on/before the
+        # legacy epoch end, so it sits strictly inside the legacy epoch.
+        transition_date = _add_months(employee.hire_date, legacy_service_months)
+        if transition_date > legacy_epoch_end:
+            # Defensive: eligibility already rules this out; never reached in
+            # practice, but keeps the invariant explicit.
+            transition_date = legacy_epoch_end
+        non_promotions = [
+            event for event in events
+            if event.kind is not IndependentEventKind.PROMOTION
+        ]
+        legacy_promotion = _event(
+            rng.randint(1, 1_000_000),
+            6,
+            len(non_promotions),
+            IndependentEventKind.PROMOTION,
+            transition_date,
+            "legacy-pre-2023",
+            level_before="L7",
+            level_after="L6",
+        )
+        events = non_promotions + [legacy_promotion]
+        causal_events = (legacy_promotion,)
+        evidence = "Single legacy-pre-2023 promotion earned inside the legacy epoch; it satisfies the then-current 30-month service requirement even though the current reform-2023 policy requires more service."
         mechanism = "policy_transition"
     return _replace_events(employee, events), evidence, mechanism, causal_events
 
@@ -665,14 +744,34 @@ def _replace_events(
     employee: IndependentEmployeeLedger,
     events: list[IndependentEvent],
 ) -> IndependentEmployeeLedger:
+    # A promotion is superseded when its event_id is referenced by another
+    # event's correction_of_event_id.  The current level is the level_after of
+    # the LAST effective (non-superseded) promotion ordered by
+    # (effective_date, event_id).  With no effective promotion, keep the
+    # employee's existing current_level.
+    superseded_ids = {
+        event.correction_of_event_id
+        for event in events
+        if event.correction_of_event_id is not None
+    }
+    effective_promotions = [
+        event for event in events
+        if event.kind is IndependentEventKind.PROMOTION
+        and event.event_id not in superseded_ids
+    ]
+    if effective_promotions:
+        last_promotion = max(
+            effective_promotions,
+            key=lambda item: (item.effective_date, item.event_id),
+        )
+        current_level = last_promotion.level_after
+    else:
+        current_level = employee.current_level
     return IndependentEmployeeLedger(
         employee_id=employee.employee_id,
         split=employee.split,
         track=employee.track,
-        current_level=(
-            "L6" if any(event.kind is IndependentEventKind.PROMOTION for event in events)
-            else employee.current_level
-        ),
+        current_level=current_level,
         department=employee.department,
         role=employee.role,
         date_of_birth=employee.date_of_birth,

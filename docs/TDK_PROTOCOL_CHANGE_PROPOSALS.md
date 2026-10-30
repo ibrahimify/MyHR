@@ -83,13 +83,83 @@ requires an independent frozen specification.
 
 ---
 
+## Proposal 4 — corrected `policy_transition` construction (supersedes Proposal 2)
+
+Proposed 2026-10-30 (post second-audit repair). Implemented in
+`src/research/independent_scenarios.py`.
+
+**Why:** The original Proposal 2 mechanism (force every promotion to 2022-06-01)
+was found by the second audit (finding R2) to create genuine contradictions —
+promotions before hire, same-day double promotions, insufficient service — so its
+rare-legitimate labels were invalid. This proposal replaces it with a lawful
+construction.
+
+**Corrected mechanism (exact, for review):**
+
+- Rebuild the history with a SINGLE legacy-epoch promotion L7->L6, stamped
+  `policy_id="legacy-pre-2023"`, at effective date `hire_date + 30 months`
+  (the legacy L7 service requirement), which is on/after hire and on/before the
+  legacy epoch end `2022-12-31`.
+- Any stacked second promotion is removed so there is no same-day double or order
+  violation.
+- The result has zero invariant findings and is a genuinely lawful legacy-policy
+  promotion that the current reform-2023 policy would reject.
+
+**Eligibility precondition (R3):** `policy_transition` is only assigned to a
+PROGRESSION-track employee who already has a promotion AND whose
+`hire_date + 30 months <= 2022-12-31`. Employees hired too late cannot host a
+lawful legacy transition and are not selected.
+
+**Open questions for the supervisor:** same as Proposal 2 plus — is a single
+fixed `hire+30mo` transition date acceptable, or should it be distributed within
+the legacy epoch?
+
+**Status:** Proposed. Not approved. Not frozen.
+
+## Proposal 5 — `late_correction` eligibility precondition (amends Proposal 1)
+
+Proposed 2026-10-30 (post second-audit repair).
+
+`late_correction` now requires a PROGRESSION-track employee with an existing
+promotion (finding R3: previously the fallback required only a salary increment,
+so some selected cases had no promotion to correct and produced empty causal
+events with misleading "a promotion was corrected" evidence text). With the
+precondition, every selected case has a real promotion to re-date and supersede.
+
+**Status:** Proposed. Not approved. Not frozen.
+
+## Proposal 6 — development matrix: skip unlawful `policy_transition` pairings (amends Proposal 3)
+
+Proposed 2026-10-30 (post second-audit repair).
+
+The 12-scenario development matrix assigns rare patterns by `index % 5`. When the
+cycle would pair `policy_transition` with a population that cannot host a lawful
+legacy-epoch promotion (`rapid_expansion`, hired 2021+, where
+`hire+30mo > 2022-12-31`), the matrix now deterministically advances to the next
+pattern. Net effect: `policy_transition` appears on 1 development scenario
+(`merger_migration`) instead of 2; the `rapid_expansion` slot becomes
+`grandfathered_policy`, which it can lawfully host.
+
+This reduces `policy_transition` development coverage from a potential 2 scenarios
+to 1. This is the scientifically correct tradeoff: forcing the pattern onto
+`rapid_expansion` would require fabricating an unlawful promotion. If stronger
+coverage is wanted, the legitimate levers are adjusting hire-year windows or
+adding a dedicated hosting-population scenario — not forcing the pattern.
+
+**Status:** Proposed. Not approved. Not frozen. Supervisor should decide whether
+1-scenario development coverage of `policy_transition` is sufficient or whether a
+dedicated hosting population should be added.
+
 ## Approval log
 
 | Proposal | Proposed | Supervisor decision | Date |
 | --- | --- | --- | --- |
 | 1 `late_correction` definition | 2026-10-30 | _pending_ | — |
-| 2 `policy_transition` definition | 2026-10-30 | _pending_ | — |
-| 3 development matrix composition | 2026-10-30 | _pending_ | — |
+| 2 `policy_transition` definition (SUPERSEDED by #4) | 2026-10-30 | superseded | — |
+| 3 development matrix composition (AMENDED by #6) | 2026-10-30 | _pending_ | — |
+| 4 corrected `policy_transition` construction | 2026-10-30 | _pending_ | — |
+| 5 `late_correction` eligibility precondition | 2026-10-30 | _pending_ | — |
+| 6 matrix skips unlawful `policy_transition` pairings | 2026-10-30 | _pending_ | — |
 
 ## Pending independent verification
 

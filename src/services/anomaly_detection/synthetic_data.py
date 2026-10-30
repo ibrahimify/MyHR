@@ -380,12 +380,15 @@ def generate_synthetic_dataset(config: ExperimentConfig) -> SyntheticDataset:
         latent_persons[dup_idx] = _generate_latent_person(cluster_num, rng)
         duplicate_source_ids[dup_idx] = base_records[source_index].identity.employee_id
 
-    # Also tag source records with the latent_person_id so the whole cluster
-    # can be traced back to its origin.
-    source_to_latent: dict[str, str] = {}  # source employee_id -> latent_person_id
+    # Map each source record to the latent person it must become. The source
+    # record's identity is overwritten with the latent person's canonical
+    # identity so that the source genuinely IS that person; each duplicate is a
+    # corrupted copy of the same facts. This is what makes the pair a real
+    # same-person cluster rather than two unrelated identities sharing a tag.
+    source_to_latent: dict[str, LatentPerson] = {}  # source employee_id -> latent person
     for dup_idx, latent in latent_persons.items():
         src_id = duplicate_source_ids[dup_idx]
-        source_to_latent[src_id] = latent.latent_person_id
+        source_to_latent[src_id] = latent
 
     # Apply labels and build final records.
     records: list[WorkforceHistoryRecord] = []
@@ -403,19 +406,32 @@ def generate_synthetic_dataset(config: ExperimentConfig) -> SyntheticDataset:
                 if label_plan[i] is not AnomalyType.DUPLICATE_RECORD
             )
             record = _apply_label(record, label, non_duplicate_sources, rng)
-        # Tag source records that belong to a latent cluster.
-        if record.identity.employee_id in source_to_latent:
+        # Source records of a latent cluster: overwrite their identity with the
+        # latent person's canonical identity (keeping their own employee_id and
+        # events) and tag them with the latent_person_id. The source now IS the
+        # latent person; its linked duplicate is a corrupted copy of these facts.
+        latent_for_source = source_to_latent.get(record.identity.employee_id)
+        if latent_for_source is not None:
             record = replace(
                 record,
-                latent_person_id=source_to_latent[record.identity.employee_id],
+                identity=_canonical_latent_identity(
+                    latent_for_source, record.identity.employee_id
+                ),
+                latent_person_id=latent_for_source.latent_person_id,
             )
         records.append(record)
 
     # --- Hard nonduplicate injection ---
     # Add one explicit hard nonduplicate record for each HardNonduplicateKind,
-    # provided enough clean records exist as anchors.
+    # provided enough clean records exist as anchors. Cluster members (duplicate
+    # sources, tagged with latent_person_id) are EXCLUDED so a hard-nonduplicate
+    # mutation can never overwrite a canonical duplicate-source identity.
     hard_nonduplicate_kinds = list(HardNonduplicateKind)
-    clean_records = [r for r in records if r.anomaly_labels == (AnomalyType.CLEAN,)]
+    clean_records = [
+        r for r in records
+        if r.anomaly_labels == (AnomalyType.CLEAN,)
+        and r.latent_person_id is None
+    ]
     if len(clean_records) >= 2 * len(hard_nonduplicate_kinds):
         # Use a deterministic sub-RNG seeded from the main seed so insertion
         # does not perturb the main RNG sequence.
@@ -842,6 +858,27 @@ def _generate_latent_person(index: int, rng: Random) -> LatentPerson:
         date_of_birth=dob,
         national_id=national_id,
         email=email,
+    )
+
+
+def _canonical_latent_identity(
+    person: LatentPerson,
+    employee_id: str,
+) -> EmployeeIdentity:
+    """Return the uncorrupted canonical identity of a latent person.
+
+    This is the identity assigned to the *source* record of a duplicate cluster,
+    so the source genuinely IS the latent person. Each duplicate variant is a
+    corrupted copy of these same facts (see ``_derive_duplicate_identity``). The
+    source and its variants therefore form a real same-person cluster rather than
+    merely sharing a ``latent_person_id`` tag.
+    """
+    return EmployeeIdentity(
+        employee_id=employee_id,
+        full_name=person.full_name,
+        date_of_birth=person.date_of_birth,
+        national_id=person.national_id,
+        email=person.email,
     )
 
 
