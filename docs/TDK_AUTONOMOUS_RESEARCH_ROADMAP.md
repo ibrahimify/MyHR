@@ -1,5 +1,17 @@
 # TDK Autonomous Research Roadmap
 
+## Certified Artifact With New Scenario Families - 2026-10-30
+
+- Adding `late_correction` and `policy_transition` to `rare_legitimate_patterns()` changed the 12-scenario development matrix composition (patterns now assigned `index % 5`: patterns 0,1 appear 3x; patterns 2,3,4 appear 2x). This genuinely exercises the new mechanisms in the development run.
+- **Two bugs found and fixed while generating the artifact** (the harness exposed them before they could corrupt evidence):
+  - `assess_promotion_history` evaluated both a correction-superseded promotion and its correction as independent events, and the re-dated erroneous event fell outside its declared policy epoch (crash: "declared policy reform-2023 is not applicable"). Fix: exclude any promotion whose `source_id` appears as a `correction_of_source_id` on a visible event (bitemporal "preserve later-recorded corrections" rule); stamp the erroneous event with the policy applicable at its earlier date. Commit `3e9edd2`.
+  - The erroneous event used `approval_status="pending_correction"`, outside the auditor's accepted domain `{approved, bypassed}`. Fix: use `approved` (the mis-filing was approved at the time; the error was the date). Commit `0f1f32c`.
+- **Certified artifact `db1a15646d9e76ba`** generated from clean commit `0f1f32c`. Audit status: **verified**. `holdout_accessed: false`. 12 scenarios, 864 test histories, 108 anomalies, 72 rare-legitimate, 57,562 administrative events, 24 policy epochs, 4,320 truth rows.
+- Primary residual endpoint (`fixed_review_budget`, `rule_negative_isolation_forest`): recall delta mean `+0.009`, 95% CI `[-0.046, +0.083]`, sign-flip p=1.0. **No evidence of policy-aware advantage** — consistent with prior artifact `62f482ce6ff477b9`. AP delta mean `+0.021` (secondary).
+- New scientific signal: deterministic current-policy rules now flag **8/72 rare-legitimate histories** (prior artifact: 0/72). The new late-correction and policy-transition scenarios surface exactly the lawful-but-unusual false alerts that motivate the bitemporal contract. This is a preserved finding, not a tuned result.
+- All 212 tests pass (210 + 2 new supersession regression tests).
+- The final holdout was not generated, inspected, scored, or unlocked. PR #1 remains draft and unmerged.
+
 ## Runtime/Memory Reporting And Late-Correction Scenarios - 2026-10-30
 
 - **Runtime/memory reporting for duplicate detection** (audit gap closed): `evaluate_duplicate_detection` now measures `blocking_time_s`, `scoring_time_s`, and `peak_memory_bytes` (tracemalloc). Added computed properties `candidates_per_1000_records` and `false_matches_per_1000_records` (zero-safe). 8 new tests (`DuplicateRuntimeMemoryTests`). Commit `14dc1cd`.
