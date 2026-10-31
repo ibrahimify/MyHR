@@ -39,12 +39,10 @@ from src.ui.theme import tokens
 
 from src.services.anomaly_detection import (
     ExperimentConfig,
-    AnomalyType,
     DatasetSplit,
+    ValidationSeverity,
     generate_synthetic_dataset,
-    validate_dataset,
-    summarize_findings,
-    extract_raw_features,
+    validate_record,
     extract_policy_aware_features,
     run_isolation_forest,
     sklearn_is_available,
@@ -55,7 +53,7 @@ from src.services.anomaly_detection import (
 # Review-priority bands derived from the detector signals. These are triage
 # labels for a human reviewer, not decisions.
 _PRIORITY_META = {
-    "rule": ("Rule finding", "#b91c1c", "#fee2e2"),
+    "rule": ("Rule", "#b91c1c", "#fee2e2"),
     "high": ("High", "#c2410c", "#ffedd5"),
     "medium": ("Medium", "#a16207", "#fef9c3"),
     "low": ("Low", "#15803d", "#dcfce7"),
@@ -273,29 +271,39 @@ class AnomalyReviewPage(QWidget):
         self._apply_filter()
 
     def _compute_review_rows(self):
+        # A review-sized synthetic sample. We screen the whole generated sample
+        # (not just the held-out test split) because this is decision-support
+        # over a sample, not a locked-holdout evaluation. Data is synthetic.
         config = ExperimentConfig(
             seed=self._sample_seed,
-            employee_count=120,
+            employee_count=240,
             anomaly_rate=0.12,
             rare_legitimate_rate=0.05,
         )
         dataset = generate_synthetic_dataset(config)
-        test_records = [r for r in dataset.records if r.split is DatasetSplit.TEST]
-        self._screened_count = len(test_records)
+        records = list(dataset.records)
+        self._screened_count = len(records)
+        record_by_id = {r.identity.employee_id: r for r in records}
 
         rows = []
         rule_flagged_ids = set()
 
-        # 1) Deterministic rule findings (explained contradictions).
-        findings = validate_dataset(dataset)
-        test_ids = {r.identity.employee_id for r in test_records}
+        # 1) Deterministic findings: structural contradictions plus fixed
+        #    administrative-interval checks (validate_record), aggregated to one
+        #    row per employee with its explained reason.
         reason_by_employee = {}
-        for finding in findings:
-            if finding.employee_id not in test_ids:
+        for record in records:
+            findings = validate_record(record)
+            if not findings:
                 continue
-            reason_by_employee.setdefault(finding.employee_id, finding.message)
-            rule_flagged_ids.add(finding.employee_id)
-        record_by_id = {r.identity.employee_id: r for r in test_records}
+            # Prefer an ERROR-severity finding's message when present.
+            chosen = next(
+                (f for f in findings if f.severity is ValidationSeverity.ERROR),
+                findings[0],
+            )
+            reason_by_employee[record.identity.employee_id] = chosen.message
+            rule_flagged_ids.add(record.identity.employee_id)
+
         for employee_id, reason in reason_by_employee.items():
             record = record_by_id.get(employee_id)
             if record is None:
@@ -309,33 +317,46 @@ class AnomalyReviewPage(QWidget):
             })
 
         # 2) Isolation Forest ranking of residual (non-rule-flagged) records.
-        residual = [r for r in test_records if r.identity.employee_id not in rule_flagged_ids]
-        if sklearn_is_available() and len(residual) >= 8:
+        residual = [r for r in records if r.identity.employee_id not in rule_flagged_ids]
+        if sklearn_is_available() and len(residual) >= 16:
             try:
-                train_records = [r for r in dataset.records if r.split is DatasetSplit.TRAIN]
-                feature_set = "policy_aware"
+                train_records = [
+                    r for r in records
+                    if r.split is DatasetSplit.TRAIN
+                    and r.identity.employee_id not in rule_flagged_ids
+                ]
                 train_vectors = [extract_policy_aware_features(r) for r in train_records]
                 test_vectors = [extract_policy_aware_features(r) for r in residual]
                 if train_vectors and test_vectors:
                     feature_names = tuple(test_vectors[0].values.keys())
                     result = run_isolation_forest(
                         train_vectors, test_vectors, feature_names,
-                        contamination="auto", random_state=self._sample_seed,
+                        contamination=0.1, random_state=self._sample_seed,
                     )
-                    scores = result.scores
-                    # Rank residual records by score; top band = higher priority.
+                    # decision_function: LOWER score = more anomalous. Rank the
+                    # residual records most-anomalous first so the top of the
+                    # queue is the highest review priority. predictions[i] is
+                    # True when the model flags record i as an outlier.
                     ranked = sorted(
-                        zip(residual, scores), key=lambda pair: pair[1], reverse=True
+                        zip(residual, result.predictions, result.scores),
+                        key=lambda triple: triple[2],
                     )
-                    flagged = [pair for pair in ranked if pair[1] > 0]
+                    flagged = [t for t in ranked if t[1]]  # model-predicted anomalies
                     cutoff_high = max(1, len(flagged) // 3)
-                    for index, (record, score) in enumerate(flagged):
-                        priority = "high" if index < cutoff_high else ("medium" if index < 2 * cutoff_high else "low")
+                    for index, (record, _pred, score) in enumerate(flagged):
+                        if index < cutoff_high:
+                            priority = "high"
+                        elif index < 2 * cutoff_high:
+                            priority = "medium"
+                        else:
+                            priority = "low"
+                        # Present an intuitive anomaly score where higher means
+                        # more suspicious (decision_function is the inverse).
                         rows.append({
                             "employee_id": record.identity.employee_id,
                             "track": record.employment_track.value,
                             "reason": "Unusual progression pattern (policy-aware ranking)",
-                            "score": round(float(score), 3),
+                            "score": round(-float(score), 3),
                             "priority": priority,
                         })
             except IsolationForestUnavailableError:
@@ -343,7 +364,7 @@ class AnomalyReviewPage(QWidget):
             except Exception:
                 pass  # never let the research layer break the UI
 
-        # Rule findings first, then by descending score.
+        # Rule findings first, then by descending model score.
         rows.sort(key=lambda r: (r["priority"] != "rule", -(r["score"] or 0.0)))
         return rows
 
