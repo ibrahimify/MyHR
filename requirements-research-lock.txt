@@ -1,0 +1,12 @@
+# Exact environment used for verified development artifacts on Python 3.13.5.
+# Regenerate and validate this lock before a frozen holdout run.
+numpy==2.5.4
+pandas==2.3.3
+scipy==1.18.1
+scikit-learn==1.9.1
+joblib==1.6.0
+threadpoolctl==3.7.0
+matplotlib==3.11.2
+python-dateutil==2.9.0.post0
+pytz==2026.5
+tzdata==2026.5

@@ -4,6 +4,7 @@ import time
 import unittest
 from datetime import datetime, timedelta
 from types import SimpleNamespace
+from src.core.time import utc_now
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -80,7 +81,7 @@ class ScaleSmokeTests(unittest.TestCase):
             units.append(unit)
         session.flush()
 
-        now = datetime.utcnow()
+        now = utc_now()
         employees = []
         for index in range(employee_count):
             employee_number = index + 1
@@ -120,7 +121,7 @@ class ScaleSmokeTests(unittest.TestCase):
                 reason="Scale smoke sanction",
                 delay_months=(index % 12) + 1,
                 issued_by_id=1,
-                issued_at=datetime.utcnow(),
+                issued_at=utc_now(),
                 is_resolved=False,
             ))
         session.bulk_save_objects(sanctions)
@@ -138,7 +139,7 @@ class ScaleSmokeTests(unittest.TestCase):
         titles = {title.name: title for title in session.query(db.Title).all()}
         admin = session.query(SystemUser).filter_by(username="admin").first()
         admin_id = admin.id if admin else 1
-        now = datetime.utcnow()
+        now = utc_now()
 
         commendations = []
         links = []
@@ -386,6 +387,19 @@ class ScaleSmokeTests(unittest.TestCase):
             sidebar._set_active("employees")
             self.assertIn("border-left: 3px solid", employees_btn.styleSheet())
             self.assertIn("border-left: 3px solid transparent", dashboard_btn.styleSheet())
+        finally:
+            sidebar.close()
+
+    def test_sidebar_elides_long_user_name_and_preserves_full_tooltip(self):
+        from src.ui.main_window import Sidebar
+
+        full_name = "System Administrator With A Long Display Name"
+        user = SimpleNamespace(id=1, username="admin", role="admin", full_name=full_name)
+        sidebar = Sidebar(user, on_navigate=lambda _key: None, on_logout=lambda: None)
+        try:
+            self.assertEqual(full_name, sidebar.name_lbl.toolTip())
+            self.assertNotEqual(full_name, sidebar.name_lbl.text())
+            self.assertTrue(sidebar.name_lbl.text().endswith("…"))
         finally:
             sidebar.close()
 

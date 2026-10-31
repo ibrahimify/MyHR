@@ -22,6 +22,7 @@ from PySide6.QtGui import QColor
 from sqlalchemy.orm import joinedload
 
 from src.core.i18n import t
+from src.core.time import utc_now
 from src.ui.animations import install_tab_transition
 from src.ui.components.app_select import AppSelect
 from src.ui.icons import app_icon, app_pixmap
@@ -499,7 +500,7 @@ class ActiveSanctionsTab(QWidget):
         try:
             s = session.query(Sanction).filter_by(id=sanction_id).first()
             s.is_resolved = True
-            s.resolved_at = datetime.utcnow()
+            s.resolved_at = utc_now()
             log_action(
                 session, action="sanction.resolve", performed_by_id=self.user.id,
                 target_table="sanction", target_id=sanction_id,
@@ -851,7 +852,7 @@ class IssueSanctionTab(QWidget):
         date_field_layout.setSpacing(10)
         date_icon = QLabel()
         date_icon.setPixmap(app_pixmap("fa5s.calendar-alt", color=tokens().text_soft, size=14))
-        date_text = QLabel(datetime.utcnow().strftime("%m/%d/%Y"))
+        date_text = QLabel(utc_now().strftime("%m/%d/%Y"))
         date_text.setStyleSheet(f"font-size: 14px; color: {tokens().text}; background: transparent;")
         date_field_layout.addWidget(date_icon)
         date_field_layout.addWidget(date_text)

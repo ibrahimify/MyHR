@@ -1,0 +1,326 @@
+{
+    "schema_version": "1.0",
+    "purpose": "Central provenance registry for the deduplicated TDK bibliography",
+    "bibliography": "docs/TDK_REFERENCES.bib",
+    "full_text_artifact": "research_outputs/literature_fulltext/20261017T215119Z_4b354b03c1af",
+    "known_artifact_limitations": [
+        {
+            "code": "legacy_text_hash_pre_newline_normalization",
+            "scope": "All 16 text_sha256 values in papers.json differ from the authoritative manifest hashes because the historical writer hashed text before platform newline translation.",
+            "resolution": "The artifact remains immutable; manifest hashes verify the stored files. The generator now hashes the bytes after writing for future artifacts."
+        }
+    ],
+    "records": [
+        {
+            "citation_key": "liu2008isolation",
+            "doi": "10.1109/ICDM.2008.17",
+            "verification_status": "full_text_reviewed",
+            "sources": [
+                {
+                    "service": "openalex",
+                    "identifier": "10.1109/ICDM.2008.17",
+                    "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "local_fulltext",
+                    "identifier": "liu2008_isolation_forest",
+                    "retrieved_at": "2026-10-17"
+                }
+            ]
+        },
+        {
+            "citation_key": "liu2012isolation",
+            "doi": "10.1145/2133360.2133363",
+            "verification_status": "full_text_reviewed",
+            "sources": [
+                {
+                    "service": "openalex",
+                    "identifier": "10.1145/2133360.2133363",
+                    "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "local_fulltext",
+                    "identifier": "liu2012_isolation_based",
+                    "retrieved_at": "2026-10-17"
+                }
+            ]
+        },
+        {
+            "citation_key": "han2022adbench",
+            "doi": "10.52202/068431-2329",
+            "arxiv_id": "2206.09426",
+            "verification_status": "full_text_reviewed",
+            "sources": [
+                {
+                    "service": "arxiv",
+                    "identifier": "2206.09426",
+                    "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "local_fulltext",
+                    "identifier": "han2022_adbench",
+                    "retrieved_at": "2026-10-17"
+                }
+            ]
+        },
+        {
+            "citation_key": "li2024survey",
+            "doi": "10.1145/3609333",
+            "arxiv_id": "2210.06959",
+            "verification_status": "full_text_reviewed",
+            "publication_date_note": "Crossref records online publication in 2023; bibliography uses the 2024 journal issue year.",
+            "sources": [
+                {
+                    "service": "openalex",
+                    "identifier": "10.1145/3609333",
+                    "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "local_fulltext",
+                    "identifier": "li2024_xad_survey",
+                    "retrieved_at": "2026-10-17"
+                }
+            ]
+        },
+        {
+            "citation_key": "carletti2023diffi",
+            "doi": "10.1016/j.engappai.2022.105730",
+            "arxiv_id": "2007.11117",
+            "verification_status": "full_text_reviewed",
+            "sources": [
+                {
+                    "service": "openalex",
+                    "identifier": "10.1016/j.engappai.2022.105730",
+                    "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "local_fulltext",
+                    "identifier": "carletti2023_diffi",
+                    "retrieved_at": "2026-10-17"
+                }
+            ]
+        },
+        {
+            "citation_key": "vaska2022context",
+            "doi": "10.1109/CASE49997.2022.9926631",
+            "arxiv_id": "2203.09354",
+            "verification_status": "full_text_reviewed",
+            "sources": [
+                {
+                    "service": "arxiv",
+                    "identifier": "2203.09354",
+                    "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "local_fulltext",
+                    "identifier": "vaska2022_context_dependent",
+                    "retrieved_at": "2026-10-17"
+                }
+            ]
+        },
+        {
+            "citation_key": "steinbuss2021benchmarking",
+            "doi": "10.1145/3441453",
+            "arxiv_id": "2004.06947",
+            "verification_status": "full_text_reviewed",
+            "sources": [
+                {
+                    "service": "openalex",
+                    "identifier": "10.1145/3441453",
+                    "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "local_fulltext",
+                    "identifier": "steinbuss2021_realistic_synthetic",
+                    "retrieved_at": "2026-10-17"
+                }
+            ]
+        },
+        {
+            "citation_key": "hansen2023synthetic",
+            "doi": "10.52202/075280-1466",
+            "arxiv_id": "2310.16981",
+            "verification_status": "full_text_reviewed",
+            "sources": [
+                {
+                    "service": "arxiv",
+                    "identifier": "2310.16981",
+                    "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "local_fulltext",
+                    "identifier": "hansen2023_data_centric_synthetic",
+                    "retrieved_at": "2026-10-17"
+                }
+            ]
+        },
+        {
+            "citation_key": "fourure2021biased",
+            "doi": "10.1007/978-3-030-86514-6_1",
+            "arxiv_id": "2106.16020",
+            "verification_status": "full_text_reviewed",
+            "sources": [
+                {
+                    "service": "arxiv",
+                    "identifier": "2106.16020",
+                    "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "local_fulltext",
+                    "identifier": "fourure2021_biased_evaluation",
+                    "retrieved_at": "2026-10-17"
+                }
+            ]
+        },
+        {
+            "citation_key": "saito2015precision",
+            "doi": "10.1371/journal.pone.0118432",
+            "verification_status": "full_text_reviewed",
+            "sources": [
+                {
+                    "service": "openalex",
+                    "identifier": "10.1371/journal.pone.0118432",
+                    "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "local_fulltext",
+                    "identifier": "saito2015_precision_recall",
+                    "retrieved_at": "2026-10-17"
+                }
+            ]
+        },
+        {
+            "citation_key": "demsar2006statistical",
+            "verification_status": "full_text_reviewed",
+            "stable_url": "https://www.jmlr.org/papers/v7/demsar06a.html",
+            "sources": [
+                {
+                    "service": "publisher",
+                    "identifier": "https://www.jmlr.org/papers/v7/demsar06a.html",
+                    "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "local_fulltext",
+                    "identifier": "demsar2006_statistical_comparisons",
+                    "retrieved_at": "2026-10-17"
+                }
+            ]
+        },
+        {
+            "citation_key": "wang2024universal",
+            "doi": "10.48550/arXiv.2404.14831",
+            "arxiv_id": "2404.14831",
+            "verification_status": "full_text_reviewed",
+            "artifact_name_note": "The curated artifact id pei2024_dense_blocking is stale; the verified paper is authored by Tianshu Wang et al.",
+            "sources": [
+                {
+                    "service": "arxiv",
+                    "identifier": "2404.14831",
+                    "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "local_fulltext",
+                    "identifier": "pei2024_dense_blocking",
+                    "retrieved_at": "2026-10-17"
+                }
+            ]
+        },
+        {
+            "citation_key": "sorbo2024metricmaze",
+            "doi": "10.1007/s10618-023-00988-8",
+            "arxiv_id": "2303.01272",
+            "verification_status": "full_text_reviewed",
+            "sources": [
+                {
+                    "service": "openalex",
+                    "identifier": "10.1007/s10618-023-00988-8",
+                    "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "local_fulltext",
+                    "identifier": "sorbo2024_metric_maze",
+                    "retrieved_at": "2026-10-17"
+                }
+            ]
+        },
+        {
+            "citation_key": "rochner2025rethink",
+            "doi": "10.48550/arXiv.2507.15584",
+            "arxiv_id": "2507.15584",
+            "verification_status": "full_text_reviewed",
+            "audit_note": "Author list corrected on 2026-10-29 after comparison with arXiv metadata.",
+            "sources": [
+                {
+                    "service": "arxiv",
+                    "identifier": "2507.15584",
+                    "retrieved_at": "2026-10-29"
+                },
+                {
+                    "service": "local_fulltext",
+                    "identifier": "rochner2025_rethink_benchmarking",
+                    "retrieved_at": "2026-10-17"
+                }
+            ]
+        },
+        {
+            "citation_key": "neelamegam2026bitemporal",
+            "doi": "10.1007/s42488-026-00162-x",
+            "verification_status": "full_text_reviewed",
+            "sources": [
+                {
+                    "service": "openalex",
+                    "identifier": "10.1007/s42488-026-00162-x",
+                    "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "local_fulltext",
+                    "identifier": "neelamegam2026_bitemporal",
+                    "retrieved_at": "2026-10-17"
+                }
+            ]
+        },
+        {
+            "citation_key": "deng2026hilad",
+            "doi": "10.1145/3778167",
+            "arxiv_id": "2405.03234",
+            "verification_status": "full_text_reviewed",
+            "sources": [
+                {
+                    "service": "openalex",
+                    "identifier": "10.1145/3778167",
+                    "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "local_fulltext",
+                    "identifier": "deng2026_hilad",
+                    "retrieved_at": "2026-10-17"
+                }
+            ]
+        },
+        {
+            "citation_key": "holm1979multiple",
+            "verification_status": "metadata_verified",
+            "stable_url": "https://www.jstor.org/stable/4615733",
+            "audit_note": "The commonly repeated 10.2307/4615733 string did not resolve as a registered DOI; the stable JSTOR URL is retained instead.",
+            "sources": [
+                {
+                    "service": "jstor",
+                    "identifier": "https://www.jstor.org/stable/4615733",
+                    "retrieved_at": "2026-10-29"
+                }
+            ]
+        },
+        {
+            "citation_key": "krippendorff2004reliability",
+            "doi": "10.1111/j.1468-2958.2004.tb00738.x",
+            "verification_status": "metadata_verified",
+            "sources": [
+                {
+                    "service": "crossref",
+                    "identifier": "10.1111/j.1468-2958.2004.tb00738.x",
+                    "retrieved_at": "2026-10-29"
+                }
+            ]
+        }
+    ]
+}

@@ -7,6 +7,18 @@ audit logs, imports, exports, and yearly HR reports.
 It is built for a local-first HR workflow: no server is required, data is stored
 in SQLite, and the desktop UI is implemented with PySide6.
 
+## TDK Research
+
+The current research project is **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**. It evaluates deterministic validation, statistical baselines, and raw versus policy-aware Isolation Forest models using reproducible synthetic administrative histories.
+
+The current evidence is development-only. The latest independent review found that deterministic filtering makes the policy-specific residual features constant zero, so the saved residual comparison cannot test policy-aware value. The final holdout remains locked and the protocol remains pending human approval.
+
+- [Supervisor brief](docs/TDK_SUPERVISOR_BRIEF_2026-10-30.md)
+- [Research handover](docs/RESEARCH_HANDOVER.md)
+- [Paper draft source](docs/TDK_PAPER_DRAFT.md)
+- [Experiment protocol](docs/TDK_EXPERIMENT_PROTOCOL.md)
+- [Submission requirements](docs/TDK_2026_SUBMISSION_REQUIREMENTS.md)
+
 ![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
 ![Qt](https://img.shields.io/badge/PySide6-Qt6-41CD52?logo=qt&logoColor=white)
 ![SQLite](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite&logoColor=white)
@@ -68,6 +80,15 @@ pip install -r requirements.txt
 python main.py
 ```
 
+Research experiments use a separate dependency file so the packaged desktop app
+does not automatically inherit ML and plotting libraries:
+
+```bash
+pip install -r requirements.txt -r requirements-research.txt
+```
+
+Verified research artifacts record exact package versions. The matching development environment is captured in `requirements-research-lock.txt`; validate it in a clean environment before any frozen holdout run.
+
 Default credentials:
 
 | Role | Username | Password |
@@ -96,13 +117,13 @@ documented in `docs/UI_RULES.md` and guarded by `tests/test_ui_component_policy.
 
 Before packaging or a formal demo, use `docs/QA_CHECKLIST.md` as the manual
 go/no-go checklist. Architectural follow-up items are tracked in
-`docs/ARCHITECTURE_ROADMAP.md`. SaaS launch-audit insights are converted into
-project-specific actions in `docs/LAUNCH_AUDIT_ACTIONS.md`.
+`docs/ARCHITECTURE_ROADMAP.md`. Historical launch-audit actions are preserved in
+`docs/archive/product-planning/LAUNCH_AUDIT_ACTIONS.md`.
 
 Latest verification before this README update:
 
 ```text
-Ran 42 tests in 70.647s
+Ran 134 tests
 OK
 ```
 
@@ -201,7 +222,7 @@ http://localhost:5173
 - Employee CSV export
 - Yearly PDF report with Full, Executive, and Audit-only modes
 - Report preview before PDF generation
-- Export history via immutable audit records
+- Export history via append-only application audit records with before/after snapshots
 - SQLite backup to a chosen location
 
 ### Audit Log
@@ -345,23 +366,40 @@ Avoid `git reset --hard` unless you are completely sure you want to discard loca
 
 ## Documentation
 
-| Document | Location |
-|---|---|
-| User Guide | `docs/guides/MyHR_User_Guide.docx` |
-| Developer Guide | `docs/guides/MyHR_Developer_Guide.docx` |
-| UI Rules | `docs/UI_RULES.md` |
-| QA Checklist | `docs/QA_CHECKLIST.md` |
-| Architecture Roadmap | `docs/ARCHITECTURE_ROADMAP.md` |
-| Launch Audit Actions | `docs/LAUNCH_AUDIT_ACTIONS.md` |
-| Thesis Completion Plan | `docs/THESIS_COMPLETION_PLAN.md` |
-| UI Mockup | `MockUI/` |
-| Demo Dataset Script | `scripts/seed_demo_company.py` |
+Start with [`docs/README.md`](docs/README.md). It distinguishes current authority,
+pending decisions, and archived history.
 
-Private TDK research planning notes are kept locally under `docs/research/` and
-are intentionally ignored by Git until they are cleaned for public release.
+| Need | Location |
+|---|---|
+| Complete research handover | `docs/RESEARCH_HANDOVER.md` |
+| Guided ChatGPT learning prompt | `docs/CHATGPT_RESEARCH_TUTOR_PROMPT.md` |
+| Current research roadmap | `docs/TDK_AUTONOMOUS_RESEARCH_ROADMAP.md` |
+| User and developer guides | `docs/guides/` |
+| UI rules and release QA | `docs/UI_RULES.md`, `docs/QA_CHECKLIST.md` |
+| Historical documents | `docs/archive/` |
+
+Private registration notes under `docs/research/` are intentionally ignored by
+Git and are not repository authority.
+
+---
+
+## Repository Governance
+
+- Security policy: `SECURITY.md`
+- Contribution guide: `CONTRIBUTING.md`
+- Code of conduct: `CODE_OF_CONDUCT.md`
+- Support notes: `SUPPORT.md`
+- Citation metadata: `CITATION.cff`
+- Issue and pull request templates: `.github/`
+- Dependency monitoring: `.github/dependabot.yml`
+
+No permissive open-source license is added yet. See `docs/LICENSING_AND_IP.md`
+before choosing MIT, Apache-2.0, GPL, proprietary, or another licensing path.
 
 ---
 
 ## License
 
 Academic project for Budapest University of Technology and Economics, 2025-2026.
+
+License decision pending; see `docs/LICENSING_AND_IP.md`.

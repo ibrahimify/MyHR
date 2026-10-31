@@ -52,13 +52,13 @@ Priority: high.
 
 ### Research Module Boundary
 
-TDK anomaly detection should live separately from core UI code, for example:
+Current status: implemented separately from the core UI under:
 
 ```text
 src/services/anomaly_detection/
 ```
 
-Recommended future structure:
+Current structure includes:
 
 ```text
 src/services/anomaly_detection/
@@ -67,9 +67,13 @@ src/services/anomaly_detection/
 |-- isolation_forest.py
 |-- duplicate_detection.py
 |-- metrics.py
+|-- protocol_evaluation.py
 ```
 
-Priority: high when TDK implementation begins.
+Independent scenario generation is in `src/research/independent_scenarios.py`.
+Artifact verification is in `scripts/audit_tdk_protocol_artifact.py`.
+
+Priority: maintain this boundary. Research dependencies remain separate in `requirements-research.txt`.
 
 ### Database Versioning
 
@@ -150,11 +154,10 @@ Priority: high if a client/demo user must onboard real data.
 
 ## Suggested Order
 
-1. Keep current thesis branch stable.
-2. Use `docs/QA_CHECKLIST.md` for final manual QA.
-3. Fix only real bugs found during QA.
-4. Tag a stable thesis/demo commit.
-5. Create the research branch.
-6. Implement policy-aware anomaly detection in an isolated service module.
-7. Package after thesis and research-critical logic stop moving.
+1. Keep the draft research PR unmerged until the approved methodology is implemented, verified, and separately frozen.
+2. Use `docs/QA_CHECKLIST.md` for thesis and packaging QA.
+3. Use `TDK_SUPERVISOR_DECISIONS_2026-10-29.md` as the authority for the six approved methodology choices.
+4. Implement only those approved protocol changes, with tests and development-only artifacts.
+5. Freeze the protocol and exact environment before any holdout generation.
+6. Package after thesis and research-critical logic stop moving.
 

@@ -1,0 +1,223 @@
+# TDK Protocol Change Proposals
+
+Status: **PARTIALLY AUTHOR-APPROVED FOR PROTOCOL PREPARATION - NOT FROZEN.**
+
+This document records proposed changes to scenario definitions, mechanisms, and
+evaluation details that were implemented in code but are **not** yet approved as
+protocol. Per `AGENTS.md`, scenario definitions must not be silently changed;
+proposed changes are recorded here separately for supervisor approval. Nothing in
+this document is frozen, and none of it authorizes holdout access. The dated
+decision addendum below records the project author's 30 October 2026 decisions;
+it is not represented as an independent supervisor signature.
+
+## Decision addendum - 30 October 2026
+
+The author approved the lawful-correction semantics and record-level eligibility
+requirements, with the following explicit compatibility contract:
+
+| Rare-legitimate pattern | Stable administration | Rapid expansion | Merger or migration | Required record-level evidence |
+| --- | --- | --- | --- | --- |
+| Grandfathered policy | Compatible | Compatible | Compatible | Employee-, policy-version-, and event-linked entitlement evidence known by the applicable review cutoff |
+| Recognized prior service | Compatible | Compatible | Compatible | Evidence-bearing recognized-service credit linked to the relevant decision |
+| Delayed bulk recording | Compatible | Compatible | Compatible | Effective date unchanged; later recorded date and backlog provenance retained |
+| Late correction | Compatible | Compatible | Compatible | Progression track, an existing promotion, valid one-to-one supersession, and a lawful corrected effective history |
+| Policy transition | Compatible | Incompatible under the current 2021-2025 hire window | Compatible | Progression track, existing promotion, and `hire date + 30 months <= 2022-12-31` |
+
+All four anomaly mechanisms may be combined with a compatible population and
+rare pattern only when the mechanism's source-event preconditions are met:
+`wrong_employee_link` needs distinct employee records; `missing_increment_import`
+needs an approved increment that can be omitted; `approval_bypass` needs a
+promotion with explicit invalid authorization state; and `batch_retry` needs an
+original event plus a traceable retry. A condition that cannot satisfy both the
+anomaly and rare-pattern preconditions must be omitted and reported, not forced.
+
+This approves Proposals 1, 4, 5, and 6 subject to the constraints above. It
+approves the compatibility boundary, not the exact `index % 5` frequency
+allocation in Proposal 3. The protocol-scale matrix must predeclare a balanced
+set of compatible cells and use 30 independent seeds per included condition
+unless a written justification is approved beforehand. Concrete generated
+examples remain subject to pre-freeze review. Proposal 2 remains superseded.
+
+The same decision round approved employee-linked entitlement evidence,
+decision-time and later-review temporal views, the primary endpoint, and the
+secondary Holm family. It modified the reviewer design and seed plan. Protocol
+freeze and holdout authorization were explicitly withheld.
+
+---
+
+## Proposal 1 — `late_correction` rare-legitimate scenario definition
+
+Proposed 2026-10-30. Implemented in code at commit `0f1f32c`
+(`src/research/independent_scenarios.py`, `_apply_rare_case`). Tested, but the
+*definition* below is a proposal, not an approved specification.
+
+**Intent:** Model a promotion that was initially recorded with an erroneous date
+and later corrected, so that the corrected (effective) history is policy-compliant
+and should be treated as a rare-legitimate case rather than an error.
+
+**Proposed mechanism (exact, for review):**
+
+- Take the last promotion event in the base history as the original.
+- Inject an erroneous copy with the effective date moved **−12 months**, stamped
+  with the policy applicable at that earlier date (`_policy_id_for_date`), recorded
+  3 days after its (wrong) effective date, `approval_status="approved"`.
+- Inject a correction event carrying `correction_of_event_id` pointing to the
+  erroneous event, recorded 14 days after the true effective date,
+  `approval_status="approved"`.
+- The correction supersedes the erroneous event; `assess_promotion_history` drops
+  any promotion whose `source_id` is referenced by a visible `correction_of_source_id`.
+
+**Open questions for the supervisor:**
+
+1. Is −12 months the right mis-dating magnitude, or should it vary across scenarios?
+2. Should more than one correction case per scenario be injected?
+3. Is approving the erroneous event at filing time (vs a distinct pre-correction
+   status) the correct administrative model?
+
+**Status:** Approved with the addendum's lawful-history, eligibility, and
+evidence constraints. Exact protocol-scale examples and frequencies are not
+frozen.
+
+---
+
+## Proposal 2 — `policy_transition` rare-legitimate scenario definition
+
+Proposed 2026-10-30. Implemented in code at commit `0bfa585` / `3e9edd2`
+(`src/research/independent_scenarios.py`, `_apply_rare_case`).
+
+**Intent:** Model an employee promoted under an earlier policy epoch whose service
+requirement must be evaluated under the policy effective at the promotion date, not
+the current policy. This is the core case motivating the bitemporal contract
+(Supervisor Decision 4).
+
+**Proposed mechanism (exact, for review):**
+
+- Re-stamp the promotion event to `policy_id="legacy-pre-2023"` with effective date
+  `2022-06-01` and recorded date `2022-06-03`.
+- The promotion satisfies the then-current (legacy) service requirement even where
+  the current `reform-2023` policy would reject it.
+
+**Open questions for the supervisor:**
+
+1. Is a single fixed `2022-06-01` effective date acceptable, or should transition
+   dates be distributed across the legacy epoch?
+2. Should the transition cover increments and other event types, not only promotions?
+3. Is the legacy/reform two-epoch model sufficient, or are more epochs needed?
+
+**Status:** Superseded by Proposal 4. Not part of the approved contract.
+
+---
+
+## Proposal 3 — development matrix composition change
+
+Adding two rare patterns changed the 12-scenario development matrix assignment from
+`index % 3` (3 patterns, 4 each) to `index % 5` (patterns 0,1 appear 3×; patterns
+2,3,4 appear 2×). This is a **development-only** composition change. It does not
+define the holdout matrix, which remains undefined and locked under Decision 6.
+
+**Status:** The exact `index % 5` allocation is not approved as the
+protocol-scale design. The amended compatibility boundary is approved; the
+balanced matrix and holdout remain unfrozen.
+
+---
+
+## Proposal 4 — corrected `policy_transition` construction (supersedes Proposal 2)
+
+Proposed 2026-10-30 (post second-audit repair). Implemented in
+`src/research/independent_scenarios.py`.
+
+**Why:** The original Proposal 2 mechanism (force every promotion to 2022-06-01)
+was found by the second audit (finding R2) to create genuine contradictions —
+promotions before hire, same-day double promotions, insufficient service — so its
+rare-legitimate labels were invalid. This proposal replaces it with a lawful
+construction.
+
+**Corrected mechanism (exact, for review):**
+
+- Rebuild the history with a SINGLE legacy-epoch promotion L7->L6, stamped
+  `policy_id="legacy-pre-2023"`, at effective date `hire_date + 30 months`
+  (the legacy L7 service requirement), which is on/after hire and on/before the
+  legacy epoch end `2022-12-31`.
+- Any stacked second promotion is removed so there is no same-day double or order
+  violation.
+- The result has zero invariant findings and is a genuinely lawful legacy-policy
+  promotion that the current reform-2023 policy would reject.
+
+**Eligibility precondition (R3):** `policy_transition` is only assigned to a
+PROGRESSION-track employee who already has a promotion AND whose
+`hire_date + 30 months <= 2022-12-31`. Employees hired too late cannot host a
+lawful legacy transition and are not selected.
+
+**Open questions for the supervisor:** same as Proposal 2 plus — is a single
+fixed `hire+30mo` transition date acceptable, or should it be distributed within
+the legacy epoch?
+
+**Status:** Approved with the addendum's population, employee, policy-version,
+and event-evidence constraints. Not frozen.
+
+## Proposal 5 — `late_correction` eligibility precondition (amends Proposal 1)
+
+Proposed 2026-10-30 (post second-audit repair).
+
+`late_correction` now requires a PROGRESSION-track employee with an existing
+promotion (finding R3: previously the fallback required only a salary increment,
+so some selected cases had no promotion to correct and produced empty causal
+events with misleading "a promotion was corrected" evidence text). With the
+precondition, every selected case has a real promotion to re-date and supersede.
+
+**Status:** Approved. Not frozen.
+
+## Proposal 6 — development matrix: skip unlawful `policy_transition` pairings (amends Proposal 3)
+
+Proposed 2026-10-30 (post second-audit repair).
+
+The 12-scenario development matrix assigns rare patterns by `index % 5`. When the
+cycle would pair `policy_transition` with a population that cannot host a lawful
+legacy-epoch promotion (`rapid_expansion`, hired 2021+, where
+`hire+30mo > 2022-12-31`), the matrix now deterministically advances to the next
+pattern. Net effect: `policy_transition` appears on 1 development scenario
+(`merger_migration`) instead of 2; the `rapid_expansion` slot becomes
+`grandfathered_policy`, which it can lawfully host.
+
+This reduces `policy_transition` development coverage from a potential 2 scenarios
+to 1. This is the scientifically correct tradeoff: forcing the pattern onto
+`rapid_expansion` would require fabricating an unlawful promotion. If stronger
+coverage is wanted, the legitimate levers are adjusting hire-year windows or
+adding a dedicated hosting-population scenario — not forcing the pattern.
+
+**Status:** The prohibition on forced incompatible pairings is approved. The
+one-scenario development allocation is not accepted as the protocol-scale
+frequency plan; a balanced set of compatible cells must be frozen separately.
+
+## Approval log
+
+| Proposal | Proposed | Supervisor decision | Date |
+| --- | --- | --- | --- |
+| 1 `late_correction` definition | 2026-10-30 | approved with lawful-history and evidence constraints | 2026-10-30 |
+| 2 `policy_transition` definition (SUPERSEDED by #4) | 2026-10-30 | superseded | — |
+| 3 development matrix composition (AMENDED by #6) | 2026-10-30 | exact frequency allocation not approved; replace at protocol scale with a predeclared balanced compatible-cell matrix | 2026-10-30 |
+| 4 corrected `policy_transition` construction | 2026-10-30 | approved with population and record-level eligibility constraints | 2026-10-30 |
+| 5 `late_correction` eligibility precondition | 2026-10-30 | approved | 2026-10-30 |
+| 6 matrix skips unlawful `policy_transition` pairings | 2026-10-30 | approved; forced incompatible pairings prohibited | 2026-10-30 |
+
+## Superseded exploratory verification note
+
+The exploratory readings from artifact `db1a15646d9e76ba` were re-derived through
+an independent code path (`scripts/reproduce_db1a15646d9e76ba_readings.py`) by the
+same author who wrote the scenario code. This is **not** an independent review. A
+separate read-only auditor (human or distinct agent) must still verify:
+
+- the raw `record_predictions.csv` / `record_truth.csv` rows;
+- that the denominator is the **test-split** rare-legitimate count (72), not the
+  all-splits count (348);
+- scenario membership of the 8 flagged records;
+- that all 8 flags are `policy_transition` cases and none are `late_correction`.
+
+This note is retained as audit history only. The second audit invalidated the
+underlying rare-legitimate construction, so these numbers must not be used as a
+current false-alert result. The repaired development artifact
+`b866ae2aa1b4b479` records **0 of 72** deterministic alerts among test-split
+rare-legitimate histories. Its scenario construction is retained as historical
+development evidence; the later decision addendum approves only the constrained
+compatibility and eligibility contract, not retroactive reinterpretation of
+this artifact or the final matrix.

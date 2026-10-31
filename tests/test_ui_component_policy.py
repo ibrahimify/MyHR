@@ -55,6 +55,21 @@ class UIComponentPolicyTests(unittest.TestCase):
             "Do not build page-local dropdowns. Use AppSelect or subclass AppSelect.",
         )
 
+    def test_app_select_exposes_read_only_item_text(self):
+        from PySide6.QtWidgets import QApplication
+
+        from src.ui.components.app_select import AppSelect
+
+        app = QApplication.instance() or QApplication([])
+        select = AppSelect()
+        select.addItem("Visible label", 42)
+
+        self.assertEqual(select.itemText(0), "Visible label")
+        self.assertEqual(select.itemText(-1), "")
+        self.assertEqual(select.itemText(1), "")
+        select.close()
+        app.processEvents()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -21,6 +21,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session, joinedload
 
 from src.core.i18n import t
+from src.core.time import utc_now
+from src.services.promotion_policy import PromotionRaceInput, calculate_promotion_race
 from src.database.models import (
     Base, SystemUser, Title, PromotionRule, Employee, OrgUnit,
     Commendation, CommendationEmployee, Sanction,
@@ -303,7 +305,7 @@ def verify_login(username: str, password: str):
             is_active=True
         ).first()
         if user:
-            user.last_login = datetime.utcnow()
+            user.last_login = utc_now()
             session.commit()
             return UserSession(
                 id=user.id,
@@ -324,7 +326,7 @@ def generate_employee_id(session: Session) -> str:
 
 def generate_commendation_ref(session: Session) -> str:
     """Generates COM-YYYY-MMDD-NNN format."""
-    today = datetime.utcnow()
+    today = utc_now()
     prefix = f"COM-{today.year}-{today.month:02d}{today.day:02d}"
     count = session.query(Commendation).filter(
         Commendation.commendation_ref.like(f"{prefix}%")
@@ -334,7 +336,7 @@ def generate_commendation_ref(session: Session) -> str:
 
 def generate_sanction_ref(session: Session) -> str:
     """Generates SAN-YYYY-MMDD-NNN format."""
-    today = datetime.utcnow()
+    today = utc_now()
     prefix = f"SAN-{today.year}-{today.month:02d}{today.day:02d}"
     count = session.query(Sanction).filter(
         Sanction.sanction_ref.like(f"{prefix}%")
@@ -343,7 +345,11 @@ def generate_sanction_ref(session: Session) -> str:
 
 
 # Promotion race calculation (LIVE - never stored)
-def calculate_months_remaining(employee: Employee, session: Session) -> dict:
+def calculate_months_remaining(
+    employee: Employee,
+    session: Session,
+    as_of: datetime | None = None,
+) -> dict:
     """
     Calculates the employee's current position in the promotion race.
     
@@ -356,12 +362,18 @@ def calculate_months_remaining(employee: Employee, session: Session) -> dict:
     
     Returns dict with full breakdown for UI display.
     """
+    now = as_of or utc_now()
     if is_other_employee(employee):
+        outcome = calculate_promotion_race(PromotionRaceInput(
+            has_next_level=False,
+            base_months=None,
+            months_elapsed=_months_between(employee.join_date, now) if employee.join_date else 0,
+        ))
         return {
-            "has_next_level": False,
-            "months_remaining": None,
-            "base_months": None,
-            "months_elapsed": _months_between(employee.join_date, datetime.utcnow()) if employee.join_date else 0,
+            "has_next_level": outcome.has_next_level,
+            "months_remaining": outcome.months_remaining,
+            "base_months": outcome.base_months,
+            "months_elapsed": outcome.months_elapsed,
             "commendation_reduction": 0,
             "sanction_addition": 0,
             "eligible": False,
@@ -393,8 +405,6 @@ def calculate_months_remaining(employee: Employee, session: Session) -> dict:
     ).order_by(PromotionHistory.promoted_at.desc()).first()
 
     race_start = last_promo.promoted_at if last_promo else employee.join_date
-    now = datetime.utcnow()
-
     # Months elapsed since race start
     months_elapsed = _months_between(race_start, now)
 
@@ -409,7 +419,8 @@ def calculate_months_remaining(employee: Employee, session: Session) -> dict:
     if comm_ids:
         commendations = session.query(Commendation).filter(
             Commendation.id.in_(comm_ids),
-            Commendation.issued_at >= race_start
+            Commendation.issued_at > race_start,
+            Commendation.issued_at <= now,
         ).all()
 
     commendation_reduction = sum(abs(c.months_impact) for c in commendations)
@@ -418,25 +429,30 @@ def calculate_months_remaining(employee: Employee, session: Session) -> dict:
     sanctions = session.query(Sanction).filter(
         Sanction.employee_id == employee.id,
         Sanction.is_resolved == False,
-        Sanction.issued_at >= race_start
+        Sanction.issued_at > race_start,
+        Sanction.issued_at <= now,
     ).all()
 
     sanction_addition = sum(s.delay_months for s in sanctions)
 
-    # Final calculation
-    raw_remaining = rule.base_months - months_elapsed - commendation_reduction + sanction_addition
-    months_remaining = max(0, raw_remaining)  # floor at 0
+    outcome = calculate_promotion_race(PromotionRaceInput(
+        has_next_level=True,
+        base_months=rule.base_months,
+        months_elapsed=months_elapsed,
+        commendation_credit_months=commendation_reduction,
+        active_sanction_delay_months=sanction_addition,
+    ))
 
     return {
-        "has_next_level": True,
-        "months_remaining": months_remaining,
-        "base_months": rule.base_months,
-        "months_elapsed": months_elapsed,
-        "commendation_reduction": commendation_reduction,
-        "sanction_addition": sanction_addition,
-        "eligible": months_remaining == 0,
+        "has_next_level": outcome.has_next_level,
+        "months_remaining": outcome.months_remaining,
+        "base_months": outcome.base_months,
+        "months_elapsed": outcome.months_elapsed,
+        "commendation_reduction": outcome.commendation_credit_months,
+        "sanction_addition": outcome.active_sanction_delay_months,
+        "eligible": outcome.eligible,
         "next_title_id": rule.to_title_id,
-        "progress_pct": max(0, min(100, int((months_elapsed + commendation_reduction - sanction_addition) / rule.base_months * 100))),
+        "progress_pct": outcome.progress_pct,
     }
 
 
@@ -450,7 +466,7 @@ def calculate_months_remaining_batch(employees: list[Employee], session: Session
     if not employees:
         return {}
 
-    now = datetime.utcnow()
+    now = utc_now()
     employee_ids = [employee.id for employee in employees]
     title_ids = {employee.title_id for employee in employees if employee.title_id}
     titles_by_id = {
@@ -531,7 +547,7 @@ def calculate_months_remaining_batch(employees: list[Employee], session: Session
             continue
         for commendation_id in ids:
             commendation = commendations_by_id.get(commendation_id)
-            if commendation and commendation.issued_at and commendation.issued_at >= race_start:
+            if commendation and commendation.issued_at and commendation.issued_at > race_start:
                 commendation_reduction_by_employee[employee_id] += abs(commendation.months_impact)
 
     sanction_addition_by_employee = defaultdict(int)
@@ -545,7 +561,7 @@ def calculate_months_remaining_batch(employees: list[Employee], session: Session
     )
     for sanction in sanctions:
         race_start = race_start_by_employee.get(sanction.employee_id)
-        if sanction.issued_at and race_start and sanction.issued_at >= race_start:
+        if sanction.issued_at and race_start and sanction.issued_at > race_start:
             sanction_addition_by_employee[sanction.employee_id] += sanction.delay_months
 
     for employee in standard_employees:
@@ -599,7 +615,7 @@ def calculate_sub_race(employee: Employee, session: Session) -> dict:
     Other/Misc employees get ongoing Other.1/Other.2 service checkpoints.
     """
     race_start = get_race_start(employee, session)
-    today = datetime.utcnow()
+    today = utc_now()
     months_elapsed = _months_between(race_start, today) if race_start else 0
     current_title = employee.title.name if employee.title else OTHER_TITLE_NAME
     title = employee.title
@@ -699,7 +715,7 @@ def count_commendations_in_current_role(employee: Employee, session: Session) ->
         return 0
     return session.query(Commendation).filter(
         Commendation.id.in_(comm_ids),
-        Commendation.issued_at >= race_start
+        Commendation.issued_at > race_start
     ).count()
 
 
@@ -756,7 +772,7 @@ def count_commendations_in_current_role_batch(employees: list[Employee], session
             if (
                 commendation_id in commendations_by_id
                 and commendations_by_id[commendation_id].issued_at
-                and commendations_by_id[commendation_id].issued_at >= race_start
+                and commendations_by_id[commendation_id].issued_at > race_start
             )
         )
     return counts
@@ -775,7 +791,7 @@ def get_increment_due_employees(session: Session) -> list:
     the current year's join anniversary has passed, and no increment was
     applied for that anniversary.
     """
-    today = datetime.utcnow()
+    today = utc_now()
     due = []
 
     employees = (
@@ -833,7 +849,7 @@ def apply_salary_increment(employee_id: int, approved_by_id: int, session: Sessi
         salary_after = round(salary_before + title.annual_increment_value, 2)
 
     employee.base_salary = salary_after
-    employee.annual_increment_last_applied = datetime.utcnow()
+    employee.annual_increment_last_applied = utc_now()
 
     sub_race = calculate_sub_race(employee, session)
     milestone_note = f"Sub-race milestone {sub_race['current_step_label']}"
@@ -1055,7 +1071,7 @@ def record_performance_score(
     if score < 0 or score > max_score:
         return {"success": False, "error": f"Score must be between 0 and {max_score:g}"}
     review_type = (review_type or "annual").strip() or "annual"
-    review_period = (review_period or "").strip() or str((evaluation_date or datetime.utcnow()).year)
+    review_period = (review_period or "").strip() or str((evaluation_date or utc_now()).year)
     existing = (
         session.query(PerformanceScore)
         .filter_by(
@@ -1082,7 +1098,7 @@ def record_performance_score(
         competency_score=rubric_values["competency_score"],
         conduct_score=rubric_values["conduct_score"],
         teamwork_score=rubric_values["teamwork_score"],
-        evaluation_date=evaluation_date or datetime.utcnow(),
+        evaluation_date=evaluation_date or utc_now(),
         notes=notes.strip() or None,
     )
     session.add(record)
@@ -1165,7 +1181,7 @@ def update_performance_score(
         return {"success": False, "error": f"Score must be between 0 and {max_score:g}"}
 
     review_type = (review_type or "annual").strip() or "annual"
-    review_period = (review_period or "").strip() or str((evaluation_date or datetime.utcnow()).year)
+    review_period = (review_period or "").strip() or str((evaluation_date or utc_now()).year)
     duplicate = (
         session.query(PerformanceScore)
         .filter(
@@ -1206,7 +1222,7 @@ def update_performance_score(
     record.competency_score = rubric_values["competency_score"]
     record.conduct_score = rubric_values["conduct_score"]
     record.teamwork_score = rubric_values["teamwork_score"]
-    record.evaluation_date = evaluation_date or datetime.utcnow()
+    record.evaluation_date = evaluation_date or utc_now()
     record.notes = notes.strip() or None
     session.flush()
 

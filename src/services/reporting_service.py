@@ -6,6 +6,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from html import escape
+from src.core.time import utc_now
 
 from sqlalchemy import func
 
@@ -73,7 +74,7 @@ def available_report_years() -> list[int]:
             for (value,) in session.query(column).filter(column.isnot(None)).all():
                 if value:
                     years.add(value.year)
-        years.add(datetime.utcnow().year)
+        years.add(utc_now().year)
         return sorted(years, reverse=True)
     finally:
         session.close()
@@ -184,7 +185,7 @@ def build_yearly_report(year: int, filters: ReportFilters | None = None) -> Year
             company=company_name("MyHR"),
             subtitle=company_subtitle("Employee Management"),
             year=year,
-            generated_at=datetime.utcnow(),
+            generated_at=utc_now(),
             executive_summary=summary,
             metrics=metrics,
             salary_summary=salary_summary,

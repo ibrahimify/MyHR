@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta
 from html import escape
+from src.core.time import utc_now
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -182,7 +183,7 @@ def _month_key(dt):
 
 
 def _filter_window(filter_key, custom_start=None, custom_end=None):
-    now = datetime.utcnow()
+    now = utc_now()
     today = datetime(now.year, now.month, now.day)
     if filter_key == "week":
         start = today - timedelta(days=6)
@@ -218,7 +219,7 @@ def _safe_anniversary(join_date, year):
 
 
 def _month_range(months=6):
-    now = datetime.utcnow()
+    now = utc_now()
     first = datetime(now.year, now.month, 1)
     start_month = first
     for _ in range(months - 1):
@@ -245,7 +246,7 @@ def _next_month_start(dt):
 
 
 def _timeline_buckets(filter_key):
-    now = datetime.utcnow()
+    now = utc_now()
     today = datetime(now.year, now.month, now.day)
     buckets = []
     if filter_key == "week":
@@ -990,7 +991,7 @@ class DashboardPage(QWidget):
                     "increment_str": inc_str,
                 })
 
-            now = datetime.utcnow()
+            now = utc_now()
             recent = session.query(AuditLog).order_by(AuditLog.performed_at.desc(), AuditLog.id.desc()).limit(50).all()
             recent = [log for log in recent if not log.performed_at or log.performed_at <= now][:5]
             self.logs_data = [
@@ -1158,7 +1159,7 @@ class DashboardPage(QWidget):
         return labels, [options.get(metric, options["headcount"])]
 
     def _increment_queue(self, active_employees):
-        today = datetime.utcnow()
+        today = utc_now()
         buckets = {
             "due_now": self.increment_count,
             "next_30": 0,

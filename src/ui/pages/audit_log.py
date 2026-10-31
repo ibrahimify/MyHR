@@ -12,8 +12,7 @@ from collections import Counter
 from datetime import datetime, timedelta
 from html import escape
 from PySide6.QtCore import QMarginsF, Qt, QSize
-from PySide6.QtGui import QColor, QFont, QPageLayout, QPageSize, QTextDocument
-from PySide6.QtPrintSupport import QPrinter
+from PySide6.QtGui import QColor, QFont, QPageLayout, QPageSize, QPdfWriter, QTextDocument
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
     QFrame, QTableWidget, QTableWidgetItem, QHeaderView,
@@ -24,6 +23,7 @@ from sqlalchemy import String, cast, func, or_
 
 from src.core.app_settings import company_name, company_subtitle
 from src.core.i18n import is_rtl, t
+from src.core.time import utc_now
 from src.ui.components.app_select import AppSelect
 from src.ui.icons import app_icon, app_pixmap
 from src.ui.styles import (
@@ -391,7 +391,7 @@ class AuditLogPage(QWidget):
     def _load_user_filter_values(self, session):
         rows = (
             session.query(AuditLog.performed_by_username, AuditLog.performed_by_name)
-            .filter(AuditLog.performed_at <= datetime.utcnow())
+            .filter(AuditLog.performed_at <= utc_now())
             .distinct()
             .all()
         )
@@ -405,7 +405,7 @@ class AuditLogPage(QWidget):
     def _load_target_filter_values(self, session):
         rows = (
             session.query(AuditLog.target_table)
-            .filter(AuditLog.performed_at <= datetime.utcnow())
+            .filter(AuditLog.performed_at <= utc_now())
             .filter(AuditLog.target_table.isnot(None))
             .distinct()
             .all()
@@ -435,7 +435,7 @@ class AuditLogPage(QWidget):
     def _update_stats(self):
         session = get_session()
         try:
-            now = datetime.utcnow()
+            now = utc_now()
             today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
             week_start = today_start - timedelta(days=6)
             base = session.query(AuditLog).filter(AuditLog.performed_at <= now)
@@ -473,7 +473,7 @@ class AuditLogPage(QWidget):
         self._load_page()
 
     def _filtered_query(self, session):
-        query = session.query(AuditLog).filter(AuditLog.performed_at <= datetime.utcnow())
+        query = session.query(AuditLog).filter(AuditLog.performed_at <= utc_now())
         search = self.search.text().strip().lower()
         if search:
             pattern = f"%{search}%"
@@ -694,7 +694,7 @@ class AuditLogPage(QWidget):
         try:
             rows = self._export_rows(session)
             scope = self._export_scope_text()
-            generated_at = datetime.utcnow()
+            generated_at = utc_now()
             html = _build_audit_pdf_html(rows, scope, generated_at, self.user)
             _write_audit_pdf(path, html)
             log_action(
@@ -958,10 +958,9 @@ def _audit_pdf_row(row):
 
 
 def _write_audit_pdf(path, html):
-    printer = QPrinter(QPrinter.HighResolution)
-    printer.setOutputFormat(QPrinter.PdfFormat)
-    printer.setOutputFileName(path)
-    printer.setPageLayout(QPageLayout(
+    writer = QPdfWriter(path)
+    writer.setResolution(300)
+    writer.setPageLayout(QPageLayout(
         QPageSize(QPageSize.A4),
         QPageLayout.Landscape,
         QMarginsF(10, 10, 10, 10),
@@ -969,9 +968,9 @@ def _write_audit_pdf(path, html):
     ))
     document = QTextDocument()
     document.setDefaultFont(QFont("Segoe UI", 9))
-    document.setPageSize(printer.pageLayout().paintRectPoints().size())
+    document.setPageSize(writer.pageLayout().paintRectPoints().size())
     document.setHtml(html)
-    document.print_(printer)
+    document.print_(writer)
 
 
 def _html(value):
@@ -1456,7 +1455,7 @@ def _first_number(value):
 
 
 def _date_range_start(date_range):
-    now = datetime.utcnow()
+    now = utc_now()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     if date_range == "today":
         return today_start

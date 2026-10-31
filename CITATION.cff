@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+title: "MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression"
+message: "If you use this software or research prototype, please cite it using this metadata."
+type: software
+authors:
+  - family-names: Shoeb
+    given-names: Muhammad Ibrahim
+repository-code: "https://github.com/ibrahimify/MyHR"
+abstract: "MyHR is an offline employee management application and research platform for policy-aware anomaly detection in workforce progression."
+keywords:
+  - human resources
+  - anomaly detection
+  - policy-aware machine learning
+  - workforce progression
+  - offline desktop application
+license: "NOASSERTION"

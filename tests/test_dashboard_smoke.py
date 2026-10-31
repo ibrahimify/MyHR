@@ -1,12 +1,16 @@
 import os
 import csv
 import json
+import sys
 import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
+from src.core.time import utc_now
 
 from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
 import src.database.connection as db
@@ -41,6 +45,69 @@ class DashboardSmokeTests(unittest.TestCase):
             os.remove(cls._tmp.name)
         except OSError:
             pass
+
+    def test_main_window_constructs_every_page_without_async_exceptions(self):
+        from PySide6.QtTest import QTest
+
+        from src.ui.main_window import MainWindow, _PlaceholderPage
+
+        user = SimpleNamespace(id=1, username="admin", role="admin", full_name="Smoke Test")
+        expected_types = {
+            "dashboard": "DashboardPage",
+            "employees": "EmployeesPage",
+            "hierarchy": "HierarchyPage",
+            "promotions": "PromotionsPage",
+            "commendations": "CommendationsPage",
+            "sanctions": "SanctionsPage",
+            "audit_log": "AuditLogPage",
+            "anomaly_review": "AnomalyReviewPage",
+            "import_data": "ImportDataPage",
+            "settings": "SettingsPage",
+        }
+        async_exceptions = []
+        original_hook = sys.excepthook
+        sys.excepthook = lambda kind, value, traceback: async_exceptions.append(value)
+        window = MainWindow(user)
+        try:
+            for key, expected_type in expected_types.items():
+                with self.subTest(page=key):
+                    page = window._get_page(key)
+                    self.assertNotIsInstance(page, _PlaceholderPage)
+                    self.assertEqual(expected_type, type(page).__name__)
+            QTest.qWait(1100)
+        finally:
+            window.close()
+            QTest.qWait(20)
+            sys.excepthook = original_hook
+
+        self.assertEqual([], async_exceptions)
+
+    def test_closing_window_cancels_delayed_database_refresh(self):
+        from PySide6.QtTest import QTest
+
+        from src.ui.main_window import MainWindow
+
+        user = SimpleNamespace(id=1, username="admin", role="admin", full_name="Smoke Test")
+        window = MainWindow(user)
+        audit_page = window._get_page("audit_log")
+        window.stack.setCurrentWidget(audit_page)
+        window._page_animation_ready = True
+        async_exceptions = []
+        original_hook = sys.excepthook
+        sys.excepthook = lambda kind, value, traceback: async_exceptions.append(value)
+        failure = OperationalError("SELECT * FROM audit_log", {}, Exception("database closed"))
+        try:
+            with patch.object(audit_page, "refresh", side_effect=failure) as refresh:
+                window._navigate("audit_log")
+                window.close()
+                QTest.qWait(220)
+                refresh.assert_not_called()
+        finally:
+            window.close()
+            QTest.qWait(20)
+            sys.excepthook = original_hook
+
+        self.assertEqual([], async_exceptions)
 
     def test_priority_signal_view_buttons_route_to_expected_pages(self):
         from PySide6.QtWidgets import QPushButton
@@ -253,12 +320,12 @@ class DashboardSmokeTests(unittest.TestCase):
         try:
             invalid_currency_dialog.level_name.setText("L9")
             invalid_currency_dialog.level_label.setText("Temporary Track")
-            invalid_currency_dialog.currency.setText("$$$")
             invalid_currency_dialog.salary_min.setValue(100)
             invalid_currency_dialog.salary_max.setValue(200)
             l7_index = invalid_currency_dialog.target_title.findData(ids["l7"])
             self.assertGreaterEqual(l7_index, 0)
             invalid_currency_dialog.target_title.setCurrentIndex(l7_index)
+            invalid_currency_dialog.currency.setText("$$$")
             with patch("src.ui.pages.settings._warning", return_value=None) as warning:
                 invalid_currency_dialog._save()
             warning.assert_called_once()
@@ -373,7 +440,7 @@ class DashboardSmokeTests(unittest.TestCase):
             session.add(org)
             session.flush()
             employees = []
-            now = datetime.utcnow()
+            now = utc_now()
             old_join_date = now.replace(year=now.year - 5)
             for index in range(65):
                 employee = Employee(
@@ -456,7 +523,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 last_name="Smoke",
                 degree="BSc",
                 position="Analyst",
-                join_date=datetime.utcnow(),
+                join_date=utc_now(),
                 base_salary=2400,
                 status="active",
                 title_id=title.id,
@@ -637,7 +704,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 description="Audit export current item",
                 before_value='{"status": "inactive"}',
                 after_value='{"status": "active"}',
-                performed_at=datetime.utcnow(),
+                performed_at=utc_now(),
             ))
             session.add(AuditLog(
                 performed_by_id=admin.id,
@@ -647,7 +714,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 target_table="employee",
                 target_id=502,
                 description="Audit export old item",
-                performed_at=datetime.utcnow() - timedelta(days=60),
+                performed_at=utc_now() - timedelta(days=60),
             ))
             session.commit()
             user = SimpleNamespace(id=admin.id, username=admin.username, role=admin.role, full_name=admin.full_name)
@@ -726,6 +793,21 @@ class DashboardSmokeTests(unittest.TestCase):
             except OSError:
                 pass
 
+    def test_audit_pdf_uses_direct_pdf_writer(self):
+        from src.ui.pages import audit_log
+
+        self.assertFalse(hasattr(audit_log, "QPrinter"))
+        self.assertTrue(hasattr(audit_log, "QPdfWriter"))
+
+    def test_production_pdf_exports_avoid_native_printer_api(self):
+        source_root = Path(__file__).resolve().parents[1] / "src"
+        offenders = []
+        for path in source_root.rglob("*.py"):
+            source = path.read_text(encoding="utf-8")
+            if "QPrinter" in source or "QtPrintSupport" in source:
+                offenders.append(str(path.relative_to(source_root)))
+        self.assertEqual([], offenders)
+
     def test_audit_target_uses_readable_record_names(self):
         from datetime import datetime
 
@@ -744,7 +826,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 target_id=title.id,
                 description="Level target smoke active",
                 after_value=f'{{"name": "{title.name}", "label": "{title.label}"}}',
-                performed_at=datetime.utcnow(),
+                performed_at=utc_now(),
             ))
             session.add(AuditLog(
                 performed_by_id=admin.id,
@@ -755,7 +837,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 target_id=99001,
                 description="Level target smoke deleted",
                 before_value='{"name": "S8", "label": "Interns"}',
-                performed_at=datetime.utcnow(),
+                performed_at=utc_now(),
             ))
             session.add(AuditLog(
                 performed_by_id=admin.id,
@@ -764,7 +846,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 action="settings.database_health_check",
                 description="Level target smoke database check",
                 after_value='{"integrity": "ok"}',
-                performed_at=datetime.utcnow(),
+                performed_at=utc_now(),
             ))
             session.add(AuditLog(
                 performed_by_id=admin.id,
@@ -773,7 +855,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 action="settings.export_yearly_report",
                 description="Level target smoke report exported: 2026",
                 after_value='{"year": 2026}',
-                performed_at=datetime.utcnow(),
+                performed_at=utc_now(),
             ))
             session.commit()
             user = SimpleNamespace(id=admin.id, username=admin.username, role=admin.role, full_name=admin.full_name)
@@ -883,7 +965,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 degree="BSc",
                 work_email="sarah.canvas@example.test",
                 position="Backend Lead",
-                join_date=datetime.utcnow(),
+                join_date=utc_now(),
                 base_salary=2400,
                 status="active",
                 title_id=title.id,
@@ -896,7 +978,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 degree="BSc",
                 work_email="report.canvas@example.test",
                 position="Engineer",
-                join_date=datetime.utcnow(),
+                join_date=utc_now(),
                 base_salary=2400,
                 status="active",
                 title_id=title.id,
@@ -910,7 +992,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 degree="Other",
                 work_email="other.head@example.test",
                 position="Other Employees Head",
-                join_date=datetime.utcnow(),
+                join_date=utc_now(),
                 base_salary=2200,
                 status="active",
                 title_id=title.id,
@@ -923,7 +1005,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 degree="Other",
                 work_email="leaf.janitor@example.test",
                 position="Janitor",
-                join_date=datetime.utcnow(),
+                join_date=utc_now(),
                 base_salary=2000,
                 status="active",
                 title_id=title.id,
@@ -999,7 +1081,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 degree="Other",
                 work_email="increment.only@example.test",
                 position="Facilities Assistant",
-                join_date=datetime.utcnow(),
+                join_date=utc_now(),
                 base_salary=2200,
                 status="active",
                 title_id=other_title.id,

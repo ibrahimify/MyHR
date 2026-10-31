@@ -1,0 +1,123 @@
+{
+  "schema_version": "1.0",
+  "selection_date": "2026-10-15",
+  "purpose": "Curated legally accessible full-text corpus for the MyHR TDK literature review",
+  "papers": [
+    {
+      "id": "liu2008_isolation_forest",
+      "doi": "10.1109/ICDM.2008.17",
+      "expected_title": "Isolation Forest",
+      "pdf_url": "https://cs.nju.edu.cn/zhouzh/zhouzh.files/publication/icdm08b.pdf",
+      "access_basis": "Author-hosted manuscript"
+    },
+    {
+      "id": "liu2012_isolation_based",
+      "doi": "10.1145/2133360.2133363",
+      "expected_title": "Isolation-Based Anomaly Detection",
+      "pdf_url": "https://cs.nju.edu.cn/_upload/tpl/01/0b/267/template267/zhouzh.files/publication/tkdd11.pdf",
+      "access_basis": "Author-hosted manuscript"
+    },
+    {
+      "id": "han2022_adbench",
+      "arxiv_id": "2206.09426",
+      "expected_title": "ADBench: Anomaly Detection Benchmark",
+      "pdf_url": "https://arxiv.org/pdf/2206.09426",
+      "access_basis": "arXiv author submission"
+    },
+    {
+      "id": "li2024_xad_survey",
+      "doi": "10.1145/3609333",
+      "arxiv_id": "2210.06959",
+      "expected_title": "A Survey on Explainable Anomaly Detection",
+      "pdf_url": "https://arxiv.org/pdf/2210.06959",
+      "access_basis": "arXiv author submission"
+    },
+    {
+      "id": "carletti2023_diffi",
+      "doi": "10.1016/j.engappai.2022.105730",
+      "arxiv_id": "2007.11117",
+      "expected_title": "Interpretable Anomaly Detection with DIFFI: Depth-based Feature Importance for the Isolation Forest",
+      "pdf_url": "https://arxiv.org/pdf/2007.11117",
+      "access_basis": "arXiv author submission"
+    },
+    {
+      "id": "vaska2022_context_dependent",
+      "arxiv_id": "2203.09354",
+      "expected_title": "Context-Dependent Anomaly Detection with Knowledge Graph Embedding Models",
+      "pdf_url": "https://arxiv.org/pdf/2203.09354",
+      "access_basis": "arXiv author submission"
+    },
+    {
+      "id": "steinbuss2021_realistic_synthetic",
+      "doi": "10.1145/3441453",
+      "arxiv_id": "2004.06947",
+      "expected_title": "Benchmarking Unsupervised Outlier Detection with Realistic Synthetic Data",
+      "pdf_url": "https://arxiv.org/pdf/2004.06947",
+      "access_basis": "arXiv author submission"
+    },
+    {
+      "id": "hansen2023_data_centric_synthetic",
+      "arxiv_id": "2310.16981",
+      "expected_title": "Reimagining Synthetic Tabular Data Generation through Data-Centric AI: A Comprehensive Benchmark",
+      "pdf_url": "https://arxiv.org/pdf/2310.16981",
+      "access_basis": "arXiv author submission"
+    },
+    {
+      "id": "fourure2021_biased_evaluation",
+      "arxiv_id": "2106.16020",
+      "expected_title": "Anomaly Detection: How to Artificially Increase your F1-Score with a Biased Evaluation Protocol",
+      "pdf_url": "https://arxiv.org/pdf/2106.16020",
+      "access_basis": "arXiv author submission"
+    },
+    {
+      "id": "saito2015_precision_recall",
+      "doi": "10.1371/journal.pone.0118432",
+      "expected_title": "The Precision-Recall Plot Is More Informative than the ROC Plot When Evaluating Binary Classifiers on Imbalanced Datasets",
+      "pdf_url": "https://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0118432&type=printable",
+      "access_basis": "Publisher open-access article"
+    },
+    {
+      "id": "demsar2006_statistical_comparisons",
+      "expected_title": "Statistical Comparisons of Classifiers over Multiple Data Sets",
+      "pdf_url": "https://www.jmlr.org/papers/volume7/demsar06a/demsar06a.pdf",
+      "access_basis": "Publisher open-access article"
+    },
+    {
+      "id": "pei2024_dense_blocking",
+      "arxiv_id": "2404.14831",
+      "expected_title": "Towards Universal Dense Blocking for Entity Resolution",
+      "pdf_url": "https://arxiv.org/pdf/2404.14831",
+      "access_basis": "arXiv author submission"
+    },
+    {
+      "id": "sorbo2024_metric_maze",
+      "doi": "10.1007/s10618-023-00988-8",
+      "arxiv_id": "2303.01272",
+      "expected_title": "Navigating the Metric Maze: A Taxonomy of Evaluation Metrics for Anomaly Detection in Time Series",
+      "pdf_url": "https://arxiv.org/pdf/2303.01272",
+      "access_basis": "arXiv author submission"
+    },
+    {
+      "id": "rochner2025_rethink_benchmarking",
+      "arxiv_id": "2507.15584",
+      "expected_title": "We Need to Rethink Benchmarking in Anomaly Detection",
+      "pdf_url": "https://arxiv.org/pdf/2507.15584",
+      "access_basis": "arXiv author submission"
+    },
+    {
+      "id": "neelamegam2026_bitemporal",
+      "doi": "10.1007/s42488-026-00162-x",
+      "expected_title": "Comprehensive insights into bitemporal databases: a PRISMA-guided systematic literature review",
+      "pdf_url": "https://www.open-access.bcu.ac.uk/17171/1/s42488-026-00162-x.pdf",
+      "access_basis": "Publisher article deposited under Creative Commons Attribution"
+    },
+    {
+      "id": "deng2026_hilad",
+      "doi": "10.1145/3778167",
+      "arxiv_id": "2405.03234",
+      "expected_title": "A Reliable Framework for Human-in-the-Loop Anomaly Detection in Time Series",
+      "pdf_url": "https://arxiv.org/pdf/2405.03234",
+      "access_basis": "arXiv author submission"
+    }
+  ]
+}
