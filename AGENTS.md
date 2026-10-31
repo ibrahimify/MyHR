@@ -14,6 +14,22 @@ These instructions apply to repository work on the TDK research branch.
 - When scientific literature informs work, use the repository `researcher` skill at `.codex/skills/researcher/SKILL.md` and update the centralized bibliography, citation provenance, and claim-evidence ledger in the same change.
 - The Research & Citation Specialist is the sixth research role. It verifies identifiers and legally accessible evidence, preserves provenance, and deduplicates citations; it cannot approve protocol decisions.
 
+## Autonomy (updated 2026-10-31)
+
+The author has authorized autonomous engineering and repository maintenance:
+routine confirmation prompts for branch management, commits, and normal pushes
+are not required. This authorization is strictly operational. It does NOT
+authorize any of the following, which remain blocked: automatic personnel
+decisions from anomaly scores; inventing or claiming human expert review,
+supervisor endorsement, or completed experiments; generating, inspecting,
+scoring, or unlocking the holdout; or freezing the protocol. Those remain
+human-gated regardless of engineering autonomy.
+
+The three permanent branches are `master` (Project Lab submission), `thesis`
+(verified working application), and `research` (research plus working app).
+Never force-push, destructively reset, or `git clean` to manufacture
+cleanliness; preserve work with tags and bundles first.
+
 ## Resume procedure
 
 1. Read `docs/TDK_AUTONOMOUS_RESEARCH_ROADMAP.md`.

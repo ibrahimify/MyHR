@@ -1,5 +1,18 @@
 # TDK Autonomous Research Roadmap
 
+## Repository Consolidation To Three Branches - 2026-10-31
+
+- The repository now has exactly three permanent branches:
+  - `master` (7d9ed70) — preserved Project Lab submission, unchanged.
+  - `thesis` (a9dac4b) — verified working thesis application (advanced from 8fd7434 by clean fast-forward to the former `thesis-final-polish` checkpoint; business-logic suite passes 17/17; app launches offscreen).
+  - `research` (84d0368) — research implementation plus the working application and the in-app Anomaly Review screen (renamed from `research/policy-aware-anomaly`).
+- Retired branches, all preserved as pushed archival tags and in an external verified git bundle: `research/policy-aware-anomaly` -> `archive/research-policy-aware-anomaly-2026-10-31`; `thesis-final-polish` -> `archive/thesis-final-polish-2026-10-31`; `maintenance/research-repository-hygiene` -> `archive/maintenance-research-repository-hygiene-2026-10-31`; `claude/charming-jemison-f93721` -> `archive/claude-charming-jemison-2026-10-31`; former `thesis` tip -> `archive/thesis-pre-consolidation-2026-10-31`.
+- Preservation: full `--all` git bundle (verified "records a complete history") plus external backup of `myhr.db` and cited research artifacts, both outside the repository. No force-push, no destructive reset, no `git clean` was used.
+- PR #1 (draft) was auto-closed by GitHub when its head branch was renamed; its discussion is preserved at its URL. Replacement draft PR #14 (`research` -> `thesis`) links back to it and stays draft; it must not be merged into `thesis` or `master`.
+- CI branch filters updated from `thesis-final-polish` / `research/**` to `thesis` / `research`.
+- No experiments were started and no research features expanded during consolidation. Holdout remains locked, protocol freeze withheld, expert reviewer identities blank. The 30-seed policy-aware result remains CONFOUNDED per the independent audit.
+- Candidate application-fix backports available on `research` but not yet applied to `thesis` (entangled with research docs; recorded for a future clean cherry-pick): `56597d3` and `06d7bed` (avoid native printer crash in PDF export), `a936bfb` (sidebar identity clipping), `5a74160` (deferred UI refresh lifetime).
+
 ## Protocol-Scale Development Result And App Integration - 2026-10-30
 
 - **30-seed protocol-scale development run completed.** `scripts/run_tdk_protocol_experiment.py --run-purpose development --scenario-count 30 --seeds-per-condition 30` produced artifact `8f1494e4abf2d268`: 900 scenarios, 67,500 metric rows, 8,019,000 prediction rows, `holdout_accessed: false`. This is DEVELOPMENT evidence from scenario definitions still pending approval; it is NOT the frozen holdout and NOT a confirmatory result.

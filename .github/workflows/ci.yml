@@ -4,13 +4,13 @@ on:
   push:
     branches:
       - master
-      - thesis-final-polish
-      - research/**
+      - thesis
+      - research
   pull_request:
     branches:
       - master
-      - thesis-final-polish
-      - research/**
+      - thesis
+      - research
 
 jobs:
   test:
