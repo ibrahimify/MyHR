@@ -28,6 +28,7 @@ NAV_SECTIONS = [
     ("nav_group_compliance", [
         ("nav_sanctions",     "sanctions",      "fa5s.exclamation-triangle"),
         ("nav_audit",         "audit_log",      "fa5s.clipboard-list"),
+        ("nav_anomaly_review", "anomaly_review", "fa5s.search"),
     ]),
     ("nav_group_data", [
         ("nav_import",        "import_data",    "fa5s.cloud-upload-alt"),
@@ -556,6 +557,9 @@ class MainWindow(QMainWindow):
             elif key == "audit_log":
                 AuditLogPage = self._page_class("audit_log", "AuditLogPage")
                 page = AuditLogPage(self.user)
+            elif key == "anomaly_review":
+                AnomalyReviewPage = self._page_class("anomaly_review", "AnomalyReviewPage")
+                page = AnomalyReviewPage(self.user)
             elif key == "import_data":
                 ImportDataPage = self._page_class("import_data", "ImportDataPage")
                 page = ImportDataPage(self.user)
@@ -606,6 +610,9 @@ class MainWindow(QMainWindow):
         if module_name == "audit_log":
             from src.ui.pages.audit_log import AuditLogPage
             return AuditLogPage
+        if module_name == "anomaly_review":
+            from src.ui.pages.anomaly_review import AnomalyReviewPage
+            return AnomalyReviewPage
         if module_name == "import_data":
             from src.ui.pages.import_data import ImportDataPage
             return ImportDataPage

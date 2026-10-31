@@ -60,6 +60,7 @@ class DashboardSmokeTests(unittest.TestCase):
             "commendations": "CommendationsPage",
             "sanctions": "SanctionsPage",
             "audit_log": "AuditLogPage",
+            "anomaly_review": "AnomalyReviewPage",
             "import_data": "ImportDataPage",
             "settings": "SettingsPage",
         }

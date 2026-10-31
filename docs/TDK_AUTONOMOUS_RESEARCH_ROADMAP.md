@@ -1,5 +1,15 @@
 # TDK Autonomous Research Roadmap
 
+## Protocol-Scale Development Result And App Integration - 2026-10-30
+
+- **30-seed protocol-scale development run completed.** `scripts/run_tdk_protocol_experiment.py --run-purpose development --scenario-count 30 --seeds-per-condition 30` produced artifact `8f1494e4abf2d268`: 900 scenarios, 67,500 metric rows, 8,019,000 prediction rows, `holdout_accessed: false`. This is DEVELOPMENT evidence from scenario definitions still pending approval; it is NOT the frozen holdout and NOT a confirmatory result.
+- **Primary endpoint (recall at fixed review capacity), policy-aware minus raw:** delta mean **+0.348**, 95% CI [+0.342, +0.355], paired sign-flip p ~= 1e-5 across 900 scenarios.
+- **Secondary (predeclared 3-metric Holm family, all adjusted p ~= 3e-5):** average precision **+0.389**; rare-legitimate false-alert rate **-0.155** (fewer false alerts on lawful rare histories); ordinary-clean false-alert rate **-0.021** (fewer there too, so the gain is not merely shifting false alerts between subgroups).
+- **MANDATORY SKEPTICISM BEFORE ANY CLAIM.** A +0.35 recall jump is large. Prior independent review (see "Autonomous Audit And Repair Cycle") found policy-matched and wrong-policy representations can select identical primary alert membership, and that single-policy-feature ablations each found 42 anomalies vs 39 for the full representation. This protocol-scale positive MUST be independently audited for generator-detector coupling (does the synthetic generator encode the detector's policy answer?) before it is presented as evidence that policy context genuinely helps. Until an independent auditor confirms the signal is not circular, treat this as a development diagnostic that is directionally consistent with the hypothesis but unverified for attribution.
+- The artifact auditor was not able to finish within the interactive timeout on 8M prediction rows; a full offline audit (checksums, provenance, paired-inference recomputation, wrong-policy/ablation controls) is required and is the immediate next step.
+- **App integration (visible deliverable).** Added an in-app "Anomaly Review" page (`src/ui/pages/anomaly_review.py`) wired into the PySide6 navigation under Compliance. It runs the detector over a small synthetic sample and shows a human-review queue (rule findings + Isolation Forest ranking) with priority badges and a review-only governance note. No database writes; synthetic data only; degrades to rules-only when scikit-learn is absent. Complies with the AppSelect dropdown rule; covered by the dashboard smoke test. This is decision-support UI, not an automated personnel action.
+- Holdout remains locked, protocol freeze withheld, reviewer identities blank. PR #1 stays draft.
+
 ## Author Decisions Recorded - 2026-10-30
 
 - Lawful correction semantics and record-level eligibility requirements are
