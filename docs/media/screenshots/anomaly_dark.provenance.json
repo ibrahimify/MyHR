@@ -1,6 +1,6 @@
 {
   "capture_type": "reproducible_offscreen_application_window",
-  "source_revision": "1be6ed3d44534dbf2400ac95bf5c2ec956d449cf",
+  "source_revision": "11e3b134bd93b3333768e3c5c56222b6eb3a038d",
   "database": "none; fixed synthetic research scenario generated in memory",
   "scenario": "ind-dev-01",
   "view": "Anomaly Review > queue, evidence, equal-capacity comparison, and synthetic evaluation",
@@ -12,9 +12,9 @@
   "contains_private_data": false,
   "holdout_accessed": false,
   "files": {
-    "anomaly_queue_dark.png": "12ef993eebfa2bb8bdf9efb6a5b2dede2edf0992dbaac71e7cde8d7d8d493eba",
-    "anomaly_evidence_dark.png": "a9698306b1866ffa112db251bdc2eeb484b2fff3e3cec69656089753e051ebe4",
-    "anomaly_comparison_dark.png": "e7c4f0f8d29967d4288ee03b771ce8e8a457adfaf7874ebdc4f2bb5e877cca91",
-    "anomaly_evaluation_dark.png": "e3935453ca4517f8d7abd7fb3a1bf0950ff9ccc7fa5153b6b9cd260c28eed3f1"
+    "anomaly_queue_dark.png": "de6688dfbcc7f06935b0426b884da93e19fbc4af7e54f185c09f5544359b1045",
+    "anomaly_evidence_dark.png": "406a51515858e489ea42805a5a7e65400370a0bcfd4d3cb33503d6a8f3931961",
+    "anomaly_comparison_dark.png": "8b8c6437bccbfd033c51379d96ad8c985cf5d1ab50a0535fb9e872971ba25e13",
+    "anomaly_evaluation_dark.png": "ebca4deac28f3611c26ae836975282a7234eb271b05586de7256e6c3a07436af"
   }
 }

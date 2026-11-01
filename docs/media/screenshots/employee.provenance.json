@@ -1,6 +1,6 @@
 {
   "capture_type": "reproducible_offscreen_application_window",
-  "source_revision": "1be6ed3d44534dbf2400ac95bf5c2ec956d449cf",
+  "source_revision": "11e3b134bd93b3333768e3c5c56222b6eb3a038d",
   "database": "temporary synthetic dataset from scripts/seed_demo_company.py",
   "employee": "EMP-0034",
   "view": "Employees > employee profile > Performance",
