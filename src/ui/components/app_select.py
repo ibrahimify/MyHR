@@ -131,6 +131,11 @@ class AppSelect(QWidget):
             return self._items[index][1]
         return None
 
+    def itemText(self, index):
+        if 0 <= index < len(self._items):
+            return self._items[index][0]
+        return ""
+
     def itemEnabled(self, index):
         item = self.list_widget.item(index)
         return bool(item and item.flags() & Qt.ItemIsEnabled)

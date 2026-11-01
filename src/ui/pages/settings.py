@@ -16,8 +16,7 @@ from datetime import datetime
 
 from sqlalchemy import func
 from PySide6.QtCore import Qt, QSize, QTimer, QMarginsF
-from PySide6.QtGui import QColor, QFont, QTextDocument, QPageLayout, QPageSize
-from PySide6.QtPrintSupport import QPrinter
+from PySide6.QtGui import QColor, QFont, QTextDocument, QPageLayout, QPageSize, QPdfWriter
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QLineEdit, QMessageBox, QTabWidget,
@@ -2740,16 +2739,18 @@ def _export_value(value, key=None):
 
 
 def _write_pdf(path, html):
-    printer = QPrinter(QPrinter.HighResolution)
-    printer.setOutputFormat(QPrinter.PdfFormat)
-    printer.setOutputFileName(path)
-    printer.setPageSize(QPageSize(QPageSize.A4))
-    printer.setPageMargins(QMarginsF(14, 14, 14, 14), QPageLayout.Millimeter)
+    # Use QPdfWriter (headless) instead of QPrinter, which can invoke a native
+    # printer backend and crash/hang in headless/offscreen environments.
+    # Ported as an application fix from the research branch (printer-crash fix).
+    writer = QPdfWriter(path)
+    writer.setResolution(300)
+    writer.setPageSize(QPageSize(QPageSize.A4))
+    writer.setPageMargins(QMarginsF(14, 14, 14, 14), QPageLayout.Millimeter)
     document = QTextDocument()
     document.setDefaultFont(QFont("Segoe UI", 10))
-    document.setPageSize(printer.pageLayout().paintRectPoints().size())
+    document.setPageSize(writer.pageLayout().paintRectPoints().size())
     document.setHtml(html)
-    document.print_(printer)
+    document.print_(writer)
     _stamp_pdf_page_numbers(path)
 
 
