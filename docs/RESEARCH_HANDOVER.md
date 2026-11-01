@@ -2,7 +2,7 @@
 
 Research title: **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**
 
-Status date: 2026-10-30
+Status date: 2026-11-01
 
 Status: development research only. The experiment protocol is draft, all existing results are development or validation diagnostics, the research pull request is unmerged, and the final holdout remains undefined and locked.
 
@@ -10,7 +10,7 @@ Status: development research only. The experiment protocol is draft, all existin
 
 MyHR is a standalone PySide6, SQLite, and SQLAlchemy employee-management application. Its TDK research asks whether explicit workforce-progression policy context can make anomaly triage more useful than policy-agnostic methods, especially by reducing false alerts for unusual but lawful histories without missing genuine administrative errors.
 
-The implementation now includes formal policy calculations, deterministic validation, synthetic generators, statistical baselines, raw and policy-aware Isolation Forest representations, duplicate-record detection, reproducible artifacts, checksums, statistical comparisons, literature tooling, and independent artifact auditing.
+The implementation now includes formal policy calculations, deterministic validation, synthetic generators, statistical baselines, raw and policy-aware Isolation Forest representations, duplicate-record detection, reproducible artifacts, checksums, statistical comparisons, literature tooling, independent artifact auditing, and a synthetic-only in-app demonstration. The Anomaly Review workflow executes the shared services, separates fitting/validation/evaluation populations, shows an evidence-linked review queue, and compares raw and control representations at equal review capacity without changing personnel records.
 
 The first independent rules-first artifact exposed a design failure: deterministic filtering consumed the signal intended for ML, so its AP comparison was scientifically vacuous. That failure is preserved as audit history. The corrected implementation uses invariant-only filtering, equal additional review budgets, explicit ambiguity exclusion, and matched controls. Artifact `4feea4508de1bb05`, generated from clean commit `56597d3`, passed the strengthened audit. Its primary recall difference was +0.0278, 95% CI [-0.0278, +0.1019], paired sign-flip p=0.6875. No advantage was demonstrated in this exploratory run, and the interval does not establish equivalence.
 

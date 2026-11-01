@@ -11,7 +11,9 @@ in SQLite, and the desktop UI is implemented with PySide6.
 
 The current research project is **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**. It evaluates deterministic validation, statistical baselines, and raw versus policy-aware Isolation Forest models using reproducible synthetic administrative histories.
 
-The current evidence is development-only. The latest independent review found that deterministic filtering makes the policy-specific residual features constant zero, so the saved residual comparison cannot test policy-aware value. The final holdout remains locked and the protocol remains pending human approval.
+The current evidence is development-only. Later protocol-scale diagnostics found that wrong-policy features reproduce most of the apparent gain over raw features, so the present result is confounded and does not establish policy-aware value. The final holdout remains locked and the protocol remains unfrozen.
+
+The in-app **Anomaly Review** page provides a synthetic-only working demonstration. It runs the shared deterministic and Isolation Forest services, shows a ranked human-review queue, traces alerts to the same employee's source history and policy arithmetic, and compares raw, policy-aware, wrong-policy, and shuffled-policy representations at equal review capacity. It never reads or changes employee database records.
 
 - [Supervisor brief](docs/TDK_SUPERVISOR_BRIEF_2026-10-30.md)
 - [Research handover](docs/RESEARCH_HANDOVER.md)
@@ -78,6 +80,12 @@ Create and activate a virtual environment first if desired, then install:
 ```bash
 pip install -r requirements.txt
 python main.py
+```
+
+For the research demonstration, sign in as an administrator, open **Anomaly Review**, select a labelled development scenario, and choose **Run analysis**. A command-line verification of all three permitted demo scenarios is also available:
+
+```bash
+python scripts/verify_anomaly_demo.py
 ```
 
 Research experiments use a separate dependency file so the packaged desktop app

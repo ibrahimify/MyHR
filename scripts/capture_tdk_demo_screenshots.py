@@ -30,6 +30,7 @@ def main() -> int:
     )
     parser.add_argument("--width", type=int, default=1920)
     parser.add_argument("--height", type=int, default=1080)
+    parser.add_argument("--theme", choices=("light", "dark"), default="light")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -64,12 +65,13 @@ def main() -> int:
             employee_db_id = employee.id
 
         from PySide6.QtTest import QTest
-        from PySide6.QtWidgets import QApplication, QTabWidget
+        from PySide6.QtWidgets import QApplication, QScrollArea, QTabWidget
         from src.ui.main_window import MainWindow
-        from src.ui.theme import apply_theme
+        from src.ui.theme import apply_theme, theme_manager
 
         app = QApplication.instance() or QApplication([])
         app.setStyle("Fusion")
+        theme_manager.set_theme(args.theme, persist=False)
         apply_theme(app)
         window = MainWindow(user)
         window.showNormal()
@@ -87,9 +89,33 @@ def main() -> int:
         tabs.setCurrentIndex(1)
         QTest.qWait(350)
 
-        image_path = args.output_dir / "employee.png"
+        employee_name = "employee.png" if args.theme == "light" else "employee_dark.png"
+        image_path = args.output_dir / employee_name
         if not window.grab().save(str(image_path), "PNG"):
             raise RuntimeError(f"Could not save screenshot: {image_path}")
+
+        anomaly_page = window._get_page("anomaly_review")
+        window.stack.setCurrentWidget(anomaly_page)
+        window.sidebar._set_active("anomaly_review")
+        # Capture is deterministic and synchronous; the interactive QThread path
+        # is exercised separately by the end-to-end UI smoke test.
+        from src.services.anomaly_detection import run_demo_scenario
+
+        result = run_demo_scenario(0, employee_count=120)
+        anomaly_page._on_completed(result)
+        app.processEvents()
+
+        anomaly_paths = []
+        anomaly_scroll = anomaly_page.findChild(QScrollArea)
+        for tab_index, name in ((0, "queue"), (1, "evidence"), (2, "comparison")):
+            anomaly_page.tabs.setCurrentIndex(tab_index)
+            if anomaly_scroll is not None:
+                anomaly_scroll.verticalScrollBar().setValue(350 if tab_index == 1 else 0)
+            QTest.qWait(180)
+            path = args.output_dir / f"anomaly_{name}_{args.theme}.png"
+            if not window.grab().save(str(path), "PNG"):
+                raise RuntimeError(f"Could not save screenshot: {path}")
+            anomaly_paths.append(path)
         window.close()
         app.processEvents()
         engine.dispose()
@@ -109,16 +135,45 @@ def main() -> int:
         "employee": "EMP-0034",
         "view": "Employees > employee profile > Performance",
         "viewport": {"width": args.width, "height": args.height},
-        "theme": "light",
+        "theme": args.theme,
         "contains_private_data": False,
         "sha256": digest,
     }
-    provenance_path = args.output_dir / "employee.provenance.json"
+    employee_provenance_name = (
+        "employee.provenance.json"
+        if args.theme == "light"
+        else "employee_dark.provenance.json"
+    )
+    provenance_path = args.output_dir / employee_provenance_name
     provenance_path.write_text(
         json.dumps(provenance, indent=2) + "\n",
         encoding="utf-8",
     )
-    print(json.dumps({"image": str(image_path), "provenance": provenance}, indent=2))
+    anomaly_provenance = {
+        "capture_type": "reproducible_offscreen_application_window",
+        "source_revision": revision,
+        "database": "none; fixed synthetic research scenario generated in memory",
+        "scenario": anomaly_page.result.scenario.scenario_id,
+        "view": "Anomaly Review > queue, evidence, and equal-capacity comparison",
+        "viewport": {"width": args.width, "height": args.height},
+        "theme": args.theme,
+        "contains_private_data": False,
+        "holdout_accessed": False,
+        "files": {
+            path.name: sha256(path.read_bytes()).hexdigest()
+            for path in anomaly_paths
+        },
+    }
+    anomaly_provenance_path = args.output_dir / f"anomaly_{args.theme}.provenance.json"
+    anomaly_provenance_path.write_text(
+        json.dumps(anomaly_provenance, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    print(json.dumps({
+        "employee_image": str(image_path),
+        "anomaly_images": [str(path) for path in anomaly_paths],
+        "anomaly_provenance": anomaly_provenance,
+    }, indent=2))
     return 0
 
 

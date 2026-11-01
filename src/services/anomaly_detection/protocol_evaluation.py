@@ -458,6 +458,115 @@ def evaluate_scenario(
     return ScenarioEvaluation(tuple(metric_rows), tuple(prediction_rows))
 
 
+def evaluate_fixed_budget_demo(
+    scenario: ScenarioDataset,
+    review_budget: float = 0.10,
+    n_estimators: int = 25,
+    cancelled=None,
+    progress=None,
+    representations: tuple[str, ...] = (
+        "raw_matched",
+        "policy_matched",
+        "wrong_policy_control",
+        "shuffled_policy_control",
+    ),
+) -> ScenarioEvaluation:
+    """Evaluate only the predeclared fixed-budget methods shown in the UI.
+
+    This is a responsive presentation entry point over the same invariant-rule,
+    feature, Isolation Forest, and metric functions used by ``evaluate_scenario``.
+    It does not select a threshold, inspect labels while ranking, or score the
+    training population as evaluation evidence.
+    """
+
+    if not 0 < review_budget < 0.5:
+        raise ValueError("review_budget must be between 0 and 0.5")
+    if n_estimators < 1:
+        raise ValueError("n_estimators must be positive")
+    available = {item.name: item for item in feature_representations()}
+    unknown = set(representations) - set(available)
+    if unknown:
+        raise ValueError(f"unknown feature representations: {sorted(unknown)}")
+    train = _records(scenario, DatasetSplit.TRAIN)
+    test = _records(scenario, DatasetSplit.TEST)
+    invariant_train_scores = tuple(
+        float(len(validate_invariant_record(record))) for record in train
+    )
+    invariant_test_scores = tuple(
+        float(len(validate_invariant_record(record))) for record in test
+    )
+    residual_train = tuple(
+        record for record, score in zip(train, invariant_train_scores) if score <= 0
+    )
+    residual_test = tuple(
+        record for record, score in zip(test, invariant_test_scores) if score <= 0
+    )
+    test_truth = [record.has_progression_anomaly for record in test]
+    residual_truth = [record.has_progression_anomaly for record in residual_test]
+    metric_rows: list[dict[str, object]] = []
+    prediction_rows: list[dict[str, object]] = []
+
+    deterministic_predictions = [score > 0 for score in invariant_test_scores]
+    row, rows = _evaluation_output(
+        scenario,
+        test,
+        test_truth,
+        invariant_test_scores,
+        deterministic_predictions,
+        method="deterministic_invariant_rules",
+        representation="structural_contradictions",
+        operating_point="rules_fixed",
+        threshold=0.0,
+        validation_selection=None,
+        runtime_ms=0.0,
+    )
+    metric_rows.append(row)
+    prediction_rows.extend(rows)
+
+    tie_keys = tuple(record.identity.employee_id for record in residual_test)
+    for name in representations:
+        if cancelled is not None and cancelled():
+            raise InterruptedError("demonstration run cancelled")
+        if progress is not None:
+            progress(representations.index(name), len(representations))
+        representation = available[name]
+        train_vectors = _vectors(residual_train, representation, scenario)
+        test_vectors = _vectors(residual_test, representation, scenario)
+        started = perf_counter()
+        scores = score_isolation_forest(
+            train_vectors,
+            test_vectors,
+            representation.feature_names,
+            scenario.config.model_seed,
+            n_estimators=n_estimators,
+        ).scores
+        runtime_ms = (perf_counter() - started) * 1000
+        predictions = _top_budget_predictions(
+            scores,
+            review_budget,
+            tie_keys,
+        )
+        row, rows = _evaluation_output(
+            scenario,
+            residual_test,
+            residual_truth,
+            scores,
+            predictions,
+            method="rule_negative_isolation_forest",
+            representation=name,
+            operating_point="fixed_review_budget",
+            threshold=None,
+            validation_selection=None,
+            runtime_ms=runtime_ms,
+        )
+        row.update(_feature_variation_columns(test_vectors, representation))
+        metric_rows.append(row)
+        prediction_rows.extend(rows)
+    if progress is not None:
+        progress(len(representations), len(representations))
+    return ScenarioEvaluation(tuple(metric_rows), tuple(prediction_rows))
+
+
 def _records(scenario: ScenarioDataset, split: DatasetSplit) -> tuple[WorkforceHistoryRecord, ...]:
     eligibility = getattr(
         scenario.population,

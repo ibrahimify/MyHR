@@ -34,9 +34,9 @@ class TdkSupervisorPackageTests(unittest.TestCase):
         )
         self.assertTrue(text.startswith(f"# {TITLE}\n"))
         figures = re.findall(r"\[\[FIGURE:([^|]+)\|([^\]]+)\]\]", text)
-        self.assertEqual(11, len(figures))
+        self.assertEqual(14, len(figures))
         self.assertEqual(len(figures), len({name for name, _ in figures}))
-        self.assertIn(("primary_recall.png", "Figure 8. Primary exploratory recall comparison in repaired artifact 4feea4508de1bb05. The interval crosses zero; the result does not demonstrate superiority or equivalence."), figures)
+        self.assertIn(("primary_recall.png", "Figure 11. Primary exploratory recall comparison in repaired artifact 4feea4508de1bb05. The interval crosses zero; the result does not demonstrate superiority or equivalence."), figures)
         self.assertNotIn("independent_ap.png", text)
         self.assertNotIn("**Keywords:**", text)
         for marker in ("TODO", "TBD", "PLACEHOLDER"):

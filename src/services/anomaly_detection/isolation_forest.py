@@ -61,7 +61,11 @@ def run_isolation_forest(
 
     train_matrix = _matrix(train_vectors, feature_names)
     test_matrix = _matrix(test_vectors, feature_names)
-    model = IsolationForest(contamination=contamination, random_state=random_state)
+    model = IsolationForest(
+        contamination=contamination,
+        random_state=random_state,
+        n_jobs=-1,
+    )
     model.fit(train_matrix)
     raw_predictions = model.predict(test_matrix)
     scores = model.decision_function(test_matrix)
@@ -78,6 +82,8 @@ def score_isolation_forest(
     evaluation_vectors: tuple[FeatureVector, ...],
     feature_names: tuple[str, ...],
     random_state: int,
+    *,
+    n_estimators: int = 100,
 ) -> IsolationForestScores:
     """Fit without a label-derived contamination rate and return ranking scores."""
 
@@ -89,7 +95,12 @@ def score_isolation_forest(
 
     train_matrix = _matrix(train_vectors, feature_names)
     evaluation_matrix = _matrix(evaluation_vectors, feature_names)
-    model = IsolationForest(contamination="auto", random_state=random_state)
+    model = IsolationForest(
+        contamination="auto",
+        random_state=random_state,
+        n_jobs=-1,
+        n_estimators=n_estimators,
+    )
     model.fit(train_matrix)
     scores = tuple(float(-score) for score in model.score_samples(evaluation_matrix))
     return IsolationForestScores(

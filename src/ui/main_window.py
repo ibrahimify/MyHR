@@ -434,6 +434,8 @@ class MainWindow(QMainWindow):
             theme_manager.theme_changed.disconnect(self._handle_theme_changed)
         except (RuntimeError, TypeError):
             pass
+        for page in tuple(self._pages_cache.values()):
+            self._prepare_page_for_disposal(page)
         super().closeEvent(event)
 
     def _build(self):
@@ -485,6 +487,9 @@ class MainWindow(QMainWindow):
             page for cache_key, page in self._pages_cache.items()
             if cache_key != key
         ]
+        pages_to_replace = tuple(stale_pages) + ((current_page,) if current_page is not None else ())
+        if not all(self._prepare_page_for_disposal(page) for page in pages_to_replace):
+            return
         self._pages_cache.clear()
         for page in stale_pages:
             self.stack.removeWidget(page)
@@ -579,6 +584,8 @@ class MainWindow(QMainWindow):
         for cache_key, page in list(self._pages_cache.items()):
             if cache_key == active_key:
                 continue
+            if not self._prepare_page_for_disposal(page):
+                continue
             self._pages_cache.pop(cache_key, None)
             self.stack.removeWidget(page)
             page.close()
@@ -587,6 +594,16 @@ class MainWindow(QMainWindow):
                     shiboken6.delete(page)
             except RuntimeError:
                 pass
+
+    @staticmethod
+    def _prepare_page_for_disposal(page) -> bool:
+        prepare = getattr(page, "prepare_for_disposal", None)
+        if prepare is None:
+            return True
+        try:
+            return bool(prepare())
+        except RuntimeError:
+            return False
 
     def _page_class(self, module_name, class_name):
         if module_name == "dashboard":

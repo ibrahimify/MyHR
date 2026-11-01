@@ -1,5 +1,16 @@
 # TDK Autonomous Research Roadmap
 
+## Working Software Demonstration - 2026-11-01
+
+- The Anomaly Review page now runs the shared independent-scenario, invariant-rule, policy-replay, feature, and Isolation Forest services asynchronously. It no longer contains a second detector, scores training records as evaluation evidence, or silently converts model failures into an apparently successful rules-only result.
+- The workflow uses clearly labelled synthetic development histories only. It separates model-fitting, reserved validation, and eligible evaluation populations; shows a ranked queue without generated truth; drills into the same synthetic employee's effective/recorded event history and policy arithmetic; and exposes generated truth only on a separate evaluation tab.
+- Raw, policy-aware, wrong-policy, and shuffled-policy methods receive the same residual evaluation population and fixed additional review capacity. The UI labels the comparison exploratory and reports its presentation configuration (25 Isolation Forest trees, 10% review capacity). These live values are not substituted for the stored protocol-scale evidence.
+- `python scripts/verify_anomaly_demo.py` verified all three permitted scenarios: each used 120 generated histories, 72 model-fitting records, 24 reserved validation records, 24 eligible evaluation records, and three review slots. The latest local run measured 24.767 seconds and 89.924 MiB peak Python-traced memory; the first scenario included import/model warm-up. Holdout access was false.
+- Automated verification: the final clean full suite passed 316 tests and 17 subtests in 292.11 seconds. Focused tests cover population separation, equal budgets, queue-label isolation, policy arithmetic, visible failure handling, safe cancellation during theme rebuilds, real-main-window completion, both themes, and all three languages.
+- Independent read-only audit initially found five release blockers: unsafe page deletion during a running worker, scenario-mechanism disclosure, stale tables after a failed rerun, hidden event/evidence references, and untranslated dynamic results. Cooperative cancellation and disposal gating, generic scenario labels, result invalidation, visible calculation provenance, and complete dynamic translation were added with regressions. The auditor's focused recheck passed all five findings and confirmed no holdout access.
+- Reproducible capture now produces queue, evidence, and method-comparison screenshots with source revision, viewport, theme, hashes, synthetic-data declaration, and `holdout_accessed: false`. Final committed screenshots must be regenerated after the implementation commit so provenance names the exact source revision.
+- Scientific boundary: this milestone demonstrates that the implemented workflow operates in software. It does not resolve the wrong-policy confound, complete the expert realism review, freeze the protocol, or authorize a holdout run. PR #14 remains draft and unmerged.
+
 ## Repository Consolidation To Three Branches - 2026-10-31
 
 - The repository now has exactly three permanent branches:

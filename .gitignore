@@ -59,6 +59,7 @@ Thumbs.db
 *.log
 tmp_theme*/
 tmp_*/
+.tmp-anomaly-review-*/
 ~$*.docx
 ~$*.pptx
 ~$*.xlsx

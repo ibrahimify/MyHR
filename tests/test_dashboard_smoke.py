@@ -82,6 +82,67 @@ class DashboardSmokeTests(unittest.TestCase):
 
         self.assertEqual([], async_exceptions)
 
+    def test_anomaly_demo_finishes_inside_main_window(self):
+        import time
+
+        from PySide6.QtTest import QTest
+        from src.ui.main_window import MainWindow
+
+        user = SimpleNamespace(id=1, username="admin", role="admin", full_name="Smoke Test")
+        window = MainWindow(user)
+        page = window._get_page("anomaly_review")
+        window.stack.setCurrentWidget(page)
+        try:
+            page._start_run()
+            deadline = time.monotonic() + 90
+            while page._thread is not None and time.monotonic() < deadline:
+                self.app.processEvents()
+                QTest.qWait(25)
+            self.assertIsNone(page._thread, page.status.text())
+            self.assertIsNotNone(page.result, page.status.text())
+            self.assertEqual(100, page.progress.value())
+        finally:
+            page._wait_for_worker()
+            window.close()
+            QTest.qWait(20)
+
+    def test_theme_change_cancels_anomaly_worker_before_page_rebuild(self):
+        import time
+
+        from PySide6.QtTest import QTest
+        from src.ui.main_window import MainWindow
+        from src.ui.theme import THEME_DARK, THEME_LIGHT, theme_manager
+
+        user = SimpleNamespace(id=1, username="admin", role="admin", full_name="Smoke Test")
+        window = MainWindow(user)
+        page = window._get_page("anomaly_review")
+        window.stack.setCurrentWidget(page)
+        original_theme = theme_manager.theme
+
+        def cancellable_run(_index, *, cancelled, progress, **_kwargs):
+            progress(45, "model")
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                if cancelled():
+                    raise InterruptedError("cancelled by page disposal")
+                time.sleep(0.01)
+            raise AssertionError("worker was not cancelled")
+
+        try:
+            with patch("src.ui.pages.anomaly_review.run_demo_scenario", side_effect=cancellable_run):
+                page._start_run()
+                QTest.qWait(50)
+                target = THEME_DARK if original_theme == THEME_LIGHT else THEME_LIGHT
+                theme_manager.set_theme(target, persist=False)
+                self.app.processEvents()
+            self.assertFalse(page._thread is not None and page._thread.isRunning())
+            rebuilt = window._get_page("anomaly_review")
+            self.assertIsNot(page, rebuilt)
+        finally:
+            theme_manager.set_theme(original_theme, persist=False)
+            window.close()
+            QTest.qWait(20)
+
     def test_closing_window_cancels_delayed_database_refresh(self):
         from PySide6.QtTest import QTest
 

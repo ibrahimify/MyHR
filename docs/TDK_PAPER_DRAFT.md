@@ -402,7 +402,21 @@ CI answers whether the checked code and tests pass in the configured environment
 | Citation claims | Bibliography, provenance registry, and evidence ledger |
 | Holdout status | Protocol, artifact metadata, runner refusal, and roadmap |
 
-[[FIGURE:artifact_lifecycle.png|Figure 6. Write-once artifact lifecycle and independent verification boundary.]]
+### 5.6 Working Demonstration in MyHR
+
+The desktop application includes a synthetic-only Anomaly Review workflow so the implemented pipeline can be inspected without opening source code or reading JSON artifacts. A reviewer selects a labelled development scenario and starts the analysis. The interface reports model-fitting, reserved validation, eligible evaluation, and review-queue counts separately. The run uses the same independent-scenario adapter, invariant checks, policy-history assessment, feature representations, Isolation Forest scorer, and fixed-capacity evaluation functions as the research services; the interface does not implement a second detector.
+
+The review queue distinguishes deterministic contradictions from statistical suspicion and does not expose generated truth or anomaly mechanisms. Selecting an item opens the same synthetic employee's source events, effective and recorded dates, policy ID/version, elapsed and required service, commendation credit, sanction delay, adjusted service, deficit, and evidence limitations. Generated labels appear only in a separately labelled synthetic-evaluation view.
+
+The live comparison gives raw, policy-aware, wrong-policy, and shuffled-policy representations identical eligible residual records and identical additional review capacity. It is explicitly marked exploratory and reports its presentation configuration. A model exception is displayed as a failed run rather than silently returning a rules-only queue. The workflow is decision support only and performs no database write or personnel action.
+
+[[FIGURE:anomaly_queue_light.png|Figure 6. Synthetic Anomaly Review queue after running the shared rule and Isolation Forest services. Generated truth is not shown in this operational view.]]
+
+[[FIGURE:anomaly_evidence_light.png|Figure 7. Evidence view for the same selected synthetic employee, including policy version, effective and recorded dates, and service-adjustment arithmetic.]]
+
+[[FIGURE:anomaly_comparison_light.png|Figure 8. Exploratory equal-capacity comparison. The wrong-policy control is visible because similar control performance limits attribution to correct policy knowledge.]]
+
+[[FIGURE:artifact_lifecycle.png|Figure 9. Write-once artifact lifecycle and independent verification boundary.]]
 
 ## 6 Development Experiments and Results
 
@@ -422,7 +436,7 @@ The corrected validation artifact contains 30 scenarios and 3,600 test histories
 
 The policy-aware cascade finds one additional anomaly and produces one fewer false alert at the same total alert count. The paired mean AP difference is +0.0016 with a stored 95% bootstrap interval from 0.0000 to 0.0041, sign-flip p = 0.25, and exploratory adjusted p = 1.0. This does not establish a meaningful advantage. The near-perfect AP also reflects the original generator's close relationship to policy features.
 
-[[FIGURE:validation_counts.png|Figure 7. Corrected validation alert outcomes. Counts are pooled across 30 scenarios; the high rules performance is partly a generator interaction.]]
+[[FIGURE:validation_counts.png|Figure 10. Corrected validation alert outcomes. Counts are pooled across 30 scenarios; the high rules performance is partly a generator interaction.]]
 
 ### 6.3 Original Rule-Negative Validation
 
@@ -450,7 +464,7 @@ After deterministic filtering, 759 histories remain, including 42 labelled anoma
 
 The stored paired AP difference is +0.0005 with interval [-0.1173, 0.1079], sign-flip p = 1.0, and adjusted exploratory p = 1.0. These values are arithmetically reproducible under the implemented convention. They are not evidence of equivalence or a policy effect.
 
-[[FIGURE:primary_recall.png|Figure 8. Primary exploratory recall comparison in repaired artifact 4feea4508de1bb05. The interval crosses zero; the result does not demonstrate superiority or equivalence.]]
+[[FIGURE:primary_recall.png|Figure 11. Primary exploratory recall comparison in repaired artifact 4feea4508de1bb05. The interval crosses zero; the result does not demonstrate superiority or equivalence.]]
 
 ### 6.5 Historical Structural Failure of the Central Comparison
 
@@ -460,7 +474,7 @@ The policy-aware model therefore has no varying policy signal. Its effective var
 
 This is stronger and more precise than describing the result as merely inconclusive. An inconclusive estimate would arise from valid but uncertain evidence. Here the intended explanatory variable is structurally absent after filtering. The correct response is to preserve the run, diagnose the design, and seek approval for a new estimand rather than tune features against inspected outcomes.
 
-[[FIGURE:feature_collapse.png|Figure 9. Historical design failure and corrected architecture. The original rule gate consumed the signal intended for ML; the repaired design limits the primary gate to invariant contradictions and assigns equal additional ML review capacity.]]
+[[FIGURE:feature_collapse.png|Figure 12. Historical design failure and corrected architecture. The original rule gate consumed the signal intended for ML; the repaired design limits the primary gate to invariant contradictions and assigns equal additional ML review capacity.]]
 
 Six of the twelve scenarios also contain no residual positive case. The implementation stores AP as zero for these scenarios, while the approved future design treats recall and AP as undefined and excludes those scenarios from paired inference for those metrics under a predeclared eligibility rule. Including structural zeros halves both reported AP means and changes uncertainty. Restricting the development calculation to the six informative scenarios still yields a very wide interval and does not establish an advantage. The approved rule must be implemented and frozen before generating any confirmatory scenario.
 
@@ -468,7 +482,7 @@ Six of the twelve scenarios also contain no residual positive case. The implemen
 
 The preserved `39/72` and later `8/72` readings have different evidentiary status and must not be conflated. Artifact `e342bd4acf39b06b` directly supports the historical count `39/72` for `deterministic_policy_rules` across broadly labelled rare-legitimate test histories; its separate `deterministic_rules` result is `0/72`. At source revision `0ad4e96`, the generator constructed 30-month grandfathered and 24-month recognized-service promotions with narrative evidence, then the adapter evaluated them through current-policy arithmetic. This is a designed specification counterexample, but the stored artifact does not preserve employee-specific entitlement evidence or the realized mechanism per record, so it is not a prevalence estimate or an artifact-supported mechanism-specific rate. By contrast, the second audit showed that the later generator behind `8/72` created genuine contradictions, including promotions before hire and insufficient service. Only that `8/72` false-positive interpretation is invalidated by the semantic defect.
 
-[[FIGURE:policy_alerts.png|Figure 10. Audit history of generated rare-legitimate labels. The historical 39/72 is a constructed specification counterexample, the later 8/72 false-positive interpretation is invalidated, and the repaired exploratory run records 0/72 deterministic alerts. The repaired denominator includes 24 grandfathering labels without independently established employee entitlement.]]
+[[FIGURE:policy_alerts.png|Figure 13. Audit history of generated rare-legitimate labels. The historical 39/72 is a constructed specification counterexample, the later 8/72 false-positive interpretation is invalidated, and the repaired exploratory run records 0/72 deterministic alerts. The repaired denominator includes 24 grandfathering labels without independently established employee entitlement.]]
 
 The audit still motivates temporal modeling as a requirements issue, but the
 current experiments do not quantify its real-world frequency or benefit. Policy
@@ -500,7 +514,7 @@ At the primary equal review capacity, policy-aware minus raw residual recall was
 
 The corrected duplicate evaluation uses an explicit evaluation universe and set membership for every TP, FP, FN, and TN. Exact methods use the complete partition-local pair universe, while similarity methods report blocking recall and metrics within their declared candidate universe separately.
 
-[[FIGURE:duplicate_results.png|Figure 11. Duplicate-evaluation contract after repair. Pair ground truth is entity-contained; blocking recall, candidate-universe classification, end-to-end matching, workload, runtime, and memory are reported separately. No final duplicate-performance claim is made.]]
+[[FIGURE:duplicate_results.png|Figure 14. Duplicate-evaluation contract after repair. Pair ground truth is entity-contained; blocking recall, candidate-universe classification, end-to-end matching, workload, runtime, and memory are reported separately. No final duplicate-performance claim is made.]]
 
 ### 6.8 Result Summary
 
