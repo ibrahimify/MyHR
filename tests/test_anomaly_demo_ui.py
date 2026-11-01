@@ -1,7 +1,9 @@
 """End-to-end smoke checks for the interactive anomaly demonstration."""
 
 import os
+from pathlib import Path
 from queue import Queue
+import tempfile
 import time
 from types import SimpleNamespace
 import unittest
@@ -55,6 +57,83 @@ class AnomalyDemoUiTests(unittest.TestCase):
             self.assertIn("model unavailable", page.status.text())
             self.assertEqual(page.progress.value(), 0)
             self.assertTrue(page.run_button.isEnabled())
+        finally:
+            page.close()
+
+    def test_progressive_disclosure_and_truth_boundary(self):
+        page = AnomalyReviewPage(SimpleNamespace(role="admin"))
+        try:
+            self.assertFalse(page.guide_panel.isVisible())
+            self.assertFalse(page.scenario_details.isVisible())
+            self.assertFalse(page.events_table.isVisible())
+            self.assertFalse(page.truth_cases_table.isVisible())
+            self.assertFalse(page.export_button.isEnabled())
+            page._on_completed(self.completed_result)
+            self.assertTrue(page.export_button.isEnabled())
+            self.assertEqual(
+                page.outcome_matrix.rowCount(),
+                3,
+            )
+            self.assertEqual(
+                page.truth_cases_table.rowCount(),
+                sum(
+                    case.category != "ordinary"
+                    for case in self.completed_result.truth_cases
+                ),
+            )
+        finally:
+            page.close()
+
+    def test_minimum_window_content_uses_compact_layout(self):
+        from src.core.i18n import t
+
+        page = AnomalyReviewPage(SimpleNamespace(role="admin"))
+        try:
+            page.resize(760, 660)
+            page.show()
+            self.app.processEvents()
+            self.assertTrue(page.queue_table.isColumnHidden(1))
+            self.assertTrue(page.queue_table.isColumnHidden(2))
+            self.assertEqual(
+                page.tabs.tabText(2),
+                t("anomaly_demo_tab_comparison_short"),
+            )
+            self.assertFalse(page.demo_badge.isVisible())
+            self.assertEqual(
+                page.stat_grid.getItemPosition(
+                    page.stat_grid.indexOf(page.stat_cards[2])
+                )[:2],
+                (1, 0),
+            )
+        finally:
+            page.close()
+
+    def test_csv_report_contains_exact_configuration_and_separate_truth(self):
+        page = AnomalyReviewPage(SimpleNamespace(role="admin"))
+        try:
+            page._on_completed(self.completed_result)
+            with tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "report.csv"
+                page._write_csv_report(str(path))
+                report = path.read_text(encoding="utf-8-sig")
+            self.assertIn("Nominal review capacity,0.1", report)
+            self.assertIn("Realized review capacity,0.125", report)
+            self.assertIn("Model trees,", report)
+            self.assertIn("SYNTHETIC EVALUATION ONLY", report)
+            self.assertIn("policy_matched_flagged", report)
+        finally:
+            page.close()
+
+    def test_pdf_report_is_written_from_the_same_verified_result(self):
+        page = AnomalyReviewPage(SimpleNamespace(role="admin"))
+        try:
+            page._on_completed(self.completed_result)
+            with tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "report.pdf"
+                page._write_pdf_report(str(path))
+                payload = path.read_bytes()
+            self.assertTrue(payload.startswith(b"%PDF"))
+            self.assertGreater(len(payload), 1_000)
         finally:
             page.close()
 
@@ -141,7 +220,7 @@ class AnomalyDemoUiTests(unittest.TestCase):
                     page._on_completed(self.completed_result)
                     self.assertEqual(
                         page.scenario_select.label.text(),
-                        t("anomaly_demo_scenario_name").format(number=1),
+                        t("anomaly_demo_population_stable_administration"),
                     )
                     self.assertEqual(
                         page.comparison_table.item(0, 0).text(),

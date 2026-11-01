@@ -36,6 +36,9 @@ class DemoScenarioOption:
     mechanism: str
     rare_pattern: str
     employee_count: int
+    dataset_seed: int
+    split_seed: int
+    model_seed: int
 
 
 @dataclass(frozen=True)
@@ -124,6 +127,16 @@ class DemoEvaluationSummary:
 
 
 @dataclass(frozen=True)
+class DemoTruthCase:
+    """Generated truth exposed only in the synthetic-evaluation view."""
+
+    employee_id: str
+    category: str
+    labels: tuple[str, ...]
+    policy_matched_flagged: bool
+
+
+@dataclass(frozen=True)
 class DemoRunResult:
     scenario: DemoScenarioOption
     train_count: int
@@ -138,6 +151,7 @@ class DemoRunResult:
     evidence_by_employee_id: dict[str, DemoEmployeeEvidence]
     comparisons: tuple[DemoMethodComparison, ...]
     evaluation: DemoEvaluationSummary
+    truth_cases: tuple[DemoTruthCase, ...]
 
 
 _REPRESENTATION_LABELS = {
@@ -231,6 +245,7 @@ def run_demo_scenario(
     }
     comparisons = _method_comparisons(evaluation.metric_rows)
     summary = _evaluation_summary(evaluation.metric_rows)
+    truth_cases = _truth_cases(eligible_test, evaluation.prediction_rows)
 
     _ensure_not_cancelled(cancelled)
     _report(progress, 100, "complete")
@@ -248,6 +263,7 @@ def run_demo_scenario(
         evidence_by_employee_id=evidence,
         comparisons=comparisons,
         evaluation=summary,
+        truth_cases=truth_cases,
     )
 
 
@@ -259,7 +275,40 @@ def _scenario_option(index: int, spec: IndependentScenarioSpec) -> DemoScenarioO
         mechanism=spec.mechanism,
         rare_pattern=spec.rare_pattern,
         employee_count=spec.employee_count,
+        dataset_seed=spec.seed,
+        split_seed=spec.split_seed,
+        model_seed=spec.model_seed,
     )
+
+
+def _truth_cases(eligible_test, prediction_rows) -> tuple[DemoTruthCase, ...]:
+    """Build an evaluation-only truth view without changing model records."""
+
+    flagged_by_id = {
+        str(row["employee_id"]): bool(row["predicted_anomaly"])
+        for row in prediction_rows
+        if row["method"] == "rule_negative_isolation_forest"
+        and row["representation"] == "policy_matched"
+        and row["operating_point"] == "fixed_review_budget"
+    }
+    cases = []
+    for record in eligible_test:
+        labels = tuple(label.value for label in record.anomaly_labels)
+        if record.has_progression_anomaly:
+            category = "injected_error"
+        elif "policy_legitimate_rare_case" in labels:
+            category = "lawful_rare"
+        else:
+            category = "ordinary"
+        cases.append(DemoTruthCase(
+            employee_id=record.identity.employee_id,
+            category=category,
+            labels=labels,
+            policy_matched_flagged=flagged_by_id.get(
+                record.identity.employee_id, False
+            ),
+        ))
+    return tuple(sorted(cases, key=lambda item: item.employee_id))
 
 
 def _review_queue(scenario, eligible_test, prediction_rows):

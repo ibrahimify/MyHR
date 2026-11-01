@@ -102,6 +102,7 @@ from .demo_pipeline import (
     DemoQueueItem,
     DemoRunResult,
     DemoScenarioOption,
+    DemoTruthCase,
     demo_scenario_options,
     run_demo_scenario,
 )
@@ -122,6 +123,7 @@ __all__ = [
     "DemoQueueItem",
     "DemoRunResult",
     "DemoScenarioOption",
+    "DemoTruthCase",
     "DuplicateCandidate",
     "DuplicateEvaluation",
     "EmployeeIdentity",

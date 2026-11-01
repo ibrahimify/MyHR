@@ -5,6 +5,7 @@ import unittest
 
 from src.services.anomaly_detection.demo_pipeline import (
     DemoQueueItem,
+    DemoTruthCase,
     demo_scenario_options,
     run_demo_scenario,
 )
@@ -23,6 +24,9 @@ class AnomalyDemoTests(unittest.TestCase):
         self.assertEqual(len(options), 3)
         self.assertEqual(len({option.scenario_id for option in options}), 3)
         self.assertTrue(all(option.employee_count == 120 for option in options))
+        self.assertTrue(all(option.dataset_seed >= 0 for option in options))
+        self.assertTrue(all(option.split_seed >= 0 for option in options))
+        self.assertTrue(all(option.model_seed >= 0 for option in options))
 
     def test_demo_labels_exist_in_every_supported_language(self):
         keys = {
@@ -72,6 +76,32 @@ class AnomalyDemoTests(unittest.TestCase):
         queue_fields = {field.name for field in fields(DemoQueueItem)}
         self.assertTrue(
             queue_fields.isdisjoint({"label", "truth", "mechanism", "is_anomaly"})
+        )
+
+    def test_generated_truth_is_kept_in_evaluation_only_records(self):
+        truth_fields = {field.name for field in fields(DemoTruthCase)}
+        self.assertIn("category", truth_fields)
+        self.assertIn("labels", truth_fields)
+        self.assertEqual(
+            len(self.demo_result.truth_cases),
+            self.demo_result.evaluation.evaluation_count,
+        )
+        self.assertEqual(
+            sum(case.category == "injected_error" for case in self.demo_result.truth_cases),
+            self.demo_result.evaluation.positive_count,
+        )
+        queue_fields = {field.name for field in fields(DemoQueueItem)}
+        self.assertTrue(
+            {"category", "labels", "policy_matched_flagged"}.isdisjoint(queue_fields)
+        )
+
+    def test_realized_review_capacity_uses_exact_denominator(self):
+        comparison = self.demo_result.comparisons[0]
+        self.assertEqual(comparison.review_count, 3)
+        self.assertEqual(comparison.evaluation_count, 24)
+        self.assertAlmostEqual(
+            comparison.review_count / comparison.evaluation_count,
+            0.125,
         )
         self.assertTrue(
             all(

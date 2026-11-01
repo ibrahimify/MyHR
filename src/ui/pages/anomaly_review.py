@@ -2,19 +2,33 @@
 
 from __future__ import annotations
 
+import csv
+from html import escape
 import multiprocessing
 from queue import Empty
 
-from PySide6.QtCore import QTimer, Qt, Slot
-from PySide6.QtGui import QColor
+from PySide6.QtCore import QMarginsF, QRectF, QTimer, Qt, Slot
+from PySide6.QtGui import (
+    QAction,
+    QColor,
+    QPageLayout,
+    QPageSize,
+    QPainter,
+    QPdfWriter,
+    QPen,
+    QTextDocument,
+)
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
     QFrame,
+    QFileDialog,
     QGridLayout,
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QMenu,
+    QMessageBox,
     QProgressBar,
     QPushButton,
     QScrollArea,
@@ -52,6 +66,114 @@ from src.ui.theme import tokens
 _DEMO_EMPLOYEE_COUNT = 120
 
 
+class ReviewPriorityIndicator(QWidget):
+    """Compact relative queue priority, deliberately not a probability gauge."""
+
+    def __init__(self, priority: str, label: str, parent=None):
+        super().__init__(parent)
+        self.priority = priority
+        self.label = label
+        self.setFixedSize(130, 34)
+        self.setToolTip(t("anomaly_demo_priority_tooltip"))
+
+    def paintEvent(self, _event):
+        palette = {
+            "rule": tokens().brand,
+            "high": "#c98200",
+            "medium": "#d8a323",
+            "low": tokens().text_soft,
+        }
+        extent = {"rule": 300, "high": 270, "medium": 190, "low": 110}
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        ring = QRectF(3, 7, 20, 20)
+        painter.setPen(QPen(QColor(tokens().border), 4))
+        painter.drawArc(ring, 0, 360 * 16)
+        painter.setPen(QPen(QColor(palette.get(self.priority, tokens().text_soft)), 4))
+        painter.drawArc(ring, 90 * 16, -extent.get(self.priority, 110) * 16)
+        painter.setPen(QColor(tokens().text))
+        painter.drawText(QRectF(31, 0, 96, 34), Qt.AlignVCenter | Qt.AlignLeft, self.label)
+
+
+class ComparisonOutcomeChart(QWidget):
+    """Single TP/FP chart supporting the exact comparison table."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._comparisons = ()
+        self.setMinimumHeight(235)
+
+    def set_comparisons(self, comparisons):
+        self._comparisons = tuple(comparisons)
+        self.update()
+
+    def paintEvent(self, _event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.fillRect(self.rect(), QColor(tokens().surface))
+        if not self._comparisons:
+            painter.setPen(QColor(tokens().text_muted))
+            painter.drawText(self.rect(), Qt.AlignCenter, t("anomaly_demo_chart_waiting"))
+            return
+
+        font = painter.font()
+        font.setPointSize(9)
+        painter.setFont(font)
+        left, top, right, bottom = 48, 50, 18, 48
+        chart_width = max(1, self.width() - left - right)
+        chart_height = max(1, self.height() - top - bottom)
+        maximum = max(
+            1,
+            max(item.true_positives + item.false_positives for item in self._comparisons),
+        )
+        painter.setPen(QPen(QColor(tokens().border), 1))
+        painter.drawLine(left, top + chart_height, left + chart_width, top + chart_height)
+
+        group_width = chart_width / len(self._comparisons)
+        bar_width = min(48.0, group_width * 0.42)
+        for index, item in enumerate(self._comparisons):
+            x = left + index * group_width + (group_width - bar_width) / 2
+            tp_height = chart_height * item.true_positives / maximum
+            fp_height = chart_height * item.false_positives / maximum
+            base_y = top + chart_height
+            if item.false_positives:
+                painter.fillRect(
+                    QRectF(x, base_y - fp_height, bar_width, fp_height),
+                    QColor("#d99a18"),
+                )
+            if item.true_positives:
+                painter.fillRect(
+                    QRectF(x, base_y - fp_height - tp_height, bar_width, tp_height),
+                    QColor(tokens().brand),
+                )
+            painter.setPen(QColor(tokens().text))
+            painter.drawText(
+                QRectF(x - 4, base_y - fp_height - tp_height - 22, bar_width + 8, 18),
+                Qt.AlignCenter,
+                f"{item.true_positives}/{item.false_positives}",
+            )
+            label = t(f"anomaly_demo_method_short_{item.representation}")
+            painter.drawText(
+                QRectF(left + index * group_width, base_y + 8, group_width, 34),
+                Qt.AlignHCenter | Qt.AlignTop | Qt.TextWordWrap,
+                label,
+            )
+
+        painter.fillRect(QRectF(left, 14, 10, 10), QColor(tokens().brand))
+        painter.setPen(QColor(tokens().text))
+        painter.drawText(
+            QRectF(left + 16, 7, 160, 24),
+            Qt.AlignVCenter | Qt.AlignLeft,
+            t("anomaly_demo_chart_tp"),
+        )
+        painter.fillRect(QRectF(left + 190, 14, 10, 10), QColor("#d99a18"))
+        painter.drawText(
+            QRectF(left + 206, 7, 180, 24),
+            Qt.AlignVCenter | Qt.AlignLeft,
+            t("anomaly_demo_chart_fp"),
+        )
+
+
 def _demo_process_entry(option_index: int, output_queue) -> None:
     """Run native ML outside Qt's process and return presentation-safe data."""
     try:
@@ -76,6 +198,7 @@ class AnomalyReviewPage(QWidget):
         self._process = None
         self._process_queue = None
         self._process_terminal_message = False
+        self._compact_layout = None
         self._process_timer = QTimer(self)
         self._process_timer.setInterval(75)
         self._process_timer.timeout.connect(self._poll_process)
@@ -84,6 +207,7 @@ class AnomalyReviewPage(QWidget):
             f"QWidget#AnomalyReviewPage {{ background: {tokens().canvas}; }}"
         )
         self._build()
+        QTimer.singleShot(0, self._apply_responsive_layout)
         app = QApplication.instance()
         if app is not None:
             app.aboutToQuit.connect(self._wait_for_worker)
@@ -117,11 +241,44 @@ class AnomalyReviewPage(QWidget):
         )
         heading.addWidget(title)
         heading.addWidget(subtitle)
-        badge = QLabel(t("anomaly_demo_badge"))
-        badge.setStyleSheet(semantic_badge_ss("info"))
+        self.demo_badge = QLabel(t("anomaly_demo_badge"))
+        self.demo_badge.setStyleSheet(semantic_badge_ss("info"))
+        self.help_button = QPushButton(t("anomaly_demo_help"))
+        self.help_button.setIcon(app_icon("fa5s.question-circle", color=tokens().text, size=14))
+        self.help_button.setCheckable(True)
+        self.help_button.setStyleSheet(btn_outline(38))
+        self.help_button.clicked.connect(self._toggle_help)
+        self.export_button = QPushButton(t("anomaly_demo_export_report"))
+        self.export_button.setIcon(app_icon("fa5s.download", color="#ffffff", size=14))
+        self.export_button.setStyleSheet(btn_primary(38))
+        self.export_button.setEnabled(False)
+        export_menu = QMenu(self.export_button)
+        export_csv = QAction(t("anomaly_demo_export_csv"), self)
+        export_pdf = QAction(t("anomaly_demo_export_pdf"), self)
+        export_csv.triggered.connect(self._export_csv)
+        export_pdf.triggered.connect(self._export_pdf)
+        export_menu.addAction(export_csv)
+        export_menu.addAction(export_pdf)
+        self.export_button.setMenu(export_menu)
         header.addLayout(heading, 1)
-        header.addWidget(badge, 0, Qt.AlignTop)
+        header.addWidget(self.help_button, 0, Qt.AlignTop)
+        header.addWidget(self.export_button, 0, Qt.AlignTop)
+        header.addWidget(self.demo_badge, 0, Qt.AlignTop)
         layout.addLayout(header)
+
+        self.guide_panel = self._card()
+        guide_layout = QHBoxLayout(self.guide_panel)
+        guide_layout.setContentsMargins(18, 14, 18, 14)
+        guide_layout.setSpacing(24)
+        guide_title = QLabel(t("anomaly_demo_help_title"))
+        guide_title.setStyleSheet(self._section_style())
+        guide_text = QLabel(t("anomaly_demo_help_text"))
+        guide_text.setWordWrap(True)
+        guide_text.setStyleSheet(self._label_style())
+        guide_layout.addWidget(guide_title)
+        guide_layout.addWidget(guide_text, 1)
+        self.guide_panel.hide()
+        layout.addWidget(self.guide_panel)
 
         layout.addWidget(self._build_run_card())
         layout.addLayout(self._build_stat_row())
@@ -142,22 +299,98 @@ class AnomalyReviewPage(QWidget):
         scroll.setWidget(content)
         root.addWidget(scroll)
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._apply_responsive_layout()
+
+    def _apply_responsive_layout(self):
+        if not hasattr(self, "run_layout"):
+            return
+        compact = self.width() < 900
+        if compact == self._compact_layout:
+            return
+        self._compact_layout = compact
+        self.demo_badge.setVisible(not compact)
+
+        for widget in (
+            self.scenario_select,
+            self.scenario_details_button,
+            self.run_button,
+            self.progress,
+            self.status,
+            self.scenario_details,
+        ):
+            self.run_layout.removeWidget(widget)
+        if compact:
+            self.run_layout.addWidget(self.scenario_select, 0, 0, 1, 2)
+            self.run_layout.addWidget(self.scenario_details_button, 1, 0)
+            self.run_layout.addWidget(self.run_button, 1, 1)
+            self.run_layout.addWidget(self.progress, 2, 0, 1, 2)
+            self.run_layout.addWidget(self.status, 3, 0, 1, 2)
+            self.run_layout.addWidget(self.scenario_details, 4, 0, 1, 2)
+        else:
+            self.run_layout.addWidget(self.scenario_select, 0, 0)
+            self.run_layout.addWidget(self.scenario_details_button, 0, 1)
+            self.run_layout.addWidget(self.run_button, 0, 2)
+            self.run_layout.addWidget(self.progress, 1, 0, 1, 3)
+            self.run_layout.addWidget(self.status, 2, 0, 1, 3)
+            self.run_layout.addWidget(self.scenario_details, 3, 0, 1, 3)
+
+        for index, card in enumerate(self.stat_cards):
+            self.stat_grid.removeWidget(card)
+            row, column = (divmod(index, 2) if compact else (0, index))
+            self.stat_grid.addWidget(card, row, column)
+        for index, card in enumerate(self.evaluation_cards):
+            self.evaluation_grid.removeWidget(card)
+            row, column = (divmod(index, 2) if compact else (0, index))
+            self.evaluation_grid.addWidget(card, row, column)
+
+        tab_keys = (
+            "anomaly_demo_tab_queue",
+            "anomaly_demo_tab_evidence",
+            "anomaly_demo_tab_comparison",
+            "anomaly_demo_tab_evaluation",
+        )
+        if compact:
+            tab_keys = tuple(f"{key}_short" for key in tab_keys)
+        for index, key in enumerate(tab_keys):
+            self.tabs.setTabText(index, t(key))
+        self.queue_table.setColumnHidden(1, compact)
+        self.queue_table.setColumnHidden(2, compact)
+
+    def _toggle_help(self, checked: bool):
+        self.guide_panel.setVisible(checked)
+        self.help_button.setText(
+            t("anomaly_demo_hide_help") if checked else t("anomaly_demo_help")
+        )
+
     def _build_run_card(self):
         card = self._card()
         box = QGridLayout(card)
+        self.run_layout = box
         box.setContentsMargins(20, 18, 20, 18)
         box.setHorizontalSpacing(14)
         box.setVerticalSpacing(10)
-        label = QLabel(t("anomaly_demo_scenario"))
-        label.setStyleSheet(self._label_style(bold=True))
         self.scenario_select = AppSelect(height=44)
         self.scenario_select.setMinimumWidth(220)
         self.scenario_select.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
         self.scenario_select.label.setMinimumWidth(0)
         self.scenario_select.label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
-        for option in demo_scenario_options(employee_count=_DEMO_EMPLOYEE_COUNT):
-            description = t("anomaly_demo_scenario_name").format(number=option.index + 1)
+        self.scenario_options = demo_scenario_options(
+            employee_count=_DEMO_EMPLOYEE_COUNT
+        )
+        for option in self.scenario_options:
+            description = t(f"anomaly_demo_population_{option.population}")
             self.scenario_select.addItem(description, option.index)
+        self.scenario_details_button = QPushButton(t("anomaly_demo_scenario_details"))
+        self.scenario_details_button.setCheckable(True)
+        self.scenario_details_button.setIcon(
+            app_icon("fa5s.info-circle", color=tokens().text, size=14)
+        )
+        self.scenario_details_button.setStyleSheet(btn_outline(44))
+        self.scenario_details_button.clicked.connect(
+            lambda checked: self.scenario_details.setVisible(checked)
+        )
         self.run_button = QPushButton(t("anomaly_demo_run"))
         self.run_button.setIcon(app_icon("fa5s.play", color="#ffffff", size=15))
         self.run_button.setStyleSheet(btn_primary(44))
@@ -171,24 +404,53 @@ class AnomalyReviewPage(QWidget):
         self.status = QLabel(t("anomaly_demo_ready"))
         self.status.setWordWrap(True)
         self.status.setStyleSheet(self._label_style())
-        box.addWidget(label, 0, 0)
-        box.addWidget(self.scenario_select, 0, 1)
+        box.addWidget(self.scenario_select, 0, 0)
+        box.addWidget(self.scenario_details_button, 0, 1)
         box.addWidget(self.run_button, 0, 2)
         box.addWidget(self.progress, 1, 0, 1, 3)
         box.addWidget(self.status, 2, 0, 1, 3)
-        box.setColumnStretch(1, 1)
+        self.scenario_details = QLabel()
+        self.scenario_details.setWordWrap(True)
+        self.scenario_details.setStyleSheet(alert_ss("info"))
+        self.scenario_details.setContentsMargins(14, 10, 14, 10)
+        self.scenario_details.hide()
+        box.addWidget(self.scenario_details, 3, 0, 1, 3)
+        box.setColumnStretch(0, 1)
+        self.scenario_select.currentIndexChanged.connect(
+            self._update_scenario_details
+        )
+        self._update_scenario_details()
         return card
 
+    def _update_scenario_details(self, *_args):
+        index = self.scenario_select.currentIndex()
+        if index < 0 or index >= len(self.scenario_options):
+            return
+        option = self.scenario_options[index]
+        self.scenario_details.setText(
+            t("anomaly_demo_scenario_details_text").format(
+                population=t(f"anomaly_demo_population_{option.population}"),
+                mechanism=t(f"anomaly_demo_mechanism_{option.mechanism}"),
+                rare=t(f"anomaly_demo_rare_{option.rare_pattern}"),
+                employees=option.employee_count,
+                dataset_seed=option.dataset_seed,
+                split_seed=option.split_seed,
+                model_seed=option.model_seed,
+            )
+        )
+
     def _build_stat_row(self):
-        row = QHBoxLayout()
+        row = QGridLayout()
         row.setSpacing(14)
+        self.stat_grid = row
+        self.stat_cards = []
         self.stat_values = {}
-        for key, label, icon in (
+        for index, (key, label, icon) in enumerate((
             ("train", t("anomaly_demo_train"), "fa5s.brain"),
             ("validation", t("anomaly_demo_validation"), "fa5s.check-circle"),
             ("test", t("anomaly_demo_test"), "fa5s.flask"),
             ("queue", t("anomaly_demo_queue_count"), "fa5s.list"),
-        ):
+        )):
             card = self._card()
             card.setMinimumHeight(86)
             box = QHBoxLayout(card)
@@ -209,7 +471,8 @@ class AnomalyReviewPage(QWidget):
             text.addWidget(caption)
             box.addWidget(icon_label)
             box.addLayout(text, 1)
-            row.addWidget(card, 1)
+            row.addWidget(card, 0, index)
+            self.stat_cards.append(card)
             self.stat_values[key] = value
         return row
 
@@ -232,14 +495,14 @@ class AnomalyReviewPage(QWidget):
         controls.addSpacing(10)
         controls.addWidget(self.queue_count, 1)
         layout.addLayout(controls)
-        self.queue_table = self._table(5)
+        self.queue_table = self._table(6)
         self.queue_table.setHorizontalHeaderLabels([
             t("anomaly_demo_employee"), t("anomaly_demo_signal"),
             t("anomaly_demo_track"), t("anomaly_demo_reason"),
-            t("anomaly_demo_score"),
+            t("anomaly_demo_score"), t("anomaly_demo_priority_short"),
         ])
         self.queue_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
-        for column, width in ((0, 115), (1, 150), (2, 115), (4, 100)):
+        for column, width in ((0, 110), (1, 135), (2, 100), (4, 100), (5, 170)):
             self.queue_table.horizontalHeader().setSectionResizeMode(column, QHeaderView.Fixed)
             self.queue_table.setColumnWidth(column, width)
         self.queue_table.cellDoubleClicked.connect(lambda row, _column: self._inspect_queue_row(row))
@@ -290,9 +553,32 @@ class AnomalyReviewPage(QWidget):
         self.calculation_evidence.setStyleSheet(self._label_style())
         self.calculation_evidence.hide()
         layout.addWidget(self.calculation_evidence)
+        self.limitations = QLabel("")
+        self.limitations.setWordWrap(True)
+        self.limitations.setStyleSheet(alert_ss("warning"))
+        self.limitations.setContentsMargins(16, 12, 16, 12)
+        self.limitations.hide()
+        layout.addWidget(self.limitations)
+
+        self.history_button = QPushButton(t("anomaly_demo_show_history"))
+        self.history_button.setCheckable(True)
+        self.history_button.setIcon(
+            app_icon("fa5s.history", color=tokens().text, size=14)
+        )
+        self.history_button.setStyleSheet(btn_outline(40))
+        self.history_button.clicked.connect(self._toggle_history)
+        history_controls = QHBoxLayout()
+        history_controls.addWidget(self.history_button)
+        history_controls.addStretch()
+        layout.addLayout(history_controls)
+
+        self.history_panel = QWidget()
+        history_layout = QVBoxLayout(self.history_panel)
+        history_layout.setContentsMargins(0, 0, 0, 0)
+        history_layout.setSpacing(8)
         section = QLabel(t("anomaly_demo_events"))
         section.setStyleSheet(self._section_style())
-        layout.addWidget(section)
+        history_layout.addWidget(section)
         self.events_table = self._table(5)
         self.events_table.setHorizontalHeaderLabels([
             t("anomaly_demo_effective_date"), t("anomaly_demo_recorded_date"),
@@ -302,14 +588,18 @@ class AnomalyReviewPage(QWidget):
         self.events_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
         for column in (0, 1, 2, 4):
             self.events_table.horizontalHeader().setSectionResizeMode(column, QHeaderView.ResizeToContents)
-        layout.addWidget(self.events_table)
-        self.limitations = QLabel("")
-        self.limitations.setWordWrap(True)
-        self.limitations.setStyleSheet(alert_ss("warning"))
-        self.limitations.setContentsMargins(16, 12, 16, 12)
-        self.limitations.hide()
-        layout.addWidget(self.limitations)
+        history_layout.addWidget(self.events_table)
+        self.history_panel.hide()
+        layout.addWidget(self.history_panel)
         return page
+
+    def _toggle_history(self, checked: bool):
+        self.history_panel.setVisible(checked)
+        self.history_button.setText(
+            t("anomaly_demo_hide_history")
+            if checked
+            else t("anomaly_demo_show_history")
+        )
 
     def _build_comparison_tab(self):
         page = QWidget()
@@ -319,9 +609,37 @@ class AnomalyReviewPage(QWidget):
         title.setStyleSheet(self._section_style())
         self.comparison_help = QLabel(t("anomaly_demo_comparison_help"))
         self.comparison_help.setWordWrap(True)
-        self.comparison_help.setStyleSheet(self._label_style())
+        self.comparison_help.setStyleSheet(alert_ss("info"))
+        self.comparison_help.setContentsMargins(16, 12, 16, 12)
         layout.addWidget(title)
         layout.addWidget(self.comparison_help)
+        chart_card = self._card()
+        chart_layout = QVBoxLayout(chart_card)
+        chart_layout.setContentsMargins(16, 14, 16, 12)
+        chart_title = QLabel(t("anomaly_demo_outcome_chart"))
+        chart_title.setStyleSheet(self._label_style(bold=True))
+        self.comparison_chart = ComparisonOutcomeChart()
+        chart_layout.addWidget(chart_title)
+        chart_layout.addWidget(self.comparison_chart)
+        layout.addWidget(chart_card)
+
+        self.comparison_details_button = QPushButton(
+            t("anomaly_demo_analysis_details")
+        )
+        self.comparison_details_button.setCheckable(True)
+        self.comparison_details_button.setStyleSheet(btn_outline(38))
+        self.comparison_details_button.clicked.connect(
+            lambda checked: self.comparison_config.setVisible(checked)
+        )
+        self.comparison_config = QLabel("")
+        self.comparison_config.setWordWrap(True)
+        self.comparison_config.setStyleSheet(self._label_style())
+        self.comparison_config.hide()
+        details_row = QHBoxLayout()
+        details_row.addWidget(self.comparison_details_button)
+        details_row.addWidget(self.comparison_config, 1)
+        layout.addLayout(details_row)
+
         self.comparison_table = self._table(8)
         self.comparison_table.setHorizontalHeaderLabels([
             t("anomaly_demo_method"), t("anomaly_demo_population_short"),
@@ -333,6 +651,7 @@ class AnomalyReviewPage(QWidget):
         for column, width in ((1, 105), (2, 90), (3, 60), (4, 60), (5, 110), (6, 125), (7, 145)):
             self.comparison_table.horizontalHeader().setSectionResizeMode(column, QHeaderView.Fixed)
             self.comparison_table.setColumnWidth(column, width)
+        self.comparison_table.setMinimumHeight(245)
         layout.addWidget(self.comparison_table)
         warning = QLabel(t("anomaly_demo_control_warning"))
         warning.setWordWrap(True)
@@ -349,18 +668,19 @@ class AnomalyReviewPage(QWidget):
         title.setStyleSheet(self._section_style())
         help_text = QLabel(t("anomaly_demo_truth_help"))
         help_text.setWordWrap(True)
-        help_text.setStyleSheet(self._label_style())
+        help_text.setStyleSheet(alert_ss("danger"))
+        help_text.setContentsMargins(16, 12, 16, 12)
         layout.addWidget(title)
         layout.addWidget(help_text)
         grid = QGridLayout()
+        self.evaluation_grid = grid
+        self.evaluation_cards = []
         self.evaluation_values = {}
         labels = (
             ("positive", t("anomaly_demo_positive")),
-            ("tp", t("anomaly_demo_true_positive")),
-            ("fp", t("anomaly_demo_false_positive")),
-            ("fn", t("anomaly_demo_false_negative")),
-            ("recall", t("anomaly_demo_recall")),
-            ("precision", t("anomaly_demo_precision")),
+            ("rare", t("anomaly_demo_lawful_rare")),
+            ("evaluation", t("anomaly_demo_test")),
+            ("reviews", t("anomaly_demo_records_per_method")),
         )
         for index, (key, label) in enumerate(labels):
             card = self._card()
@@ -374,11 +694,59 @@ class AnomalyReviewPage(QWidget):
             caption.setStyleSheet(self._label_style())
             box.addWidget(value)
             box.addWidget(caption)
-            grid.addWidget(card, index // 3, index % 3)
+            grid.addWidget(card, 0, index)
+            self.evaluation_cards.append(card)
             self.evaluation_values[key] = value
         layout.addLayout(grid)
+
+        matrix_title = QLabel(t("anomaly_demo_outcome_matrix"))
+        matrix_title.setStyleSheet(self._section_style())
+        layout.addWidget(matrix_title)
+        self.outcome_matrix = self._table(4)
+        self.outcome_matrix.setHorizontalHeaderLabels([
+            t("anomaly_demo_truth_category"),
+            t("anomaly_demo_total"),
+            t("anomaly_demo_flagged"),
+            t("anomaly_demo_not_flagged"),
+        ])
+        self.outcome_matrix.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        for column in (1, 2, 3):
+            self.outcome_matrix.horizontalHeader().setSectionResizeMode(
+                column, QHeaderView.Stretch
+            )
+        self.outcome_matrix.setMinimumHeight(175)
+        self.outcome_matrix.setMaximumHeight(190)
+        layout.addWidget(self.outcome_matrix)
+
+        self.truth_cases_button = QPushButton(t("anomaly_demo_show_truth_cases"))
+        self.truth_cases_button.setCheckable(True)
+        self.truth_cases_button.setStyleSheet(btn_outline(38))
+        self.truth_cases_button.clicked.connect(self._toggle_truth_cases)
+        layout.addWidget(self.truth_cases_button, 0, Qt.AlignLeft)
+        self.truth_cases_table = self._table(4)
+        self.truth_cases_table.setHorizontalHeaderLabels([
+            t("anomaly_demo_employee"),
+            t("anomaly_demo_truth_category"),
+            t("anomaly_demo_generated_label"),
+            t("anomaly_demo_policy_outcome"),
+        ])
+        self.truth_cases_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        for column in (0, 1, 3):
+            self.truth_cases_table.horizontalHeader().setSectionResizeMode(
+                column, QHeaderView.ResizeToContents
+            )
+        self.truth_cases_table.hide()
+        layout.addWidget(self.truth_cases_table)
         layout.addStretch()
         return page
+
+    def _toggle_truth_cases(self, checked: bool):
+        self.truth_cases_table.setVisible(checked)
+        self.truth_cases_button.setText(
+            t("anomaly_demo_hide_truth_cases")
+            if checked
+            else t("anomaly_demo_show_truth_cases")
+        )
 
     @Slot()
     def _start_run(self):
@@ -451,14 +819,30 @@ class AnomalyReviewPage(QWidget):
         self.stat_values["queue"].setText(str(len(result.queue)))
         self._apply_queue_filter()
         self._populate_comparison()
+        comparison = result.comparisons[0]
+        realized_capacity = (
+            comparison.review_count / comparison.evaluation_count
+            if comparison.evaluation_count
+            else 0.0
+        )
         self.comparison_help.setText(
-            f"{t('anomaly_demo_comparison_help')} "
-            + t("anomaly_demo_model_config").format(
+            t("anomaly_demo_equal_capacity").format(
+                reviews=comparison.review_count,
+                records=comparison.evaluation_count,
+                nominal=result.review_budget_fraction,
+                realized=realized_capacity,
+            )
+        )
+        self.comparison_config.setText(
+            t("anomaly_demo_model_config_details").format(
                 trees=result.model_estimators,
-                budget=int(result.review_budget_fraction * 100),
+                dataset_seed=result.scenario.dataset_seed,
+                split_seed=result.scenario.split_seed,
+                model_seed=result.scenario.model_seed,
             )
         )
         self._populate_evaluation()
+        self.export_button.setEnabled(True)
         preferred = next(
             (item for item in result.queue if result.evidence_by_employee_id[item.employee_id].calculations),
             result.queue[0] if result.queue else None,
@@ -492,6 +876,8 @@ class AnomalyReviewPage(QWidget):
     def _set_running(self, running: bool):
         self.run_button.setEnabled(not running)
         self.scenario_select.setEnabled(not running)
+        self.scenario_details_button.setEnabled(not running)
+        self.export_button.setEnabled(not running and self.result is not None)
         if not running and not self.status.text().startswith(t("anomaly_demo_failed")):
             self.status.setStyleSheet(self._label_style())
 
@@ -522,6 +908,14 @@ class AnomalyReviewPage(QWidget):
                 if column == 3:
                     cell.setToolTip(value)
                 self.queue_table.setItem(row, column, cell)
+            self.queue_table.setCellWidget(
+                row,
+                5,
+                ReviewPriorityIndicator(
+                    item.priority,
+                    t(f"anomaly_demo_priority_{item.priority}"),
+                ),
+            )
             self.queue_table.setRowHeight(row, 48)
         sync_table_widget_cells(self.queue_table)
         self.queue_count.setText(
@@ -640,21 +1034,259 @@ class AnomalyReviewPage(QWidget):
                 self.comparison_table.setItem(row, column, cell)
             self.comparison_table.setRowHeight(row, 48)
         sync_table_widget_cells(self.comparison_table)
+        self.comparison_chart.set_comparisons(self.result.comparisons)
 
     def _populate_evaluation(self):
         if self.result is None:
             return
         summary = self.result.evaluation
+        category_counts = {
+            category: sum(
+                case.category == category for case in self.result.truth_cases
+            )
+            for category in ("injected_error", "lawful_rare", "ordinary")
+        }
         values = {
             "positive": str(summary.positive_count),
-            "tp": str(summary.true_positives),
-            "fp": str(summary.false_positives),
-            "fn": str(summary.false_negatives),
-            "recall": self._ratio(summary.recall),
-            "precision": self._ratio(summary.precision),
+            "rare": str(category_counts["lawful_rare"]),
+            "evaluation": str(summary.evaluation_count),
+            "reviews": str(summary.ml_review_count),
         }
         for key, value in values.items():
             self.evaluation_values[key].setText(value)
+
+        self.outcome_matrix.setRowCount(3)
+        for row, category in enumerate(
+            ("injected_error", "lawful_rare", "ordinary")
+        ):
+            cases = [
+                case for case in self.result.truth_cases
+                if case.category == category
+            ]
+            flagged = sum(case.policy_matched_flagged for case in cases)
+            row_values = (
+                t(f"anomaly_demo_truth_{category}"),
+                str(len(cases)),
+                str(flagged),
+                str(len(cases) - flagged),
+            )
+            for column, value in enumerate(row_values):
+                self.outcome_matrix.setItem(row, column, QTableWidgetItem(value))
+            self.outcome_matrix.setRowHeight(row, 42)
+        sync_table_widget_cells(self.outcome_matrix)
+
+        visible_cases = [
+            case for case in self.result.truth_cases
+            if case.category != "ordinary"
+        ]
+        self.truth_cases_table.setRowCount(len(visible_cases))
+        for row, case in enumerate(visible_cases):
+            labels = ", ".join(
+                self._truth_label(label) for label in case.labels
+            )
+            row_values = (
+                case.employee_id,
+                t(f"anomaly_demo_truth_{case.category}"),
+                labels,
+                t("anomaly_demo_flagged_for_review")
+                if case.policy_matched_flagged
+                else t("anomaly_demo_not_flagged"),
+            )
+            for column, value in enumerate(row_values):
+                cell = QTableWidgetItem(value)
+                if column == 2:
+                    cell.setToolTip(value)
+                self.truth_cases_table.setItem(row, column, cell)
+            self.truth_cases_table.setRowHeight(row, 42)
+        sync_table_widget_cells(self.truth_cases_table)
+
+    @Slot()
+    def _export_csv(self):
+        if self.result is None:
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            t("anomaly_demo_export_report"),
+            "myhr_anomaly_review.csv",
+            t("csv_files_filter"),
+        )
+        if not path:
+            return
+        try:
+            self._write_csv_report(path)
+        except OSError as exc:
+            QMessageBox.critical(self, t("error"), str(exc))
+            return
+        QMessageBox.information(
+            self,
+            t("success"),
+            t("anomaly_demo_exported_to").format(path=path),
+        )
+
+    def _write_csv_report(self, path: str):
+        result = self.result
+        if result is None:
+            raise RuntimeError("analysis result is required")
+        comparison = result.comparisons[0]
+        realized = (
+            comparison.review_count / comparison.evaluation_count
+            if comparison.evaluation_count
+            else 0.0
+        )
+        with open(path, "w", newline="", encoding="utf-8-sig") as handle:
+            writer = csv.writer(handle)
+            writer.writerow(["MyHR synthetic anomaly-review report"])
+            writer.writerow(["Scenario", result.scenario.scenario_id])
+            writer.writerow(["Population", result.scenario.population])
+            writer.writerow(["Injected mechanism", result.scenario.mechanism])
+            writer.writerow(["Lawful rare pattern", result.scenario.rare_pattern])
+            writer.writerow(["Dataset seed", result.scenario.dataset_seed])
+            writer.writerow(["Split seed", result.scenario.split_seed])
+            writer.writerow(["Model seed", result.scenario.model_seed])
+            writer.writerow(["Model trees", result.model_estimators])
+            writer.writerow(["Nominal review capacity", result.review_budget_fraction])
+            writer.writerow(["Realized review capacity", realized])
+            writer.writerow([])
+            writer.writerow(["METHOD COMPARISON"])
+            writer.writerow([
+                "representation", "evaluation_records", "reviewed", "tp", "fp",
+                "fn", "recall", "precision", "rare_legitimate_flagged",
+                "rare_legitimate_total",
+            ])
+            for item in result.comparisons:
+                writer.writerow([
+                    item.representation,
+                    item.evaluation_count,
+                    item.review_count,
+                    item.true_positives,
+                    item.false_positives,
+                    item.false_negatives,
+                    item.recall,
+                    item.precision,
+                    item.rare_legitimate_flagged,
+                    item.rare_legitimate_count,
+                ])
+            writer.writerow([])
+            writer.writerow(["REVIEW QUEUE"])
+            writer.writerow([
+                "employee_id", "signal", "track", "reason", "score",
+                "review_priority",
+            ])
+            for item in result.queue:
+                writer.writerow([
+                    item.employee_id,
+                    item.source,
+                    item.employment_track,
+                    item.reason_code,
+                    item.anomaly_score,
+                    item.priority,
+                ])
+            writer.writerow([])
+            writer.writerow(["SYNTHETIC EVALUATION ONLY"])
+            writer.writerow([
+                "employee_id", "truth_category", "generated_labels",
+                "policy_matched_flagged",
+            ])
+            for case in result.truth_cases:
+                writer.writerow([
+                    case.employee_id,
+                    case.category,
+                    "|".join(case.labels),
+                    case.policy_matched_flagged,
+                ])
+
+    @Slot()
+    def _export_pdf(self):
+        if self.result is None:
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            t("anomaly_demo_export_report"),
+            "myhr_anomaly_review.pdf",
+            t("pdf_files_filter"),
+        )
+        if not path:
+            return
+        try:
+            self._write_pdf_report(path)
+        except (OSError, RuntimeError) as exc:
+            QMessageBox.critical(self, t("error"), str(exc))
+            return
+        QMessageBox.information(
+            self,
+            t("success"),
+            t("anomaly_demo_exported_to").format(path=path),
+        )
+
+    def _write_pdf_report(self, path: str):
+        writer = QPdfWriter(path)
+        writer.setPageSize(QPageSize(QPageSize.A4))
+        writer.setPageMargins(
+            QMarginsF(15, 15, 15, 15), QPageLayout.Millimeter
+        )
+        document = QTextDocument()
+        document.setHtml(self._report_html())
+        document.print_(writer)
+
+    def _report_html(self) -> str:
+        result = self.result
+        if result is None:
+            raise RuntimeError("analysis result is required")
+        comparison_rows = "".join(
+            "<tr>"
+            f"<td>{escape(t(f'anomaly_demo_method_{item.representation}'))}</td>"
+            f"<td>{item.evaluation_count}</td><td>{item.review_count}</td>"
+            f"<td>{item.true_positives}</td><td>{item.false_positives}</td>"
+            f"<td>{escape(self._ratio(item.recall))}</td>"
+            f"<td>{escape(self._ratio(item.precision))}</td>"
+            "</tr>"
+            for item in result.comparisons
+        )
+        truth_rows = "".join(
+            "<tr>"
+            f"<td>{escape(case.employee_id)}</td>"
+            f"<td>{escape(t(f'anomaly_demo_truth_{case.category}'))}</td>"
+            f"<td>{escape(', '.join(self._truth_label(label) for label in case.labels))}</td>"
+            f"<td>{escape(t('anomaly_demo_flagged_for_review') if case.policy_matched_flagged else t('anomaly_demo_not_flagged'))}</td>"
+            "</tr>"
+            for case in result.truth_cases
+            if case.category != "ordinary"
+        )
+        option = result.scenario
+        return f"""
+        <html><head><style>
+        body {{ font-family: Arial, sans-serif; color: #17211f; font-size: 10pt; }}
+        h1 {{ color: #063b32; }} h2 {{ color: #184f45; margin-top: 18px; }}
+        table {{ border-collapse: collapse; width: 100%; margin-top: 8px; }}
+        th {{ background: #0b5b4d; color: white; padding: 6px; text-align: left; }}
+        td {{ border: 1px solid #d8dfdc; padding: 6px; }}
+        .notice {{ background: #eef7f2; padding: 10px; border: 1px solid #bcd8ca; }}
+        .warning {{ background: #fff3d6; padding: 10px; border: 1px solid #e4c774; }}
+        </style></head><body>
+        <h1>{escape(t('anomaly_demo_title'))}</h1>
+        <p class="notice">{escape(t('anomaly_demo_governance'))}</p>
+        <h2>{escape(t('anomaly_demo_scenario_details'))}</h2>
+        <p><b>{escape(t('anomaly_demo_scenario'))}:</b>
+        {escape(t(f'anomaly_demo_population_{option.population}'))}<br>
+        <b>{escape(t('anomaly_demo_generated_label'))}:</b>
+        {escape(t(f'anomaly_demo_mechanism_{option.mechanism}'))}<br>
+        <b>{escape(t('anomaly_demo_lawful_rare'))}:</b>
+        {escape(t(f'anomaly_demo_rare_{option.rare_pattern}'))}</p>
+        <h2>{escape(t('anomaly_demo_tab_comparison'))}</h2>
+        <table><tr><th>{escape(t('anomaly_demo_method'))}</th>
+        <th>{escape(t('anomaly_demo_population_short'))}</th>
+        <th>{escape(t('anomaly_demo_reviews_short'))}</th><th>TP</th><th>FP</th>
+        <th>{escape(t('anomaly_demo_recall'))}</th><th>{escape(t('anomaly_demo_precision'))}</th></tr>
+        {comparison_rows}</table>
+        <p class="warning">{escape(t('anomaly_demo_control_warning'))}</p>
+        <h2>{escape(t('anomaly_demo_truth_title'))}</h2>
+        <p>{escape(t('anomaly_demo_truth_help'))}</p>
+        <table><tr><th>{escape(t('anomaly_demo_employee'))}</th>
+        <th>{escape(t('anomaly_demo_truth_category'))}</th>
+        <th>{escape(t('anomaly_demo_generated_label'))}</th>
+        <th>{escape(t('anomaly_demo_policy_outcome'))}</th></tr>{truth_rows}</table>
+        </body></html>
+        """
 
     def _wait_for_worker(self):
         if self._process is not None:
@@ -706,6 +1338,8 @@ class AnomalyReviewPage(QWidget):
             self.calculation_table,
             self.events_table,
             self.comparison_table,
+            self.outcome_matrix,
+            self.truth_cases_table,
         ):
             table.clearContents()
             table.setRowCount(0)
@@ -718,6 +1352,8 @@ class AnomalyReviewPage(QWidget):
         self.limitations.clear()
         self.limitations.hide()
         self.inspect_button.setEnabled(False)
+        self.export_button.setEnabled(False)
+        self.comparison_chart.set_comparisons(())
 
     @staticmethod
     def _track_label(track: str):
@@ -729,6 +1365,12 @@ class AnomalyReviewPage(QWidget):
         key = f"anomaly_demo_reason_{item.reason_code}"
         translated = t(key)
         return item.reason if translated == key else translated
+
+    @staticmethod
+    def _truth_label(label: str):
+        key = f"anomaly_demo_truth_label_{label}"
+        translated = t(key)
+        return label.replace("_", " ").title() if translated == key else translated
 
     @staticmethod
     def _clear_layout(layout):

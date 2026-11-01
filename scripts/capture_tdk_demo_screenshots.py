@@ -104,13 +104,20 @@ def main() -> int:
         result = run_demo_scenario(0, employee_count=120)
         anomaly_page._on_completed(result)
         app.processEvents()
+        QTest.qWait(300)
 
         anomaly_paths = []
         anomaly_scroll = anomaly_page.findChild(QScrollArea)
-        for tab_index, name in ((0, "queue"), (1, "evidence"), (2, "comparison")):
+        for tab_index, name in (
+            (0, "queue"),
+            (1, "evidence"),
+            (2, "comparison"),
+            (3, "evaluation"),
+        ):
             anomaly_page.tabs.setCurrentIndex(tab_index)
+            QTest.qWait(120)
             if anomaly_scroll is not None:
-                anomaly_scroll.verticalScrollBar().setValue(350 if tab_index == 1 else 0)
+                anomaly_scroll.verticalScrollBar().setValue(285 if tab_index == 1 else 0)
             QTest.qWait(180)
             path = args.output_dir / f"anomaly_{name}_{args.theme}.png"
             if not window.grab().save(str(path), "PNG"):
@@ -154,7 +161,10 @@ def main() -> int:
         "source_revision": revision,
         "database": "none; fixed synthetic research scenario generated in memory",
         "scenario": anomaly_page.result.scenario.scenario_id,
-        "view": "Anomaly Review > queue, evidence, and equal-capacity comparison",
+        "view": (
+            "Anomaly Review > queue, evidence, equal-capacity comparison, "
+            "and synthetic evaluation"
+        ),
         "viewport": {"width": args.width, "height": args.height},
         "theme": args.theme,
         "contains_private_data": False,
