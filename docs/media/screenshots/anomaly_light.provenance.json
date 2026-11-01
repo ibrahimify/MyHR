@@ -1,20 +1,25 @@
 {
-  "capture_type": "reproducible_offscreen_application_window",
-  "source_revision": "11e3b134bd93b3333768e3c5c56222b6eb3a038d",
-  "database": "none; fixed synthetic research scenario generated in memory",
+  "capture_type": "live_application_window_on_physical_display",
+  "launch": "LoginWindow -> admin demo credentials -> MainWindow (same flow as python main.py)",
+  "source_revision_base": "84a3dbeeaea835ca25785e0a935dad54c9ba0d1f",
+  "source_state": "working tree with the UI repair commit that adds these captures",
+  "database": "local demo database via init_db(); Anomaly Review reads none of it",
   "scenario": "ind-dev-01",
-  "view": "Anomaly Review > queue, evidence, equal-capacity comparison, and synthetic evaluation",
-  "viewport": {
-    "width": 1920,
-    "height": 1080
-  },
+  "evidence_employee": "I-00102",
+  "view": "Anomaly Review > Review Queue, Employee Evidence, Method Comparison, Synthetic Evaluation",
+  "language": "en",
   "theme": "light",
+  "window_logical": [
+    1488,
+    841
+  ],
+  "device_pixel_ratio": 1.25,
   "contains_private_data": false,
   "holdout_accessed": false,
   "files": {
-    "anomaly_queue_light.png": "abf7f32dd6c4ff9cf219e827487638c5e8fc9614d70f4e3f92bc920f2a21582d",
-    "anomaly_evidence_light.png": "5841dc11862828eb45d8d9be66c36754c5c97e02b316c7039cd3a1ed4ee55778",
-    "anomaly_comparison_light.png": "ac02ade853b3cb40a4ce8b0092737e64920d5a3367b1dde2c6dd1b87084a145f",
-    "anomaly_evaluation_light.png": "ea6f50129e6fe3d0aa42cffc598c238f23d5a3b85b41a4f808ceccdd97100ddd"
+    "anomaly_queue_light.png": "dc8804b6d2162b48eeb68a9ee5c9ab280d6ce250f6d45ca1377ddd9ce732bf40",
+    "anomaly_evidence_light.png": "ef87bee7d0aef4321088149c93790c5a69b4888ebb14be3cc5f1bf9c38b07311",
+    "anomaly_comparison_light.png": "547e61f145e866c0ba250c1d876f0a93e23a87dcfbbef7d3430450ad4df68a78",
+    "anomaly_evaluation_light.png": "4c08abce3274b8b9723566370b0f36452043da8d3c8f07480dd558e88947524c"
   }
 }

@@ -3517,6 +3517,27 @@ TRANSLATIONS["ar"].update({
 })
 
 
+
+# Anomaly Review: true/false-positive outcome chart.
+TRANSLATIONS["en"].update({
+    "anomaly_demo_count_chart": "Outcomes at equal review capacity (records in the queue)",
+    "anomaly_demo_count_chart_tooltip": "Each bar is one method's review queue: true positives are injected errors found; false positives are queued records without an injected error.",
+    "anomaly_demo_tp_legend": "True positive (injected error found)",
+    "anomaly_demo_fp_legend": "False positive (no injected error)",
+})
+TRANSLATIONS["hu"].update({
+    "anomaly_demo_count_chart": "Eredmények azonos ellenőrzési kapacitásnál (rekordok a sorban)",
+    "anomaly_demo_count_chart_tooltip": "Minden oszlop egy módszer ellenőrzési sora: a valódi pozitívak a megtalált beillesztett hibák, a téves pozitívak a hiba nélküli sorba került rekordok.",
+    "anomaly_demo_tp_legend": "Valódi pozitív (megtalált beillesztett hiba)",
+    "anomaly_demo_fp_legend": "Téves pozitív (nincs beillesztett hiba)",
+})
+TRANSLATIONS["ar"].update({
+    "anomaly_demo_count_chart": "النتائج عند سعة مراجعة متساوية (السجلات في قائمة المراجعة)",
+    "anomaly_demo_count_chart_tooltip": "كل عمود يمثل قائمة مراجعة طريقة واحدة: الإيجابيات الصحيحة أخطاء مدرجة تم العثور عليها، والإيجابيات الخاطئة سجلات بلا خطأ مدرج.",
+    "anomaly_demo_tp_legend": "إيجابي صحيح (تم العثور على خطأ مدرج)",
+    "anomaly_demo_fp_legend": "إيجابي خاطئ (لا يوجد خطأ مدرج)",
+})
+
 def set_language(lang_code: str):
     """Set the active session language."""
     global _current_language

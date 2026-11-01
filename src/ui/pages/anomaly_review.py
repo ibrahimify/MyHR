@@ -5,12 +5,15 @@ from __future__ import annotations
 import csv
 from html import escape
 import multiprocessing
+import os
 from queue import Empty
 
 from PySide6.QtCore import QMarginsF, QRectF, QTimer, Qt, Slot
 from PySide6.QtGui import (
     QAction,
+    QBrush,
     QColor,
+    QIcon,
     QPageLayout,
     QPageSize,
     QPainter,
@@ -57,6 +60,7 @@ from src.ui.styles import (
     card_ss,
     enable_table_row_selection,
     menu_ss,
+    primary_button_fg,
     semantic_badge_ss,
     sync_table_widget_cells,
     table_style,
@@ -65,6 +69,19 @@ from src.ui.theme import tokens
 
 
 _DEMO_EMPLOYEE_COUNT = 120
+_WORKER_THREAD_ENV = (
+    "OPENBLAS_NUM_THREADS",
+    "OMP_NUM_THREADS",
+    "MKL_NUM_THREADS",
+)
+
+
+def _stateful_icon(name: str, color: str, size: int) -> QIcon:
+    """Icon whose disabled state matches the disabled button text colour."""
+    icon = QIcon()
+    icon.addPixmap(app_pixmap(name, color=color, size=size), QIcon.Normal)
+    icon.addPixmap(app_pixmap(name, color=tokens().text_soft, size=size), QIcon.Disabled)
+    return icon
 
 
 class ReviewPriorityIndicator(QWidget):
@@ -74,7 +91,8 @@ class ReviewPriorityIndicator(QWidget):
         super().__init__(parent)
         self.priority = priority
         self.label = label
-        self.setFixedSize(130, 34)
+        self.setFixedWidth(130)
+        self.setMinimumHeight(34)
         self.setToolTip(t("anomaly_demo_priority_tooltip"))
 
     def paintEvent(self, _event):
@@ -87,13 +105,13 @@ class ReviewPriorityIndicator(QWidget):
         extent = {"rule": 300, "high": 270, "medium": 190, "low": 110}
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        ring = QRectF(3, 7, 20, 20)
+        ring = QRectF(3, (self.height() - 20) / 2, 20, 20)
         painter.setPen(QPen(QColor(tokens().border), 4))
         painter.drawArc(ring, 0, 360 * 16)
         painter.setPen(QPen(QColor(palette.get(self.priority, tokens().text_soft)), 4))
         painter.drawArc(ring, 90 * 16, -extent.get(self.priority, 110) * 16)
         painter.setPen(QColor(tokens().text))
-        painter.drawText(QRectF(31, 0, 96, 34), Qt.AlignVCenter | Qt.AlignLeft, self.label)
+        painter.drawText(QRectF(31, 0, 96, self.height()), Qt.AlignVCenter | Qt.AlignLeft, self.label)
 
 
 class ComparisonOutcomeChart(QWidget):
@@ -132,11 +150,14 @@ class ComparisonOutcomeChart(QWidget):
 
         group_width = chart_width / len(self._comparisons)
         bar_width = min(34.0, group_width * 0.25)
+        # Dark/light green pair in both themes: recall is always the darker
+        # bar in light mode and the lighter bar in dark mode, with a clear
+        # luminance gap so the two series are distinguishable.
         recall_color = tokens().brand
         precision_color = (
             tokens().brand_accent
             if tokens().name != "dark"
-            else tokens().brand_hover
+            else "#2f7a46"
         )
         for index, item in enumerate(self._comparisons):
             center = left + index * group_width + group_width / 2
@@ -155,15 +176,38 @@ class ComparisonOutcomeChart(QWidget):
                     )
                     continue
                 height = chart_height * value
-                painter.fillRect(
-                    QRectF(center + offset, base_y - height, bar_width, height),
-                    QColor(color),
-                )
-                painter.drawText(
-                    QRectF(center + offset - 4, base_y - height - 20, bar_width + 8, 18),
-                    Qt.AlignCenter,
-                    f"{value:.0%}",
-                )
+                bar = QRectF(center + offset, base_y - height, bar_width, height)
+                painter.fillRect(bar, QColor(color))
+                # A dark edge keeps the light-green precision bar visible
+                # against the white card (non-text contrast).
+                painter.setPen(QPen(QColor(tokens().brand if tokens().name != "dark" else tokens().border_strong), 1))
+                painter.drawRect(bar)
+                painter.setPen(QColor(tokens().text))
+                value_font = painter.font()
+                value_font.setPointSize(8)
+                painter.setFont(value_font)
+                label = f"{value:.0%}"
+                if painter.fontMetrics().horizontalAdvance(label) + 2 <= bar_width:
+                    painter.drawText(
+                        QRectF(center + offset, base_y - height - 18, bar_width, 16),
+                        Qt.AlignCenter,
+                        label,
+                    )
+                else:
+                    # Narrow bars: print the value inside the bar, rotated,
+                    # so adjacent recall/precision labels never overlap.
+                    painter.save()
+                    inside = height >= painter.fontMetrics().horizontalAdvance(label) + 6
+                    painter.setPen(QColor(
+                        ("#ffffff" if QColor(color).lightness() < 128 else "#062f28")
+                        if inside else tokens().text
+                    ))
+                    anchor_y = base_y - 4 if inside else base_y - height - 4
+                    painter.translate(center + offset + bar_width / 2, anchor_y)
+                    painter.rotate(-90)
+                    painter.drawText(QRectF(0, -8, 60, 16), Qt.AlignVCenter | Qt.AlignLeft, label)
+                    painter.restore()
+                painter.setFont(font)
             label = t(f"anomaly_demo_method_short_{item.representation}")
             painter.drawText(
                 QRectF(left + index * group_width, base_y + 8, group_width, 34),
@@ -184,6 +228,101 @@ class ComparisonOutcomeChart(QWidget):
             Qt.AlignVCenter | Qt.AlignLeft,
             t("anomaly_demo_precision"),
         )
+
+
+class OutcomeCountChart(QWidget):
+    """Stacked true/false-positive counts per method at equal review capacity.
+
+    Counts come from the same completed comparison objects as the exact table.
+    False positives use a colour-blind-safe vermilion plus diagonal hatching so
+    the two segments stay distinguishable without relying on colour alone.
+    """
+
+    TP_COLOR_LIGHT = "#1f7a4d"
+    TP_COLOR_DARK = "#7fd49a"
+    FP_COLOR = "#d55e00"
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._comparisons = ()
+        self.setMinimumHeight(235)
+
+    def set_comparisons(self, comparisons):
+        self._comparisons = tuple(comparisons)
+        self.update()
+
+    def _tp_color(self):
+        return self.TP_COLOR_DARK if tokens().name == "dark" else self.TP_COLOR_LIGHT
+
+    def paintEvent(self, _event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.fillRect(self.rect(), QColor(tokens().surface))
+        if not self._comparisons:
+            painter.setPen(QColor(tokens().text_muted))
+            painter.drawText(self.rect(), Qt.AlignCenter, t("anomaly_demo_chart_waiting"))
+            return
+        font = painter.font()
+        font.setPointSize(9)
+        painter.setFont(font)
+        left, top, right, bottom = 40, 62, 14, 52
+        chart_width = max(1, self.width() - left - right)
+        chart_height = max(1, self.height() - top - bottom)
+        maximum = max(
+            1,
+            max(item.true_positives + item.false_positives for item in self._comparisons),
+        )
+        for tick in range(maximum + 1):
+            y = top + chart_height * (1 - tick / maximum)
+            painter.setPen(QPen(QColor(tokens().border), 1))
+            painter.drawLine(left, y, left + chart_width, y)
+            painter.setPen(QColor(tokens().text_muted))
+            painter.drawText(QRectF(0, y - 9, left - 8, 18), Qt.AlignRight | Qt.AlignVCenter, str(tick))
+
+        tp_color = QColor(self._tp_color())
+        fp_color = QColor(self.FP_COLOR)
+        group_width = chart_width / len(self._comparisons)
+        bar_width = min(46.0, group_width * 0.42)
+        base_y = top + chart_height
+        for index, item in enumerate(self._comparisons):
+            x = left + index * group_width + (group_width - bar_width) / 2
+            tp_height = chart_height * item.true_positives / maximum
+            fp_height = chart_height * item.false_positives / maximum
+            tp_rect = QRectF(x, base_y - tp_height, bar_width, tp_height)
+            fp_rect = QRectF(x, base_y - tp_height - fp_height, bar_width, fp_height)
+            painter.fillRect(tp_rect, tp_color)
+            if fp_height:
+                painter.fillRect(fp_rect, fp_color)
+                painter.fillRect(fp_rect, QBrush(QColor("#ffffff"), Qt.BDiagPattern))
+            painter.setPen(QPen(QColor(tokens().text), 1))
+            painter.drawRect(QRectF(x, base_y - tp_height - fp_height, bar_width, tp_height + fp_height))
+            for rect, value, color in ((tp_rect, item.true_positives, "#ffffff"), (fp_rect, item.false_positives, "#111311")):
+                if value and rect.height() >= 16:
+                    painter.setPen(QColor(color if tokens().name != "dark" or rect is fp_rect else "#062f28"))
+                    painter.drawText(rect, Qt.AlignCenter, str(value))
+            painter.setPen(QColor(tokens().text))
+            painter.drawText(
+                QRectF(left + index * group_width, base_y + 8, group_width, 34),
+                Qt.AlignHCenter | Qt.AlignTop | Qt.TextWordWrap,
+                t(f"anomaly_demo_method_short_{item.representation}"),
+            )
+
+        # Legend: one row when it fits, otherwise two rows (never clipped).
+        metrics = painter.fontMetrics()
+        tp_text = t("anomaly_demo_tp_legend")
+        fp_text = t("anomaly_demo_fp_legend")
+        tp_width = 18 + metrics.horizontalAdvance(tp_text)
+        fp_width = 18 + metrics.horizontalAdvance(fp_text)
+        one_row = left + tp_width + 24 + fp_width <= self.width() - right
+        painter.setPen(QColor(tokens().text))
+        painter.fillRect(QRectF(left, 12, 12, 12), tp_color)
+        painter.drawText(QRectF(left + 18, 6, tp_width, 24), Qt.AlignVCenter | Qt.AlignLeft, tp_text)
+        fp_x, fp_y = (left + tp_width + 24, 12) if one_row else (left, 32)
+        legend = QRectF(fp_x, fp_y, 12, 12)
+        painter.fillRect(legend, fp_color)
+        painter.fillRect(legend, QBrush(QColor("#ffffff"), Qt.BDiagPattern))
+        painter.drawRect(legend)
+        painter.drawText(QRectF(fp_x + 18, fp_y - 6, fp_width, 24), Qt.AlignVCenter | Qt.AlignLeft, fp_text)
 
 
 def _demo_process_entry(option_index: int, output_queue) -> None:
@@ -219,6 +358,7 @@ class AnomalyReviewPage(QWidget):
             f"QWidget#AnomalyReviewPage {{ background: {tokens().canvas}; }}"
         )
         self._build()
+        self._clear_results()
         QTimer.singleShot(0, self._apply_responsive_layout)
         app = QApplication.instance()
         if app is not None:
@@ -262,7 +402,7 @@ class AnomalyReviewPage(QWidget):
         self.help_button.setToolTip(t("anomaly_demo_help_tooltip"))
         self.help_button.clicked.connect(self._toggle_help)
         self.export_button = QPushButton(t("anomaly_demo_export_report"))
-        self.export_button.setIcon(app_icon("fa5s.download", color="#ffffff", size=14))
+        self.export_button.setIcon(_stateful_icon("fa5s.download", primary_button_fg(), 14))
         self.export_button.setStyleSheet(btn_primary(38))
         self.export_button.setToolTip(t("anomaly_demo_export_tooltip"))
         self.export_button.setEnabled(False)
@@ -307,13 +447,17 @@ class AnomalyReviewPage(QWidget):
         self.tabs.addTab(self._build_comparison_tab(), t("anomaly_demo_tab_comparison"))
         self.tabs.addTab(self._build_evaluation_tab(), t("anomaly_demo_tab_evaluation"))
         self.tabs.currentChanged.connect(self._update_guide)
+        self.tabs.currentChanged.connect(self._fit_tabs_to_current)
         main_layout.addWidget(self.tabs)
+        self._fit_tabs_to_current(0)
 
         governance = QLabel(t("anomaly_demo_governance"))
         governance.setWordWrap(True)
         governance.setStyleSheet(alert_ss("info", "QLabel"))
         governance.setContentsMargins(16, 12, 16, 12)
+        governance.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
         main_layout.addWidget(governance)
+        main_layout.addStretch(1)
         self.main_workspace = main
         workspace.addWidget(main, 0, 0)
         self.guide_panel = self._build_guide_panel()
@@ -424,6 +568,33 @@ class AnomalyReviewPage(QWidget):
         prefix = f"{index + 1}. "
         return text[len(prefix):] if text.startswith(prefix) else text
 
+    def _fit_tabs_to_current(self, index: int):
+        """Size the tab widget to the visible page, not the tallest page.
+
+        Without this, short tabs inherit the height of the longest tab and
+        leave a large empty gap above the governance note.
+        """
+        current = self.tabs.widget(index if index is not None else self.tabs.currentIndex())
+        if current is None:
+            return
+        page_layout = current.layout()
+        page_layout.activate()
+        width = max(1, self.tabs.width())
+        # Word-wrapped labels report their height for an arbitrary narrow
+        # width in sizeHint(); measure at the real pane width instead.
+        if page_layout.hasHeightForWidth():
+            page_height = page_layout.totalHeightForWidth(width)
+        else:
+            page_height = page_layout.totalSizeHint().height()
+        # 26 px matches the QTabWidget::pane margin-top in _anomaly_tab_style.
+        self.tabs.setFixedHeight(
+            page_height + self.tabs.tabBar().sizeHint().height() + 26 + 4
+        )
+
+    def _refit_tabs(self, *_args):
+        """Re-measure after content or disclosure changes on the current tab."""
+        QTimer.singleShot(0, lambda: self._fit_tabs_to_current(self.tabs.currentIndex()))
+
     def _close_guide(self):
         self.help_button.setChecked(False)
         self._toggle_help(False)
@@ -431,6 +602,8 @@ class AnomalyReviewPage(QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._apply_responsive_layout()
+        if hasattr(self, "tabs"):
+            self._refit_tabs()
 
     def _apply_responsive_layout(self):
         if not hasattr(self, "run_layout"):
@@ -540,7 +713,7 @@ class AnomalyReviewPage(QWidget):
             lambda checked: self.scenario_details.setVisible(checked)
         )
         self.run_button = QPushButton(t("anomaly_demo_run"))
-        self.run_button.setIcon(app_icon("fa5s.play", color="#ffffff", size=15))
+        self.run_button.setIcon(_stateful_icon("fa5s.play", primary_button_fg(), 15))
         self.run_button.setStyleSheet(btn_primary(44))
         self.run_button.setCursor(Qt.PointingHandCursor)
         self.run_button.clicked.connect(self._start_run)
@@ -688,7 +861,7 @@ class AnomalyReviewPage(QWidget):
             t("anomaly_demo_score"), t("anomaly_demo_priority_short"),
         ])
         self.queue_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
-        for column, width in ((0, 110), (1, 135), (2, 100), (4, 100), (5, 170)):
+        for column, width in ((0, 110), (1, 170), (2, 110), (4, 90), (5, 150)):
             self.queue_table.horizontalHeader().setSectionResizeMode(column, QHeaderView.Fixed)
             self.queue_table.setColumnWidth(column, width)
         self.queue_table.cellDoubleClicked.connect(lambda row, _column: self._inspect_queue_row(row))
@@ -843,6 +1016,7 @@ class AnomalyReviewPage(QWidget):
 
     def _toggle_history(self, checked: bool):
         self.history_panel.setVisible(checked)
+        self._refit_tabs()
         self.history_button.setText(
             t("anomaly_demo_hide_history")
             if checked
@@ -866,10 +1040,13 @@ class AnomalyReviewPage(QWidget):
         self.comparison_help.setStyleSheet(alert_ss("info", "QLabel"))
         self.comparison_help.setContentsMargins(16, 12, 16, 12)
         layout.addWidget(self.comparison_help)
+        charts_row = QHBoxLayout()
+        charts_row.setSpacing(14)
         chart_card = self._card()
         chart_layout = QVBoxLayout(chart_card)
         chart_layout.setContentsMargins(16, 14, 16, 12)
         chart_title = QLabel(t("anomaly_demo_outcome_chart"))
+        chart_title.setWordWrap(True)
         chart_title.setStyleSheet(self._label_style(bold=True))
         self.comparison_chart = ComparisonOutcomeChart()
         self.comparison_chart.setToolTip(
@@ -877,7 +1054,19 @@ class AnomalyReviewPage(QWidget):
         )
         chart_layout.addWidget(chart_title)
         chart_layout.addWidget(self.comparison_chart)
-        layout.addWidget(chart_card)
+        charts_row.addWidget(chart_card, 1)
+        count_card = self._card()
+        count_layout = QVBoxLayout(count_card)
+        count_layout.setContentsMargins(16, 14, 16, 12)
+        count_title = QLabel(t("anomaly_demo_count_chart"))
+        count_title.setWordWrap(True)
+        count_title.setStyleSheet(self._label_style(bold=True))
+        self.outcome_count_chart = OutcomeCountChart()
+        self.outcome_count_chart.setToolTip(t("anomaly_demo_count_chart_tooltip"))
+        count_layout.addWidget(count_title)
+        count_layout.addWidget(self.outcome_count_chart)
+        charts_row.addWidget(count_card, 1)
+        layout.addLayout(charts_row)
 
         interpretation_title = QLabel(t("anomaly_demo_interpretation_title"))
         interpretation_title.setStyleSheet(self._label_style(bold=True))
@@ -899,7 +1088,7 @@ class AnomalyReviewPage(QWidget):
         )
         self.comparison_details_button.setStyleSheet(btn_outline(38))
         self.comparison_details_button.clicked.connect(
-            lambda checked: self.comparison_config.setVisible(checked)
+            lambda checked: (self.comparison_config.setVisible(checked), self._refit_tabs())
         )
         self.comparison_config = QLabel("")
         self.comparison_config.setWordWrap(True)
@@ -921,12 +1110,6 @@ class AnomalyReviewPage(QWidget):
             t("anomaly_demo_precision"), t("anomaly_demo_rare_alerts_short"),
         ])
         self.comparison_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.comparison_table.horizontalHeader().setDefaultAlignment(
-            Qt.AlignCenter | Qt.AlignVCenter
-        )
-        self.comparison_table.horizontalHeaderItem(0).setTextAlignment(
-            Qt.AlignLeft | Qt.AlignVCenter
-        )
         for column, width in ((1, 105), (2, 90), (3, 60), (4, 60), (5, 110), (6, 125), (7, 145)):
             self.comparison_table.horizontalHeader().setSectionResizeMode(column, QHeaderView.Fixed)
             self.comparison_table.setColumnWidth(column, width)
@@ -997,12 +1180,6 @@ class AnomalyReviewPage(QWidget):
         self.evaluation_method_table.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.Stretch
         )
-        self.evaluation_method_table.horizontalHeader().setDefaultAlignment(
-            Qt.AlignCenter | Qt.AlignVCenter
-        )
-        self.evaluation_method_table.horizontalHeaderItem(0).setTextAlignment(
-            Qt.AlignLeft | Qt.AlignVCenter
-        )
         for column in (1, 2, 3, 4):
             self.evaluation_method_table.horizontalHeader().setSectionResizeMode(
                 column, QHeaderView.Fixed
@@ -1054,6 +1231,7 @@ class AnomalyReviewPage(QWidget):
 
     def _toggle_truth_cases(self, checked: bool):
         self.truth_cases_table.setVisible(checked)
+        self._refit_tabs()
         self.truth_cases_button.setText(
             t("anomaly_demo_hide_truth_cases")
             if checked
@@ -1077,7 +1255,19 @@ class AnomalyReviewPage(QWidget):
             args=(option_index, self._process_queue),
             daemon=True,
         )
-        self._process.start()
+        # The small demo model gains nothing from BLAS threading, and per-thread
+        # buffers made the worker fail with "OpenBLAS ... Memory allocation" on
+        # memory-constrained laptops. Thread count does not change the results.
+        saved_env = {key: os.environ.get(key) for key in _WORKER_THREAD_ENV}
+        os.environ.update({key: "1" for key in _WORKER_THREAD_ENV})
+        try:
+            self._process.start()
+        finally:
+            for key, value in saved_env.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
         self._process_timer.start()
 
     @Slot()
@@ -1174,6 +1364,7 @@ class AnomalyReviewPage(QWidget):
         )
         if preferred is not None:
             self._show_employee(preferred.employee_id)
+        self._refit_tabs()
 
     @Slot(str)
     def _on_failed(self, error: str):
@@ -1259,6 +1450,7 @@ class AnomalyReviewPage(QWidget):
             f"{len(self._visible_queue)} / {len(self.result.queue) if self.result else 0}"
         )
         self.inspect_button.setEnabled(bool(self._visible_queue))
+        self._refit_tabs()
 
     def _inspect_selected_row(self):
         row = self.queue_table.currentRow()
@@ -1295,7 +1487,7 @@ class AnomalyReviewPage(QWidget):
         for index, (label, value) in enumerate(profile):
             label_widget = QLabel(label)
             label_widget.setStyleSheet(self._label_style())
-            value_widget = QLabel(value)
+            value_widget = QLabel(value or "-")
             value_widget.setStyleSheet(self._label_style(bold=True))
             self.profile_layout.addWidget(label_widget, index // 2 * 2, index % 2)
             self.profile_layout.addWidget(value_widget, index // 2 * 2 + 1, index % 2)
@@ -1310,6 +1502,7 @@ class AnomalyReviewPage(QWidget):
             self.limitations.show()
         else:
             self.limitations.hide()
+        self._refit_tabs()
 
     def _employee_selected(self, _index: int):
         employee_id = self.employee_select.currentData()
@@ -1394,6 +1587,7 @@ class AnomalyReviewPage(QWidget):
                 self.events_table.setItem(row, column, cell)
             self.events_table.setRowHeight(row, 46)
         sync_table_widget_cells(self.events_table)
+        self._fit_table_height(self.events_table, max_rows=12)
 
     def _populate_comparison(self):
         if self.result is None:
@@ -1409,11 +1603,7 @@ class AnomalyReviewPage(QWidget):
             )
             for column, value in enumerate(values):
                 cell = QTableWidgetItem(value)
-                cell.setTextAlignment(
-                    Qt.AlignLeft | Qt.AlignVCenter
-                    if column == 0
-                    else Qt.AlignCenter
-                )
+                cell.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
                 if column == 0 and item.representation == "policy_matched":
                     cell.setForeground(QColor(tokens().brand))
                     cell.setIcon(
@@ -1422,7 +1612,9 @@ class AnomalyReviewPage(QWidget):
                 self.comparison_table.setItem(row, column, cell)
             self.comparison_table.setRowHeight(row, 48)
         sync_table_widget_cells(self.comparison_table)
+        self._fit_table_height(self.comparison_table)
         self.comparison_chart.set_comparisons(self.result.comparisons)
+        self.outcome_count_chart.set_comparisons(self.result.comparisons)
         policy = next(
             item for item in self.result.comparisons
             if item.representation == "policy_matched"
@@ -1474,13 +1666,10 @@ class AnomalyReviewPage(QWidget):
             )
             for column, value in enumerate(row_values):
                 cell = QTableWidgetItem(value)
-                cell.setTextAlignment(
-                    Qt.AlignLeft | Qt.AlignVCenter
-                    if column == 0
-                    else Qt.AlignCenter
-                )
+                cell.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
                 self.evaluation_method_table.setItem(row, column, cell)
             self.evaluation_method_table.setRowHeight(row, 46)
+        self._fit_table_height(self.evaluation_method_table)
 
         self.outcome_matrix.setRowCount(3)
         for row, category in enumerate(
@@ -1508,6 +1697,7 @@ class AnomalyReviewPage(QWidget):
                 self.outcome_matrix.setItem(row, column, cell)
             self.outcome_matrix.setRowHeight(row, 42)
         sync_table_widget_cells(self.outcome_matrix)
+        self._fit_table_height(self.outcome_matrix)
 
         visible_cases = [
             case for case in self.result.truth_cases
@@ -1533,6 +1723,7 @@ class AnomalyReviewPage(QWidget):
                 self.truth_cases_table.setItem(row, column, cell)
             self.truth_cases_table.setRowHeight(row, 42)
         sync_table_widget_cells(self.truth_cases_table)
+        self._fit_table_height(self.truth_cases_table)
 
     @Slot()
     def _export_csv(self):
@@ -1792,10 +1983,22 @@ class AnomalyReviewPage(QWidget):
         self.limitations.hide()
         self.inspect_button.setEnabled(False)
         self.export_button.setEnabled(False)
+        # Empty tables show only their header instead of a blank block.
+        for table in (
+            self.queue_table,
+            self.comparison_table,
+            self.evaluation_method_table,
+            self.outcome_matrix,
+            self.truth_cases_table,
+            self.events_table,
+        ):
+            self._fit_table_height(table)
         self.comparison_chart.set_comparisons(())
+        self.outcome_count_chart.set_comparisons(())
         self.comparison_interpretation.setText(
             t("anomaly_demo_interpretation_waiting")
         )
+        self._refit_tabs()
 
     @staticmethod
     def _track_label(track: str):
@@ -1829,6 +2032,18 @@ class AnomalyReviewPage(QWidget):
         return card
 
     @staticmethod
+    def _fit_table_height(table, max_rows: int | None = None):
+        """Size a table to its header and rows so no blank band remains."""
+        rows = table.rowCount()
+        shown = rows if max_rows is None else min(rows, max_rows)
+        height = table.horizontalHeader().height() + sum(
+            table.rowHeight(row) for row in range(shown)
+        ) + 4
+        table.setMinimumHeight(0)
+        table.setMaximumHeight(16777215)
+        table.setFixedHeight(height)
+
+    @staticmethod
     def _table(columns: int):
         table = QTableWidget()
         table.setColumnCount(columns)
@@ -1844,6 +2059,8 @@ class AnomalyReviewPage(QWidget):
             )
         )
         table.verticalHeader().setVisible(False)
+        # Consistent left alignment for headers and contents in every table.
+        table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
@@ -1885,6 +2102,10 @@ class AnomalyReviewPage(QWidget):
     def _anomaly_tab_style():
         tkn = tokens()
         selected_text = "#062f28" if tkn.name == "dark" else "#ffffff"
+        # Opaque, visibly tinted hover: the generic hover token is almost
+        # identical to the tab-bar background and read as transparent.
+        hover_bg = "#203a31" if tkn.name == "dark" else "#dcefe2"
+        hover_border = tkn.brand if tkn.name == "dark" else "#9cc9ad"
         return f"""
             QTabWidget::pane {{
                 border: none;
@@ -1912,9 +2133,14 @@ class AnomalyReviewPage(QWidget):
                 background: {tkn.brand};
                 color: {selected_text};
             }}
-            QTabBar::tab:hover {{
-                background: {tkn.hover};
+            QTabBar::tab:selected:hover {{
+                background: {tkn.brand_hover};
+                color: {selected_text};
+            }}
+            QTabBar::tab:!selected:hover {{
+                background: {hover_bg};
                 color: {tkn.text};
+                border: 1px solid {hover_border};
             }}
         """
 
