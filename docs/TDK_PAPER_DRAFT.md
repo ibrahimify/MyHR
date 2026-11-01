@@ -607,5 +607,3 @@ python -m scripts.audit_tdk_protocol_artifact "$r/$d"
 python scripts/build_tdk_figures.py
 python scripts/verify_anomaly_demo.py
 ```
-
-No holdout command exists. The protocol runner refuses a holdout run until a human-approved protocol freeze.
