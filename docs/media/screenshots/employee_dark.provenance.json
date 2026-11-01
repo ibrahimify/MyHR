@@ -1,0 +1,14 @@
+{
+  "capture_type": "reproducible_offscreen_application_window",
+  "source_revision": "1be6ed3d44534dbf2400ac95bf5c2ec956d449cf",
+  "database": "temporary synthetic dataset from scripts/seed_demo_company.py",
+  "employee": "EMP-0034",
+  "view": "Employees > employee profile > Performance",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "theme": "dark",
+  "contains_private_data": false,
+  "sha256": "5e7f938699082e91180673fd906574097ca218013f2c6ba7b56b5e2c6c690a3e"
+}
