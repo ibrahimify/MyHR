@@ -1,0 +1,19 @@
+{
+  "capture_type": "reproducible_offscreen_application_window",
+  "source_revision": "f939c97bdbcb2b9d77a6cf5f33505b0e918d738e",
+  "database": "none; fixed synthetic research scenario generated in memory",
+  "scenario": "ind-dev-01",
+  "view": "Anomaly Review > queue, evidence, and equal-capacity comparison",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "theme": "light",
+  "contains_private_data": false,
+  "holdout_accessed": false,
+  "files": {
+    "anomaly_queue_light.png": "ce6934d8306c31567b2b3864c079dfbaf1317bb3c2424d0b3493cde7febac042",
+    "anomaly_evidence_light.png": "7e786df9b2902394c47d66c09a18bb600b2f45855dc0ebed6ba9acab84dec1a8",
+    "anomaly_comparison_light.png": "e4d0478aed014a1b9441a3109d6c67597eb5612a1d8de281c34d5cd9c06d6adc"
+  }
+}
