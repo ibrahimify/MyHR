@@ -95,10 +95,10 @@ class DashboardSmokeTests(unittest.TestCase):
         try:
             page._start_run()
             deadline = time.monotonic() + 90
-            while page._thread is not None and time.monotonic() < deadline:
+            while page._process is not None and time.monotonic() < deadline:
                 self.app.processEvents()
                 QTest.qWait(25)
-            self.assertIsNone(page._thread, page.status.text())
+            self.assertIsNone(page._process, page.status.text())
             self.assertIsNotNone(page.result, page.status.text())
             self.assertEqual(100, page.progress.value())
         finally:
@@ -119,23 +119,13 @@ class DashboardSmokeTests(unittest.TestCase):
         window.stack.setCurrentWidget(page)
         original_theme = theme_manager.theme
 
-        def cancellable_run(_index, *, cancelled, progress, **_kwargs):
-            progress(45, "model")
-            deadline = time.monotonic() + 5
-            while time.monotonic() < deadline:
-                if cancelled():
-                    raise InterruptedError("cancelled by page disposal")
-                time.sleep(0.01)
-            raise AssertionError("worker was not cancelled")
-
         try:
-            with patch("src.ui.pages.anomaly_review.run_demo_scenario", side_effect=cancellable_run):
-                page._start_run()
-                QTest.qWait(50)
-                target = THEME_DARK if original_theme == THEME_LIGHT else THEME_LIGHT
-                theme_manager.set_theme(target, persist=False)
-                self.app.processEvents()
-            self.assertFalse(page._thread is not None and page._thread.isRunning())
+            page._start_run()
+            QTest.qWait(100)
+            target = THEME_DARK if original_theme == THEME_LIGHT else THEME_LIGHT
+            theme_manager.set_theme(target, persist=False)
+            self.app.processEvents()
+            self.assertIsNone(page._process)
             rebuilt = window._get_page("anomaly_review")
             self.assertIsNot(page, rebuilt)
         finally:

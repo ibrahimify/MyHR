@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QThread, Qt, Signal, Slot
+import multiprocessing
+from queue import Empty
+
+from PySide6.QtCore import QTimer, Qt, Slot
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -49,31 +52,17 @@ from src.ui.theme import tokens
 _DEMO_EMPLOYEE_COUNT = 120
 
 
-class _DemoThread(QThread):
-    progress = Signal(int, str)
-    completed = Signal(object)
-    failed = Signal(str)
-    def __init__(self, option_index: int, parent=None):
-        super().__init__(parent)
-        self.option_index = option_index
-        self.cancel_requested = False
-
-    def cancel(self):
-        self.cancel_requested = True
-
-    def run(self):
-        try:
-            result = run_demo_scenario(
-                self.option_index,
-                employee_count=_DEMO_EMPLOYEE_COUNT,
-                progress=lambda value, message: self.progress.emit(value, message),
-                cancelled=lambda: self.cancel_requested,
-            )
-            self.completed.emit(result)
-        except InterruptedError:
-            pass
-        except Exception as exc:  # The error is surfaced to the reviewer.
-            self.failed.emit(f"{type(exc).__name__}: {exc}")
+def _demo_process_entry(option_index: int, output_queue) -> None:
+    """Run native ML outside Qt's process and return presentation-safe data."""
+    try:
+        result = run_demo_scenario(
+            option_index,
+            employee_count=_DEMO_EMPLOYEE_COUNT,
+            progress=lambda value, stage: output_queue.put(("progress", value, stage)),
+        )
+        output_queue.put(("completed", result))
+    except Exception as exc:
+        output_queue.put(("failed", f"{type(exc).__name__}: {exc}"))
 
 
 class AnomalyReviewPage(QWidget):
@@ -84,7 +73,12 @@ class AnomalyReviewPage(QWidget):
         self.user = user
         self.result: DemoRunResult | None = None
         self._visible_queue = ()
-        self._thread: _DemoThread | None = None
+        self._process = None
+        self._process_queue = None
+        self._process_terminal_message = False
+        self._process_timer = QTimer(self)
+        self._process_timer.setInterval(75)
+        self._process_timer.timeout.connect(self._poll_process)
         self.setObjectName("AnomalyReviewPage")
         self.setStyleSheet(
             f"QWidget#AnomalyReviewPage {{ background: {tokens().canvas}; }}"
@@ -285,6 +279,8 @@ class AnomalyReviewPage(QWidget):
             t("anomaly_demo_deficit"),
         ])
         self.calculation_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.calculation_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
+        self.calculation_table.setColumnWidth(0, 210)
         self.calculation_table.horizontalHeader().setFixedHeight(52)
         self.calculation_table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.calculation_table.setMaximumHeight(150)
@@ -386,20 +382,58 @@ class AnomalyReviewPage(QWidget):
 
     @Slot()
     def _start_run(self):
-        if self._thread is not None:
+        if self._process is not None:
             return
         self._clear_results()
         self._set_running(True)
         self.progress.setValue(2)
         self.status.setText(t("anomaly_demo_running"))
         option_index = int(self.scenario_select.currentData() or 0)
-        thread = _DemoThread(option_index, self)
-        thread.progress.connect(self._on_progress)
-        thread.completed.connect(self._on_completed)
-        thread.failed.connect(self._on_failed)
-        thread.finished.connect(self._clear_worker)
-        self._thread = thread
-        thread.start()
+        context = multiprocessing.get_context("spawn")
+        self._process_queue = context.Queue()
+        self._process_terminal_message = False
+        self._process = context.Process(
+            target=_demo_process_entry,
+            args=(option_index, self._process_queue),
+            daemon=True,
+        )
+        self._process.start()
+        self._process_timer.start()
+
+    @Slot()
+    def _poll_process(self):
+        if self._process is None or self._process_queue is None:
+            return
+        try:
+            while True:
+                message = self._process_queue.get_nowait()
+                kind = message[0]
+                if kind == "progress":
+                    self._on_progress(int(message[1]), str(message[2]))
+                elif kind == "completed":
+                    self._process_terminal_message = True
+                    self._on_completed(message[1])
+                elif kind == "failed":
+                    self._process_terminal_message = True
+                    self._on_failed(str(message[1]))
+        except Empty:
+            pass
+        if self._process is not None and not self._process.is_alive():
+            if not self._process_terminal_message:
+                # The result queue can lag process exit by one timer cycle.
+                try:
+                    message = self._process_queue.get(timeout=0.2)
+                    if message[0] == "completed":
+                        self._process_terminal_message = True
+                        self._on_completed(message[1])
+                    elif message[0] == "failed":
+                        self._process_terminal_message = True
+                        self._on_failed(str(message[1]))
+                except Empty:
+                    self._on_failed(
+                        f"Worker process exited with code {self._process.exitcode}"
+                    )
+            self._clear_worker()
 
     @Slot(int, str)
     def _on_progress(self, value: int, message: str):
@@ -442,11 +476,18 @@ class AnomalyReviewPage(QWidget):
 
     @Slot()
     def _clear_worker(self):
-        thread = self._thread
-        self._thread = None
+        process = self._process
+        queue = self._process_queue
+        self._process_timer.stop()
+        self._process = None
+        self._process_queue = None
         self._set_running(False)
-        if thread is not None:
-            thread.deleteLater()
+        if process is not None:
+            process.join(timeout=1)
+            process.close()
+        if queue is not None:
+            queue.cancel_join_thread()
+            queue.close()
 
     def _set_running(self, running: bool):
         self.run_button.setEnabled(not running)
@@ -616,15 +657,17 @@ class AnomalyReviewPage(QWidget):
             self.evaluation_values[key].setText(value)
 
     def _wait_for_worker(self):
-        if self._thread is not None and self._thread.isRunning():
-            self._thread.cancel()
-            self._thread.requestInterruption()
-            self._thread.wait(90000)
+        if self._process is not None:
+            self._process_timer.stop()
+            if self._process.is_alive():
+                self._process.terminate()
+                self._process.join(timeout=10)
+            self._clear_worker()
 
     def prepare_for_disposal(self) -> bool:
-        """Cancel a run and keep Qt objects alive until their thread exits."""
+        """Cancel a run and keep Qt objects alive until its process exits."""
         self._wait_for_worker()
-        return self._thread is None or not self._thread.isRunning()
+        return self._process is None
 
     def refresh(self):
         """The demonstration runs only after an explicit reviewer action."""

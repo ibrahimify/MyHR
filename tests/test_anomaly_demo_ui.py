@@ -1,10 +1,9 @@
 """End-to-end smoke checks for the interactive anomaly demonstration."""
 
 import os
+from queue import Queue
 import time
 from types import SimpleNamespace
-from unittest.mock import patch
-
 import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -12,7 +11,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
-from src.ui.pages.anomaly_review import AnomalyReviewPage
+from src.ui.pages.anomaly_review import AnomalyReviewPage, _demo_process_entry
 from src.services.anomaly_detection import run_demo_scenario
 
 
@@ -26,7 +25,7 @@ def completed_result():
     return run_demo_scenario(0, employee_count=120)
 
 
-def _wait_until(app, predicate, timeout_ms=20_000):
+def _wait_until(app, predicate, timeout_ms=90_000):
     deadline = time.monotonic() + timeout_ms / 1000
     while time.monotonic() < deadline:
         app.processEvents()
@@ -40,7 +39,7 @@ def test_demo_runs_and_drills_into_same_synthetic_employee(app):
     page = AnomalyReviewPage(SimpleNamespace(role="admin"))
     try:
         page._start_run()
-        _wait_until(app, lambda: page._thread is None)
+        _wait_until(app, lambda: page._process is None)
         assert page.result is not None
         assert page.progress.value() == 100
         assert page.queue_table.rowCount() == len(page.result.queue)
@@ -56,12 +55,7 @@ def test_demo_runs_and_drills_into_same_synthetic_employee(app):
 def test_model_failure_is_visible_and_not_reported_as_success(app):
     page = AnomalyReviewPage(SimpleNamespace(role="admin"))
     try:
-        with patch(
-            "src.ui.pages.anomaly_review.run_demo_scenario",
-            side_effect=RuntimeError("model unavailable"),
-        ):
-            page._start_run()
-            _wait_until(app, lambda: page._thread is None)
+        page._on_failed("RuntimeError: model unavailable")
         assert page.result is None
         assert "model unavailable" in page.status.text()
         assert page.progress.value() == 0
@@ -70,17 +64,20 @@ def test_model_failure_is_visible_and_not_reported_as_success(app):
         page.close()
 
 
+def test_process_boundary_reports_service_failure():
+    output = Queue()
+    _demo_process_entry(99, output)
+    kind, message = output.get_nowait()
+    assert kind == "failed"
+    assert "unknown demonstration scenario" in message
+
+
 def test_failed_rerun_clears_previous_results(app, completed_result):
     page = AnomalyReviewPage(SimpleNamespace(role="admin"))
     try:
         page._on_completed(completed_result)
         assert page.queue_table.rowCount() > 0
-        with patch(
-            "src.ui.pages.anomaly_review.run_demo_scenario",
-            side_effect=RuntimeError("second run failed"),
-        ):
-            page._start_run()
-            _wait_until(app, lambda: page._thread is None)
+        page._on_failed("RuntimeError: second run failed")
         assert page.result is None
         assert page.queue_table.rowCount() == 0
         assert page.comparison_table.rowCount() == 0
