@@ -374,7 +374,7 @@ The demonstration is not a research experiment. It runs three fixed development 
 | `ind-dev-07` | Rapid expansion | 0/3 | 0/3 | 0/3 | 0/3 | 0/2 |
 | `ind-dev-12` | Merger and migration | 0/3 | 0/3 | 0/3 | 0/3 | 0/2 |
 
-*In-app demonstration outcomes at equal review capacity (24 evaluation records, 3 reviews per method). Each scenario has 3 injected errors among its evaluation records.*
+In-app demonstration outcomes at equal review capacity (24 evaluation records, 3 reviews per method). Each scenario has 3 injected errors among its evaluation records.
 
 The first scenario is shown by default and in the figures. Its policy-aware queue finds all three injected errors, but this is a single realization of 24 records. In the other two scenarios no representation, including the controls, finds any injected error within three reviews. The demonstration shows that the pipeline runs end to end and that its outputs are traceable. It provides no evidence for or against the research hypothesis.
 
@@ -626,15 +626,10 @@ No holdout command is included. The holdout runner remains unavailable until the
 ## Appendix B Recorded Decisions and Pending Freeze Work
 
 1. Implement invariant-only filtering for the primary residual comparison and report the complete workflow secondarily.
-2. Independently verify fixed-capacity recall as primary and the predeclared
-   three-test Holm family for AP and legitimate false-alert rates.
-3. Verify employee-linked entitlement, `known_then` and `later_review` views,
-   and concrete lawful correction/transition examples at protocol scale.
-4. Nominate the two complementary reviewers, freeze the 48-case sample and
-   seeds, execute the review, and preserve agreement and adjudication evidence.
-5. Freeze a balanced compatible-cell matrix with 30 seeds per included
-   condition (or a pre-approved written exception) and detector-inaccessible
-   causal truth.
+2. Independently verify fixed-capacity recall as primary and the predeclared three-test Holm family for AP and legitimate false-alert rates.
+3. Verify employee-linked entitlement, `known_then` and `later_review` views, and concrete lawful correction/transition examples at protocol scale.
+4. Nominate the two complementary reviewers, freeze the 48-case sample and seeds, execute the review, and preserve agreement and adjudication evidence.
+5. Freeze a balanced compatible-cell matrix with 30 seeds per included condition (or a pre-approved written exception) and detector-inaccessible causal truth.
 6. Freeze exact dependencies, analysis code, configuration, and source revision after independent verification.
 
 Approval note: project author Muhammad Ibrahim Shoeb authorized the implementation direction on 29 October 2026. No independent supervisor endorsement is recorded; earlier wording implying relayed supervisor answers was corrected in the decision records. Protocol freeze, holdout access, and final conclusions still require separate human approval and cannot be granted by an AI agent.

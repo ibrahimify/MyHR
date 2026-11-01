@@ -2,7 +2,7 @@
   "generator": "scripts/build_tdk_figures.py",
   "generator_sha256": "6d42e5563f16330496902af8d51e42b36aef2a8a0c4836c0550c24eecd3b0506",
   "git": {
-    "revision": "f3cb0f2b096ef92be6f2411228046cb68e99eae9",
+    "revision": "85215e5b77e94f35ad502703a5c6b5a140abbc3d",
     "branch": "research",
     "worktree_dirty": true
   },
@@ -142,7 +142,7 @@
         },
         {
           "path": "docs/TDK_PAPER_DRAFT.md",
-          "sha256": "f025d248722ff7f09c4129e2cfbea9ffcb37e9fe850e2f605417f82dc33d8970",
+          "sha256": "76f13054110d64c2936313db89a216cd789996f44f777841d23862424df5598a",
           "columns": [
             "Sections 4.6 and 6.5 (text)"
           ],
@@ -217,7 +217,7 @@
       "sources": [
         {
           "path": "docs/TDK_PAPER_DRAFT.md",
-          "sha256": "f025d248722ff7f09c4129e2cfbea9ffcb37e9fe850e2f605417f82dc33d8970",
+          "sha256": "76f13054110d64c2936313db89a216cd789996f44f777841d23862424df5598a",
           "columns": [
             "Sections 4.6, 4.9, 4.16 (text)"
           ],
@@ -261,7 +261,7 @@
         },
         {
           "path": "docs/TDK_PAPER_DRAFT.md",
-          "sha256": "f025d248722ff7f09c4129e2cfbea9ffcb37e9fe850e2f605417f82dc33d8970",
+          "sha256": "76f13054110d64c2936313db89a216cd789996f44f777841d23862424df5598a",
           "columns": [
             "Section 4.3 (text)"
           ],
@@ -297,7 +297,7 @@
       "sources": [
         {
           "path": "docs/TDK_PAPER_DRAFT.md",
-          "sha256": "f025d248722ff7f09c4129e2cfbea9ffcb37e9fe850e2f605417f82dc33d8970",
+          "sha256": "76f13054110d64c2936313db89a216cd789996f44f777841d23862424df5598a",
           "columns": [
             "Section 4.14 (text)"
           ],
@@ -602,7 +602,7 @@
         },
         {
           "path": "docs/TDK_PAPER_DRAFT.md",
-          "sha256": "f025d248722ff7f09c4129e2cfbea9ffcb37e9fe850e2f605417f82dc33d8970",
+          "sha256": "76f13054110d64c2936313db89a216cd789996f44f777841d23862424df5598a",
           "columns": [
             "Section 3.2 (A = M + C - S, R = max(0, B - A))",
             "Section 3.7 (policy effective at the decision date)"
@@ -734,7 +734,7 @@
       "sources": [
         {
           "path": "docs/TDK_PAPER_DRAFT.md",
-          "sha256": "f025d248722ff7f09c4129e2cfbea9ffcb37e9fe850e2f605417f82dc33d8970",
+          "sha256": "76f13054110d64c2936313db89a216cd789996f44f777841d23862424df5598a",
           "columns": [
             "Section 1.6 Markdown table"
           ],
