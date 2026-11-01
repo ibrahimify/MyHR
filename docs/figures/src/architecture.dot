@@ -1,0 +1,31 @@
+digraph architecture {
+
+  graph [fontname="Times-Roman", fontsize=11, nodesep=0.25, ranksep=0.3, pad=0.05, bgcolor="white", newrank=true];
+  node  [fontname="Times-Roman", fontsize=11, shape=box, style="solid", color="#000000", penwidth=0.8, margin="0.08,0.05", height=0.3];
+  edge  [fontname="Times-Roman", fontsize=11, color="#000000", penwidth=0.8, arrowsize=0.6];
+
+  rankdir=TB;
+  records  [label="Administrative records\n(employee histories, policy versions)"];
+  checks   [label="Deterministic checks\n(invariant contradictions; policy rules)"];
+  findings [label="Evidence-rich findings\n(rule, source events, calculation)"];
+  model    [label="Isolation Forest score on matched\nraw or policy-aware features"];
+  topk     [label="Top-k histories within a fixed\nadditional review budget"];
+  queue    [label="Review queue\n(recommendations only)"];
+  records -> checks;
+  checks -> findings [label=" finding"];
+  checks -> model [label=" no invariant finding"];
+  {rank=same; findings; model;}
+  model -> topk;
+  findings -> queue;
+  topk -> queue;
+  subgraph cluster_human {
+    label="Human-review boundary: scores never trigger automatic\npersonnel decisions, record edits or record merges";
+    labelloc=b; labeljust=c; fontcolor="#D55E00";
+    color="#D55E00"; style=dashed; penwidth=1.0; margin=8;
+    reviewer [label="Authorized human reviewer\ninspects rule, evidence, score"];
+    action   [label="Any personnel action only via\nthe audited application workflow"];
+    {rank=same; reviewer; action;}
+    reviewer -> action;
+  }
+  queue -> reviewer;
+}

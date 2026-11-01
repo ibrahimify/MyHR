@@ -25,8 +25,15 @@
                     "service": "local_fulltext",
                     "identifier": "liu2008_isolation_forest",
                     "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "crossref",
+                    "identifier": "10.1109/ICDM.2008.17",
+                    "retrieved_at": "2026-11-01"
                 }
-            ]
+            ],
+            "metadata_rechecked_at": "2026-11-01",
+            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md"
         },
         {
             "citation_key": "liu2012isolation",
@@ -42,8 +49,16 @@
                     "service": "local_fulltext",
                     "identifier": "liu2012_isolation_based",
                     "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "crossref",
+                    "identifier": "10.1145/2133360.2133363",
+                    "retrieved_at": "2026-11-01"
                 }
-            ]
+            ],
+            "metadata_rechecked_at": "2026-11-01",
+            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md",
+            "metadata_recheck_note": "Crossref check 2026-11-01: pages 1-39 added."
         },
         {
             "citation_key": "han2022adbench",
@@ -60,8 +75,16 @@
                     "service": "local_fulltext",
                     "identifier": "han2022_adbench",
                     "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "crossref",
+                    "identifier": "10.52202/068431-2329",
+                    "retrieved_at": "2026-11-01"
                 }
-            ]
+            ],
+            "metadata_rechecked_at": "2026-11-01",
+            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md",
+            "metadata_recheck_note": "Crossref check 2026-11-01: author corrected from 'Mingqi' to 'Minqi' Jiang (Crossref NeurIPS record and the paper's own author line; arXiv metadata carries the misspelling); volume 35 and pages 32142-32159 added."
         },
         {
             "citation_key": "li2024survey",
@@ -79,8 +102,15 @@
                     "service": "local_fulltext",
                     "identifier": "li2024_xad_survey",
                     "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "crossref",
+                    "identifier": "10.1145/3609333",
+                    "retrieved_at": "2026-11-01"
                 }
-            ]
+            ],
+            "metadata_rechecked_at": "2026-11-01",
+            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md"
         },
         {
             "citation_key": "carletti2023diffi",
@@ -97,8 +127,15 @@
                     "service": "local_fulltext",
                     "identifier": "carletti2023_diffi",
                     "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "crossref",
+                    "identifier": "10.1016/j.engappai.2022.105730",
+                    "retrieved_at": "2026-11-01"
                 }
-            ]
+            ],
+            "metadata_rechecked_at": "2026-11-01",
+            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md"
         },
         {
             "citation_key": "vaska2022context",
@@ -115,8 +152,16 @@
                     "service": "local_fulltext",
                     "identifier": "vaska2022_context_dependent",
                     "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "crossref",
+                    "identifier": "10.1109/CASE49997.2022.9926631",
+                    "retrieved_at": "2026-11-01"
                 }
-            ]
+            ],
+            "metadata_rechecked_at": "2026-11-01",
+            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md",
+            "metadata_recheck_note": "Crossref check 2026-11-01: entry type changed from misc to inproceedings; IEEE CASE 2022 booktitle and pages 2020-2027 added."
         },
         {
             "citation_key": "steinbuss2021benchmarking",
@@ -133,8 +178,16 @@
                     "service": "local_fulltext",
                     "identifier": "steinbuss2021_realistic_synthetic",
                     "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "crossref",
+                    "identifier": "10.1145/3441453",
+                    "retrieved_at": "2026-11-01"
                 }
-            ]
+            ],
+            "metadata_rechecked_at": "2026-11-01",
+            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md",
+            "metadata_recheck_note": "Crossref check 2026-11-01: pages 1-20 added."
         },
         {
             "citation_key": "hansen2023synthetic",
@@ -151,8 +204,16 @@
                     "service": "local_fulltext",
                     "identifier": "hansen2023_data_centric_synthetic",
                     "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "crossref",
+                    "identifier": "10.52202/075280-1466",
+                    "retrieved_at": "2026-11-01"
                 }
-            ]
+            ],
+            "metadata_rechecked_at": "2026-11-01",
+            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md",
+            "metadata_recheck_note": "Crossref check 2026-11-01: entry type changed from misc to inproceedings; NeurIPS volume 36 and pages 33781-33823 added."
         },
         {
             "citation_key": "fourure2021biased",
@@ -169,8 +230,16 @@
                     "service": "local_fulltext",
                     "identifier": "fourure2021_biased_evaluation",
                     "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "crossref",
+                    "identifier": "10.1007/978-3-030-86514-6_1",
+                    "retrieved_at": "2026-11-01"
                 }
-            ]
+            ],
+            "metadata_rechecked_at": "2026-11-01",
+            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md",
+            "metadata_recheck_note": "Crossref check 2026-11-01: booktitle completed with 'Applied Data Science Track', LNCS series and pages 3-18 added. LNCS volume number not independently verified and therefore omitted."
         },
         {
             "citation_key": "saito2015precision",
@@ -186,8 +255,15 @@
                     "service": "local_fulltext",
                     "identifier": "saito2015_precision_recall",
                     "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "crossref",
+                    "identifier": "10.1371/journal.pone.0118432",
+                    "retrieved_at": "2026-11-01"
                 }
-            ]
+            ],
+            "metadata_rechecked_at": "2026-11-01",
+            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md"
         },
         {
             "citation_key": "demsar2006statistical",
@@ -203,8 +279,16 @@
                     "service": "local_fulltext",
                     "identifier": "demsar2006_statistical_comparisons",
                     "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "publisher",
+                    "identifier": "https://www.jmlr.org/papers/v7/demsar06a.html",
+                    "retrieved_at": "2026-11-01"
                 }
-            ]
+            ],
+            "metadata_rechecked_at": "2026-11-01",
+            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md",
+            "metadata_recheck_note": "JMLR landing page check 2026-11-01 confirms 7(1):1-30, 2006; issue number added."
         },
         {
             "citation_key": "wang2024universal",
@@ -222,8 +306,16 @@
                     "service": "local_fulltext",
                     "identifier": "pei2024_dense_blocking",
                     "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "datacite",
+                    "identifier": "10.48550/arXiv.2404.14831",
+                    "retrieved_at": "2026-11-01"
                 }
-            ]
+            ],
+            "metadata_rechecked_at": "2026-11-01",
+            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md",
+            "metadata_recheck_note": "DataCite check 2026-11-01 confirms the arXiv DOI and six-author list. Crossref does not register arXiv DOIs. OpenAlex discovery found no later peer-reviewed version."
         },
         {
             "citation_key": "sorbo2024metricmaze",
@@ -240,8 +332,15 @@
                     "service": "local_fulltext",
                     "identifier": "sorbo2024_metric_maze",
                     "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "crossref",
+                    "identifier": "10.1007/s10618-023-00988-8",
+                    "retrieved_at": "2026-11-01"
                 }
-            ]
+            ],
+            "metadata_rechecked_at": "2026-11-01",
+            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md"
         },
         {
             "citation_key": "rochner2025rethink",
@@ -259,8 +358,16 @@
                     "service": "local_fulltext",
                     "identifier": "rochner2025_rethink_benchmarking",
                     "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "datacite",
+                    "identifier": "10.48550/arXiv.2507.15584",
+                    "retrieved_at": "2026-11-01"
                 }
-            ]
+            ],
+            "metadata_rechecked_at": "2026-11-01",
+            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md",
+            "metadata_recheck_note": "DataCite check 2026-11-01 confirms the arXiv DOI and six-author list. OpenAlex discovery found no later peer-reviewed version."
         },
         {
             "citation_key": "neelamegam2026bitemporal",
@@ -276,8 +383,16 @@
                     "service": "local_fulltext",
                     "identifier": "neelamegam2026_bitemporal",
                     "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "crossref",
+                    "identifier": "10.1007/s42488-026-00162-x",
+                    "retrieved_at": "2026-11-01"
                 }
-            ]
+            ],
+            "metadata_rechecked_at": "2026-11-01",
+            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md",
+            "metadata_recheck_note": "Crossref check 2026-11-01 matches; Crossref omits diacritics in 'Ozturkoglu', which the bibliography keeps as in the publisher PDF."
         },
         {
             "citation_key": "deng2026hilad",
@@ -294,8 +409,15 @@
                     "service": "local_fulltext",
                     "identifier": "deng2026_hilad",
                     "retrieved_at": "2026-10-17"
+                },
+                {
+                    "service": "crossref",
+                    "identifier": "10.1145/3778167",
+                    "retrieved_at": "2026-11-01"
                 }
-            ]
+            ],
+            "metadata_rechecked_at": "2026-11-01",
+            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md"
         },
         {
             "citation_key": "holm1979multiple",
@@ -307,8 +429,16 @@
                     "service": "jstor",
                     "identifier": "https://www.jstor.org/stable/4615733",
                     "retrieved_at": "2026-10-29"
+                },
+                {
+                    "service": "crossref_search",
+                    "identifier": "query.bibliographic: Holm 1979 sequentially rejective; no matching DOI",
+                    "retrieved_at": "2026-11-01"
                 }
-            ]
+            ],
+            "metadata_rechecked_at": "2026-11-01",
+            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md",
+            "metadata_recheck_note": "2026-11-01: Crossref bibliographic search returns no DOI for this paper; JSTOR stable page was not machine-retrievable (client challenge). Journal, volume, pages and year are corroborated by the reference list of demsar2006statistical (local full text, PDF page 29). Holm's step-down procedure is described in demsar2006statistical PDF pages 12-13; Holm's own full text was not inspected."
         },
         {
             "citation_key": "krippendorff2004reliability",
@@ -319,8 +449,21 @@
                     "service": "crossref",
                     "identifier": "10.1111/j.1468-2958.2004.tb00738.x",
                     "retrieved_at": "2026-10-29"
+                },
+                {
+                    "service": "crossref",
+                    "identifier": "10.1111/j.1468-2958.2004.tb00738.x",
+                    "retrieved_at": "2026-11-01"
                 }
-            ]
+            ],
+            "metadata_rechecked_at": "2026-11-01",
+            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md",
+            "metadata_recheck_note": "2026-11-01: Crossref record confirms title 'Reliability in Content Analysis' with subtitle 'Some Common Misconceptions and Recommendations', HCR 30(3):411-433. An author copy is listed in the University of Pennsylvania ScholarlyCommons repository (repository.upenn.edu/asc_papers/242) but automated retrieval returned a bot-challenge page, so the full text was not inspected or preserved."
         }
-    ]
+    ],
+    "metadata_recheck": {
+        "date": "2026-11-01",
+        "report": "docs/TDK_CITATION_AUDIT_2026-11-01.md",
+        "scope": "All 18 entries rechecked against Crossref (DOIs), DataCite (arXiv DOIs), arXiv API and publisher pages. Corrections are listed per record in metadata_recheck_note."
+    }
 }

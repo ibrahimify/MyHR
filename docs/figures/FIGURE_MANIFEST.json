@@ -1,0 +1,1223 @@
+{
+  "generator": "scripts/build_tdk_figures.py",
+  "generator_sha256": "6d42e5563f16330496902af8d51e42b36aef2a8a0c4836c0550c24eecd3b0506",
+  "git": {
+    "revision": "f3cb0f2b096ef92be6f2411228046cb68e99eae9",
+    "branch": "research",
+    "worktree_dirty": true
+  },
+  "font": {
+    "requested": "Times New Roman",
+    "matplotlib_family_used": "Times New Roman",
+    "matplotlib_font_file": "times.ttf",
+    "graphviz_fontname": "Times New Roman",
+    "pdf_embedded_fonts": [
+      "TimesNewRomanPSMT"
+    ]
+  },
+  "tools": {
+    "python": "3.13.5",
+    "matplotlib": "3.11.2",
+    "pandas": "2.3.3",
+    "graphviz": "dot - graphviz version 12.2.1 (20241206.2353)"
+  },
+  "design": {
+    "placed_width_in": 6.0,
+    "min_font_pt": 10.0,
+    "png_dpi": 300,
+    "palette": "Okabe-Ito where colour encodes information; otherwise black/grey"
+  },
+  "figures": {
+    "feature_design": {
+      "kind": "graphviz",
+      "outputs": [
+        "docs/figures/src/feature_design.dot",
+        "docs/figures/feature_design.pdf",
+        "docs/figures/feature_design.svg",
+        "docs/figures/feature_design.png"
+      ],
+      "caption": "Matched feature representations and controls as defined in protocol_evaluation.feature_representations(). Raw and policy-aware representations share the common core and add three features each. Raw ablations remove columns; policy ablations keep the core plus one policy feature. The wrong-policy and shuffled-policy controls use the same columns as policy_matched but alter the policy input. Feature names are those of features.py.",
+      "sources": [
+        {
+          "path": "src/services/anomaly_detection/protocol_evaluation.py",
+          "sha256": "a14b5002ca2635c67a891dcb8b5f95ff9feb07cccfe2dd6448078b9bc50c5a15",
+          "columns": [
+            "COMMON_CORE_FEATURES, RAW_MATCHED_FEATURES, POLICY_MATCHED_FEATURES, feature_representations(), _vectors(), _wrong_policy(), _frequency_preserving_policy_permutation()"
+          ],
+          "note": "Diagram describes this code; sha256 is of the current working-tree file.",
+          "artifact_recorded_sha256": {
+            "independent_development_4feea4508de1bb05": "1b1ac101bcec00742f9be3000e75984af6d0ca42adb366d42b1813b3e8c69892"
+          }
+        },
+        {
+          "path": "src/services/anomaly_detection/features.py",
+          "sha256": "500de07302c4c590cdd28fb3d1a6722c71b664436c2a757d523afa896152c8e2",
+          "columns": [
+            "feature keys of extract_raw_features() and _promotion_service_context()"
+          ],
+          "note": "Diagram describes this code; sha256 is of the current working-tree file.",
+          "artifact_recorded_sha256": {
+            "independent_development_4feea4508de1bb05": "869309afd28b9b3db53ae9a2dbe60c330913e5ef8db18da48d4a74c77ce69038"
+          }
+        },
+        {
+          "path": "src/services/anomaly_detection/protocol_evaluation.py",
+          "git_revision": "56597d3b7119dde8bbd26df4ef303f32d39d3dff",
+          "git_blob_sha256": "1b1ac101bcec00742f9be3000e75984af6d0ca42adb366d42b1813b3e8c69892",
+          "artifact_recorded_sha256": "1b1ac101bcec00742f9be3000e75984af6d0ca42adb366d42b1813b3e8c69892",
+          "artifact": "independent_development_4feea4508de1bb05",
+          "columns": [
+            "feature constants and representations identical to the current file (asserted at build time)"
+          ],
+          "note": "Historical code read with `git show <revision>:<path>`; the artifact hash may differ from the blob hash by line-ending normalisation."
+        }
+      ],
+      "layout": {
+        "natural_width_in": 6.444,
+        "natural_height_in": 6.528,
+        "design_font_pt": 11.0,
+        "font_pt_if_placed_at_6in_width": 10.24,
+        "recommended_placed_width_in": 6.0
+      },
+      "pdf_embedded_fonts": [
+        "TimesNewRomanPSMT"
+      ],
+      "output_sha256": {
+        "docs/figures/src/feature_design.dot": "9bbc8c02eeb384a8e1835017d1873eafb3e7dfebc4f0e2fa0a7de6b6647aa314",
+        "docs/figures/feature_design.pdf": "8cb1ac6b149480aa87d874e72111a41c404b223574502263a5cc4c845d9f93a7",
+        "docs/figures/feature_design.svg": "60f7e2a83e6f2d5e8d30fc33f63fda60759fffdbb6d01881b2c161911e6b1f34",
+        "docs/figures/feature_design.png": "e5d17cfbd105329f47082c4f933370a859cafb10ac3323a047e07a28caa09ee1"
+      }
+    },
+    "feature_collapse": {
+      "kind": "graphviz",
+      "outputs": [
+        "docs/figures/src/feature_collapse.dot",
+        "docs/figures/feature_collapse.pdf",
+        "docs/figures/feature_collapse.svg",
+        "docs/figures/feature_collapse.png"
+      ],
+      "caption": "Historical residual design failure and corrected design. In the historical design the residual filter removed every history with a positive policy deficit, so the three policy-specific features were zero for every retained history and the comparison could not test the policy hypothesis. The corrected design gates only on invariant contradictions and gives every representation the same fixed additional review budget over the same residual histories.",
+      "sources": [
+        {
+          "path": "src/services/anomaly_detection/protocol_evaluation.py",
+          "git_revision": "0ad4e962f81d69e87bf7fd4987b8a84d4b545453",
+          "git_blob_sha256": "eaf80ccaea7885f7b3abc7cb430781b90149f45733828d1f6950cefe2952c9b4",
+          "artifact_recorded_sha256": "eaf80ccaea7885f7b3abc7cb430781b90149f45733828d1f6950cefe2952c9b4",
+          "artifact": "independent_development_e342bd4acf39b06b",
+          "columns": [
+            "residual filter on validate_record_with_policy() scores; feature constants"
+          ],
+          "note": "Historical code read with `git show <revision>:<path>`; the artifact hash may differ from the blob hash by line-ending normalisation."
+        },
+        {
+          "path": "src/services/anomaly_detection/protocol_evaluation.py",
+          "sha256": "a14b5002ca2635c67a891dcb8b5f95ff9feb07cccfe2dd6448078b9bc50c5a15",
+          "columns": [
+            "residual filter on validate_invariant_record() scores; _top_budget_predictions()"
+          ],
+          "note": "Diagram describes this code; sha256 is of the current working-tree file.",
+          "artifact_recorded_sha256": {
+            "independent_development_4feea4508de1bb05": "1b1ac101bcec00742f9be3000e75984af6d0ca42adb366d42b1813b3e8c69892"
+          }
+        },
+        {
+          "path": "src/services/anomaly_detection/deterministic_checks.py",
+          "sha256": "2163deda79b277e086002e82959db1916a6094c40197e21689eb4ae5f8b09aa9",
+          "columns": [
+            "validate_invariant_record(), validate_record_with_policy()"
+          ],
+          "note": "Diagram describes this code; sha256 is of the current working-tree file.",
+          "artifact_recorded_sha256": {
+            "independent_development_e342bd4acf39b06b": "ae5278839ae732ef4d7bb1619acec84268e82713c3ffd92b1046e81d14d5fb6a",
+            "independent_development_4feea4508de1bb05": "bb0b6801778755280b98ecdf23f6ee2bd25654db43b05ee253576891267596e4"
+          }
+        },
+        {
+          "path": "research_outputs/independent_development/independent_development_4feea4508de1bb05/metadata.json",
+          "sha256": "fca5236e606ead0dd7ab10bce3334795c4b6ff62f61c770042243d47d742d6a3",
+          "columns": [
+            "review_budget"
+          ]
+        },
+        {
+          "path": "docs/TDK_PAPER_DRAFT.md",
+          "sha256": "f025d248722ff7f09c4129e2cfbea9ffcb37e9fe850e2f605417f82dc33d8970",
+          "columns": [
+            "Sections 4.6 and 6.5 (text)"
+          ],
+          "note": "Zero-valued policy features after filtering are stated in Section 6.5 and docs/RESEARCH_HANDOVER.md section 5.2; not recomputed from record-level features here."
+        }
+      ],
+      "layout": {
+        "natural_width_in": 6.542,
+        "natural_height_in": 5.083,
+        "design_font_pt": 11.0,
+        "font_pt_if_placed_at_6in_width": 10.09,
+        "recommended_placed_width_in": 6.0
+      },
+      "pdf_embedded_fonts": [
+        "TimesNewRomanPSMT"
+      ],
+      "output_sha256": {
+        "docs/figures/src/feature_collapse.dot": "4ce284914c037b3875073983f90cce3a6ae7bb9f102c094d5f357bbc5cc054fd",
+        "docs/figures/feature_collapse.pdf": "28588164ea847066c7dee6e17276de647dc5b7f3e29b14b2e6ba4622986dece9",
+        "docs/figures/feature_collapse.svg": "3a4757292871f4b5dd61de7bd2beda57ddb4c8b6d50ebc8c33375f9096cc1e38",
+        "docs/figures/feature_collapse.png": "24efd2f84e7bbb44718d6183c9eacadbbb8ce80b8e61076631148fcfccfb3723"
+      }
+    },
+    "duplicate_results": {
+      "kind": "graphviz",
+      "outputs": [
+        "docs/figures/src/duplicate_results.dot",
+        "docs/figures/duplicate_results.pdf",
+        "docs/figures/duplicate_results.svg",
+        "docs/figures/duplicate_results.png"
+      ],
+      "caption": "Duplicate-evaluation contract implemented in duplicate_detection.evaluate_duplicate_detection(). Truth pairs come from entity clusters within one partition; each method declares its pair universe, and TP, FP, FN and TN are counted by set membership within it. Blocking recall and end-to-end, workload, runtime and memory figures are reported separately. No duplicate-performance claim is made.",
+      "sources": [
+        {
+          "path": "src/services/anomaly_detection/duplicate_detection.py",
+          "sha256": "ae3f40536fd455dddf5754cfcfc4982228d87e8a2c5125da8a199400c66b85ba",
+          "columns": [
+            "evaluate_duplicate_detection(), confusion_counts_for_pairs(), _true_duplicate_pairs(), _blocked_similarity_pairs(), select_similarity_threshold()"
+          ],
+          "note": "Diagram describes this code; sha256 is of the current working-tree file.",
+          "artifact_recorded_sha256": {
+            "independent_development_4feea4508de1bb05": "88c72beca178235d36457c1ab1b6fd5f73b74ed09d650aecfa85cb5b14e66bf0"
+          }
+        }
+      ],
+      "layout": {
+        "natural_width_in": 6.569,
+        "natural_height_in": 4.819,
+        "design_font_pt": 11.0,
+        "font_pt_if_placed_at_6in_width": 10.05,
+        "recommended_placed_width_in": 6.0
+      },
+      "pdf_embedded_fonts": [
+        "TimesNewRomanPSMT"
+      ],
+      "output_sha256": {
+        "docs/figures/src/duplicate_results.dot": "7e3c3cbefa552e812e8d6c8df49e5ac18f4e0bd6ebf6c3943f17d9b5a6aa0a45",
+        "docs/figures/duplicate_results.pdf": "ab1b11f9bf237d69642d22c5b2d35a6ef053c0914c0c2e8c2b5520b4750e57b6",
+        "docs/figures/duplicate_results.svg": "3d99714f2ec08584aea034aa5bf294659e221f4885bf2d5f451d62c997141058",
+        "docs/figures/duplicate_results.png": "f8363ce27552735db497d66f4478e953e856324cc6479266f9551b5dc5667257"
+      }
+    },
+    "architecture": {
+      "kind": "graphviz",
+      "outputs": [
+        "docs/figures/src/architecture.dot",
+        "docs/figures/architecture.pdf",
+        "docs/figures/architecture.svg",
+        "docs/figures/architecture.png"
+      ],
+      "caption": "Rules-first, ML-second decision-support architecture. Deterministic checks produce evidence-rich findings; histories without an invariant finding receive matched raw or policy-aware features, an Isolation Forest score and a top-k position within a fixed additional review budget. Both paths end in a review queue. The dashed boundary marks the only decision point: an authorized human reviewer. Anomaly scores never trigger automatic personnel decisions.",
+      "sources": [
+        {
+          "path": "docs/TDK_PAPER_DRAFT.md",
+          "sha256": "f025d248722ff7f09c4129e2cfbea9ffcb37e9fe850e2f605417f82dc33d8970",
+          "columns": [
+            "Sections 4.6, 4.9, 4.16 (text)"
+          ],
+          "note": "Conceptual diagram; no numeric data."
+        }
+      ],
+      "layout": {
+        "natural_width_in": 5.806,
+        "natural_height_in": 5.5,
+        "design_font_pt": 11.0,
+        "font_pt_if_placed_at_6in_width": 11.37,
+        "recommended_placed_width_in": 5.81
+      },
+      "pdf_embedded_fonts": [
+        "TimesNewRomanPSMT"
+      ],
+      "output_sha256": {
+        "docs/figures/src/architecture.dot": "18eafb1509352114546f880f16e229946dc9ebafbfd4ab4289ef18038e29c222",
+        "docs/figures/architecture.pdf": "3d0a96e267a88d15ca2705f85234697497a8e3b3c7ffbffccfe66bbefee25909",
+        "docs/figures/architecture.svg": "b7e01e93f4cb6fa351643881cd6a9a89334995f2abfb81f81e9f353fefaaaeb9",
+        "docs/figures/architecture.png": "18dd40ee48b305a5b69753d9d0d951b8864fbb3bc2792fb4afa10a6ae2e76981"
+      }
+    },
+    "experiment_flow": {
+      "kind": "graphviz",
+      "outputs": [
+        "docs/figures/src/experiment_flow.dot",
+        "docs/figures/experiment_flow.pdf",
+        "docs/figures/experiment_flow.svg",
+        "docs/figures/experiment_flow.png"
+      ],
+      "caption": "Evaluation lifecycle. Within each scenario, models are fitted on training histories, thresholds are selected on validation histories and metrics are computed on test histories (counts from artifact 4feea4508de1bb05). Development and validation scenario families remain inspectable; the final holdout is not generated and has never been accessed, and stays locked until a human-approved protocol freeze.",
+      "sources": [
+        {
+          "path": "research_outputs/independent_development/independent_development_4feea4508de1bb05/record_truth.csv",
+          "sha256": "1a80759fe837fa0ab3049ecf9d3b707b5c6707b580c50808ecfa216587149130",
+          "columns": [
+            "split"
+          ],
+          "note": "Counts of train/validation/test histories."
+        },
+        {
+          "path": "docs/TDK_PAPER_DRAFT.md",
+          "sha256": "f025d248722ff7f09c4129e2cfbea9ffcb37e9fe850e2f605417f82dc33d8970",
+          "columns": [
+            "Section 4.3 (text)"
+          ],
+          "note": "Boundary definitions."
+        }
+      ],
+      "layout": {
+        "natural_width_in": 5.778,
+        "natural_height_in": 3.069,
+        "design_font_pt": 11.0,
+        "font_pt_if_placed_at_6in_width": 11.42,
+        "recommended_placed_width_in": 5.78
+      },
+      "pdf_embedded_fonts": [
+        "TimesNewRomanPSMT"
+      ],
+      "output_sha256": {
+        "docs/figures/src/experiment_flow.dot": "60776dcf752b7eadf4f998b8ce5732f57a349473f79ccb97831c09af1574bc3d",
+        "docs/figures/experiment_flow.pdf": "387ee4403fd33dba2f88be5076624b63e0f88fe11cbf5470e3b50e5f140e3b08",
+        "docs/figures/experiment_flow.svg": "345462a625e5fa104dc0bd1d5c7ea7ff00615e926f0af8e5f83ce81636df8372",
+        "docs/figures/experiment_flow.png": "2245df99a8cd74d4b6eb4c48f81d51f0aa40f2744ac055719a8b508d26782966"
+      }
+    },
+    "artifact_lifecycle": {
+      "kind": "graphviz",
+      "outputs": [
+        "docs/figures/src/artifact_lifecycle.dot",
+        "docs/figures/artifact_lifecycle.pdf",
+        "docs/figures/artifact_lifecycle.svg",
+        "docs/figures/artifact_lifecycle.png"
+      ],
+      "caption": "Write-once artifact lifecycle. Runs execute in a process-owned staging directory, record provenance and a SHA-256 manifest, and are atomically published. An independent audit recomputes checksums and statistics; failed artifacts are preserved with the defect recorded. Verification establishes reproducible arithmetic, not scientific validity.",
+      "sources": [
+        {
+          "path": "docs/TDK_PAPER_DRAFT.md",
+          "sha256": "f025d248722ff7f09c4129e2cfbea9ffcb37e9fe850e2f605417f82dc33d8970",
+          "columns": [
+            "Section 4.14 (text)"
+          ],
+          "note": "Conceptual diagram; no numeric data."
+        }
+      ],
+      "layout": {
+        "natural_width_in": 4.375,
+        "natural_height_in": 5.264,
+        "design_font_pt": 11.0,
+        "font_pt_if_placed_at_6in_width": 15.09,
+        "recommended_placed_width_in": 4.38
+      },
+      "pdf_embedded_fonts": [
+        "TimesNewRomanPSMT"
+      ],
+      "output_sha256": {
+        "docs/figures/src/artifact_lifecycle.dot": "6b9f5a835156c4a5e8139b74beb31ae7b71efd15959a6787ddb8fb4644533d8b",
+        "docs/figures/artifact_lifecycle.pdf": "081065fe60838d931544e7da6d25e1e9da22ebe8fc0f1685148bf3b32d7215de",
+        "docs/figures/artifact_lifecycle.svg": "9aba1219fe119521e5ea090a5681116659f30bdb2a336b86fdfa0b4ebb338cca",
+        "docs/figures/artifact_lifecycle.png": "a595890796901265c719af70c6308c3b4e70b8510b22dbb1f2012aea385c3b5c"
+      }
+    },
+    "primary_recall": {
+      "outputs": [
+        "docs/figures/primary_recall.pdf",
+        "docs/figures/primary_recall.svg",
+        "docs/figures/primary_recall.png"
+      ],
+      "caption": "Residual recall at equal review capacity in exploratory development artifact 4feea4508de1bb05 (12 scenarios, 864 eligible test histories, 108 labelled anomalies, 96 alerts per representation). (a) Scenario-mean recall with stored 95% intervals for every representation, including the wrong-policy and shuffled-policy controls and single-feature ablations; colour and marker shape both encode the family. (b) Paired policy-matched minus raw-matched recall difference with the stored 95% bootstrap interval and sign-flip p-value. The interval crosses zero; no superiority, inferiority or equivalence claim follows.",
+      "sources": [
+        {
+          "path": "research_outputs/independent_development/independent_development_4feea4508de1bb05/aggregate_metrics.csv",
+          "sha256": "4208f3f9809ae6450e6af2d1a7931b02a42c67da14bfbc08d526ccbd7bfcd441",
+          "columns": [
+            "representation",
+            "recall_mean",
+            "recall_ci95_low",
+            "recall_ci95_high",
+            "true_positives_total",
+            "positive_count_total"
+          ],
+          "selector": "method == 'rule_negative_isolation_forest' and operating_point == 'fixed_review_budget'"
+        },
+        {
+          "path": "research_outputs/independent_development/independent_development_4feea4508de1bb05/paired_comparisons.csv",
+          "sha256": "18e4ad23d4807b9c1abedb8ac0db855571700bec13273d2757c3fecd18155596",
+          "columns": [
+            "recall_delta_mean",
+            "recall_delta_ci95_low",
+            "recall_delta_ci95_high",
+            "recall_delta_sign_flip_p"
+          ],
+          "selector": "method == 'rule_negative_isolation_forest' and operating_point == 'fixed_review_budget'"
+        }
+      ],
+      "evidence_status": "exploratory development evidence (inspected); not confirmatory",
+      "kind": "matplotlib",
+      "layout": {
+        "width_in": 6.0,
+        "height_in": 4.9,
+        "min_font_pt_at_design_size": 10.0
+      },
+      "pdf_embedded_fonts": [
+        "TimesNewRomanPSMT"
+      ],
+      "output_sha256": {
+        "docs/figures/primary_recall.pdf": "404b90cac9cabbffafdfd976799094ccbca84e50530b222a0cecc9b527604806",
+        "docs/figures/primary_recall.svg": "a7102d99bc68122101def4e1dd4c20aeede915c288335b1bb5e4e0232ea3b770",
+        "docs/figures/primary_recall.png": "f2876c89d3439098872e6abbe3b9797ad84aa6d2e6247d99bffee886ec4d74bc"
+      }
+    },
+    "residual_outcomes": {
+      "outputs": [
+        "docs/figures/residual_outcomes.pdf",
+        "docs/figures/residual_outcomes.svg",
+        "docs/figures/residual_outcomes.png"
+      ],
+      "caption": "Pooled residual alert outcomes at equal review capacity in development artifact 4feea4508de1bb05 (12 scenarios; rule-negative Isolation Forest, fixed review budget). Left: composition of the 96 alerts (true positives, solid; false positives, hatched). Right: the 108 labelled anomalies split into detected and missed. Counts are pooled across scenarios and are descriptive; the wrong-policy control selects the same alerts as the policy-matched representation.",
+      "sources": [
+        {
+          "path": "research_outputs/independent_development/independent_development_4feea4508de1bb05/aggregate_metrics.csv",
+          "sha256": "4208f3f9809ae6450e6af2d1a7931b02a42c67da14bfbc08d526ccbd7bfcd441",
+          "columns": [
+            "representation",
+            "alert_count_total",
+            "true_positives_total",
+            "false_positives_total",
+            "false_negatives_total",
+            "positive_count_total"
+          ],
+          "selector": "method == 'rule_negative_isolation_forest' and operating_point == 'fixed_review_budget'"
+        }
+      ],
+      "evidence_status": "exploratory development evidence (inspected); not confirmatory",
+      "kind": "matplotlib",
+      "layout": {
+        "width_in": 6.0,
+        "height_in": 3.75,
+        "min_font_pt_at_design_size": 10.0
+      },
+      "pdf_embedded_fonts": [
+        "TimesNewRomanPSMT"
+      ],
+      "output_sha256": {
+        "docs/figures/residual_outcomes.pdf": "b5e6cca61abbf7c16c448e639f36ebdfbc1ec16dde7f30df8f646d51b84bae4b",
+        "docs/figures/residual_outcomes.svg": "8b2000542585892378086079c9dd5d828b87d7f58fc4ba8fbb5a306cbacac773",
+        "docs/figures/residual_outcomes.png": "08f83508fafa470222d0412ee236f17ac9021e36c5c475ccfc73b85291caf019"
+      }
+    },
+    "validation_counts": {
+      "outputs": [
+        "docs/figures/validation_counts.pdf",
+        "docs/figures/validation_counts.svg",
+        "docs/figures/validation_counts.png"
+      ],
+      "caption": "Protocol-v2 validation alert outcomes (artifact validation_c5878ca7b927ccd2), pooled across 30 scenarios and 3,600 test histories containing 360 labelled anomalies. IF denotes Isolation Forest in the rules-first cascade with a 10% capacity floor. The high rules performance is partly a generator interaction and must not be generalized.",
+      "sources": [
+        {
+          "path": "research_outputs/protocol_v2_verified/validation_c5878ca7b927ccd2/aggregate_metrics.csv",
+          "sha256": "bcf3023a4a9566919dbb81f281f3fe0eada6546f3dc0cde807aed1ea12353832",
+          "columns": [
+            "method",
+            "representation",
+            "operating_point",
+            "alert_count_total",
+            "true_positives_total",
+            "false_positives_total",
+            "false_negatives_total",
+            "positive_count_total"
+          ],
+          "selector": "(deterministic_policy_rules, true_policy_checks, rules_fixed); (policy_rules_plus_isolation_forest, raw_matched|policy_matched, rules_first_budget_floor)"
+        }
+      ],
+      "evidence_status": "validation diagnostic (inspected); not confirmatory",
+      "kind": "matplotlib",
+      "layout": {
+        "width_in": 6.0,
+        "height_in": 2.25,
+        "min_font_pt_at_design_size": 10.0
+      },
+      "pdf_embedded_fonts": [
+        "TimesNewRomanPSMT"
+      ],
+      "output_sha256": {
+        "docs/figures/validation_counts.pdf": "50f556c4dfb745348633f0061f9f9c64df9a6d178c86ff165424e8b5dd9fb957",
+        "docs/figures/validation_counts.svg": "700768ae5bbb9e8ebe5400037517c797154290042eb2665ee53c9248fc09c056",
+        "docs/figures/validation_counts.png": "260ffa27bb3e7dfad009b457109d2d79020d260331ce13473d45fbd3354aa49f"
+      }
+    },
+    "policy_alerts": {
+      "outputs": [
+        "docs/figures/policy_alerts.pdf",
+        "docs/figures/policy_alerts.svg",
+        "docs/figures/policy_alerts.png"
+      ],
+      "caption": "Audit history of deterministic policy-rule alerts among 72 generated rare-legitimate labels across three development artifacts. The historical 39/72 is a constructed specification counterexample, not a prevalence estimate. The intermediate 8/72 is drawn hatched and dashed because its false-positive interpretation was invalidated by a semantic defect in the generator; it is not a valid measurement. The repaired exploratory artifact records 0/72; its denominator includes 24 grandfathering labels without independently established employee entitlement.",
+      "sources": [
+        {
+          "path": "research_outputs/independent_development/independent_development_e342bd4acf39b06b/aggregate_metrics.csv",
+          "sha256": "f05ee6f6ccf9435438e9d46b17f876a7f35491c56f04a15d8392bc164d37cae8",
+          "columns": [
+            "rare_legitimate_flagged_total",
+            "rare_legitimate_count_total"
+          ],
+          "selector": "method == 'deterministic_policy_rules' and operating_point == 'rules_fixed'"
+        },
+        {
+          "path": "research_outputs/independent_development/independent_development_db1a15646d9e76ba/aggregate_metrics.csv",
+          "sha256": "1007dfe0b5dbd9bee0975ef7c77beb0bc003d651be0f84da73192af69088a84a",
+          "columns": [
+            "rare_legitimate_flagged_total",
+            "rare_legitimate_count_total"
+          ],
+          "selector": "method == 'deterministic_policy_rules' and operating_point == 'rules_fixed'"
+        },
+        {
+          "path": "research_outputs/independent_development/independent_development_4feea4508de1bb05/aggregate_metrics.csv",
+          "sha256": "4208f3f9809ae6450e6af2d1a7931b02a42c67da14bfbc08d526ccbd7bfcd441",
+          "columns": [
+            "rare_legitimate_flagged_total",
+            "rare_legitimate_count_total"
+          ],
+          "selector": "method == 'deterministic_policy_rules' and operating_point == 'rules_fixed'"
+        }
+      ],
+      "evidence_status": "historical (e342bd4a) and invalidated (db1a1564) values shown for audit transparency; repaired value is exploratory development evidence",
+      "kind": "matplotlib",
+      "layout": {
+        "width_in": 6.0,
+        "height_in": 2.9,
+        "min_font_pt_at_design_size": 10.0
+      },
+      "pdf_embedded_fonts": [
+        "TimesNewRomanPSMT"
+      ],
+      "output_sha256": {
+        "docs/figures/policy_alerts.pdf": "ae07375a0f051521975d1665beaad55a2f8d67bf4fd59a9863fa9318cacdce8c",
+        "docs/figures/policy_alerts.svg": "ce8b10bb5cd12622c5eddefa644f8bd9ffc049241729876c42842749de2e4947",
+        "docs/figures/policy_alerts.png": "95ea71fd4b5c1da50aee7cd3aeddbf0a3ec0ebc560f1bdbaee2429fdd1af85bc"
+      }
+    },
+    "confound_diagnostic": {
+      "outputs": [
+        "docs/figures/confound_diagnostic.pdf",
+        "docs/figures/confound_diagnostic.svg",
+        "docs/figures/confound_diagnostic.png"
+      ],
+      "caption": "Confounded 900-scenario development diagnostic (artifact 8f1494e4abf2d268, 30 conditions x 30 seeds, holdout not accessed). (a) Scenario-mean residual recall at the fixed review budget with stored 95% intervals, drawn as lines behind the markers and printed numerically; no interval is wider than 0.017 recall, so most are narrower than or comparable to the marker. (b) Paired differences. Only the policy-minus-raw difference has a stored interval; the control differences are paired means recomputed from per-scenario recall and have no stored interval. Wrong-policy features reproduce about 82% of the apparent policy gain; the remaining increment is confounded with representation dimensionality. The independent offline audit of the 8,019,000 prediction rows is incomplete. Not confirmatory evidence.",
+      "sources": [
+        {
+          "path": "research_outputs/protocol_dev_30seed/development_8f1494e4abf2d268/aggregate_metrics.csv",
+          "sha256": "6223f7da5cb941a2209e61bf0c60be12231db8bd59701720f99d4dd154dcb0fe",
+          "columns": [
+            "representation",
+            "recall_mean",
+            "recall_ci95_low",
+            "recall_ci95_high"
+          ],
+          "selector": "method == 'rule_negative_isolation_forest' and operating_point == 'fixed_review_budget'"
+        },
+        {
+          "path": "research_outputs/protocol_dev_30seed/development_8f1494e4abf2d268/paired_comparisons.csv",
+          "sha256": "6f0b05bd77981cb73078470aad6aa1b53bd51cbd8f72a1326e3c251ad8a10c95",
+          "columns": [
+            "recall_delta_mean",
+            "recall_delta_ci95_low",
+            "recall_delta_ci95_high",
+            "scenario_count"
+          ],
+          "selector": "method == 'rule_negative_isolation_forest' and operating_point == 'fixed_review_budget'"
+        },
+        {
+          "path": "research_outputs/protocol_dev_30seed/development_8f1494e4abf2d268/scenario_metrics.csv",
+          "sha256": "37ab05c4271001fc2c4a76d1faef6f8ba30b16c54545405e667f29ace3ac5fe0",
+          "columns": [
+            "scenario_id",
+            "representation",
+            "recall"
+          ],
+          "selector": "method == 'rule_negative_isolation_forest' and operating_point == 'fixed_review_budget'",
+          "note": "Control paired means (wrong-policy, shuffled, policy minus wrong-policy) are computed by this script as the mean of per-scenario differences; the artifact stores no paired interval for them, so none is drawn."
+        }
+      ],
+      "evidence_status": "development diagnostic; artifact checksums stored, independent offline audit of record-level predictions incomplete (docs/TDK_AUTONOMOUS_RESEARCH_ROADMAP.md); values in this figure come from artifact CSVs, not from audit text",
+      "derived_values": {
+        "policy_matched minus raw_matched": {
+          "paired_mean": 0.348333,
+          "paired_scenarios": 900
+        },
+        "wrong_policy_control minus raw_matched": {
+          "paired_mean": 0.284444,
+          "paired_scenarios": 900
+        },
+        "shuffled_policy_control minus raw_matched": {
+          "paired_mean": -0.078914,
+          "paired_scenarios": 900
+        },
+        "policy_matched minus wrong_policy_control": {
+          "paired_mean": 0.063889,
+          "paired_scenarios": 900
+        }
+      },
+      "kind": "matplotlib",
+      "layout": {
+        "width_in": 6.0,
+        "height_in": 3.9,
+        "min_font_pt_at_design_size": 10.0
+      },
+      "pdf_embedded_fonts": [
+        "TimesNewRomanPSMT"
+      ],
+      "output_sha256": {
+        "docs/figures/confound_diagnostic.pdf": "a7842fea555fee450a84e4d235e28656c0fd649de2da7e4b4be874013eedc0ee",
+        "docs/figures/confound_diagnostic.svg": "ef5fa68510e85924e0c616874d8c0bc78e17eba369adf9af0b3188f08d766ac6",
+        "docs/figures/confound_diagnostic.png": "525466bb90f2f8014a822cfc90a0a9156407e29745d6abe70b6e46bde4ab5558"
+      }
+    },
+    "policy_timeline": {
+      "outputs": [
+        "docs/figures/policy_timeline.pdf",
+        "docs/figures/policy_timeline.svg",
+        "docs/figures/policy_timeline.png"
+      ],
+      "caption": "Worked promotion-race example from docs/RESEARCH_HANDOVER.md section 5.1 (B = 48, M = 45, C = 6, S = 3). Elapsed service to the decision date is adjusted by commendation credit and sanction delay, A = M + C − S = 48, and compared with the base requirement B of the policy effective at the decision date, giving R = 0: service-eligible, which is evidence for review, not automatic approval. Calendar dates of the commendation and sanction events are not part of the documented example and are not shown.",
+      "sources": [
+        {
+          "path": "docs/RESEARCH_HANDOVER.md",
+          "sha256": "de312be8a884160038802cd083836eed03e762c65af43db40e371d0beee0d95d",
+          "columns": [
+            "section 5.1 worked example B, M, C, S, A, R"
+          ],
+          "selector": "Example: if `B=48`, `M=45`, `C=6`, and `S=3`"
+        },
+        {
+          "path": "src/services/promotion_policy.py",
+          "sha256": "2caf2e034306638671c54036efe1afed7664750fb301a82677fc671c4c5f8da8",
+          "columns": [
+            "calculate_promotion_race()"
+          ],
+          "note": "A and R recomputed by the application's pure function at build time."
+        },
+        {
+          "path": "docs/TDK_PAPER_DRAFT.md",
+          "sha256": "f025d248722ff7f09c4129e2cfbea9ffcb37e9fe850e2f605417f82dc33d8970",
+          "columns": [
+            "Section 3.2 (A = M + C - S, R = max(0, B - A))",
+            "Section 3.7 (policy effective at the decision date)"
+          ],
+          "note": "Equations and temporal requirement; no numeric data."
+        }
+      ],
+      "derived_values": {
+        "B": 48,
+        "M": 45,
+        "C": 6,
+        "S": 3,
+        "A": 48,
+        "R": 0,
+        "eligible": true,
+        "progress_pct": 100
+      },
+      "evidence_status": "illustrative worked example; not experimental evidence",
+      "kind": "matplotlib",
+      "layout": {
+        "width_in": 6.0,
+        "height_in": 2.75,
+        "min_font_pt_at_design_size": 10.0
+      },
+      "pdf_embedded_fonts": [
+        "TimesNewRomanPSMT"
+      ],
+      "output_sha256": {
+        "docs/figures/policy_timeline.pdf": "f8aaa5e61a9d082ec3f495f38172d9a50a3c3f1ca10f971ee7e59cb0db1e425f",
+        "docs/figures/policy_timeline.svg": "fe57679d9f312e49511bf9c0e687cc970c53436441f228f2fecdf13fbb522dbc",
+        "docs/figures/policy_timeline.png": "d4d565adcd8b493ed42fce57d02dcbcd5993a3f96bbd0a7475fef957f40a5124"
+      }
+    }
+  },
+  "tables": {
+    "residual_equal_budget": {
+      "outputs": [
+        "docs/tables/residual_equal_budget.tex"
+      ],
+      "caption": "Equal-budget residual outcomes (Section 6.7).",
+      "sources": [
+        {
+          "path": "research_outputs/independent_development/independent_development_4feea4508de1bb05/aggregate_metrics.csv",
+          "sha256": "4208f3f9809ae6450e6af2d1a7931b02a42c67da14bfbc08d526ccbd7bfcd441",
+          "columns": [
+            "representation",
+            "alert_count_total",
+            "true_positives_total",
+            "false_positives_total",
+            "false_negatives_total",
+            "rare_legitimate_flagged_total",
+            "rare_legitimate_count_total"
+          ],
+          "selector": "method == 'rule_negative_isolation_forest' and operating_point == 'fixed_review_budget'"
+        }
+      ],
+      "kind": "latex_booktabs",
+      "output_sha256": {
+        "docs/tables/residual_equal_budget.tex": "3b2517ee9536bcc036989e3912ed3797388e477503d3989f07ad16eb05fe4880"
+      }
+    },
+    "rules_outcomes": {
+      "outputs": [
+        "docs/tables/rules_outcomes.tex"
+      ],
+      "caption": "Deterministic check outcomes (Section 6.7).",
+      "sources": [
+        {
+          "path": "research_outputs/independent_development/independent_development_4feea4508de1bb05/aggregate_metrics.csv",
+          "sha256": "4208f3f9809ae6450e6af2d1a7931b02a42c67da14bfbc08d526ccbd7bfcd441",
+          "columns": [
+            "method",
+            "representation",
+            "alert_count_total",
+            "true_positives_total",
+            "false_positives_total",
+            "false_negatives_total",
+            "recall_mean",
+            "recall_ci95_low",
+            "recall_ci95_high",
+            "rare_legitimate_flagged_total",
+            "rare_legitimate_count_total"
+          ],
+          "selector": "operating_point == 'rules_fixed' and method in deterministic_*"
+        }
+      ],
+      "kind": "latex_booktabs",
+      "output_sha256": {
+        "docs/tables/rules_outcomes.tex": "b61f28afd41db4db0628f2338dc8898bf2622c9b98517e006ac217de4ba024ca"
+      }
+    },
+    "demo_outcomes": {
+      "outputs": [
+        "docs/tables/demo_outcomes.tex"
+      ],
+      "caption": "In-app demonstration outcomes (demonstration output, not experimental evidence).",
+      "sources": [
+        {
+          "path": "C:\\Users\\muham\\AppData\\Local\\Temp\\myhr_drive\\demo_counts.json",
+          "path_template": "%LOCALAPPDATA%/Temp/myhr_drive/demo_counts.json",
+          "sha256": "8885cea710bf51a74043f5a0c798de313f12c87196ee877df7f910edefa14f60",
+          "columns": [
+            "scenario",
+            "population",
+            "method",
+            "n",
+            "k",
+            "tp",
+            "fp",
+            "fn",
+            "recall",
+            "precision",
+            "rare"
+          ],
+          "note": "Exported by the in-app demonstration; outside the repository and not an audited research artifact."
+        }
+      ],
+      "evidence_status": "demonstration output only",
+      "kind": "latex_booktabs",
+      "output_sha256": {
+        "docs/tables/demo_outcomes.tex": "b905fb8e2cebe6aeaf4939171c30c438c481df481587450cd7bc900a37d27105"
+      }
+    },
+    "abstract_commitments": {
+      "outputs": [
+        "docs/tables/abstract_commitments.tex"
+      ],
+      "caption": "Status of the submitted abstract commitments (mirrors Section 1.6).",
+      "sources": [
+        {
+          "path": "docs/TDK_PAPER_DRAFT.md",
+          "sha256": "f025d248722ff7f09c4129e2cfbea9ffcb37e9fe850e2f605417f82dc33d8970",
+          "columns": [
+            "Section 1.6 Markdown table"
+          ],
+          "selector": "### 1.6 Status of the Submitted Abstract Commitments",
+          "note": "Parsed verbatim from the paper draft at build time; the draft is edited concurrently, so rebuild after changes."
+        }
+      ],
+      "kind": "latex_booktabs",
+      "output_sha256": {
+        "docs/tables/abstract_commitments.tex": "282a4029f41d137a042e93003e597c084ecafddb211ee82e2361f2abdb634206"
+      }
+    }
+  },
+  "paper_consistency_checks": [
+    {
+      "description": "Section 6.7: primary recall difference",
+      "paper_value": 0.0278,
+      "artifact_value": 0.027778,
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/paired_comparisons.csv",
+      "column": "recall_delta_mean",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7: primary recall 95% CI low",
+      "paper_value": -0.0278,
+      "artifact_value": -0.027778,
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/paired_comparisons.csv",
+      "column": "recall_delta_ci95_low",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7: primary recall 95% CI high",
+      "paper_value": 0.1019,
+      "artifact_value": 0.101852,
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/paired_comparisons.csv",
+      "column": "recall_delta_ci95_high",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7: primary sign-flip p",
+      "paper_value": 0.6875,
+      "artifact_value": 0.6875,
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/paired_comparisons.csv",
+      "column": "recall_delta_sign_flip_p",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7: precision difference",
+      "paper_value": 0.0313,
+      "artifact_value": 0.03125,
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/paired_comparisons.csv",
+      "column": "precision_delta_mean",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7: precision CI low",
+      "paper_value": -0.0313,
+      "artifact_value": -0.03125,
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/paired_comparisons.csv",
+      "column": "precision_delta_ci95_low",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7: precision CI high",
+      "paper_value": 0.1042,
+      "artifact_value": 0.104167,
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/paired_comparisons.csv",
+      "column": "precision_delta_ci95_high",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7: exploratory Holm-adjusted recall p",
+      "paper_value": 1.0,
+      "artifact_value": 1.0,
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/paired_comparisons.csv",
+      "column": "recall_delta_holm_all_p",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7: test histories (record_truth split == test)",
+      "paper_value": 864,
+      "artifact_value": 864,
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/record_truth.csv",
+      "column": "split",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.5: historical common core / policy-specific / extra raw feature counts",
+      "paper_value": [
+        6,
+        3,
+        3
+      ],
+      "artifact_value": [
+        6,
+        3,
+        3
+      ],
+      "source": "git show 0ad4e96:src/services/anomaly_detection/protocol_evaluation.py",
+      "column": "COMMON_CORE_FEATURES, POLICY_MATCHED_FEATURES, RAW_MATCHED_FEATURES",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.2 validation table: Deterministic policy rules alerts/TP/FP/FN",
+      "paper_value": [
+        351,
+        351,
+        0,
+        9
+      ],
+      "artifact_value": [
+        351,
+        351,
+        0,
+        9
+      ],
+      "source": "research_outputs/protocol_v2_verified/validation_c5878ca7b927ccd2/aggregate_metrics.csv",
+      "column": "alert_count_total,true_positives_total,false_positives_total,false_negatives_total",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.2 validation table: Rules + raw Isolation Forest alerts/TP/FP/FN",
+      "paper_value": [
+        408,
+        357,
+        51,
+        3
+      ],
+      "artifact_value": [
+        408,
+        357,
+        51,
+        3
+      ],
+      "source": "research_outputs/protocol_v2_verified/validation_c5878ca7b927ccd2/aggregate_metrics.csv",
+      "column": "alert_count_total,true_positives_total,false_positives_total,false_negatives_total",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.2 validation table: Rules + policy-aware Isolation Forest alerts/TP/FP/FN",
+      "paper_value": [
+        408,
+        358,
+        50,
+        2
+      ],
+      "artifact_value": [
+        408,
+        358,
+        50,
+        2
+      ],
+      "source": "research_outputs/protocol_v2_verified/validation_c5878ca7b927ccd2/aggregate_metrics.csv",
+      "column": "alert_count_total,true_positives_total,false_positives_total,false_negatives_total",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.2: validation scenarios / test histories / anomalies",
+      "paper_value": [
+        30,
+        3600,
+        360
+      ],
+      "artifact_value": [
+        30,
+        3600,
+        360
+      ],
+      "source": "research_outputs/protocol_v2_verified/validation_c5878ca7b927ccd2/aggregate_metrics.csv",
+      "column": "scenario_count,evaluation_count_total,positive_count_total",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.6 policy-rule alerts among rare-legitimate labels: Historical",
+      "paper_value": "39/72",
+      "artifact_value": "39/72",
+      "source": "research_outputs/independent_development/independent_development_e342bd4acf39b06b/aggregate_metrics.csv",
+      "column": "rare_legitimate_flagged_total/rare_legitimate_count_total",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.6 policy-rule alerts among rare-legitimate labels: Intermediate",
+      "paper_value": "8/72",
+      "artifact_value": "8/72",
+      "source": "research_outputs/independent_development/independent_development_db1a15646d9e76ba/aggregate_metrics.csv",
+      "column": "rare_legitimate_flagged_total/rare_legitimate_count_total",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.6 policy-rule alerts among rare-legitimate labels: Repaired",
+      "paper_value": "0/72",
+      "artifact_value": "0/72",
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/aggregate_metrics.csv",
+      "column": "rare_legitimate_flagged_total/rare_legitimate_count_total",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.8: 8f1494 policy-aware minus raw recall",
+      "paper_value": 0.348,
+      "artifact_value": 0.348333,
+      "source": "research_outputs/protocol_dev_30seed/development_8f1494e4abf2d268/paired_comparisons.csv",
+      "column": "recall_delta_mean",
+      "status": "match"
+    },
+    {
+      "description": "Roadmap/coordinator: 8f1494 primary 95% CI low",
+      "paper_value": 0.342,
+      "artifact_value": 0.341852,
+      "source": "research_outputs/protocol_dev_30seed/development_8f1494e4abf2d268/paired_comparisons.csv",
+      "column": "recall_delta_ci95_low",
+      "status": "match"
+    },
+    {
+      "description": "Roadmap/coordinator: 8f1494 primary 95% CI high",
+      "paper_value": 0.355,
+      "artifact_value": 0.354728,
+      "source": "research_outputs/protocol_dev_30seed/development_8f1494e4abf2d268/paired_comparisons.csv",
+      "column": "recall_delta_ci95_high",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.8: 8f1494 wrong-policy minus raw recall",
+      "paper_value": 0.284,
+      "artifact_value": 0.284444,
+      "source": "research_outputs/protocol_dev_30seed/development_8f1494e4abf2d268/scenario_metrics.csv",
+      "column": "recall (paired mean, recomputed)",
+      "status": "match"
+    },
+    {
+      "description": "Coordinator: 8f1494 shuffled minus raw recall",
+      "paper_value": -0.079,
+      "artifact_value": -0.078914,
+      "source": "research_outputs/protocol_dev_30seed/development_8f1494e4abf2d268/scenario_metrics.csv",
+      "column": "recall (paired mean, recomputed)",
+      "status": "match"
+    },
+    {
+      "description": "Coordinator: 8f1494 correct-policy increment (policy minus wrong-policy)",
+      "paper_value": 0.064,
+      "artifact_value": 0.063889,
+      "source": "research_outputs/protocol_dev_30seed/development_8f1494e4abf2d268/scenario_metrics.csv",
+      "column": "recall (paired mean, recomputed)",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.8: wrong-policy share of apparent gain (about 82%)",
+      "paper_value": 0.82,
+      "artifact_value": 0.816587,
+      "source": "derived",
+      "column": "ratio of the two paired means",
+      "status": "match"
+    },
+    {
+      "description": "RESEARCH_HANDOVER 5.1 worked example: adjusted service A and remaining R",
+      "paper_value": [
+        48,
+        0
+      ],
+      "artifact_value": [
+        48,
+        0
+      ],
+      "source": "src/services/promotion_policy.py",
+      "column": "calculate_promotion_race(B=48, M=45, C=6, S=3)",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7 residual table: Raw matched alerts/TP/FP/FN/rare",
+      "paper_value": [
+        96,
+        36,
+        60,
+        72,
+        9
+      ],
+      "artifact_value": [
+        96,
+        36,
+        60,
+        72,
+        9
+      ],
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/aggregate_metrics.csv",
+      "column": "alert_count_total,true_positives_total,false_positives_total,false_negatives_total,rare_legitimate_flagged_total",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7 residual table: Policy matched alerts/TP/FP/FN/rare",
+      "paper_value": [
+        96,
+        39,
+        57,
+        69,
+        6
+      ],
+      "artifact_value": [
+        96,
+        39,
+        57,
+        69,
+        6
+      ],
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/aggregate_metrics.csv",
+      "column": "alert_count_total,true_positives_total,false_positives_total,false_negatives_total,rare_legitimate_flagged_total",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7 residual table: Wrong-policy control alerts/TP/FP/FN/rare",
+      "paper_value": [
+        96,
+        39,
+        57,
+        69,
+        6
+      ],
+      "artifact_value": [
+        96,
+        39,
+        57,
+        69,
+        6
+      ],
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/aggregate_metrics.csv",
+      "column": "alert_count_total,true_positives_total,false_positives_total,false_negatives_total,rare_legitimate_flagged_total",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7 residual table: Shuffled-policy control alerts/TP/FP/FN/rare",
+      "paper_value": [
+        96,
+        33,
+        63,
+        75,
+        7
+      ],
+      "artifact_value": [
+        96,
+        33,
+        63,
+        75,
+        7
+      ],
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/aggregate_metrics.csv",
+      "column": "alert_count_total,true_positives_total,false_positives_total,false_negatives_total,rare_legitimate_flagged_total",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7 residual table: Core + policy deficit months only alerts/TP/FP/FN/rare",
+      "paper_value": [
+        96,
+        42,
+        54,
+        66,
+        8
+      ],
+      "artifact_value": [
+        96,
+        42,
+        54,
+        66,
+        8
+      ],
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/aggregate_metrics.csv",
+      "column": "alert_count_total,true_positives_total,false_positives_total,false_negatives_total,rare_legitimate_flagged_total",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7 residual table: Core + policy deficit ratio only alerts/TP/FP/FN/rare",
+      "paper_value": [
+        96,
+        42,
+        54,
+        66,
+        8
+      ],
+      "artifact_value": [
+        96,
+        42,
+        54,
+        66,
+        8
+      ],
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/aggregate_metrics.csv",
+      "column": "alert_count_total,true_positives_total,false_positives_total,false_negatives_total,rare_legitimate_flagged_total",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7 residual table: Core + unexplained-short-promotion flag only alerts/TP/FP/FN/rare",
+      "paper_value": [
+        96,
+        42,
+        54,
+        66,
+        8
+      ],
+      "artifact_value": [
+        96,
+        42,
+        54,
+        66,
+        8
+      ],
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/aggregate_metrics.csv",
+      "column": "alert_count_total,true_positives_total,false_positives_total,false_negatives_total,rare_legitimate_flagged_total",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7 residual table: Core + raw promotion interval only alerts/TP/FP/FN/rare",
+      "paper_value": [
+        96,
+        42,
+        54,
+        66,
+        9
+      ],
+      "artifact_value": [
+        96,
+        42,
+        54,
+        66,
+        9
+      ],
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/aggregate_metrics.csv",
+      "column": "alert_count_total,true_positives_total,false_positives_total,false_negatives_total,rare_legitimate_flagged_total",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7 residual table: Raw without commendation shortcut alerts/TP/FP/FN/rare",
+      "paper_value": [
+        96,
+        40,
+        56,
+        68,
+        9
+      ],
+      "artifact_value": [
+        96,
+        40,
+        56,
+        68,
+        9
+      ],
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/aggregate_metrics.csv",
+      "column": "alert_count_total,true_positives_total,false_positives_total,false_negatives_total,rare_legitimate_flagged_total",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7: policy rules TP/FP/FN, rare flagged",
+      "paper_value": [
+        63,
+        0,
+        45,
+        "0/72"
+      ],
+      "artifact_value": [
+        63,
+        0,
+        45,
+        "0/72"
+      ],
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/aggregate_metrics.csv",
+      "column": "true_positives_total,false_positives_total,false_negatives_total,rare_legitimate_flagged_total",
+      "status": "match"
+    },
+    {
+      "description": "Section 6.7: scenarios / eligible test histories / anomalies / rare labels",
+      "paper_value": [
+        12,
+        864,
+        108,
+        72
+      ],
+      "artifact_value": [
+        12,
+        864,
+        108,
+        72
+      ],
+      "source": "research_outputs/independent_development/independent_development_4feea4508de1bb05/aggregate_metrics.csv",
+      "column": "scenario_count,evaluation_count_total,positive_count_total,rare_legitimate_count_total",
+      "status": "match"
+    }
+  ],
+  "mismatch_count": 0,
+  "holdout_accessed": false
+}

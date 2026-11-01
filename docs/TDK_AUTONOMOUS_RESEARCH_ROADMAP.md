@@ -1,4 +1,11 @@
 # TDK Autonomous Research Roadmap
+## UI Repair, Paper Reconciliation and Package v2 - 2026-11-01
+- Anomaly Review repair (`f3cb0f2`): left-aligned tables, opaque tab hover, stateful button icons, distinguishable recall/precision greens, a labelled true/false-positive queue chart derived from the same comparison objects, content-sized tabs and tables, and single-threaded BLAS in the worker after an OpenBLAS allocation failure on the laptop. Verified by driving the real login and Anomaly Review flow (all tabs, filters, search, inspect, employee navigation, disclosures, Help, CSV/PDF export, rerun, cancellation by navigation, failure display). Full suite 329 tests OK. No scientific threshold changed.
+- Paper reconciled with software and evidence: Section 1.6 lists every registered-abstract commitment with status; the optional user study and the confirmatory holdout assessment are marked not conducted. Section 5.6 separates the in-app demonstration (three fixed 24-record scenarios; not evidence) from research artifacts. Prose revised for length and register without changing numbers.
+- Correction: the paper's ablation labels described removing one feature, but the code keeps the six-feature common core plus one feature. Labels now match the code; counts unchanged.
+- Citation specialist audit (`docs/TDK_CITATION_AUDIT_2026-11-01.md`): 18 references checked against Crossref/DataCite/publishers, 7 bibliography entries corrected, 14 of 15 citation uses supported and 1 rescoped; Holm and Krippendorff added to the reference list. Independent re-audit pending; Krippendorff full text still unverified.
+- Figures rebuilt reproducibly by `scripts/build_tdk_figures.py` (36 paper-versus-CSV checks, 0 mismatches); new Figure 15 shows the confounded 900-scenario diagnostic with controls. App figures are live captures. README demo recorded from the real app (`docs/media/demo/`).
+- Supervisor package v2 written to `TDK/final/2026-11-01-v2-supervisor` (earlier packages preserved); main text 34 pages. Holdout untouched; protocol not frozen; PR #14 stays draft.
 
 ## Working Software Demonstration - 2026-11-01
 

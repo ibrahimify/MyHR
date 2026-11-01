@@ -1,413 +1,165 @@
-# MyHR - Employee Management System
+# MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression
 
-MyHR is a standalone offline desktop application for managing employee records,
-organization hierarchy, promotions, commendations, sanctions, salary increments,
-audit logs, imports, exports, and yearly HR reports.
+MyHR is an offline desktop HR application (Python, PySide6, SQLite) and the
+platform for a BME VIK TDK 2026 research project. The research asks whether
+explicit workforce-progression policy context helps rank administrative errors
+for human review better than raw administrative features, without raising
+false alerts on unusual but lawful histories.
 
-It is built for a local-first HR workflow: no server is required, data is stored
-in SQLite, and the desktop UI is implemented with PySide6.
+**Current result.** No policy-aware advantage has been demonstrated. In the
+audited 12-scenario development artifact the policy-aware minus raw recall
+difference was +0.0278 (95% CI −0.0278 to +0.1019), and in a later
+900-scenario diagnostic wrong-policy features reproduced about 82% of the
+apparent gain. All evidence is development evidence; the protocol is a draft
+and the final holdout is locked and has never been generated or accessed.
+Anomaly scores support human review only and never change personnel records.
 
-## TDK Research
+![MyHR demo: employee performance page, then Anomaly Review queue, evidence, method comparison and synthetic evaluation](docs/media/demo/myhr_demo.gif)
 
-The current research project is **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**. It evaluates deterministic validation, statistical baselines, and raw versus policy-aware Isolation Forest models using reproducible synthetic administrative histories.
+*27.7-second recording of the real application with synthetic data
+([MP4](docs/media/demo/myhr_demo.mp4), [provenance](docs/media/demo/myhr_demo.provenance.json)).*
 
-The current evidence is development-only. Later protocol-scale diagnostics found that wrong-policy features reproduce most of the apparent gain over raw features, so the present result is confounded and does not establish policy-aware value. The final holdout remains locked and the protocol remains unfrozen.
+> **Video walkthrough:** _placeholder, to be added by the author._
 
-The in-app **Anomaly Review** page provides a synthetic-only working demonstration. It runs the shared deterministic and Isolation Forest services, shows a ranked human-review queue, traces alerts to the same employee's source history and policy arithmetic, and compares raw, policy-aware, wrong-policy, and shuffled-policy representations at equal review capacity. It never reads or changes employee database records.
+## Paper and research materials
 
-- [Supervisor brief](docs/TDK_SUPERVISOR_BRIEF_2026-10-30.md)
-- [Research handover](docs/RESEARCH_HANDOVER.md)
-- [Paper draft source](docs/TDK_PAPER_DRAFT.md)
-- [Experiment protocol](docs/TDK_EXPERIMENT_PROTOCOL.md)
-- [Submission requirements](docs/TDK_2026_SUBMISSION_REQUIREMENTS.md)
+| Material | Link |
+| --- | --- |
+| Paper source (English, supervisor review draft) | [docs/TDK_PAPER_DRAFT.md](docs/TDK_PAPER_DRAFT.md) |
+| Figures (PDF/SVG/PNG) and their data provenance | [docs/figures/](docs/figures/README.md), [FIGURE_MANIFEST.json](docs/figures/FIGURE_MANIFEST.json) |
+| LaTeX booktabs tables | [docs/tables/](docs/tables/README.md) |
+| Experiment protocol (draft) | [docs/TDK_EXPERIMENT_PROTOCOL.md](docs/TDK_EXPERIMENT_PROTOCOL.md) |
+| Research handover | [docs/RESEARCH_HANDOVER.md](docs/RESEARCH_HANDOVER.md) |
+| Roadmap and decision log | [docs/TDK_AUTONOMOUS_RESEARCH_ROADMAP.md](docs/TDK_AUTONOMOUS_RESEARCH_ROADMAP.md) |
+| Supervisor brief | [docs/TDK_SUPERVISOR_BRIEF_2026-10-30.md](docs/TDK_SUPERVISOR_BRIEF_2026-10-30.md) |
+| Package verification record | [docs/TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-11-01.md](docs/TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-11-01.md) |
+| Citation audit and bibliography | [docs/TDK_CITATION_AUDIT_2026-11-01.md](docs/TDK_CITATION_AUDIT_2026-11-01.md), [docs/TDK_REFERENCES.bib](docs/TDK_REFERENCES.bib) |
+| Submission requirements | [docs/TDK_2026_SUBMISSION_REQUIREMENTS.md](docs/TDK_2026_SUBMISSION_REQUIREMENTS.md) |
 
-![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
-![Qt](https://img.shields.io/badge/PySide6-Qt6-41CD52?logo=qt&logoColor=white)
-![SQLite](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite&logoColor=white)
+The rendered PDF and Word versions of the paper are built by
+`scripts/generate_tdk_supervisor_package.py` into a dated folder outside the
+repository (`../TDK/final/`), so earlier versions are never overwritten.
 
----
+## Screenshots
 
-## Project Status
+All screenshots are captures of the running application with synthetic data.
+Provenance (revision, window size, theme, SHA-256) is stored next to each image.
 
-Current checkpoint: pre-packaging polish complete.
+| Review Queue | Employee Evidence |
+| --- | --- |
+| ![Review queue](docs/media/screenshots/anomaly_queue_light.png) | ![Employee evidence](docs/media/screenshots/anomaly_evidence_light.png) |
+| **Method Comparison** | **Synthetic Evaluation** |
+| ![Method comparison](docs/media/screenshots/anomaly_comparison_light.png) | ![Synthetic evaluation](docs/media/screenshots/anomaly_evaluation_light.png) |
 
-Completed:
-- Core desktop app workflow
-- Employee CRUD and profile pages
-- Organization hierarchy canvas
-- Promotion race and annual increment logic
-- Commendations, sanctions, audit log, import/export
-- Yearly PDF reports
-- Light/dark themes
-- Multi-language support
-- Dashboard density polish for laptop and desktop layouts
-- Application icon asset ready for packaging
+Employee profile (Performance tab): [light](docs/media/screenshots/employee.png),
+[dark](docs/media/screenshots/employee_dark.png). Dark-theme Anomaly Review
+captures are in [docs/media/screenshots/](docs/media/screenshots/).
 
-Remaining:
-- Build/package the desktop app as a standalone Windows application or installer
-
----
-
-## Supervisor And Developer
-
-| Role | Name |
-|---|---|
-| Supervisor | Dr. Husam Al-Magsoosi |
-| Developer | Muhammad Ibrahim Shoeb |
-| Institution | Budapest University of Technology and Economics |
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Language | Python 3.12+ |
-| UI Framework | PySide6 6.11.0 / Qt6 |
-| Database | SQLite |
-| ORM | SQLAlchemy 2.0 |
-| Icons | Local Lucide SVG icons with QtAwesome fallback |
-| Spreadsheet Import | openpyxl |
-| PDF/Document Support | PySide6 printing, pypdf, python-docx |
-| Mock UI Reference | `MockUI/` React + Vite prototype |
-
----
-
-## Run The Desktop App
-
-Create and activate a virtual environment first if desired, then install:
+## Run the demonstration
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-research.txt
+python scripts/seed_demo_company.py     # optional: reset to the synthetic demo company
 python main.py
 ```
 
-For the research demonstration, sign in as an administrator, open **Anomaly Review**, select a labelled development scenario, and choose **Run analysis**. A command-line verification of all three permitted demo scenarios is also available:
+Sign in with the local demo account listed under [Demo accounts](#demo-accounts),
+then:
+
+1. **Employees**: search `Peter Ahmed` and open the **Performance** tab.
+2. **Anomaly Review** (sidebar): choose a demonstration scenario and select
+   **Run analysis**.
+3. **Review Queue**: select a row and open **Employee Evidence** to see the
+   policy calculation and source history for the same synthetic employee.
+4. **Method Comparison**: raw, policy-aware, wrong-policy and shuffled-policy
+   representations at the same review capacity, with recall/precision and
+   true/false-positive charts derived from the same completed run.
+5. **Synthetic Evaluation**: generated truth, shown only here.
+6. **Help** opens an optional guide on the right; **Export report** writes CSV or PDF.
+
+The demonstration is not a research experiment: it uses three fixed scenarios
+of 120 synthetic employees each and reads no employee database records. Verify
+all three scenarios from the command line with:
 
 ```bash
 python scripts/verify_anomaly_demo.py
 ```
 
-Research experiments use a separate dependency file so the packaged desktop app
-does not automatically inherit ML and plotting libraries:
+## Reproduce the research outputs
 
 ```bash
-pip install -r requirements.txt -r requirements-research.txt
+python -m unittest discover -s tests                      # full test suite
+python scripts/verify_tdk_citations.py --require-local-artifact
+python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_development/independent_development_4feea4508de1bb05
+python scripts/build_tdk_figures.py                       # figures, tables, manifest
 ```
 
-Verified research artifacts record exact package versions. The matching development environment is captured in `requirements-research-lock.txt`; validate it in a clean environment before any frozen holdout run.
+`research_outputs/` holds write-once artifacts and is not tracked in Git; the
+artifact IDs, checksums and source revisions are recorded in the paper and the
+figure manifest. `build_tdk_figures.py` checks the paper's numbers against the
+artifact CSVs and needs Graphviz (`MYHR_DOT_EXE` can point to `dot.exe`). The
+demo recording is reproduced with `scripts/record_readme_demo.py` and
+`scripts/make_readme_demo_media.py` (PyAutoGUI, FFmpeg, gifski).
 
-Default credentials:
+No holdout command exists. The protocol runner refuses a holdout run until a
+human-approved protocol freeze.
+
+## Demo accounts
+
+Local, seeded accounts for the offline demo database only:
 
 | Role | Username | Password |
-|---|---|---|
+| --- | --- | --- |
 | Administrator | `admin` | `admin123` |
 | HR Officer | `hr_officer` | `hr123` |
 
----
+## Application features
 
-## Run Tests
+- Employee records, profiles, rubric-based performance reviews, search and filters.
+- Organization hierarchy canvas (organization, division, department, unit, team, position).
+- Promotion race calculated from source records: commendations shorten the
+  required service, sanctions delay it, promotions reset it.
+- Annual salary increments, independent of promotion, with an approval workflow.
+- Commendations, sanctions, immutable audit log, CSV/XLSX import, exports,
+  yearly PDF reports, SQLite backup.
+- Light and dark themes; English, Hungarian and Arabic.
+- Role-based access: Settings, user management, export and backup are admin-only.
 
-```bash
-python -m unittest discover tests
-```
-
-Before pushing or packaging, this should pass:
-
-```bash
-python -m py_compile main.py src/ui/icons.py src/ui/pages/dashboard.py
-python -m unittest discover tests
-```
-
-UI rule: new dropdowns must use `src.ui.components.app_select.AppSelect`.
-Do not add new `QComboBox` widgets or page-local custom dropdowns. This is
-documented in `docs/UI_RULES.md` and guarded by `tests/test_ui_component_policy.py`.
-
-Before packaging or a formal demo, use `docs/QA_CHECKLIST.md` as the manual
-go/no-go checklist. Architectural follow-up items are tracked in
-`docs/ARCHITECTURE_ROADMAP.md`. Historical launch-audit actions are preserved in
-`docs/archive/product-planning/LAUNCH_AUDIT_ACTIONS.md`.
-
-Latest verification before this README update:
-
-```text
-Ran 134 tests
-OK
-```
-
----
-
-## Demo Data
-
-To reset the local database and populate a realistic demo company dataset:
+## Development
 
 ```bash
-python scripts/seed_demo_company.py
+python -m py_compile main.py
+python -m unittest discover -s tests
 ```
 
-This creates employees, org units, promotion records, commendations, sanctions,
-salary increment data, and audit activity for testing.
+New dropdowns must use `src.ui.components.app_select.AppSelect`
+(`docs/UI_RULES.md`, enforced by `tests/test_ui_component_policy.py`). Release
+checks are in `docs/QA_CHECKLIST.md`; architecture follow-ups in
+`docs/ARCHITECTURE_ROADMAP.md`. The `MockUI/` folder is the original React/Vite
+design reference and is not needed to run the app.
 
----
+| Layer | Technology |
+| --- | --- |
+| Language | Python 3.12+ |
+| UI | PySide6 / Qt 6 |
+| Data | SQLite, SQLAlchemy 2.0 |
+| Research | scikit-learn, pandas, Matplotlib, Graphviz |
 
-## MockUI Prototype
+## Branches
 
-The `MockUI/` folder contains the original React/Vite design reference.
-It is not required to run the desktop app.
+| Branch | Purpose |
+| --- | --- |
+| `master` | Project Laboratory submission |
+| `thesis` | Verified working application |
+| `research` | Research pipeline, working application and Anomaly Review |
 
-```bash
-cd MockUI
-npm install
-npm run dev
-```
+## People and licence
 
-Open the local URL shown by Vite, usually:
+Developer: Muhammad Ibrahim Shoeb. Supervisor: Dr. Husam Al-Magsoosi.
+Budapest University of Technology and Economics, Faculty of Electrical
+Engineering and Informatics.
 
-```text
-http://localhost:5173
-```
-
----
-
-## Main Features
-
-### Employee Management
-
-- Add, edit, view, and delete employee records
-- Auto-generated employee IDs
-- Degree-based level assignment for BSc, MSc, and PhD employees
-- `Other` employee track for increment-only roles
-- Professional employee profile with employment, personal, promotion, commendation, and sanction records
-- Rubric-based performance review history on employee profiles
-- Search, filtering, and pagination
-
-### Organization Hierarchy
-
-- Hierarchy model: Organization -> Division -> Department -> Unit -> Team -> Position
-- Premium canvas view with pan, zoom, fit view, search, and lazy expansion
-- Selected employee/unit inspector panel
-- Add, edit, and delete unit actions with hierarchy dependency checks
-- Export current hierarchy canvas as PNG through a save dialog
-
-### Promotion Race
-
-- Promotion race is calculated live from raw records
-- Commendations reduce race months
-- Sanctions add delay months
-- Promotions reset the race clock
-- Sub-race checkpoints show annual progress
-- `Other` employees do not get promotion races; they keep annual increment timelines only
-
-### Annual Salary Increment
-
-- Annual increments are separate from promotion
-- Dashboard alert when increments are due
-- Admin review and approval workflow
-- Per-level increment settings
-- Full before/after salary audit trail
-
-### Commendations And Sanctions
-
-- Commendations can be issued to one employee or bulk teams
-- Sanctions track disciplinary delay months
-- Active and resolved sanctions are separated
-- Commendations and sanctions remain available for `Other` employees
-
-### Dashboard
-
-- KPI overview
-- Increment queue
-- Promotion pipeline
-- Priority signals
-- Workforce charts
-- Recent activity
-- Responsive density for laptop and desktop screens
-
-### Import, Export, And Reports
-
-- CSV/XLSX employee import with validation preview
-- Downloadable import template
-- Employee CSV export
-- Yearly PDF report with Full, Executive, and Audit-only modes
-- Report preview before PDF generation
-- Export history via append-only application audit records with before/after snapshots
-- SQLite backup to a chosen location
-
-### Audit Log
-
-- Immutable audit trail for admin and HR actions
-- Username snapshots survive account renames
-- Search, filters, tooltips, and readable before/after diffs
-- CSV and PDF audit export
-
-### Access Control
-
-| Capability | Admin | HR Officer |
-|---|:---:|:---:|
-| Dashboard | Yes | Yes |
-| Employee Management | Yes | Yes |
-| Organization Hierarchy | Yes | Yes |
-| Promotions | Yes | Yes |
-| Commendations | Yes | Yes |
-| Sanctions | Yes | Yes |
-| Audit Log | Yes | Yes |
-| Import Data | Yes | Yes |
-| Settings | Yes | No |
-| User Management | Yes | No |
-| Export And Backup | Yes | No |
-
----
-
-## Project Structure
-
-```text
-MyHR/
-|-- main.py
-|-- requirements.txt
-|-- README.md
-|-- docs/
-|   |-- guides/
-|   |-- media/
-|-- scripts/
-|   |-- seed_demo_company.py
-|   |-- generate_docs.py
-|-- MockUI/
-|-- src/
-|   |-- core/
-|   |   |-- i18n.py
-|   |   |-- app_settings.py
-|   |-- database/
-|   |   |-- models.py
-|   |   |-- connection.py
-|   |-- services/
-|   |   |-- reporting_service.py
-|   |-- ui/
-|       |-- assets/
-|       |   |-- myhr.ico
-|       |   |-- icons/lucide/
-|       |-- icons.py
-|       |-- styles.py
-|       |-- theme.py
-|       |-- login_window.py
-|       |-- main_window.py
-|       |-- pages/
-|           |-- dashboard.py
-|           |-- employees.py
-|           |-- hierarchy.py
-|           |-- promotions.py
-|           |-- commendations.py
-|           |-- sanctions.py
-|           |-- audit_log.py
-|           |-- import_data.py
-|           |-- settings.py
-|-- tests/
-```
-
----
-
-## Packaging Notes
-
-Packaging is intentionally not done yet.
-
-Before building the standalone app:
-
-1. Make sure tests pass.
-2. Make sure temporary folders are not included:
-   - `tmp_*/`
-   - `build/`
-   - `dist/`
-   - `MockUI/node_modules/`
-   - local `*.db` files
-3. Use `src/ui/assets/myhr.ico` as the Windows executable icon.
-4. Include `src/ui/assets/icons/lucide/` with the package so SVG icons load correctly.
-5. Decide whether the packaged app should create a fresh local database or ship with a demo database.
-
-Suggested packaging tool for the next step:
-
-```bash
-pyinstaller --noconfirm --windowed --name MyHR --icon src/ui/assets/myhr.ico main.py
-```
-
-That command may need additional data-file options for assets. Do not treat it as final until the packaged app is tested.
-
----
-
-## Safe Push And Rollback
-
-Before pushing:
-
-```bash
-git status
-python -m unittest discover tests
-git add .
-git commit -m "Pre-package polish"
-git push
-```
-
-If something goes wrong after pushing, first find the last good commit:
-
-```bash
-git log --oneline -5
-```
-
-To temporarily go back and inspect an older version:
-
-```bash
-git switch --detach <commit-hash>
-```
-
-To return to your working branch:
-
-```bash
-git switch <branch-name>
-```
-
-To undo the latest commit safely with a new revert commit:
-
-```bash
-git revert HEAD
-```
-
-Avoid `git reset --hard` unless you are completely sure you want to discard local changes.
-
----
-
-## Documentation
-
-Start with [`docs/README.md`](docs/README.md). It distinguishes current authority,
-pending decisions, and archived history.
-
-| Need | Location |
-|---|---|
-| Complete research handover | `docs/RESEARCH_HANDOVER.md` |
-| Guided ChatGPT learning prompt | `docs/CHATGPT_RESEARCH_TUTOR_PROMPT.md` |
-| Current research roadmap | `docs/TDK_AUTONOMOUS_RESEARCH_ROADMAP.md` |
-| User and developer guides | `docs/guides/` |
-| UI rules and release QA | `docs/UI_RULES.md`, `docs/QA_CHECKLIST.md` |
-| Historical documents | `docs/archive/` |
-
-Private registration notes under `docs/research/` are intentionally ignored by
-Git and are not repository authority.
-
----
-
-## Repository Governance
-
-- Security policy: `SECURITY.md`
-- Contribution guide: `CONTRIBUTING.md`
-- Code of conduct: `CODE_OF_CONDUCT.md`
-- Support notes: `SUPPORT.md`
-- Citation metadata: `CITATION.cff`
-- Issue and pull request templates: `.github/`
-- Dependency monitoring: `.github/dependabot.yml`
-
-No permissive open-source license is added yet. See `docs/LICENSING_AND_IP.md`
-before choosing MIT, Apache-2.0, GPL, proprietary, or another licensing path.
-
----
-
-## License
-
-Academic project for Budapest University of Technology and Economics, 2025-2026.
-
-License decision pending; see `docs/LICENSING_AND_IP.md`.
+Academic project, 2025–2026. No open-source licence has been chosen yet; see
+[docs/LICENSING_AND_IP.md](docs/LICENSING_AND_IP.md). Citation metadata:
+[CITATION.cff](CITATION.cff). Governance: `SECURITY.md`, `CONTRIBUTING.md`,
+`CODE_OF_CONDUCT.md`, `SUPPORT.md`.

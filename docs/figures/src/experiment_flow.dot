@@ -1,0 +1,29 @@
+digraph experiment_flow {
+
+  graph [fontname="Times-Roman", fontsize=11, nodesep=0.25, ranksep=0.3, pad=0.05, bgcolor="white", newrank=true];
+  node  [fontname="Times-Roman", fontsize=11, shape=box, style="solid", color="#000000", penwidth=0.8, margin="0.08,0.05", height=0.3];
+  edge  [fontname="Times-Roman", fontsize=11, color="#000000", penwidth=0.8, arrowsize=0.6];
+
+  rankdir=TB; nodesep=0.25; ranksep=0.25;
+  subgraph cluster_families {
+    label="Scenario families"; labeljust=l;
+    color="#000000"; style=solid; penwidth=0.6; margin=6;
+    dev    [label="Development\n(inspectable)"];
+    valfam [label="Validation\n(inspectable)"];
+    freeze [label="Protocol freeze\n(human approval,\npending)", style=dashed];
+    hold   [label="Final holdout\n(locked; not\ngenerated or\naccessed)", color="#D55E00", fontcolor="#D55E00", penwidth=1.4, style="dashed"];
+    {rank=same; dev; valfam; freeze; hold;}
+    dev -> valfam -> freeze;
+    freeze -> hold [style=dashed, color="#D55E00"];
+  }
+  subgraph cluster_within {
+    label="Within each development scenario\l(artifact 4feea4508de1bb05; totals over 12 scenarios)\l"; labeljust=l;
+    color="#000000"; style=solid; penwidth=0.6; margin=6;
+    fit  [label="Fit models\ntraining histories\n(n = 2592)"];
+    val  [label="Select thresholds\nvalidation histories\n(n = 864)"];
+    eval [label="Compute metrics\ntest histories\n(n = 864)"];
+    {rank=same; fit; val; eval;}
+    fit -> val -> eval;
+  }
+  valfam -> val [style=invis];
+}

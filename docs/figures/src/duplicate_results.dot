@@ -1,0 +1,27 @@
+digraph duplicate_results {
+
+  graph [fontname="Times-Roman", fontsize=11, nodesep=0.25, ranksep=0.3, pad=0.05, bgcolor="white", newrank=true];
+  node  [fontname="Times-Roman", fontsize=11, shape=box, style="solid", color="#000000", penwidth=0.8, margin="0.08,0.05", height=0.3];
+  edge  [fontname="Times-Roman", fontsize=11, color="#000000", penwidth=0.8, arrowsize=0.6];
+
+  rankdir=TB; nodesep=0.3; ranksep=0.3;
+  recs  [label="Partition-local record set: records of one split;\nall records of one latent person share a partition"];
+  truth [label="True pairs T: every pair inside a\nduplicate_of_employee_id cluster"];
+  block [label="Blocking (similarity method): pairs sharing\ndate of birth, normalised national ID,\nnormalised full name or first-name token"];
+  univ  [label="Declared pair universe U\nexact, normalised exact: all n(n − 1)/2 pairs\nsimilarity: blocked pairs only"];
+  score [label="Predicted pairs P\nexact: equality predicate on the partition\nsimilarity: score ≥ threshold chosen on the\nvalidation split; P outside U is a contract error"];
+  conf  [label="Counts from set membership within U\nTP = |P ∩ T ∩ U|,  FP = |P − T|\nFN = |(T ∩ U) − P|,  TN = |U − P − T|"];
+  brec  [label="Blocking recall, reported separately\n|blocked ∩ T| / |T|; true pairs outside\nU are blocking misses, not FN in U", style=dashed];
+  other [shape=plaintext, group=side, label="Also reported separately:\lend-to-end counts over all n(n − 1)/2\lpairs, candidate pair count (workload),\lblocking and scoring time, peak\ltraced memory\l"];
+  recs [group=main]; block [group=main]; univ [group=main]; score [group=main]; conf [group=main];
+  truth [group=side]; brec [group=side];
+  recs -> block [weight=10]; recs -> truth;
+  {rank=same; truth; block;}
+  truth -> brec [style=dashed, weight=10]; block -> brec [style=dashed];
+  block -> univ [weight=10];
+  {rank=same; brec; univ;}
+  univ -> score [weight=10];
+  score -> conf [weight=10]; truth -> conf;
+  brec -> other [style=invis, weight=10];
+  {rank=same; other; score;}
+}

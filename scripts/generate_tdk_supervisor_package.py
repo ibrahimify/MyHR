@@ -229,6 +229,50 @@ def generate_figures(repo: Path, assets: Path) -> None:
     _save_figure(assets / "duplicate_results.png")
 
 
+    _use_verified_publication_figures(repo, assets)
+
+
+# Figures rebuilt reproducibly from verified artifacts by scripts/build_tdk_figures.py
+# (Graphviz diagrams and Matplotlib plots; see docs/figures/FIGURE_MANIFEST.json).
+PUBLICATION_FIGURES = (
+    "feature_design",
+    "feature_collapse",
+    "duplicate_results",
+    "policy_timeline",
+    "architecture",
+    "experiment_flow",
+    "artifact_lifecycle",
+    "validation_counts",
+    "policy_alerts",
+    "primary_recall",
+    "confound_diagnostic",
+)
+
+
+def _use_verified_publication_figures(repo: Path, assets: Path) -> None:
+    figures = repo / "docs" / "figures"
+    for name in PUBLICATION_FIGURES:
+        png = figures / f"{name}.png"
+        if not png.exists():
+            if name == "confound_diagnostic":
+                raise FileNotFoundError(f"{png}; run python scripts/build_tdk_figures.py")
+            continue
+        for suffix in (".png", ".svg", ".pdf"):
+            source = figures / f"{name}{suffix}"
+            if source.exists():
+                shutil.copy2(source, assets / f"{name}{suffix}")
+
+
+def _graphviz_natural_width(name: str) -> float | None:
+    manifest = Path(__file__).resolve().parents[1] / "docs" / "figures" / "FIGURE_MANIFEST.json"
+    stem = Path(name).stem
+    if not manifest.exists():
+        return None
+    layout = json.loads(manifest.read_text(encoding="utf-8")).get("figures", {}).get(stem, {}).get("layout", {})
+    width = layout.get("recommended_placed_width_in")
+    return float(width) if width else None
+
+
 def _set_cell_shading(cell, fill: str) -> None:
     tc_pr = cell._tc.get_or_add_tcPr()
     shd = tc_pr.find(qn("w:shd"))
@@ -418,8 +462,7 @@ def configure_document(document: Document) -> None:
     heading_sizes = {1: 16, 2: 14, 3: 12}
     for level, size in heading_sizes.items():
         style = document.styles[f"Heading {level}"]
-        style.font.name = "Times New Roman"
-        style._element.rPr.rFonts.set(qn("w:eastAsia"), "Times New Roman")
+        _force_serif(style)
         style.font.size = Pt(size)
         style.font.bold = True
         style.font.color.rgb = RGBColor(0, 0, 0)
@@ -437,8 +480,29 @@ def configure_document(document: Document) -> None:
         code.paragraph_format.space_before = Pt(4)
         code.paragraph_format.space_after = Pt(6)
 
+    for name in ("Subtitle", "Title", "Caption", "Footer"):
+        if name in [style.name for style in document.styles]:
+            _force_serif(document.styles[name])
+            if name == "Subtitle":
+                document.styles[name].font.color.rgb = RGBColor(0, 0, 0)
+                document.styles[name].font.italic = False
+
     for doc_section in document.sections:
         _add_page_number(doc_section.footer.paragraphs[0])
+
+
+def _force_serif(style) -> None:
+    """Pin a style to Times New Roman; theme font attributes otherwise win (Calibri)."""
+    style.font.name = "Times New Roman"
+    r_pr = style._element.get_or_add_rPr()
+    fonts = r_pr.find(qn("w:rFonts"))
+    if fonts is None:
+        fonts = OxmlElement("w:rFonts")
+        r_pr.insert(0, fonts)
+    for attr in ("w:asciiTheme", "w:hAnsiTheme", "w:eastAsiaTheme", "w:cstheme"):
+        fonts.attrib.pop(qn(attr), None)
+    for attr in ("w:ascii", "w:hAnsi", "w:eastAsia", "w:cs"):
+        fonts.set(qn(attr), "Times New Roman")
 
 
 def add_title_pages(document: Document, lines: list[str]) -> None:
@@ -551,7 +615,14 @@ def add_figure(document: Document, assets: Path, name: str, caption: str) -> Non
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     paragraph.paragraph_format.keep_with_next = True
     run = paragraph.add_run()
-    width = 5.0 if name == "myhr_ui.png" else 6.0
+    # Application screenshots are illustrations of the interface, so they use
+    # the same 5.0 in width as the employee-profile capture.
+    width = 5.0 if name == "myhr_ui.png" or name.startswith("anomaly_") else 6.0
+    # Graphviz diagrams are placed at their natural width so 11 pt labels stay
+    # 11 pt and tall diagrams do not inflate the page count.
+    natural = _graphviz_natural_width(name)
+    if natural is not None:
+        width = min(width, natural)
     run.add_picture(str(path), width=Inches(width))
     caption_paragraph = document.add_paragraph(caption)
     caption_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -653,8 +724,8 @@ def build_docx(source: Path, assets: Path, output: Path) -> None:
                 document.add_page_break()
                 add_hidden_marker("MYHR_MAIN_TEXT_END_2026", "MYHR_MAIN_TEXT_END", 101)
                 seen_references = True
-            elif re.match(r"^[278] ", heading):
-                document.add_page_break()
+            # Main sections flow continuously; forced breaks left near-empty
+            # pages and counted against the 30-35 page main-text limit.
             heading_paragraph = document.add_heading(heading, level=1)
             heading_paragraph.paragraph_format.keep_with_next = True
             after_heading = True
@@ -847,7 +918,8 @@ def main() -> int:
     decision_report.unlink(missing_ok=True)
     page_report_path.unlink(missing_ok=True)
     shutil.copy2(repo / "docs" / "TDK_SUPERVISOR_BRIEF_2026-10-30.md", output / "README.md")
-    verification = repo / "docs" / "TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-10-30.md"
+    # Use the newest dated verification record; older records stay in docs/.
+    verification = sorted((repo / "docs").glob("TDK_SUPERVISOR_PACKAGE_VERIFICATION_*.md"))[-1]
     if verification.exists():
         shutil.copy2(verification, output / "Verification_Report.md")
     artifact = repo / "research_outputs" / "independent_development" / CURRENT_ARTIFACT_DIR

@@ -1,0 +1,29 @@
+digraph feature_collapse {
+
+  graph [fontname="Times-Roman", fontsize=11, nodesep=0.25, ranksep=0.3, pad=0.05, bgcolor="white", newrank=true];
+  node  [fontname="Times-Roman", fontsize=11, shape=box, style="solid", color="#000000", penwidth=0.8, margin="0.08,0.05", height=0.3];
+  edge  [fontname="Times-Roman", fontsize=11, color="#000000", penwidth=0.8, arrowsize=0.6];
+
+  rankdir=TB; nodesep=0.35; ranksep=0.28;
+  subgraph cluster_hist {
+    label="Historical residual design\n(artifact e342bd4acf39b06b, commit 0ad4e96)"; labeljust=c;
+    color="#000000"; style=solid; penwidth=0.6; margin=8;
+    h1 [label="Residual filter: keep histories with no\nfinding from validate_record_with_policy()"];
+    h2 [label="A positive policy service deficit always\nemits a policy finding, so every history\nwith a positive deficit is removed"];
+    h3 [label="The 3 policy-specific features are 0\nfor every retained history"];
+    h4 [label="Policy model varies on 6 core features;\nraw model varies on 6 + 3 features"];
+    h5 [label="Structural failure: the comparison\ncannot test the policy hypothesis", color="#D55E00", fontcolor="#D55E00", penwidth=1.4, style=dashed];
+    h1 -> h2 -> h3 -> h4 -> h5;
+  }
+  subgraph cluster_fix {
+    label="Corrected residual design\n(artifact 4feea4508de1bb05, commit 56597d3)"; labeljust=c;
+    color="#000000"; style=solid; penwidth=0.6; margin=8;
+    c1 [label="Primary gate: keep histories with no\nfinding from validate_invariant_record()\n(structural contradictions only)"];
+    c2 [label="Policy deficits are not used for\nfiltering, so the 3 policy-specific\nfeatures can vary"];
+    c3 [label="Same invariant-negative histories for\nevery representation and control"];
+    c4 [label="Equal fixed additional review budget:\n10% of residual test histories,\nrounded up, for each representation"];
+    c5 [label="Policy rules reported separately\nas a secondary queue"];
+    c1 -> c2 -> c3 -> c4 -> c5;
+  }
+  {rank=same; h1; c1;}
+}

@@ -1,14 +1,17 @@
 {
-  "capture_type": "reproducible_offscreen_application_window",
-  "source_revision": "84a3dbeeaea835ca25785e0a935dad54c9ba0d1f",
-  "database": "temporary synthetic dataset from scripts/seed_demo_company.py",
-  "employee": "EMP-0034",
+  "capture_type": "live_application_window_on_physical_display",
+  "launch": "LoginWindow -> local demo account -> MainWindow (same flow as python main.py)",
+  "source_revision": "f3cb0f2b096ef92be6f2411228046cb68e99eae9",
+  "database": "local demo database seeded by scripts/seed_demo_company.py",
+  "employee": "EMP-0034 Peter Ahmed (synthetic seed employee)",
   "view": "Employees > employee profile > Performance",
-  "viewport": {
-    "width": 1488,
-    "height": 841
-  },
+  "window_logical": [
+    1872,
+    1057
+  ],
+  "device_pixel_ratio": 1.0,
+  "language": "en",
   "theme": "dark",
   "contains_private_data": false,
-  "sha256": "3df2586a39ce47c8920eb341c79db0e82314d18c62352477c9b294e00f288589"
+  "sha256": "a8059f982e5e55a4535762f7cfdade92735e013d37d226ed95e97ca67f99556e"
 }

@@ -1,0 +1,28 @@
+digraph artifact_lifecycle {
+
+  graph [fontname="Times-Roman", fontsize=11, nodesep=0.25, ranksep=0.3, pad=0.05, bgcolor="white", newrank=true];
+  node  [fontname="Times-Roman", fontsize=11, shape=box, style="solid", color="#000000", penwidth=0.8, margin="0.08,0.05", height=0.3];
+  edge  [fontname="Times-Roman", fontsize=11, color="#000000", penwidth=0.8, arrowsize=0.6];
+
+  rankdir=TB; nodesep=0.3;
+  run     [label="Run in a process-owned\nstaging directory"];
+  write   [label="Write configuration, seeds,\npredictions and metrics"];
+  prov    [label="Record Git revision, dirty flag,\nsource and dependency versions"];
+  sums    [label="Write SHA-256 manifest\nof every file"];
+  publish [label="Atomic publish to a\nwrite-once artifact directory"];
+  audit   [label="Independent audit: checksums,\nconfusion counts, AP, paired statistics"];
+  ok      [label="Verified: arithmetic is\nreproducible", shape=box];
+  bad     [label="Failed: artifact preserved,\ndefect recorded", shape=box];
+  run -> write;
+  run -> prov;
+  {rank=same; write; prov;}
+  write -> sums;
+  prov -> sums;
+  sums -> publish -> audit;
+  audit -> ok;
+  audit -> bad;
+  {rank=same; ok; bad;}
+  limit [shape=plaintext, label="Verification does not establish that the estimand,\nscenario population or policy assumptions are valid."];
+  ok -> limit [style=invis];
+  bad -> limit [style=invis];
+}

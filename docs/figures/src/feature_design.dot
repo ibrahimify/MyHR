@@ -1,0 +1,32 @@
+digraph feature_design {
+
+  graph [fontname="Times-Roman", fontsize=11, nodesep=0.25, ranksep=0.3, pad=0.05, bgcolor="white", newrank=true];
+  node  [fontname="Times-Roman", fontsize=11, shape=box, style="solid", color="#000000", penwidth=0.8, margin="0.08,0.05", height=0.3];
+  edge  [fontname="Times-Roman", fontsize=11, color="#000000", penwidth=0.8, arrowsize=0.6];
+
+  rankdir=TB; nodesep=0.2; ranksep=0.3;
+  node [margin="0.08,0.05"];
+  core    [label="Common core (6 features, in every representation)\l    event_count, promotion_count, sanction_count,\l    salary_increment_count,\l    performance_review_count,\l    min_salary_increment_interval_days\l"];
+  rawadd  [label="Raw additions (3)\l    min_promotion_interval_months\l    commendation_count\l    months_since_hire\l"];
+  poladd  [label="Policy-aware additions (3), from\lassess_promotion_history() under the\lscenario policy and policy epochs\l    policy_service_deficit_months\l    policy_service_deficit_ratio\l    policy_unexplained_short_promotion\l", color="#0072B2", penwidth=1.2];
+  {rank=same; rawadd; poladd;}
+  rawm    [label="raw_matched (9 features)"];
+  polm    [label="policy_matched (9 features)", color="#0072B2", penwidth=1.2];
+  {rank=same; rawm; polm;}
+  core -> rawadd [style=invis]; core -> poladd [style=invis];
+  core -> rawm; core -> polm;
+  rawadd -> rawm; poladd -> polm;
+  rawabl  [label="Raw ablations (columns removed)\lraw_without_commendation (8): core\l    + min_promotion_interval_months\l    + months_since_hire\lraw_interval_ablation (7): core\l    + min_promotion_interval_months\l", style=dashed];
+  polabl  [label="Policy ablations (one policy feature kept)\lpolicy_deficit_months_ablation (7): core\l    + policy_service_deficit_months\lpolicy_deficit_ratio_ablation (7): core\l    + policy_service_deficit_ratio\lpolicy_unexplained_ablation (7): core\l    + policy_unexplained_short_promotion\l", style=dashed, color="#0072B2"];
+  {rank=same; rawabl; polabl;}
+  rawm -> rawabl [style=dashed];
+  polm -> polabl [style=dashed, color="#0072B2"];
+  subgraph cluster_controls {
+    label="Falsification controls: same 9 columns as policy_matched, altered policy input"; labeljust=l; labelloc=t;
+    fontcolor="#D55E00"; color="#D55E00"; style=dashed; penwidth=0.8; margin=6;
+  wrong   [label="wrong_policy_control\lpolicy additions computed under the next\lstock policy profile, without policy\lepochs or grandfathering evidence\l", color="#D55E00", penwidth=1.2];
+  shuf    [label="shuffled_policy_control\leach history takes the 3 policy additions\lof another history (seeded rotation;\lvalue frequencies preserved)\l", color="#D55E00", penwidth=1.2];
+  {rank=same; wrong; shuf;}
+  }
+  rawabl -> wrong [style=invis]; polabl -> shuf [style=invis];
+}
