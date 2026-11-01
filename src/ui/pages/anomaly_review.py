@@ -56,6 +56,7 @@ from src.ui.styles import (
     btn_primary,
     card_ss,
     enable_table_row_selection,
+    menu_ss,
     pill_tab_ss,
     semantic_badge_ss,
     sync_table_widget_cells,
@@ -250,19 +251,30 @@ class AnomalyReviewPage(QWidget):
         self.help_button.setIcon(app_icon("fa5s.question-circle", color=tokens().text, size=14))
         self.help_button.setCheckable(True)
         self.help_button.setStyleSheet(btn_outline(38))
+        self.help_button.setToolTip(t("anomaly_demo_help_tooltip"))
         self.help_button.clicked.connect(self._toggle_help)
         self.export_button = QPushButton(t("anomaly_demo_export_report"))
         self.export_button.setIcon(app_icon("fa5s.download", color="#ffffff", size=14))
         self.export_button.setStyleSheet(btn_primary(38))
+        self.export_button.setToolTip(t("anomaly_demo_export_tooltip"))
         self.export_button.setEnabled(False)
-        export_menu = QMenu(self.export_button)
-        export_csv = QAction(t("anomaly_demo_export_csv"), self)
-        export_pdf = QAction(t("anomaly_demo_export_pdf"), self)
-        export_csv.triggered.connect(self._export_csv)
-        export_pdf.triggered.connect(self._export_pdf)
-        export_menu.addAction(export_csv)
-        export_menu.addAction(export_pdf)
-        self.export_button.setMenu(export_menu)
+        self.export_menu = QMenu(self.export_button)
+        self.export_menu.setStyleSheet(menu_ss())
+        self.export_csv_action = QAction(
+            app_icon("fa5s.file-csv", color=tokens().text_muted, size=14),
+            t("anomaly_demo_export_csv"),
+            self,
+        )
+        self.export_pdf_action = QAction(
+            app_icon("fa5s.file-pdf", color=tokens().text_muted, size=14),
+            t("anomaly_demo_export_pdf"),
+            self,
+        )
+        self.export_csv_action.triggered.connect(self._export_csv)
+        self.export_pdf_action.triggered.connect(self._export_pdf)
+        self.export_menu.addAction(self.export_csv_action)
+        self.export_menu.addAction(self.export_pdf_action)
+        self.export_button.setMenu(self.export_menu)
         header.addLayout(heading, 1)
         header.addWidget(self.help_button, 0, Qt.AlignTop)
         header.addWidget(self.export_button, 0, Qt.AlignTop)
@@ -308,36 +320,105 @@ class AnomalyReviewPage(QWidget):
     def _build_guide_panel(self):
         panel = self._card()
         panel.setMinimumWidth(250)
-        panel.setMaximumWidth(280)
+        panel.setMaximumWidth(300)
         box = QVBoxLayout(panel)
         box.setContentsMargins(18, 18, 18, 18)
-        box.setSpacing(14)
+        box.setSpacing(12)
+        header = QHBoxLayout()
         title = QLabel(t("anomaly_demo_help_title"))
         title.setStyleSheet(self._section_style())
-        box.addWidget(title)
-        self.guide_context = QLabel("")
-        self.guide_context.setWordWrap(True)
-        self.guide_context.setStyleSheet(self._label_style())
-        box.addWidget(self.guide_context)
+        self.guide_close_button = QPushButton()
+        self.guide_close_button.setIcon(
+            app_icon("fa5s.chevron-up", color=tokens().text_muted, size=12)
+        )
+        self.guide_close_button.setToolTip(t("anomaly_demo_hide_help"))
+        self.guide_close_button.setFixedSize(30, 30)
+        self.guide_close_button.setStyleSheet(btn_outline(30))
+        self.guide_close_button.clicked.connect(self._close_guide)
+        header.addWidget(title)
+        header.addStretch()
+        header.addWidget(self.guide_close_button)
+        box.addLayout(header)
+
+        terms = QLabel(t("anomaly_demo_guide_terms"))
+        terms.setStyleSheet(self._label_style(bold=True))
+        box.addWidget(terms)
+        self.guide_terms_widget = QWidget()
+        self.guide_terms_layout = QVBoxLayout(self.guide_terms_widget)
+        self.guide_terms_layout.setContentsMargins(0, 0, 0, 0)
+        self.guide_terms_layout.setSpacing(10)
+        box.addWidget(self.guide_terms_widget)
         divider = QFrame()
         divider.setFrameShape(QFrame.HLine)
         divider.setStyleSheet(f"color: {tokens().border};")
         box.addWidget(divider)
-        terms = QLabel(t("anomaly_demo_guide_terms"))
-        terms.setStyleSheet(self._label_style(bold=True))
-        box.addWidget(terms)
-        self.guide_terms = QLabel("")
-        self.guide_terms.setWordWrap(True)
-        self.guide_terms.setStyleSheet(self._label_style())
-        box.addWidget(self.guide_terms)
+
+        path_title = QLabel(t("anomaly_demo_demo_path"))
+        path_title.setStyleSheet(self._label_style(bold=True))
+        box.addWidget(path_title)
+        self.guide_step_numbers = []
+        self.guide_step_labels = []
+        for step_index in range(4):
+            row = QHBoxLayout()
+            row.setSpacing(9)
+            number = QLabel(str(step_index + 1))
+            number.setAlignment(Qt.AlignCenter)
+            number.setFixedSize(24, 24)
+            label = QLabel(self._guide_step_text(step_index))
+            label.setWordWrap(True)
+            label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+            row.addWidget(number, 0, Qt.AlignTop)
+            row.addWidget(label, 1)
+            box.addLayout(row)
+            self.guide_step_numbers.append(number)
+            self.guide_step_labels.append(label)
         box.addStretch()
         return panel
 
     def _update_guide(self, index: int = 0):
-        if not hasattr(self, "guide_context"):
+        if not hasattr(self, "guide_terms_layout"):
             return
-        self.guide_context.setText(t(f"anomaly_demo_guide_step_{index}"))
-        self.guide_terms.setText(t(f"anomaly_demo_guide_terms_{index}"))
+        self._clear_layout(self.guide_terms_layout)
+        terms = t(f"anomaly_demo_guide_terms_{index}").split("\n\n")
+        for block in terms:
+            term, separator, definition = block.partition(": ")
+            row = QLabel()
+            row.setWordWrap(True)
+            row.setTextFormat(Qt.RichText)
+            if separator:
+                row.setText(
+                    f"<b>{escape(term)}:</b> {escape(definition)}"
+                )
+            else:
+                row.setText(escape(block))
+            row.setStyleSheet(
+                f"font-size: 13px; color: {tokens().text_muted};"
+            )
+            self.guide_terms_layout.addWidget(row)
+
+        for step_index, (number, label) in enumerate(
+            zip(self.guide_step_numbers, self.guide_step_labels)
+        ):
+            active = step_index == index
+            number.setStyleSheet(
+                "border-radius: 12px; font-size: 12px; font-weight: 800; "
+                f"background: {tokens().brand if active else tokens().surface_muted}; "
+                f"color: {'#062f28' if active and tokens().name == 'dark' else '#ffffff' if active else tokens().text_muted};"
+            )
+            label.setStyleSheet(
+                f"font-size: 12px; font-weight: {700 if active else 400}; "
+                f"color: {tokens().text if active else tokens().text_muted};"
+            )
+
+    @staticmethod
+    def _guide_step_text(index: int):
+        text = t(f"anomaly_demo_guide_step_{index}")
+        prefix = f"{index + 1}. "
+        return text[len(prefix):] if text.startswith(prefix) else text
+
+    def _close_guide(self):
+        self.help_button.setChecked(False)
+        self._toggle_help(False)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -360,7 +441,7 @@ class AnomalyReviewPage(QWidget):
             self.workspace_layout.addWidget(self.main_workspace, 1, 0, 1, 2)
         else:
             self.guide_panel.setMinimumWidth(250)
-            self.guide_panel.setMaximumWidth(280)
+            self.guide_panel.setMaximumWidth(300)
             self.workspace_layout.addWidget(self.main_workspace, 0, 0)
             self.workspace_layout.addWidget(self.guide_panel, 0, 1)
 

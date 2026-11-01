@@ -12,7 +12,7 @@ import unittest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QLabel
 
 from src.services.anomaly_detection import run_demo_scenario
 from src.ui.pages.anomaly_review import AnomalyReviewPage, _demo_process_entry
@@ -71,9 +71,20 @@ class AnomalyDemoUiTests(unittest.TestCase):
             self.assertFalse(page.export_button.isEnabled())
             page.help_button.click()
             self.assertFalse(page.guide_panel.isHidden())
-            self.assertIn("Review priority", page.guide_terms.text())
+            guide_text = " ".join(
+                label.text()
+                for label in page.guide_terms_widget.findChildren(QLabel)
+            )
+            self.assertIn("Review priority", guide_text)
             page.tabs.setCurrentIndex(2)
-            self.assertIn("Equal capacity", page.guide_terms.text())
+            guide_text = " ".join(
+                label.text()
+                for label in page.guide_terms_widget.findChildren(QLabel)
+            )
+            self.assertIn("Equal capacity", guide_text)
+            page.guide_close_button.click()
+            self.assertTrue(page.guide_panel.isHidden())
+            self.assertFalse(page.help_button.isChecked())
             page._on_completed(self.completed_result)
             self.assertTrue(page.export_button.isEnabled())
             self.assertEqual(
@@ -282,7 +293,7 @@ class AnomalyDemoUiTests(unittest.TestCase):
 
     def test_demo_constructs_in_all_languages_and_themes(self):
         from src.core.i18n import get_language, set_language
-        from src.ui.theme import apply_theme, theme_manager
+        from src.ui.theme import apply_theme, theme_manager, tokens
 
         original_language = get_language()
         original_theme = theme_manager.theme
@@ -299,6 +310,9 @@ class AnomalyDemoUiTests(unittest.TestCase):
                     self.assertNotIn("anomaly_demo_", page.run_button.text())
                     self.assertEqual(page.tabs.count(), 4)
                     self.assertEqual(page.scenario_select.count(), 3)
+                    self.assertIn(tokens().surface, page.export_menu.styleSheet())
+                    self.assertIn(tokens().text, page.export_menu.styleSheet())
+                    self.assertEqual(len(page.export_menu.actions()), 2)
                     self.assertFalse(page.grab().isNull())
                     page.close()
         finally:

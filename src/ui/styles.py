@@ -236,6 +236,38 @@ QPushButton:hover {{ background: {t.hover}; color: {t.text}; border-color: {t.bo
 """
 
 
+def menu_ss():
+    """Themed popup menu shared by button and context menus."""
+    t = tokens()
+    return f"""
+QMenu {{
+    background: {t.surface};
+    color: {t.text};
+    border: 1px solid {t.border};
+    border-radius: 8px;
+    padding: 6px;
+}}
+QMenu::item {{
+    color: {t.text};
+    background: transparent;
+    padding: 9px 30px 9px 12px;
+    border-radius: 6px;
+}}
+QMenu::item:selected {{
+    color: {t.text};
+    background: {t.selected};
+}}
+QMenu::item:disabled {{
+    color: {t.text_soft};
+}}
+QMenu::separator {{
+    height: 1px;
+    background: {t.border};
+    margin: 5px 8px;
+}}
+"""
+
+
 def btn_danger(h=36):
     t = tokens()
     return f"""

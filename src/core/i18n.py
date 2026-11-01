@@ -3158,7 +3158,9 @@ TRANSLATIONS["ar"].update({
 TRANSLATIONS["en"].update({
     "anomaly_demo_help": "Help",
     "anomaly_demo_hide_help": "Hide help",
-    "anomaly_demo_help_title": "How this works",
+    "anomaly_demo_help_title": "Guide",
+    "anomaly_demo_help_tooltip": "Show a short guide for the current tab.",
+    "anomaly_demo_export_tooltip": "Export the completed synthetic analysis as CSV or PDF.",
     "anomaly_demo_help_text": "Choose a synthetic scenario and run the analysis. Review ranked records, inspect the same employee's policy evidence, compare methods at equal capacity, then reveal generated truth only in Synthetic Evaluation.",
     "anomaly_demo_export_report": "Export report",
     "anomaly_demo_export_csv": "Export CSV",
@@ -3225,6 +3227,7 @@ TRANSLATIONS["en"].update({
     "anomaly_demo_truth_label_excessive_sanctions": "Excessive sanctions",
     "anomaly_demo_truth_label_unusual_admin_interval": "Unusual administrative interval",
     "anomaly_demo_guide_terms": "Key terms",
+    "anomaly_demo_demo_path": "Demo path",
     "anomaly_demo_guide_step_0": "1. Review the ranked queue. Open a record to inspect the same synthetic employee's evidence.",
     "anomaly_demo_guide_step_1": "2. Check the employee history, applicable policy and service calculation. Missing evidence stays visible.",
     "anomaly_demo_guide_step_2": "3. Compare methods on the same eligible records and the same review budget.",
@@ -3252,7 +3255,9 @@ TRANSLATIONS["en"].update({
 TRANSLATIONS["hu"].update({
     "anomaly_demo_help": "Súgó",
     "anomaly_demo_hide_help": "Súgó elrejtése",
-    "anomaly_demo_help_title": "Hogyan működik",
+    "anomaly_demo_help_title": "Útmutató",
+    "anomaly_demo_help_tooltip": "Rövid útmutató megjelenítése az aktuális laphoz.",
+    "anomaly_demo_export_tooltip": "A befejezett szintetikus elemzés exportálása CSV vagy PDF formátumban.",
     "anomaly_demo_help_text": "Válasszon szintetikus forgatókönyvet és futtassa az elemzést. Tekintse át a rangsorolt rekordokat, ugyanazon dolgozó szabályzati bizonyítékát, majd hasonlítsa össze a módszereket azonos kapacitással. A generált igazság csak a Szintetikus értékelés lapon látható.",
     "anomaly_demo_export_report": "Riport exportálása",
     "anomaly_demo_export_csv": "CSV export",
@@ -3394,6 +3399,7 @@ TRANSLATIONS["ar"].update({
 
 TRANSLATIONS["hu"].update({
     "anomaly_demo_guide_terms": "Kulcsfogalmak",
+    "anomaly_demo_demo_path": "Bemutató lépései",
     "anomaly_demo_guide_step_0": "1. Tekintse át a rangsorolt listát, majd nyissa meg ugyanazon szintetikus dolgozó bizonyítékait.",
     "anomaly_demo_guide_step_1": "2. Ellenőrizze az előzményeket, a szabályzatot és a szolgálati számítást. A hiányzó bizonyíték látható marad.",
     "anomaly_demo_guide_step_2": "3. Hasonlítsa össze a módszereket ugyanazokon a rekordokon, azonos ellenőrzési kerettel.",
@@ -3420,6 +3426,9 @@ TRANSLATIONS["hu"].update({
 
 TRANSLATIONS["ar"].update({
     "anomaly_demo_guide_terms": "مصطلحات أساسية",
+    "anomaly_demo_demo_path": "مسار العرض",
+    "anomaly_demo_help_tooltip": "إظهار دليل مختصر لعلامة التبويب الحالية.",
+    "anomaly_demo_export_tooltip": "تصدير التحليل الاصطناعي المكتمل بتنسيق CSV أو PDF.",
     "anomaly_demo_guide_step_0": "1. راجع قائمة الأولوية وافتح السجل لفحص أدلة الموظف الاصطناعي نفسه.",
     "anomaly_demo_guide_step_1": "2. افحص السجل والسياسة المطبقة وحساب الخدمة. تبقى الأدلة المفقودة ظاهرة.",
     "anomaly_demo_guide_step_2": "3. قارن الطرق على السجلات المؤهلة نفسها وبميزانية مراجعة متساوية.",
