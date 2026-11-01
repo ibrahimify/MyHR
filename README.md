@@ -1,4 +1,4 @@
-# MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression
+﻿# MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression
 
 BME VIK TDK 2026 research project by Muhammad Ibrahim Shoeb. Supervisor: Dr. Husam Al-Magsoosi.
 Budapest University of Technology and Economics, Faculty of Electrical Engineering and Informatics.
@@ -21,8 +21,6 @@ The protocol is a draft and the final holdout has never been generated or access
 ![MyHR demo](docs/media/demo/myhr_demo.gif)
 
 *28-second recording of the real application with synthetic data ([MP4](docs/media/demo/myhr_demo.mp4)).*
-
-Video walkthrough: to be added by the author.
 
 ## Main findings
 
