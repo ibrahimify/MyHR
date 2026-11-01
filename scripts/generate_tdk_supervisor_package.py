@@ -91,6 +91,15 @@ def generate_figures(repo: Path, assets: Path) -> None:
         ax.axis("off")
         ax.text(0.5, 0.5, "MyHR employee performance interface", ha="center", va="center", fontsize=18)
         _save_figure(assets / "myhr_ui.png")
+    for name in (
+        "anomaly_queue_light.png",
+        "anomaly_evidence_light.png",
+        "anomaly_comparison_light.png",
+    ):
+        source = repo / "docs" / "media" / "screenshots" / name
+        if not source.exists():
+            raise FileNotFoundError(f"Required demonstration screenshot is missing: {source}")
+        shutil.copy2(source, assets / name)
 
     fig, ax = plt.subplots(figsize=(10, 4.2))
     ax.set_xlim(0, 48)
@@ -869,7 +878,7 @@ def main() -> int:
         "\n".join([
             "# MyHR TDK Supervisor Review Draft",
             "",
-            f"Reviewed branch: `research/policy-aware-anomaly` at `{revision}`.",
+            f"Reviewed branch: `research` at `{revision}`.",
             "",
             "## Start Here",
             "",
@@ -878,6 +887,7 @@ def main() -> int:
             "3. Use `Supervisor_Decision_Sheet.pdf` for the remaining human decisions.",
             "4. Check `Verification_Report.md` for tests, citations, artifact audit, page count, and hashes.",
             "5. Inspect `figures/` and `data/` for reproducible plots and their underlying tables.",
+            "6. In MyHR, open `Anomaly Review`, select a synthetic scenario, and run the working demonstration.",
             "",
             "## Verified Development Evidence",
             "",
@@ -892,8 +902,8 @@ def main() -> int:
             "## Remaining Limitations And Decisions",
             "",
             "- Synthetic scenario realism still requires two blinded human reviewers.",
-            "- Employee-specific grandfathering is not represented as structured generator evidence.",
-            "- Protocol-scale development and validation remain outstanding.",
+            "- Employee-specific entitlement exists in development code, but protocol-scale evidence still requires verification.",
+            "- The protocol-scale development result is confounded: wrong-policy features reproduce most of the raw-to-policy gain.",
             "- Protocol freeze, final holdout access, scientific conclusions, PR merge, and final submission require human authorization.",
             "",
             "The final holdout was not generated, inspected, scored, or unlocked.",

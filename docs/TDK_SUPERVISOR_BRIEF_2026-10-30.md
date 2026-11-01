@@ -1,6 +1,6 @@
 # MyHR TDK Supervisor Brief
 
-Review date: 30 October 2026
+Review date: 1 November 2026
 
 Research title: **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**
 
@@ -10,13 +10,15 @@ Status: **Supervisor-review draft. Development evidence only. Draft protocol. Fi
 
 MyHR is an offline employee-management and decision-support application. The TDK study asks whether explicit progression-policy context improves anomaly ranking at the same human review capacity, without increasing false alerts on legitimate exceptional histories.
 
-The repository implements deterministic validation, statistical baselines, raw and policy-aware Isolation Forest representations, wrong- and shuffled-policy controls, feature ablations, synthetic generators, duplicate-candidate detection, write-once artifacts, checksum auditing, and paired scenario-level analysis. An external audit exposed invalid scenario semantics and an incorrect duplicate-pair universe. Those defects were repaired with regression tests before generating the current artifact.
+The repository implements deterministic validation, statistical baselines, raw and policy-aware Isolation Forest representations, wrong- and shuffled-policy controls, feature ablations, synthetic generators, duplicate-candidate detection, write-once artifacts, checksum auditing, and paired scenario-level analysis. The application now also contains a working synthetic-only Anomaly Review workflow: it runs the shared rules and ML services, displays a ranked queue, traces a selected alert to source events and policy arithmetic, and compares four representations at equal review capacity without changing employee records.
 
 The current corrected exploratory artifact is `4feea4508de1bb05`, generated from clean commit `56597d3`. Its audit status is verified and `holdout_accessed` is `false`. Across 12 scenarios it contains 864 eligible test histories, 108 anomalies, and 72 generated rare-legitimate labels. Deterministic policy checks produced 63 TP, 0 FP, and 45 FN, with 0/72 generated rare labels flagged. That denominator includes 24 grandfathering labels without independently established employee-specific entitlement.
 
 At identical additional review capacity, the scenario-level recall difference for policy-aware minus raw Isolation Forest was +0.0278, 95% CI [-0.0278, +0.1019], paired sign-flip p=0.6875. The nominal top-10% rule uses ceiling rounding, so each model reviewed 8/72 records per scenario, or 96/864 (11.11%) overall. **No policy-aware advantage was demonstrated in this exploratory run.** The interval does not establish equivalence. The secondary AP difference was +0.0738 with unadjusted p=0.0122, but the all-comparison Holm-adjusted p was 1.0; it is not confirmatory.
 
 The adverse controls are more restrictive than the headline comparison: wrong-policy context selected exactly the same 96 records as policy-matched context and produced the same 39 TP/57 FP. Each of three single-policy-feature ablations produced 42 TP/54 FP. The observed difference from raw features therefore cannot be attributed to correct policy knowledge, and the full policy representation underperformed its ablations in this inspected run.
+
+A later 30-seed protocol-scale development diagnostic also remains confounded: wrong-policy features reproduce most of the apparent gain over raw features. This is evidence that the controls and audit process exposed an attribution problem, not evidence that policy-aware ML is superior. The final holdout remains locked.
 
 ## What The Audit Changed
 
@@ -67,8 +69,9 @@ The adverse controls are more restrictive than the headline comparison: wrong-po
    their qualifications.
 2. Review concrete generated examples and the proposed balanced compatible-cell
    matrix before it is frozen.
-3. After protocol-scale development, validation, expert review, dependency lock,
-   and independent audit, sign or reject the separate protocol-freeze request.
+3. After the wrong-policy attribution problem is resolved or explicitly bounded,
+   validation and expert review are complete, and dependencies, analysis, and
+   source revision are locked, sign or reject the separate protocol-freeze request.
 
 No current decision authorizes holdout generation or evaluation.
 
@@ -76,14 +79,15 @@ No current decision authorizes holdout generation or evaluation.
 
 ```powershell
 python -m unittest discover tests
+python scripts/verify_anomaly_demo.py
 python scripts/verify_tdk_citations.py --require-local-artifact
 python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_development/independent_development_4feea4508de1bb05
 ```
 
 ## Recommended Supervisor Outcome
 
-Nominate the two reviewers and review the concrete scenario examples. Do not
-authorize the final holdout yet. After the approved semantics are verified in
-protocol-scale development and validation, the expert review is complete, and
-dependencies, analysis, and source revision are frozen and independently
-audited, a separate human decision may authorize one holdout run only.
+Review the working demonstration, nominate the two reviewers, and inspect the
+concrete scenario examples. Do not authorize the final holdout yet. The
+wrong-policy attribution problem must be resolved or explicitly bounded before
+the protocol, dependencies, analysis, and source revision can be frozen and a
+separate human decision can authorize one holdout run.
