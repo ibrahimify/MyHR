@@ -276,6 +276,37 @@ class AnomalyDemoUiTests(unittest.TestCase):
         finally:
             page.close()
 
+    def test_standard_laptop_content_uses_desktop_layout(self):
+        from src.core.i18n import t
+
+        page = AnomalyReviewPage(SimpleNamespace(role="admin"))
+        try:
+            page.resize(1150, 760)
+            page.show()
+            self.app.processEvents()
+            self.assertFalse(page.queue_table.isColumnHidden(1))
+            self.assertFalse(page.queue_table.isColumnHidden(2))
+            self.assertEqual(
+                page.tabs.tabText(2),
+                t("anomaly_demo_tab_comparison"),
+            )
+            self.assertTrue(page.demo_badge.isVisible())
+            page.help_button.click()
+            self.app.processEvents()
+            self.assertFalse(page.guide_panel.isHidden())
+            self.assertGreater(
+                page.guide_panel.geometry().x(),
+                page.main_workspace.geometry().x(),
+            )
+            self.assertEqual(
+                page.stat_grid.getItemPosition(
+                    page.stat_grid.indexOf(page.stat_cards[2])
+                )[:2],
+                (0, 2),
+            )
+        finally:
+            page.close()
+
     def test_csv_report_contains_exact_configuration_and_separate_truth(self):
         page = AnomalyReviewPage(SimpleNamespace(role="admin"))
         try:

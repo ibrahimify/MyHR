@@ -435,7 +435,10 @@ class AnomalyReviewPage(QWidget):
     def _apply_responsive_layout(self):
         if not hasattr(self, "run_layout"):
             return
-        compact = self.width() < 1280
+        # This widget receives the content width after the persistent sidebar.
+        # A standard 1488 px laptop window leaves roughly 1150 px here, which
+        # is wide enough for the approved desktop workspace and side guide.
+        compact = self.width() < 1120
         if compact == self._compact_layout:
             return
         self._compact_layout = compact
