@@ -490,7 +490,7 @@ def configure_document(document: Document) -> None:
         code = document.styles.add_style("Code Block", WD_STYLE_TYPE.PARAGRAPH)
         code.font.name = "Consolas"
         code._element.rPr.rFonts.set(qn("w:eastAsia"), "Consolas")
-        code.font.size = Pt(10)
+        code.font.size = Pt(9)
         code.paragraph_format.left_indent = Cm(0.7)
         code.paragraph_format.right_indent = Cm(0.7)
         code.paragraph_format.space_before = Pt(4)
@@ -522,60 +522,43 @@ def _force_serif(style) -> None:
 
 
 def add_title_pages(document: Document, lines: list[str]) -> None:
-    document.add_paragraph("Budapest University of Technology and Economics", style="Subtitle").alignment = WD_ALIGN_PARAGRAPH.CENTER
-    document.add_paragraph("Faculty of Electrical Engineering and Informatics", style="Subtitle").alignment = WD_ALIGN_PARAGRAPH.CENTER
-    document.add_paragraph()
-    title = document.add_paragraph()
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    title.paragraph_format.space_before = Pt(80)
-    run = title.add_run(TITLE)
-    run.bold = True
-    run.font.name = "Times New Roman"
-    run.font.size = Pt(20)
-    subtitle = document.add_paragraph("BME VIK Scientific Students' Association Conference (TDK) 2026")
-    subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    subtitle.runs[0].font.size = Pt(14)
-    document.add_paragraph()
-    for label, value in [("Author", AUTHOR), ("Supervisor", SUPERVISOR), ("Date", "1 November 2026")]:
+    """Title page laid out like the faculty template: logo, university, faculty,
+    author, title in capitals, subtitle, supervisor, place and year."""
+    logo = Path(__file__).resolve().parents[1] / "docs" / "media" / "bme_cover_logo.png"
+    if logo.exists():
+        picture = document.add_paragraph()
+        picture.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        picture.add_run().add_picture(str(logo), width=Cm(5.5))
+
+    def line(text, size, bold=False, small_caps=False, before=0, after=0):
         paragraph = document.add_paragraph()
         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        paragraph.add_run(f"{label}: ").bold = True
-        paragraph.add_run(value)
+        paragraph.paragraph_format.space_before = Pt(before)
+        paragraph.paragraph_format.space_after = Pt(after)
+        run = paragraph.add_run(text)
+        run.bold = bold
+        run.font.name = "Times New Roman"
+        run.font.size = Pt(size)
+        run.font.small_caps = small_caps
+
+    line("Budapest University of Technology and Economics", 12, bold=True, before=6)
+    line("Faculty of Electrical Engineering and Informatics", 12)
+    line(AUTHOR, 18, before=150)
+    line("MyHR: " + TITLE.split(": ", 1)[1].upper(), 20, bold=True, before=8)
+    line("BME VIK Scientific Students' Association Conference (TDK) 2026", 13, before=8)
+    line("Supervisor", 10, small_caps=True, before=170)
+    line(SUPERVISOR, 18, before=4)
+    line("BUDAPEST, 2026", 12, before=10)
     document.add_page_break()
     _add_front_matter(document)
 
-
-HUNGARIAN_SUMMARY = (
-    "A munkavállalói előmeneteli rendszerek előléptetési, elismerési, szankciós és béremelési "
-    "szabályokat alkalmaznak összetett adminisztratív nyilvántartásokra. A hibás rekordok "
-    "felismerése nehéz, mert egy szokatlan előmenetel az alkalmazandó szabályzat szerint jogszerű "
-    "is lehet: egy rövid előléptetési időköz például egy rögzített elismerésből is következhet. A "
-    "dolgozat azt vizsgálja, hogy a szabályzati kontextus gépi tanulási jellemzőkbe építése "
-    "csökkenti-e a téves riasztásokat úgy, hogy a valódi hibák felismerése megmarad.",
-    "A kutatás platformja a MyHR offline HR-alkalmazás. Formális előmeneteli modell írja le a "
-    "szolgálati idő követelményeit, az elismerések jóváírását, a szankciók késleltetését és az "
-    "előléptetéstől független éves béremelést. Determinisztikus ellenőrzések kezelik az explicit "
-    "ellentmondásokat, az Isolation Forest modellek pedig nyers és szabályzattudatos jellemzőkkel "
-    "rangsorolják a fennmaradó rekordokat azonos ellenőrzési kapacitás mellett. A riasztások "
-    "kizárólag emberi felülvizsgálatot támogatnak, automatikus személyügyi döntést nem.",
-    "Az értékelés reprodukálható szintetikus történeteken, beillesztett hibákkal és ritka, de "
-    "jogszerű esetekkel történt. Az auditált, 12 forgatókönyvből álló fejlesztési futásban a "
-    "szabályzattudatos és a nyers jellemzők felidézésének különbsége +0,0278 volt (95%-os "
-    "konfidenciaintervallum: −0,0278 és +0,1019 között, p = 0,6875), és a hibás szabályzattal "
-    "képzett kontroll ugyanazokat a rekordokat választotta. Egy későbbi, 900 forgatókönyves "
-    "diagnosztikában a hibás szabályzat a látszólagos javulás mintegy 82%-át reprodukálta. "
-    "Szabályzattudatos előny tehát nem igazolható. Az eredmények fejlesztési bizonyítékok; a "
-    "végső, zárolt tesztkészletet nem használtuk, és a tervezett felhasználói vizsgálat nem "
-    "valósult meg.",
-)
 
 DECLARATION = (
     "I, Muhammad Ibrahim Shoeb, declare that I prepared this paper myself without any "
     "unauthorized assistance, using only the sources indicated (literature, tools, etc.). Every "
     "part that I have taken from another source, either verbatim or rephrased with the same "
     "meaning, is clearly marked with a reference to its source.",
-    "I consent to BME VIK publishing the basic data of this work (author, title, Hungarian and "
-    "English abstracts, year of completion, supervisor) in a publicly accessible electronic form, "
+    "I consent to BME VIK publishing the basic data of this work (author, title, abstract, year of completion, supervisor) in a publicly accessible electronic form, "
     "and the full text through the university's internal network or to authenticated users. I "
     "declare that the submitted work and its electronic version are identical.",
 )
@@ -616,10 +599,6 @@ def _add_front_matter(document: Document) -> None:
     signature.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     document.add_page_break()
 
-    _unnumbered_heading(document, "Összefoglaló")
-    for text in HUNGARIAN_SUMMARY:
-        document.add_paragraph(text)
-    document.add_page_break()
 
 
 def _parse_table(lines: list[str]) -> list[list[str]]:
@@ -950,7 +929,7 @@ try {{
     $refsPage = if ($document.Bookmarks.Exists('MYHR_MAIN_TEXT_END')) {{ $document.Bookmarks.Item('MYHR_MAIN_TEXT_END').Range.Information(3) }} else {{ 0 }}
     $mainPages = if ($introPage -gt 0 -and $refsPage -gt $introPage) {{ $refsPage - $introPage }} else {{ 0 }}
     $document.Save()
-    $document.ExportAsFixedFormat('{str(pdf_path).replace("'", "''")}', 17)
+    $document.ExportAsFixedFormat('{str(pdf_path).replace("'", "''")}', 17, $false, 0, 0, 1, 1, 0, $true)
     $result = [ordered]@{{ total_pages = $total; intro_page = $introPage; references_page = $refsPage; main_text_pages = $mainPages }}
     $result | ConvertTo-Json | Set-Content -Encoding UTF8 '{str(report_path).replace("'", "''")}'
     $document.Close($false)

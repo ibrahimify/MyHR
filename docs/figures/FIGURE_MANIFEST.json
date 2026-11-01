@@ -1,8 +1,8 @@
 {
   "generator": "scripts/build_tdk_figures.py",
-  "generator_sha256": "6d42e5563f16330496902af8d51e42b36aef2a8a0c4836c0550c24eecd3b0506",
+  "generator_sha256": "ba8d570783d5ba84a84a172172517a53df81595f2cca688548b199cf65d1bcd0",
   "git": {
-    "revision": "85215e5b77e94f35ad502703a5c6b5a140abbc3d",
+    "revision": "d65cd9a93e96b7a0605a5c8050aad9ccc3d39d7e",
     "branch": "research",
     "worktree_dirty": true
   },
@@ -142,7 +142,7 @@
         },
         {
           "path": "docs/TDK_PAPER_DRAFT.md",
-          "sha256": "76f13054110d64c2936313db89a216cd789996f44f777841d23862424df5598a",
+          "sha256": "d2b6287c16324174f8cc7976375ff4035f437827f44c8a9e9b5d0bab7694423d",
           "columns": [
             "Sections 4.6 and 6.5 (text)"
           ],
@@ -217,7 +217,7 @@
       "sources": [
         {
           "path": "docs/TDK_PAPER_DRAFT.md",
-          "sha256": "76f13054110d64c2936313db89a216cd789996f44f777841d23862424df5598a",
+          "sha256": "d2b6287c16324174f8cc7976375ff4035f437827f44c8a9e9b5d0bab7694423d",
           "columns": [
             "Sections 4.6, 4.9, 4.16 (text)"
           ],
@@ -261,7 +261,7 @@
         },
         {
           "path": "docs/TDK_PAPER_DRAFT.md",
-          "sha256": "76f13054110d64c2936313db89a216cd789996f44f777841d23862424df5598a",
+          "sha256": "d2b6287c16324174f8cc7976375ff4035f437827f44c8a9e9b5d0bab7694423d",
           "columns": [
             "Section 4.3 (text)"
           ],
@@ -297,7 +297,7 @@
       "sources": [
         {
           "path": "docs/TDK_PAPER_DRAFT.md",
-          "sha256": "76f13054110d64c2936313db89a216cd789996f44f777841d23862424df5598a",
+          "sha256": "d2b6287c16324174f8cc7976375ff4035f437827f44c8a9e9b5d0bab7694423d",
           "columns": [
             "Section 4.14 (text)"
           ],
@@ -571,9 +571,9 @@
         "TimesNewRomanPSMT"
       ],
       "output_sha256": {
-        "docs/figures/confound_diagnostic.pdf": "a7842fea555fee450a84e4d235e28656c0fd649de2da7e4b4be874013eedc0ee",
-        "docs/figures/confound_diagnostic.svg": "ef5fa68510e85924e0c616874d8c0bc78e17eba369adf9af0b3188f08d766ac6",
-        "docs/figures/confound_diagnostic.png": "525466bb90f2f8014a822cfc90a0a9156407e29745d6abe70b6e46bde4ab5558"
+        "docs/figures/confound_diagnostic.pdf": "b90192b9fd21bf79bd95ea897c802e0b87e796a9d5cec490baa338ba1cd7c289",
+        "docs/figures/confound_diagnostic.svg": "9bcb4a9809f151e748d7248af37c5e0179473bd3d533e1228326f099231086e5",
+        "docs/figures/confound_diagnostic.png": "62ddf6d848071e4da25d821de5b95e0204eb5e8db2e4e8e049ef69ee74f16b2e"
       }
     },
     "policy_timeline": {
@@ -602,7 +602,7 @@
         },
         {
           "path": "docs/TDK_PAPER_DRAFT.md",
-          "sha256": "76f13054110d64c2936313db89a216cd789996f44f777841d23862424df5598a",
+          "sha256": "d2b6287c16324174f8cc7976375ff4035f437827f44c8a9e9b5d0bab7694423d",
           "columns": [
             "Section 3.2 (A = M + C - S, R = max(0, B - A))",
             "Section 3.7 (policy effective at the decision date)"
@@ -724,27 +724,6 @@
       "kind": "latex_booktabs",
       "output_sha256": {
         "docs/tables/demo_outcomes.tex": "b905fb8e2cebe6aeaf4939171c30c438c481df481587450cd7bc900a37d27105"
-      }
-    },
-    "abstract_commitments": {
-      "outputs": [
-        "docs/tables/abstract_commitments.tex"
-      ],
-      "caption": "Status of the submitted abstract commitments (mirrors Section 1.6).",
-      "sources": [
-        {
-          "path": "docs/TDK_PAPER_DRAFT.md",
-          "sha256": "76f13054110d64c2936313db89a216cd789996f44f777841d23862424df5598a",
-          "columns": [
-            "Section 1.6 Markdown table"
-          ],
-          "selector": "### 1.6 Status of the Submitted Abstract Commitments",
-          "note": "Parsed verbatim from the paper draft at build time; the draft is edited concurrently, so rebuild after changes."
-        }
-      ],
-      "kind": "latex_booktabs",
-      "output_sha256": {
-        "docs/tables/abstract_commitments.tex": "282a4029f41d137a042e93003e597c084ecafddb211ee82e2361f2abdb634206"
       }
     }
   },

@@ -12,9 +12,9 @@
 
 Workforce progression systems apply promotion, commendation, sanction, and salary-increment policies to complex administrative records. Detecting erroneous records is challenging because unusual histories may be legitimate under the applicable policy. A short promotion interval, for example, may reflect a recorded commendation rather than an error. This research investigates whether incorporating explicit progression-policy context into machine-learning features can reduce false anomaly alerts while preserving detection of actual errors, thereby reducing manual HR review workload by prioritising records for evidence-based attention.
 
-The study uses MyHR, an offline HR decision-support application, as the experimental platform. A formal progression model specifies service requirements, commendation credits, sanction delays, policy changes, and annual increments independent of promotion. Isolation Forest models analyse sanction frequencies, promotion intervals, and administrative-event patterns using raw and policy-conditioned features. Deterministic validation addresses explicit inconsistencies, while eligibility explanations present the applicable rules, adjustments, and supporting records. A separate similarity-based matching component identifies potential duplicate employee records. Anomaly and duplicate alerts support human review rather than automatic personnel decisions or record merging.
+The study uses MyHR, an offline HR decision-support application, as the experimental platform. A formal progression model specifies service requirements, commendation credits, sanction delays, and annual increments. Deterministic validation addresses explicit contradictions, and Isolation Forest models rank the remaining histories using raw or policy-conditioned features at equal review capacity. Alerts support human review and never trigger personnel decisions.
 
-Evaluation uses reproducible synthetic histories containing documented injected errors and rare legitimate cases, with separate training, validation, and test partitions. Comparisons include rule checks, contextual statistical baselines, and Isolation Forest models with and without policy-conditioned features. Measures include precision, recall, F1 score, false-positive rate, review workload, and runtime. Duplicate detection is evaluated separately. Successive audits exposed and repaired defects in synthetic truth, temporal replay, pairwise evaluation, and provenance. In the clean audited 12-scenario artifact, deterministic rules flagged 0 of 72 generated test-split rare-legitimate labels; 24 of those rows describe grandfathering for which employee-specific entitlement was not stored. Policy-aware minus raw recall at equal review capacity was +0.0278 with a 95% paired bootstrap interval from -0.0278 to +0.1019 and sign-flip p=0.6875. Wrong-policy context selected the same records as policy-matched context. A later 900-scenario development diagnostic likewise found that wrong-policy features reproduced most of the raw-to-policy gain. No policy-aware advantage was demonstrated, and the 12-scenario interval does not establish equivalence. Employee-linked entitlement and separate temporal views are implemented in development code, but the confound, human realism review, protocol freeze, and confirmatory holdout evaluation remain unresolved. An in-app demonstration runs the same services on three small synthetic scenarios for inspection; its counts are not experimental evidence. The optional user study proposed in the registered abstract was not conducted.
+Evaluation uses reproducible synthetic histories with injected errors and rare legitimate cases, separate training, validation, and test partitions, and wrong-policy, shuffled-policy, and ablation controls. In the audited 12-scenario development artifact, policy-aware minus raw recall at equal review capacity was +0.0278 (95% paired bootstrap interval from -0.0278 to +0.1019, sign-flip p=0.6875), and the wrong-policy control selected the same records as the policy-aware representation. In a later 900-scenario diagnostic, wrong-policy features reproduced most of the raw-to-policy gain. No policy-aware advantage was demonstrated, and the interval does not establish equivalence. All results are development evidence: the protocol is a draft, the final holdout has not been generated or accessed, no human realism review has been performed, and the optional user study was not conducted. Duplicate detection is implemented and evaluated separately, and its benchmark is incomplete.
 
 Keywords: machine learning, anomaly detection, Isolation Forest, workforce progression, rule-based decision support, synthetic data, duplicate detection, explainability
 
@@ -26,7 +26,7 @@ Employee progression decisions are built from administrative facts that accumula
 
 A detector that flags every unusual history creates unnecessary review work and may escalate legitimate exceptional cases, while one that suppresses too many alerts misses real errors. The goal is therefore a review queue, not automated personnel decisions. Explicit violations are explained deterministically, and less direct patterns are ranked for an authorized person. The scientific question is whether representing the applicable policy improves that ranking beyond raw event counts and intervals.
 
-MyHR, a standalone Python and PySide6 desktop application backed by SQLite and SQLAlchemy, already contains an auditable progression model. It manages employee and organization data, performance reviews, promotions, commendations, sanctions, annual increments, imports, reports, and immutable audit records. Progression is calculated from source records rather than stored as an edited percentage, which gives research features and explanations a defined policy boundary.
+MyHR, a standalone Python and PySide6 desktop application backed by SQLite and SQLAlchemy, already contains an auditable progression model. It manages employee and organization data, performance reviews, promotions, commendations, sanctions, annual increments, imports, reports, and an application audit trail. Progression is calculated from source records rather than stored as an edited percentage, which gives research features and explanations a defined policy boundary.
 
 ### 1.2 Problem Statement
 
@@ -74,39 +74,39 @@ ADBench shows that anomaly-detection performance varies substantially with datas
 
 ### 2.2 Context and Policy Awareness
 
-Context-dependent anomaly detection concerns observations that are unusual only in a particular situation, and knowledge-based context can change how an observation should be interpreted [6]. Workforce progression is a clear case: the same elapsed service can comply with one policy version and violate another. Commendation credits, sanction delays, employee track, recognized prior service, and the effective policy period all change the expected progression path.
+Context-dependent anomaly detection concerns observations that are unusual only in a particular situation, and knowledge-based context can change how an observation should be interpreted [4]. Workforce progression is a clear case: the same elapsed service can comply with one policy version and violate another. Commendation credits, sanction delays, employee track, recognized prior service, and the effective policy period all change the expected progression path.
 
 Policy-aware features are therefore transformations relative to an explicit rule set, such as a service deficit relative to the applicable requirement. They can align the model with administrative meaning, but they can also leak the answer if the generator uses the same residual to define anomalies. A genuine policy signal should weaken when the policy identity is wrong or shuffled, which is what the controls test.
 
 ### 2.3 Explainability and Review Evidence
 
-Explainable anomaly-detection research separates global understanding of a detector from local evidence for a specific alert [4], and DIFFI derives feature importance for Isolation Forest from tree depth and feature use [5]. Feature importance can describe a model score, but an HR reviewer also needs administrative evidence: policy version, required and observed service, adjustments, source records, and deterministic findings.
+Explainable anomaly-detection research separates global understanding of a detector from local evidence for a specific alert [5], and DIFFI derives feature importance for Isolation Forest from tree depth and feature use [6]. Feature importance can describe a model score, but an HR reviewer also needs administrative evidence: policy version, required and observed service, adjustments, source records, and deterministic findings.
 
 MyHR gives priority to this administrative evidence; a model attribution, if added later, would be labelled as model evidence rather than a policy fact. Explanation quality is a separate evaluation problem. The registered abstract makes a user study optional, and this paper claims no usability results.
 
 ### 2.4 Evaluation Under Class Imbalance
 
-Administrative anomalies are expected to be rare. Under severe class imbalance, receiver-operating-characteristic summaries can look favorable while the precision of the review queue is poor, and precision-recall analysis is often more informative [10]. Average precision (AP) summarizes a ranking without a test-selected threshold, but it depends on prevalence, so every AP value needs the number of ranked records and positive cases.
+Administrative anomalies are expected to be rare. Under severe class imbalance, receiver-operating-characteristic summaries can look favorable while the precision of the review queue is poor, and precision-recall analysis is often more informative [7]. Average precision (AP) summarizes a ranking without a test-selected threshold, but it depends on prevalence, so every AP value needs the number of ranked records and positive cases.
 
-Threshold metrics are still needed because HR teams review a finite number of cases; Sections 4.9 and 4.10 define the operating points and measures used here. Metric choice follows the review task because anomaly-detection metrics encode different assumptions, a point made for time-series detection in [13].
+Threshold metrics are still needed because HR teams review a finite number of cases; Sections 4.9 and 4.10 define the operating points and measures used here. Metric choice follows the review task because anomaly-detection metrics encode different assumptions, a point made for time-series detection in [8].
 
-The evaluation protocol can itself inflate results. Train-test partitioning choices, thresholds tuned on the test set, and contamination rates taken from the test data can all inflate F1 and average precision [9], and conclusions may depend on a narrow evaluation pipeline [14]. Selecting favorable seeds is a related risk, which MyHR addresses by fixing and reporting all seeds. MyHR records separate dataset, split, and model seeds, selects thresholds on validation data, retains negative results, and keeps the final holdout locked until the protocol is frozen.
+The evaluation protocol can itself inflate results. Train-test partitioning choices, thresholds tuned on the test set, and contamination rates taken from the test data can all inflate F1 and average precision [9], and conclusions may depend on a narrow evaluation pipeline [10]. Selecting favorable seeds is a related risk, which MyHR addresses by fixing and reporting all seeds. MyHR records separate dataset, split, and model seeds, selects thresholds on validation data, retains negative results, and keeps the final holdout locked until the protocol is frozen.
 
 ### 2.5 Synthetic Data and Circularity
 
-Synthetic data allows controlled injection of known errors and rare legitimate histories, but realistic evaluation requires more than plausible-looking rows. Steinbuss and Böhm show the importance of varying synthetic outlier characteristics and data domains [7]. MyHR additionally treats defining anomalies through the detector's own decisive feature as a circularity risk; this is a design inference applied to the present experiment, not a prescription attributed to that paper. Data-centric work on synthetic tabular data likewise emphasizes downstream behavior and multiple profiles over a single similarity score [8].
+Synthetic data allows controlled injection of known errors and rare legitimate histories, but realistic evaluation requires more than plausible-looking rows. Steinbuss and Böhm show the importance of varying synthetic outlier characteristics and data domains [11]. MyHR additionally treats defining anomalies through the detector's own decisive feature as a circularity risk; this is a design inference applied to the present experiment, not a prescription attributed to that paper. Data-centric work on synthetic tabular data likewise emphasizes downstream behavior and multiple profiles over a single similarity score [12].
 
 The original MyHR generator and the policy-aware detector share policy concepts, so results on that generator are useful for engineering but vulnerable to circularity. The independent simulator (Section 4.5) avoids shared code, but source-code separation does not ensure conceptual separation, as the historical residual design showed (Section 6.5).
 
 ### 2.6 Historical Policy and Bitemporal Representation
 
-Administrative systems must distinguish when a fact or policy is effective in the modeled world from when it is recorded in the database; bitemporal research calls these valid time and transaction time [15]. The distinction supports historical reconstruction, corrections, and auditability, and applies directly to promotions decided under an earlier policy, recognized service recorded later, and corrections entered after an event. A preserved MyHR artifact shows the failure caused by replaying current policy over lawful historical decisions (Section 6.6), and the corrected research adapter replays the applicable historical policy (Section 3.7).
+Administrative systems must distinguish when a fact or policy is effective in the modeled world from when it is recorded in the database; bitemporal research calls these valid time and transaction time [13]. The distinction supports historical reconstruction, corrections, and auditability, and applies directly to promotions decided under an earlier policy, recognized service recorded later, and corrections entered after an event. A preserved MyHR artifact shows the failure caused by replaying current policy over constructed histories intended to represent lawful historical exceptions (Section 6.6), and the corrected research adapter replays the applicable historical policy (Section 3.7).
 
 ### 2.7 Human Review and Duplicate Detection
 
-Human-in-the-loop anomaly detection treats expert validation as part of the workflow instead of assuming that model output is true [16]. MyHR keeps the same boundary, and its proposed realism review is blinded to model scores and generated labels so that reviewers judge plausibility rather than confirm the detector.
+Human-in-the-loop anomaly detection treats expert validation as part of the workflow instead of assuming that model output is true [14]. MyHR keeps the same boundary, and its proposed realism review is blinded to model scores and generated labels so that reviewers judge plausibility rather than confirm the detector.
 
-Duplicate detection is evaluated as entity resolution. Candidate generation and pair scoring must be separated, because scoring every possible pair makes false-positive rates look deceptively small, and dense-blocking research stresses candidate workload and blocking recall [12]. This secondary task provides no evidence for the progression-anomaly hypothesis.
+Duplicate detection is evaluated as entity resolution. Candidate generation and pair scoring must be separated, because scoring every possible pair makes false-positive rates look deceptively small, and dense-blocking research stresses candidate workload and blocking recall [15]. This secondary task provides no evidence for the progression-anomaly hypothesis.
 
 ### 2.8 Research Gap
 
@@ -129,10 +129,10 @@ A = M + C - S
 R = max(0, B - A)
 ```
 
-Eligibility and bounded progress are:
+Service-requirement status and bounded progress are:
 
 ```text
-eligible = (R = 0)
+service_requirement_met = (R = 0)
 progress = clamp(floor(100 A / B), 0, 100)
 ```
 
@@ -185,7 +185,7 @@ The taxonomy (table below) distinguishes the nominal scenario pattern from the m
 | Wrong employee link | Sanctions attached to another employee | Observation ledger differs from generated world | Independent residual mechanism |
 | Missing import | Increment event omitted from observation | World event exists but record is absent | Independent residual mechanism |
 | Approval bypass | Promotion without required approval evidence | Explicit workflow violation | Deterministic check |
-| Batch retry | Duplicate or dense administrative events | Repeated event references and intervals | Deterministic check |
+| Batch retry | Duplicate or repeated administrative events | Repeated event references and intervals | Deterministic check |
 | Rare legitimate | Previous policy, recognized service, or delayed recording | Temporal policy and evidence context | False-alert analysis |
 
 ### 4.3 Data Partitions and Holdout Boundary
@@ -208,7 +208,7 @@ The independent simulator uses only the Python standard library and does not imp
 
 ### 4.6 Deterministic Checks
 
-Deterministic validation returns findings with their evidence rather than a single boolean. Policy-agnostic checks cover date contradictions, duplicate event references, and dense administrative activity; policy checks compare progression service with the supplied policy. Rules are reported both as a standalone baseline and as the first stage of a rules-plus-ML queue.
+Deterministic validation returns findings with their evidence rather than a single boolean. Policy-agnostic checks cover date contradictions and duplicate event references, and flag unusually dense administrative activity for review, since a busy period is not by itself invalid; policy checks compare progression service with the supplied policy. Rules are reported both as a standalone baseline and as the first stage of a rules-plus-ML queue.
 
 Explicit findings are never dropped to meet a nominal capacity. The original cascade uses a 10% capacity floor in which all deterministic findings are mandatory and ML fills any unused capacity, which complicates equal-budget comparison when rules alone exceed the floor. The approved primary redesign applies identical invariant checks to both pipelines and gives each an equal, fixed additional ML budget over the same invariant-negative histories. The complete policy-rules queue is reported as a secondary result.
 
@@ -264,7 +264,7 @@ Raw and policy-aware methods are paired within each scenario seed. For metric m 
 delta_i = m(policy-aware_i) - m(raw_i)
 ```
 
-Scenario seeds, not employees, are the independent units, because employees generated in one scenario share policy and population assumptions. Every included protocol-scale condition uses 30 independent seeds unless a written power or feasibility justification approves another count before the run. Development tooling reports mean and median paired differences, scenario bootstrap intervals, and paired sign-flip tests. Fixed-capacity recall is the single primary endpoint. The confirmatory secondary family contains AP, rare-legitimate false-alert rate, and ordinary-legitimate false-alert rate for the policy-aware versus raw comparison, with Holm's step-down adjustment [11,17] across these three two-sided tests. Precision and total false alerts are descriptive companions at fixed capacity. Controls, ablations, threshold analyses, per-class results, and utility sensitivity are exploratory.
+Scenario seeds, not employees, are the independent units, because employees generated in one scenario share policy and population assumptions. Every included protocol-scale condition uses 30 independent seeds unless a written power or feasibility justification approves another count before the run. Development tooling reports mean and median paired differences, scenario bootstrap intervals, and paired sign-flip tests. Fixed-capacity recall is the single primary endpoint. The confirmatory secondary family contains AP, rare-legitimate false-alert rate, and ordinary-legitimate false-alert rate for the policy-aware versus raw comparison, with Holm's step-down adjustment [16,17] across these three two-sided tests. Precision and total false alerts are descriptive companions at fixed capacity. Controls, ablations, threshold analyses, per-class results, and utility sensitivity are exploratory.
 
 ### 4.12 Duplicate Detection
 
@@ -299,7 +299,7 @@ Every experiment directory records the protocol status, full configuration, comm
 
 The independent auditor checks manifests, source hashes, confusion counts, rates, AP recomputed from stored scores, aggregate consistency, paired differences, bootstrap intervals, sign-flip results, and correction fields. Passing the audit shows that the arithmetic is reproducible, not that the estimand, scenario population, or policy assumptions are valid (Section 7.9).
 
-### 4.15 Approved Blinded Realism-Review Method
+### 4.15 Planned Blinded Realism-Review Method
 
 Code and invariant tests check synthetic correctness; organizational realism needs human review. The prepared packet contains fictional histories without model scores, generated labels, or method names. For each history, reviewers would judge plausibility, status (ordinary, legitimately exceptional, erroneous, or indeterminate), evidence sufficiency, confidence, and whether escalation is appropriate.
 
@@ -327,7 +327,7 @@ Adversarial tests were added whenever an audit found a gap, for example to rejec
 
 Literature discovery uses free direct clients for OpenAlex, arXiv, Crossref, and Semantic Scholar, with optional API keys kept outside Git. Each reference is deduplicated with its identifiers and retrieval provenance recorded, and each scientific claim is linked to an evidence locator. An independent citation audit on 29 October 2026 validated 18 references and 15 claim records; metadata corrections recorded on 1 November 2026 await independent re-audit. Sixteen legally accessible full texts are preserved locally.
 
-Two references remain metadata-only: Holm's multiple-comparison paper [17] and Krippendorff's reliability paper [18]. The Holm procedure claim is supported through Demšar's full-text description [11]; the reliability claim attributed to Krippendorff remains marked unverified, and metadata verification is not treated as scientific evidence.
+Two references remain metadata-only: Holm's multiple-comparison paper [17] and Krippendorff's reliability paper [18]. The Holm procedure claim is supported through Demšar's full-text description [16]; the reliability claim attributed to Krippendorff remains marked unverified, and metadata verification is not treated as scientific evidence.
 
 ### 5.4 Continuous Integration
 
@@ -353,11 +353,11 @@ The demonstration is not a research experiment. It runs three fixed development 
 
 In-app demonstration outcomes at equal review capacity (24 evaluation records, 3 reviews per method). Each scenario has 3 injected errors among its evaluation records.
 
-The first scenario is shown by default and in the figures. Its policy-aware queue finds all three injected errors, but this is a single realization of 24 records. In the other two scenarios no representation, including the controls, finds any injected error within three reviews. The demonstration shows that the pipeline runs end to end and that its outputs are traceable. It provides no evidence for or against the research hypothesis.
+The first scenario is shown by default and in the figures. Its policy-aware queue finds all three injected errors, but this is a single realization of 24 records. In the other two scenarios no representation, including the controls, finds any injected error within three reviews. The demonstration shows that the pipeline runs end to end and that its outputs are traceable. These are inspected development observations that help to debug and demonstrate the pipeline. They are too few to support any conclusion about the research hypothesis.
 
 [[FIGURE:anomaly_queue_light.png|Figure 6. Synthetic Anomaly Review queue after running the shared rule and Isolation Forest services. Generated truth is not shown in this operational view.]]
 
-[[FIGURE:anomaly_evidence_light.png|Figure 7. Evidence view for the same selected synthetic employee, including policy version, effective and recorded dates, and service-adjustment arithmetic.]]
+[[FIGURE:anomaly_evidence_light.png|Figure 7. Employee Evidence view for queue item I-00102, showing the profile and the service-adjustment arithmetic; the source events with effective and recorded dates are in the expandable history below.]]
 
 [[FIGURE:anomaly_comparison_light.png|Figure 8. Method Comparison view for demonstration scenario ind-dev-01 (24 evaluation records, 3 reviews per method). Both charts and the exact table come from the same completed run. The wrong-policy and shuffled-policy controls are always shown; one 24-record scenario is not evidence of a policy effect (Section 6.7).]]
 
@@ -368,6 +368,8 @@ The first scenario is shown by default and in the figures. Its policy-aware queu
 ### 6.1 Interpretation Boundary
 
 All results in this section are development or validation diagnostics that were inspected during feature and protocol work and can never support confirmatory claims. They expose generator coupling, feature collapse, and temporal-policy failure; they do not establish deployment accuracy or a policy-aware advantage. Sections 6.2 to 6.6 cover the original generator and the historical independent run, Section 6.7 the current corrected artifact, and Section 6.8 a later 900-scenario diagnostic.
+
+Not reported here are numerical results for the IQR and z-score baselines, the duplicate-detection comparison against exact and normalised exact matching, and runtime measurements. These methods are implemented in the pipeline, but this paper neither analyses nor verifies their results, so it makes no claim about them.
 
 ### 6.2 Protocol-V2 Validation Family
 
@@ -409,7 +411,7 @@ After deterministic filtering, 759 histories remain, 42 labelled anomalies and 7
 
 The stored paired AP difference is +0.0005 with interval [-0.1173, 0.1079], sign-flip p = 1.0, and adjusted exploratory p = 1.0. These values are reproducible under the implemented convention but are evidence of neither equivalence nor a policy effect, for the reason given in Section 6.5.
 
-### 6.5 Historical Structural Failure of the Central Comparison
+### 6.5 Feature Collapse in the Historical Design
 
 In the historical residual design, the policy-aware representation contained a six-feature common core plus policy service deficit, policy deficit ratio, and an unexplained-short-promotion indicator. The residual filter kept only records with no policy finding, and the same policy assessment emitted a finding whenever the service deficit was positive. Every retained record therefore had zero for all three policy-specific features.
 
@@ -429,7 +431,7 @@ The audit still motivates temporal modeling as a requirement, but the experiment
 
 ### 6.7 Corrected Exploratory Development Artifact
 
-Artifact `4feea4508de1bb05` was generated from clean commit `56597d3` after the semantic and UI-lifecycle repairs. The strengthened artifact audit reports `verified`, 12 scenarios, 864 eligible test histories, 108 anomalies, 72 generated rare-legitimate labels, 900 metric rows, 64,800 prediction rows, and `holdout_accessed: false`. Deterministic policy checks produced 63 true positives, no false positives, and 45 false negatives, and flagged none of the 72 generated rare-legitimate labels. The denominator includes 24 grandfathering labels for which employee-specific entitlement was not independently established, so `0/72` is not a validated false-positive rate on proven lawful cases.
+Artifact `4feea4508de1bb05` was generated from clean commit `56597d3` after the semantic and UI-lifecycle repairs. The strengthened artifact audit reports `verified` (stored arithmetic and provenance under the legacy schema; labels, entitlement, and temporal semantics are not independently validated), 12 scenarios, 864 eligible test histories, 108 anomalies, 72 generated rare-legitimate labels, 900 metric rows, 64,800 prediction rows, and `holdout_accessed: false`. Deterministic policy checks produced 63 true positives, no false positives, and 45 false negatives, and flagged none of the 72 generated rare-legitimate labels. The denominator includes 24 grandfathering labels for which employee-specific entitlement was not independently established, so `0/72` is not a validated false-positive rate on proven lawful cases.
 
 | Equal-budget residual representation | Alerts | TP | FP | FN | Generated rare labels alerted |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -455,7 +457,7 @@ The corrected duplicate evaluation declares an explicit evaluation universe and 
 
 ### 6.8 Result Summary
 
-The historical runs show that passing tests and reproducible arithmetic are not enough when labels or evaluation universes are wrong. The corrected 12-scenario artifact runs reproducibly, but its primary interval crosses zero. A later development-only run used 30 seeds per condition and produced 900 scenarios in artifact `8f1494e4abf2d268` with `holdout_accessed: false`. Its policy-aware minus raw recall difference was +0.348, but wrong-policy features reproduced +0.284, about 82% of the apparent gain. The remaining increment is still confounded with representation dimensionality, and the full offline audit of its 8,019,000 prediction rows is incomplete, so this diagnostic is not confirmatory evidence. The current evidence supports the framework, its controls, and its auditability, but not a policy-aware performance claim.
+The historical runs show that passing tests and reproducible arithmetic are not enough when labels or evaluation universes are wrong. The corrected 12-scenario artifact runs reproducibly, but its primary interval crosses zero. A later development-only run used 30 seeds per condition and produced 900 scenarios in artifact `8f1494e4abf2d268` with `holdout_accessed: false`. Its policy-aware minus raw recall difference was +0.348, but wrong-policy features reproduced +0.284, about 82% of the apparent gain (the ratio of the wrong-policy minus raw to the policy minus raw mean recall difference, not a causal share). The remaining increment is still confounded with the information content and variance of the added columns (both representations have nine columns, but equal counts do not equalise scale), and the full offline audit of its 8,019,000 prediction rows is incomplete, so this diagnostic is not confirmatory evidence. The current evidence supports the framework, its controls, and its auditability, but not a policy-aware performance claim.
 
 [[FIGURE:confound_diagnostic.png|Figure 15. Confounded 900-scenario development diagnostic (artifact 8f1494e4abf2d268, 30 conditions with 30 seeds each, holdout not accessed). (a) Scenario-mean residual recall at the fixed review budget with stored 95% intervals. (b) Paired differences against raw features; only the policy-minus-raw difference has a stored interval, and the control differences are paired means recomputed from per-scenario recall. Wrong-policy features reproduce about 82% of the apparent gain.]]
 
@@ -475,7 +477,7 @@ total cost = review_count * review_cost
            + rare_legitimate_alerts * rare_escalation_cost
 ```
 
-Each cost is a sensitivity parameter. Review time can be estimated operationally, but the cost of missing an error or escalating a legitimate exception depends on organizational context and cannot be inferred from synthetic labels, so conclusions are reported across cost ratios. The current comparison does not justify a utility advantage: the primary recall interval crosses zero, and any favorable utility result would depend on cost weights that must be declared and reviewed rather than hidden inside a score.
+Each cost is a sensitivity parameter.No utility sensitivity results are reported here; the proposed evaluation would show how conclusions change across cost ratios instead of choosing one ratio that favors a method. The current comparison does not justify a utility advantage: the primary recall interval crosses zero, and any favorable utility result would depend on cost weights that must be declared and reviewed rather than hidden inside a score.
 
 ## 7 Discussion and Threats to Validity
 
@@ -483,7 +485,7 @@ Each cost is a sensitivity parameter. Review time can be estimated operationally
 
 The first research question (RQ1, Section 1.3) is not answered positively. The audited 12-scenario interval crosses zero, and in the 900-scenario diagnostic a deliberately wrong policy reproduces most of the apparent gain (Section 6.8). This points to coupling between representation and policy structure rather than to a policy effect, and no superiority, inferiority, or equivalence conclusion follows.
 
-RQ2, robustness across policies, populations, and seeds, cannot yet be assessed: the 900-scenario diagnostic used repeated seeds, but its confound is unresolved and its audit incomplete. A balanced compatible-cell matrix, a dimensionality-matched raw control, independent validation, and human realism review are needed first.
+RQ2, robustness across policies, populations, and seeds, cannot yet be assessed: the 900-scenario diagnostic used repeated seeds, but its confound is unresolved and its audit incomplete. A balanced compatible-cell matrix, a raw control with added non-policy columns of comparable variance, independent validation, and human realism review are needed first.
 
 RQ3, on false alerts for rare legitimate histories, is also unanswered. Reducing alerts in one legitimate subgroup can simply move them elsewhere (Section 6.3), and generated lawful status must be checked semantically before subgroup metrics are interpreted (Section 6.6), so a valid experiment must report both subgroup and total false alerts at equal workload.
 
@@ -547,7 +549,7 @@ This study asked whether explicit workforce-progression policy context improves 
 
 The development experiments do not establish the expected advantage. They first showed how a reasonable-looking comparison can fail, through generator-detector coupling and the collapse of policy features in the historical residual design. In the repaired artifact `4feea4508de1bb05`, raw and policy-aware residual queues each reviewed 96 records (Section 6.7); raw found 36/108 anomalies and policy-aware 39/108, with a recall difference of +0.0278, 95% CI [-0.0278, +0.1019], sign-flip p=0.6875. Wrong-policy context selected the same records as policy-matched context, and representations that add a single policy feature to the common core found 42 anomalies, so no benefit can be attributed to correct policy knowledge. In the 900-scenario diagnostic `8f1494e4abf2d268`, wrong-policy features reproduced about 82% of the apparent recall gain, and its full audit is incomplete. Deterministic policy rules flagged 0 of 72 generated rare-legitimate labels in the repaired artifact, but 24 of these labels lack stored employee-specific entitlement, and the earlier `39/72` and `8/72` readings are not lawful-case false-positive rates (Section 6.6).
 
-Several steps remain before a confirmatory study: a dimensionality-matched raw control, the blinded realism review, independent validation, a full artifact audit, and a dated freeze of the scenario matrix, dependencies, analysis, and source revision. Only after separate human approval may the locked holdout be run, once. Duplicate detection remains a secondary experiment, and evidence-rich explanation remains a product contribution; neither replaces a valid central experiment. The paper offers a reproducible platform, a documented diagnosis of a failed comparison, and a path to a confirmatory study.
+Several steps remain before a confirmatory study: a raw control with added non-policy columns of comparable variance, the blinded realism review, independent validation, a full artifact audit, and a dated freeze of the scenario matrix, dependencies, analysis, and source revision. Only after separate human approval may the locked holdout be run, once. Duplicate detection remains a secondary experiment, and evidence-rich explanation remains a product contribution; neither replaces a valid central experiment. The paper offers a reproducible platform, a documented diagnosis of a failed comparison, and a path to a confirmatory study.
 
 ## References
 
@@ -557,43 +559,53 @@ Several steps remain before a confirmatory study: a dimensionality-matched raw c
 
 [3] S. Han, X. Hu, H. Huang, M. Jiang, and Y. Zhao, “ADBench: Anomaly Detection Benchmark,” in Advances in Neural Information Processing Systems 35, 2022, pp. 32142–32159. DOI: 10.52202/068431-2329.
 
-[4] Z. Li, Y. Zhu, and M. van Leeuwen, “A Survey on Explainable Anomaly Detection,” ACM Transactions on Knowledge Discovery from Data, vol. 18, no. 1, pp. 1–54, 2024. DOI: 10.1145/3609333.
+[4] N. Vaska, K. Leahy, and V. Helus, “Context-Dependent Anomaly Detection with Knowledge Graph Embedding Models,” in 2022 IEEE 18th International Conference on Automation Science and Engineering (CASE), 2022, pp. 2020–2027. DOI: 10.1109/CASE49997.2022.9926631.
 
-[5] M. Carletti, M. Terzi, and G. A. Susto, “Interpretable Anomaly Detection with DIFFI: Depth-Based Feature Importance of Isolation Forest,” Engineering Applications of Artificial Intelligence, vol. 119, art. 105730, 2023. DOI: 10.1016/j.engappai.2022.105730.
+[5] Z. Li, Y. Zhu, and M. van Leeuwen, “A Survey on Explainable Anomaly Detection,” ACM Transactions on Knowledge Discovery from Data, vol. 18, no. 1, pp. 1–54, 2024. DOI: 10.1145/3609333.
 
-[6] N. Vaska, K. Leahy, and V. Helus, “Context-Dependent Anomaly Detection with Knowledge Graph Embedding Models,” in 2022 IEEE 18th International Conference on Automation Science and Engineering (CASE), 2022, pp. 2020–2027. DOI: 10.1109/CASE49997.2022.9926631.
+[6] M. Carletti, M. Terzi, and G. A. Susto, “Interpretable Anomaly Detection with DIFFI: Depth-Based Feature Importance of Isolation Forest,” Engineering Applications of Artificial Intelligence, vol. 119, art. 105730, 2023. DOI: 10.1016/j.engappai.2022.105730.
 
-[7] G. Steinbuss and K. Böhm, “Benchmarking Unsupervised Outlier Detection with Realistic Synthetic Data,” ACM Transactions on Knowledge Discovery from Data, vol. 15, no. 4, pp. 1–20, 2021. DOI: 10.1145/3441453.
+[7] T. Saito and M. Rehmsmeier, “The Precision-Recall Plot Is More Informative than the ROC Plot When Evaluating Binary Classifiers on Imbalanced Datasets,” PLOS ONE, vol. 10, no. 3, e0118432, 2015. DOI: 10.1371/journal.pone.0118432.
 
-[8] L. Hansen, N. Seedat, M. van der Schaar, and A. Petrovic, “Reimagining Synthetic Tabular Data Generation through Data-Centric AI: A Comprehensive Benchmark,” in Advances in Neural Information Processing Systems 36, 2023, pp. 33781–33823. DOI: 10.52202/075280-1466.
+[8] S. Sørbø and M. Ruocco, “Navigating the Metric Maze: A Taxonomy of Evaluation Metrics for Anomaly Detection in Time Series,” Data Mining and Knowledge Discovery, vol. 38, no. 3, pp. 1027–1068, 2024. DOI: 10.1007/s10618-023-00988-8.
 
 [9] D. Fourure, M. U. Javaid, N. Posocco, and S. Tihon, “Anomaly Detection: How to Artificially Increase Your F1-Score with a Biased Evaluation Protocol,” in Machine Learning and Knowledge Discovery in Databases. Applied Data Science Track, Lecture Notes in Computer Science, Springer, 2021, pp. 3–18. DOI: 10.1007/978-3-030-86514-6_1.
 
-[10] T. Saito and M. Rehmsmeier, “The Precision-Recall Plot Is More Informative than the ROC Plot When Evaluating Binary Classifiers on Imbalanced Datasets,” PLOS ONE, vol. 10, no. 3, e0118432, 2015. DOI: 10.1371/journal.pone.0118432.
+[10] P. Röchner, S. Klüttermann, K. Kammler, F. Rothlauf, E. Müller, and D. Schlör, “We Need to Rethink Benchmarking in Anomaly Detection,” arXiv preprint arXiv:2507.15584, 2025. DOI: 10.48550/arXiv.2507.15584.
 
-[11] J. Demšar, “Statistical Comparisons of Classifiers over Multiple Data Sets,” Journal of Machine Learning Research, vol. 7, pp. 1–30, 2006. Available: https://www.jmlr.org/papers/v7/demsar06a.html.
+[11] G. Steinbuss and K. Böhm, “Benchmarking Unsupervised Outlier Detection with Realistic Synthetic Data,” ACM Transactions on Knowledge Discovery from Data, vol. 15, no. 4, pp. 1–20, 2021. DOI: 10.1145/3441453.
 
-[12] T. Wang, H. Lin, X. Han, X. Chen, B. Cao, and L. Sun, “Towards Universal Dense Blocking for Entity Resolution,” arXiv preprint arXiv:2404.14831, 2024. DOI: 10.48550/arXiv.2404.14831.
+[12] L. Hansen, N. Seedat, M. van der Schaar, and A. Petrovic, “Reimagining Synthetic Tabular Data Generation through Data-Centric AI: A Comprehensive Benchmark,” in Advances in Neural Information Processing Systems 36, 2023, pp. 33781–33823. DOI: 10.52202/075280-1466.
 
-[13] S. Sørbø and M. Ruocco, “Navigating the Metric Maze: A Taxonomy of Evaluation Metrics for Anomaly Detection in Time Series,” Data Mining and Knowledge Discovery, vol. 38, no. 3, pp. 1027–1068, 2024. DOI: 10.1007/s10618-023-00988-8.
+[13] G. Neelamegam, J. Bhogal, P. Samimi, and Ö. Öztürkoğlu, “Comprehensive Insights into Bitemporal Databases: A PRISMA-Guided Systematic Literature Review,” Journal of Data, Information and Management, vol. 8, no. 2, pp. 71–96, 2026. DOI: 10.1007/s42488-026-00162-x.
 
-[14] P. Röchner, S. Klüttermann, K. Kammler, F. Rothlauf, E. Müller, and D. Schlör, “We Need to Rethink Benchmarking in Anomaly Detection,” arXiv preprint arXiv:2507.15584, 2025. DOI: 10.48550/arXiv.2507.15584.
+[14] Z. Deng, X. Xuan, K.-L. Ma, and Z. Kong, “A Reliable Framework for Human-in-the-Loop Anomaly Detection in Time Series,” ACM Transactions on Interactive Intelligent Systems, vol. 16, no. 2, pp. 1–23, 2026. DOI: 10.1145/3778167.
 
-[15] G. Neelamegam, J. Bhogal, P. Samimi, and Ö. Öztürkoğlu, “Comprehensive Insights into Bitemporal Databases: A PRISMA-Guided Systematic Literature Review,” Journal of Data, Information and Management, vol. 8, no. 2, pp. 71–96, 2026. DOI: 10.1007/s42488-026-00162-x.
+[15] T. Wang, H. Lin, X. Han, X. Chen, B. Cao, and L. Sun, “Towards Universal Dense Blocking for Entity Resolution,” arXiv preprint arXiv:2404.14831, 2024. DOI: 10.48550/arXiv.2404.14831.
 
-[16] Z. Deng, X. Xuan, K.-L. Ma, and Z. Kong, “A Reliable Framework for Human-in-the-Loop Anomaly Detection in Time Series,” ACM Transactions on Interactive Intelligent Systems, vol. 16, no. 2, pp. 1–23, 2026. DOI: 10.1145/3778167.
+[16] J. Demšar, “Statistical Comparisons of Classifiers over Multiple Data Sets,” Journal of Machine Learning Research, vol. 7, pp. 1–30, 2006. Available: https://www.jmlr.org/papers/v7/demsar06a.html (accessed 1 November 2026).
 
-[17] S. Holm, “A Simple Sequentially Rejective Multiple Test Procedure,” Scandinavian Journal of Statistics, vol. 6, no. 2, pp. 65–70, 1979. Available: https://www.jstor.org/stable/4615733.
+[17] S. Holm, “A Simple Sequentially Rejective Multiple Test Procedure,” Scandinavian Journal of Statistics, vol. 6, no. 2, pp. 65–70, 1979. Available: https://www.jstor.org/stable/4615733 (accessed 1 November 2026).
 
 [18] K. Krippendorff, “Reliability in Content Analysis: Some Common Misconceptions and Recommendations,” Human Communication Research, vol. 30, no. 3, pp. 411–433, 2004. DOI: 10.1111/j.1468-2958.2004.tb00738.x.
 
 ## Appendix: Reproduction
 
+Code availability. The source code, tests, figure scripts, and documentation are in the repository https://github.com/ibrahimify/MyHR (branch `research`, tag `tdk-2026-submission`). The research artifacts named in this paper are excluded from Git because of their size (up to 1.9 GB for the 900-scenario run). Their identifiers, source revisions, and SHA-256 manifests are given in the text, and the author can provide the artifacts on request.
+
+Settings. Isolation Forest is fitted with `contamination="auto"` and a recorded model seed per scenario. The primary review budget is 10% of the residual test histories, rounded up, for every representation. Dataset, split, and model seeds, the scenario configurations, and the package versions (Python 3.13.5, scikit-learn 1.9.1, NumPy 2.5.4) are stored in each artifact (`metadata.json`, `scenario_configs.csv`). Scenario seeds are the resampling unit for all intervals and tests. The in-app demonstration uses 25 trees.
+
+Commands, run from the repository root in PowerShell:
+
 ```text
 pip install -r requirements.txt -r requirements-research.txt
-python -m unittest discover tests
+python -m unittest discover -s tests
 python scripts/verify_tdk_citations.py --require-local-artifact
-python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_development/independent_development_4feea4508de1bb05
+$r = "research_outputs/independent_development"
+$d = "independent_development_4feea4508de1bb05"
+python -m scripts.audit_tdk_protocol_artifact "$r/$d"
+python scripts/build_tdk_figures.py
+python scripts/verify_anomaly_demo.py
 ```
 
-No holdout command is included. The holdout runner remains unavailable until the protocol is frozen and approved. Historical artifacts used for audit-history figures predate the current provenance schema and are preserved as inherited evidence rather than presented as passing the current auditor.
+No holdout command exists. The protocol runner refuses a holdout run until a human-approved protocol freeze.

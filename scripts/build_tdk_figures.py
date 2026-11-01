@@ -687,7 +687,7 @@ def fig_confound_diagnostic() -> dict:
     ax.tick_params(axis="y", length=0)
     ax.spines["left"].set_visible(False)
     ax.set_xlabel(f"Scenario-mean residual recall ({n_scen} scenarios)", x=(0.7 - 0.4) / (1.3 - 0.4))
-    ax.set_title(f"(a) Recall [stored 95% CI]; CI lines \u2264 {max_ci:.3f} wide, behind markers", loc="left")
+    ax.set_title(f"(a) Recall with stored 95% CI (lines at most {max_ci:.3f} wide, behind markers)", loc="left")
 
     items = [
         (("policy_matched", "raw_matched"), "Policy \u2212 raw", "policy", True),
@@ -1256,7 +1256,6 @@ def main() -> int:
         "residual_equal_budget": table_residual(rows),
         "rules_outcomes": table_rules(),
         "demo_outcomes": table_demo(args.demo_counts),
-        "abstract_commitments": table_abstract_commitments(),
     }
     for t in tables.values():
         t["kind"] = "latex_booktabs"
