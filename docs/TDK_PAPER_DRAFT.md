@@ -7,7 +7,6 @@
 **Institution:** Budapest University of Technology and Economics, Faculty of Electrical Engineering and Informatics
 
 **Paper language:** English
-**Status:** Supervisor review draft, 1 November 2026
 
 ## Abstract
 
@@ -61,24 +60,6 @@ The development evidence also yields a negative methodological result. In an ear
 
 The paper does not claim that policy-aware ML is generally better, that synthetic rates transfer to real organizations, or that the system should automate promotion, sanction, salary, or record-merging decisions. The final holdout has not been generated or accessed.
 
-### 1.6 Status of the Submitted Abstract Commitments
-
-The registered abstract described planned work. The table below records what exists in software and what has been evaluated. "Implemented" means that code and tests exist in the `research` branch, not that the method was shown to work.
-
-| Abstract commitment | Status | Evidence or gap |
-| --- | --- | --- |
-| Formal progression model (service, commendation credit, sanction delay, policy change, annual increment) | Implemented | `calculate_promotion_race()` in the application and `assess_promotion_history()` in research code, with parity tests (Section 3) |
-| Deterministic validation of explicit inconsistencies | Implemented and evaluated on development data | Section 6.7: 63 TP, 0 FP, 45 FN on 864 eligible test histories |
-| Isolation Forest with raw and policy-conditioned features | Implemented and evaluated on development data | No policy-aware advantage demonstrated; wrong-policy control matches or reproduces the gain (Sections 6.7 and 6.8) |
-| Contextual statistical baselines | Implemented | IQR and z-score methods are stored in the development artifacts (Section 4.8); this paper does not analyse them separately |
-| Eligibility explanations with rules, adjustments, and supporting records | Implemented in the application demonstration | Employee Evidence view (Section 5.6); not evaluated with users |
-| Similarity-based duplicate detection compared with exact and normalized exact matching | Implemented | Preliminary secondary evidence only; no final duplicate-performance claim (Sections 4.12 and 6.7) |
-| Synthetic histories with injected errors, rare legitimate cases, and separate partitions | Implemented | Sections 4.2 to 4.5; realism not yet reviewed by humans |
-| Precision, recall, F1, false-positive rate, review workload, runtime | Implemented | Stored per scenario in the audited artifact; recall at equal review capacity is the primary endpoint |
-| Human review only, no automatic personnel decisions | Implemented | No database writes in the demonstration; Section 4.16 |
-| Exploratory user study ("if time permits") | **Not conducted** | No participants, protocol, or results (Section 7.7) |
-| Controlled experimental assessment on a confirmatory holdout | **Not conducted** | Holdout is locked; protocol not frozen; blinded human realism review not done |
-
 Section 2 reviews related work. Section 3 describes MyHR and its progression model, and Section 4 the research methodology. Section 5 covers implementation, reproducibility, and the in-app demonstration. Section 6 reports the development experiments, Section 7 discusses their validity, and Section 8 concludes.
 
 ## 2 Background and Related Work
@@ -101,7 +82,7 @@ Policy-aware features are therefore transformations relative to an explicit rule
 
 Explainable anomaly-detection research separates global understanding of a detector from local evidence for a specific alert [4], and DIFFI derives feature importance for Isolation Forest from tree depth and feature use [5]. Feature importance can describe a model score, but an HR reviewer also needs administrative evidence: policy version, required and observed service, adjustments, source records, and deterministic findings.
 
-MyHR gives priority to this administrative evidence; a model attribution, if added later, would be labelled as model evidence rather than a policy fact. Explanation quality is a separate evaluation problem. The registration draft supplied by the author makes a user study optional, and this paper claims no usability results.
+MyHR gives priority to this administrative evidence; a model attribution, if added later, would be labelled as model evidence rather than a policy fact. Explanation quality is a separate evaluation problem. The registered abstract makes a user study optional, and this paper claims no usability results.
 
 ### 2.4 Evaluation Under Class Imbalance
 
@@ -354,11 +335,7 @@ GitHub Actions runs the Python test suite on pushes and pull requests, GitGuardi
 
 CI shows only that the checked code and tests pass; it cannot approve a hypothesis, interpret a negative result, or authorize a holdout run.
 
-### 5.5 Traceability
-
-Appendix C maps each paper statement to the source module, test, or artifact that supports it.
-
-### 5.6 Working Demonstration in MyHR
+### 5.5 Working Demonstration in MyHR
 
 The desktop application includes a synthetic-only Anomaly Review workflow, so the pipeline can be inspected without reading source code or JSON artifacts. A reviewer selects a labelled development scenario and starts the analysis; the interface reports model-fitting, reserved validation, eligible evaluation, and review-queue counts separately. The run calls the same adapter, invariant checks, policy-history assessment, feature representations, Isolation Forest scorer, and fixed-capacity evaluation functions as the research services; the interface contains no second detector.
 
@@ -564,8 +541,6 @@ Because the approval refined the hypothesis after development diagnostics were i
 
 Historical-policy handling remains a product requirement even though the `8/72` false-alert reading was invalidated (Section 6.6). A client importing old promotion records needs the system to distinguish the policy effective at the decision date from the policy active today. Without that evidence, MyHR should show an indeterminate status and request review instead of asserting a violation, and import templates would need policy identifiers, effective and recorded dates, and evidence for recognized service or corrections. Explanations should likewise show which facts are present, which assumptions were inferred, and which evidence is missing, so that an incomplete history never becomes a confident personnel judgement. This also yields better research data, because future labels can distinguish missing evidence from confirmed error.
 
-Appendix D summarizes each threat to validity with its current mitigation and remaining weakness.
-
 ## 8 Conclusion and Future Work
 
 This study asked whether explicit workforce-progression policy context improves anomaly detection beyond raw administrative features and deterministic validation. MyHR now contains the technical basis for a defensible investigation (Section 1.5).
@@ -612,7 +587,7 @@ Several steps remain before a confirmatory study: a dimensionality-matched raw c
 
 [18] K. Krippendorff, “Reliability in Content Analysis: Some Common Misconceptions and Recommendations,” Human Communication Research, vol. 30, no. 3, pp. 411–433, 2004. DOI: 10.1111/j.1468-2958.2004.tb00738.x.
 
-## Appendix A Reproduction Commands
+## Appendix: Reproduction
 
 ```text
 pip install -r requirements.txt -r requirements-research.txt
@@ -622,45 +597,3 @@ python -m scripts.audit_tdk_protocol_artifact research_outputs/independent_devel
 ```
 
 No holdout command is included. The holdout runner remains unavailable until the protocol is frozen and approved. Historical artifacts used for audit-history figures predate the current provenance schema and are preserved as inherited evidence rather than presented as passing the current auditor.
-
-## Appendix B Recorded Decisions and Pending Freeze Work
-
-1. Implement invariant-only filtering for the primary residual comparison and report the complete workflow secondarily.
-2. Independently verify fixed-capacity recall as primary and the predeclared three-test Holm family for AP and legitimate false-alert rates.
-3. Verify employee-linked entitlement, `known_then` and `later_review` views, and concrete lawful correction/transition examples at protocol scale.
-4. Nominate the two complementary reviewers, freeze the 48-case sample and seeds, execute the review, and preserve agreement and adjudication evidence.
-5. Freeze a balanced compatible-cell matrix with 30 seeds per included condition (or a pre-approved written exception) and detector-inaccessible causal truth.
-6. Freeze exact dependencies, analysis code, configuration, and source revision after independent verification.
-
-Approval note: project author Muhammad Ibrahim Shoeb authorized the implementation direction on 29 October 2026. No independent supervisor endorsement is recorded; earlier wording implying relayed supervisor answers was corrected in the decision records. Protocol freeze, holdout access, and final conclusions still require separate human approval and cannot be granted by an AI agent.
-
-
-
-## Appendix C Traceability
-
-| Paper statement | Primary evidence |
-| --- | --- |
-| Progression arithmetic | `src/services/promotion_policy.py` and business-logic tests |
-| Research policy history | `policy_history.py` and golden-history tests |
-| Raw and policy features | `features.py` and protocol tests |
-| Independent generator boundary | `src/research/independent_scenarios.py` |
-| Validation results | `validation_c5878ca7b927ccd2` artifact and audit |
-| Independent results (pre-fix development) | `independent_development_e342bd4acf39b06b` artifact and audit |
-| Current repaired independent results | `independent_development_4feea4508de1bb05` artifact and audit (commit `56597d3`, status: verified) |
-| Structural feature collapse | Independent hostile review and source trace |
-| Citation claims | Bibliography, provenance registry, and evidence ledger |
-| Holdout status | Protocol, artifact metadata, runner refusal, and roadmap |
-
-
-## Appendix D Threats to Validity Summary
-
-| Threat | Current mitigation | Remaining weakness |
-| --- | --- | --- |
-| Generator-detector circularity | Independent simulator, controls, preserved negative findings | Approved review method not yet executed; conceptual realism unverified |
-| Test-threshold leakage | Validation-only thresholds | Deployment calibration unresolved |
-| Favorable seed selection | Recorded seed matrix, repeated development seeds, and write-once artifacts | Frozen matrix and independent validation still needed |
-| Missing denominators | Counts and pooled/scenario metrics stored; undefined recall/AP eligibility implemented | Protocol-scale artifact audit incomplete; confirmatory validation still needed |
-| Historical policy replay | Research bitemporal contract and golden replay tests implemented | Production temporal schema and correction-case matrix not frozen |
-| Citation overstatement | Provenance registry and claim ledger | Two references remain metadata-only |
-| External validity | Fictional data protect privacy | No organizational validation |
-| Human over-trust | Review-only design and evidence display | Usability and automation-bias study not conducted |

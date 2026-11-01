@@ -273,6 +273,21 @@ def _graphviz_natural_width(name: str) -> float | None:
     return float(width) if width else None
 
 
+def _set_rule_borders(cell, top: int, bottom: int) -> None:
+    tc_pr = cell._tc.get_or_add_tcPr()
+    borders = OxmlElement("w:tcBorders")
+    for edge, size in (("top", top), ("bottom", bottom), ("left", 0), ("right", 0)):
+        element = OxmlElement(f"w:{edge}")
+        if size:
+            element.set(qn("w:val"), "single")
+            element.set(qn("w:sz"), str(size))
+            element.set(qn("w:color"), "000000")
+        else:
+            element.set(qn("w:val"), "nil")
+        borders.append(element)
+    tc_pr.append(borders)
+
+
 def _set_cell_shading(cell, fill: str) -> None:
     tc_pr = cell._tc.get_or_add_tcPr()
     shd = tc_pr.find(qn("w:shd"))
@@ -446,10 +461,11 @@ def configure_document(document: Document) -> None:
     section = document.sections[0]
     section.page_width = Cm(21)
     section.page_height = Cm(29.7)
-    section.top_margin = Cm(3.0)
-    section.bottom_margin = Cm(3.0)
+    section.top_margin = Cm(2.5)
+    section.bottom_margin = Cm(2.5)
     section.left_margin = Cm(3.5)
-    section.right_margin = Cm(3.5)
+    section.right_margin = Cm(2.5)
+    section.different_first_page_header_footer = True
 
     normal = document.styles["Normal"]
     normal.font.name = "Times New Roman"
@@ -516,7 +532,7 @@ def add_title_pages(document: Document, lines: list[str]) -> None:
     run.bold = True
     run.font.name = "Times New Roman"
     run.font.size = Pt(20)
-    subtitle = document.add_paragraph("TDK Paper Supervisor Review Draft")
+    subtitle = document.add_paragraph("BME VIK Scientific Students' Association Conference (TDK) 2026")
     subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
     subtitle.runs[0].font.size = Pt(14)
     document.add_paragraph()
@@ -525,12 +541,84 @@ def add_title_pages(document: Document, lines: list[str]) -> None:
         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
         paragraph.add_run(f"{label}: ").bold = True
         paragraph.add_run(value)
-    warning = document.add_paragraph()
-    warning.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    warning.paragraph_format.space_before = Pt(80)
-    run = warning.add_run("Development evidence only. Draft protocol. Final holdout locked.")
-    run.bold = True
-    run.font.color.rgb = RGBColor(180, 35, 24)
+    document.add_page_break()
+    _add_front_matter(document)
+
+
+HUNGARIAN_SUMMARY = (
+    "A munkavállalói előmeneteli rendszerek előléptetési, elismerési, szankciós és béremelési "
+    "szabályokat alkalmaznak összetett adminisztratív nyilvántartásokra. A hibás rekordok "
+    "felismerése nehéz, mert egy szokatlan előmenetel az alkalmazandó szabályzat szerint jogszerű "
+    "is lehet: egy rövid előléptetési időköz például egy rögzített elismerésből is következhet. A "
+    "dolgozat azt vizsgálja, hogy a szabályzati kontextus gépi tanulási jellemzőkbe építése "
+    "csökkenti-e a téves riasztásokat úgy, hogy a valódi hibák felismerése megmarad.",
+    "A kutatás platformja a MyHR offline HR-alkalmazás. Formális előmeneteli modell írja le a "
+    "szolgálati idő követelményeit, az elismerések jóváírását, a szankciók késleltetését és az "
+    "előléptetéstől független éves béremelést. Determinisztikus ellenőrzések kezelik az explicit "
+    "ellentmondásokat, az Isolation Forest modellek pedig nyers és szabályzattudatos jellemzőkkel "
+    "rangsorolják a fennmaradó rekordokat azonos ellenőrzési kapacitás mellett. A riasztások "
+    "kizárólag emberi felülvizsgálatot támogatnak, automatikus személyügyi döntést nem.",
+    "Az értékelés reprodukálható szintetikus történeteken, beillesztett hibákkal és ritka, de "
+    "jogszerű esetekkel történt. Az auditált, 12 forgatókönyvből álló fejlesztési futásban a "
+    "szabályzattudatos és a nyers jellemzők felidézésének különbsége +0,0278 volt (95%-os "
+    "konfidenciaintervallum: −0,0278 és +0,1019 között, p = 0,6875), és a hibás szabályzattal "
+    "képzett kontroll ugyanazokat a rekordokat választotta. Egy későbbi, 900 forgatókönyves "
+    "diagnosztikában a hibás szabályzat a látszólagos javulás mintegy 82%-át reprodukálta. "
+    "Szabályzattudatos előny tehát nem igazolható. Az eredmények fejlesztési bizonyítékok; a "
+    "végső, zárolt tesztkészletet nem használtuk, és a tervezett felhasználói vizsgálat nem "
+    "valósult meg.",
+)
+
+DECLARATION = (
+    "I, Muhammad Ibrahim Shoeb, declare that I prepared this paper myself without any "
+    "unauthorized assistance, using only the sources indicated (literature, tools, etc.). Every "
+    "part that I have taken from another source, either verbatim or rephrased with the same "
+    "meaning, is clearly marked with a reference to its source.",
+    "I consent to BME VIK publishing the basic data of this work (author, title, Hungarian and "
+    "English abstracts, year of completion, supervisor) in a publicly accessible electronic form, "
+    "and the full text through the university's internal network or to authenticated users. I "
+    "declare that the submitted work and its electronic version are identical.",
+)
+
+
+def _unnumbered_heading(document: Document, text: str) -> None:
+    heading = document.add_heading(text, level=1)
+    heading.paragraph_format.keep_with_next = True
+
+
+def _add_front_matter(document: Document) -> None:
+    contents = document.add_paragraph()
+    contents_run = contents.add_run("Contents")
+    contents_run.bold = True
+    contents_run.font.size = Pt(16)
+    paragraph = document.add_paragraph()
+    run = paragraph.add_run()
+    begin = OxmlElement("w:fldChar")
+    begin.set(qn("w:fldCharType"), "begin")
+    instr = OxmlElement("w:instrText")
+    instr.set(qn("xml:space"), "preserve")
+    instr.text = 'TOC \\o "1-2" \\h \\z \\u'
+    separate = OxmlElement("w:fldChar")
+    separate.set(qn("w:fldCharType"), "separate")
+    placeholder = OxmlElement("w:t")
+    placeholder.text = "Contents"
+    end = OxmlElement("w:fldChar")
+    end.set(qn("w:fldCharType"), "end")
+    run._r.extend([begin, instr, separate, placeholder, end])
+    document.add_page_break()
+
+    _unnumbered_heading(document, "Student Declaration")
+    for text in DECLARATION:
+        document.add_paragraph(text)
+    document.add_paragraph()
+    document.add_paragraph("Budapest, 1 November 2026")
+    signature = document.add_paragraph("..........................................\nMuhammad Ibrahim Shoeb")
+    signature.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    document.add_page_break()
+
+    _unnumbered_heading(document, "Összefoglaló")
+    for text in HUNGARIAN_SUMMARY:
+        document.add_paragraph(text)
     document.add_page_break()
 
 
@@ -583,15 +671,18 @@ def add_table(document: Document, rows: list[list[str]]) -> None:
             cell.text = ""
             add_inline_markdown(cell.paragraphs[0], text)
             cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
-            _set_cell_borders(cell)
+            # Academic (booktabs-style) table: black text, no fills, no
+            # vertical rules; thick top/bottom rules and a thin header rule.
+            _set_rule_borders(
+                cell,
+                top=12 if row_index == 0 else 0,
+                bottom=6 if row_index == 0 else (12 if row_index == len(rows) - 1 else 0),
+            )
             if row_index == 0:
-                _set_cell_shading(cell, GREEN)
                 for run in cell.paragraphs[0].runs:
-                    run.font.color.rgb = RGBColor(255, 255, 255)
                     run.bold = True
-            elif row_index % 2 == 0:
-                _set_cell_shading(cell, LIGHT_GRAY)
             for paragraph in cell.paragraphs:
+                paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
                 paragraph.paragraph_format.space_after = Pt(2)
                 paragraph.paragraph_format.space_before = Pt(2)
                 paragraph.paragraph_format.line_spacing = 1.0
@@ -764,7 +855,7 @@ def build_docx(source: Path, assets: Path, output: Path) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     document.core_properties.title = TITLE
     document.core_properties.author = AUTHOR
-    document.core_properties.subject = "BME VIK TDK 2026 supervisor review draft"
+    document.core_properties.subject = "BME VIK TDK 2026 paper"
     document.core_properties.keywords = "machine learning, anomaly detection, Isolation Forest, workforce progression, MyHR"
     document.save(output)
 
