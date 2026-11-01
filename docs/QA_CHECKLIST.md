@@ -127,7 +127,7 @@ Reference reviewed: https://saaslaunchlab.com/blog/saas-audit-checklist-before-l
 
 ## 5. Technical Reliability
 
-- [ ] `python -m unittest discover tests` passes or known Qt offscreen hang is documented.
+- [ ] `python -m unittest discover tests` passes (full suite, no skips).
 - [ ] `python -m unittest tests.test_ui_component_policy` passes.
 - [ ] `python -m py_compile main.py` passes.
 - [ ] App starts from a clean checkout.
