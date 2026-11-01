@@ -35,11 +35,11 @@ python -m pytest tests/test_tdk_supervisor_package.py -q
 python scripts/generate_tdk_supervisor_package.py
 ```
 
-- Full local suite: 317 tests and 17 subtests passed in 302.19 seconds.
+- Full local suite: 318 tests and 17 subtests passed in 306.43 seconds.
 - Package regression tests: 6 passed.
 - Citation verification: valid; 18 bibliography entries, 18 cited entries, 18 provenance records, and 15 claim records; local artifacts verified.
 - Citation limitation: `lit-holm-procedure` and `lit-reliability-method` remain explicitly metadata-only. The verifier also reports 16 legacy text-hash mismatches while accepting the current provenance records; these are preserved as a migration warning, not hidden.
-- Artifact audit: `verified`; complete truth sidecars and manifest; `holdout_accessed: false`.
+- Artifact audit: `verified`; manifest, stored predictions, scenario metrics, aggregates, and all schema-v3 paired metrics recomputed; `holdout_accessed: false`. The audit explicitly reports that event-level policy-version links, employee-linked entitlement, temporal views, five newer paired metrics, and mechanism-specific recalls are unavailable in this immutable legacy artifact.
 - Asynchronous UI/PDF regressions: owned timers are cancelled on close, all production PDF exports use `QPdfWriter`, and source-wide regression coverage prohibits `QPrinter` and `QtPrintSupport`.
 - Working demonstration verification: all three permitted synthetic scenarios used equal 24-record residual evaluation populations and three review slots; source-event policy arithmetic was traceable; `holdout_accessed` was false.
 - Independent UI/methodology audit found five blockers and verified every repair: process-safe cancellation, no mechanism disclosure, stale-result invalidation, visible event/evidence links, and localized dynamic output.

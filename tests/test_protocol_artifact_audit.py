@@ -7,6 +7,7 @@ from pathlib import Path
 
 from scripts.audit_tdk_protocol_artifact import (
     ArtifactAuditError,
+    LEGACY_AUDITED_PAIR_METRICS,
     PAIR_METRICS,
     _event_rows_sha256,
     _expected_metric_suffixes,
@@ -428,6 +429,41 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ArtifactAuditError, "paired .* mismatch"):
             _verify_paired_comparisons(metrics, paired)
+
+    def test_legacy_paired_schema_is_audited_without_inventing_new_metrics(self):
+        metrics = []
+        for scenario_id in ("s1", "s2"):
+            for representation, offset in (
+                ("raw_matched", 0.0),
+                ("policy_matched", 0.05),
+            ):
+                metrics.append({
+                    "scenario_id": scenario_id,
+                    "method": "isolation_forest_residual",
+                    "representation": representation,
+                    "operating_point": "fixed_review_budget",
+                    **{
+                        name: 0.4 + offset
+                        for name in LEGACY_AUDITED_PAIR_METRICS
+                    },
+                })
+        paired = _paired_comparisons(metrics)
+        for row in paired:
+            for metric in set(PAIR_METRICS) - set(LEGACY_AUDITED_PAIR_METRICS):
+                for column in list(row):
+                    if column.startswith(f"{metric}_"):
+                        row.pop(column)
+
+        result = _verify_paired_comparisons(metrics, paired)
+
+        self.assertEqual(
+            result["audited_metrics"],
+            list(LEGACY_AUDITED_PAIR_METRICS),
+        )
+        self.assertIn(
+            "false_positives",
+            result["unavailable_newer_metrics"],
+        )
 
     def test_declared_matrix_verifies_seed_replicate_provenance(self):
         configs = []

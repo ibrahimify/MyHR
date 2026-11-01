@@ -104,7 +104,7 @@ def audit_artifact(run_dir: Path, repo_root: Path | None = None) -> dict[str, An
     _verify_declared_matrix(metadata, config_rows, metric_rows)
     _verify_scenario_metrics(metric_rows, prediction_rows)
     _verify_aggregates(metric_rows, aggregate_rows)
-    _verify_paired_comparisons(metric_rows, paired_rows)
+    paired_schema = _verify_paired_comparisons(metric_rows, paired_rows)
     truth_sidecars = _verify_truth_sidecars(
         run_dir,
         prediction_rows,
@@ -124,6 +124,7 @@ def audit_artifact(run_dir: Path, repo_root: Path | None = None) -> dict[str, An
         "scenario_metric_rows": len(metric_rows),
         "prediction_rows": len(prediction_rows),
         "paired_comparison_rows": len(paired_rows),
+        "paired_comparison_schema": paired_schema,
         "truth_sidecars": truth_sidecars,
         "manifest_file_count": len(manifest["files"]),
         "selected_results": _selected_results(aggregate_rows),
@@ -524,13 +525,30 @@ def _verify_aggregates(
 def _verify_paired_comparisons(
     metric_rows: list[dict[str, str]],
     paired_rows: list[dict[str, str]],
-) -> None:
-    include_declared_plan = bool(
-        paired_rows and "comparison_role" in paired_rows[0]
+) -> dict[str, Any]:
+    stored_columns = set(paired_rows[0]) if paired_rows else set()
+    audited_metrics = (
+        tuple(
+            metric for metric in PAIR_METRICS
+            if f"{metric}_scenario_count" in stored_columns
+        )
+        if paired_rows
+        else PAIR_METRICS
     )
+    missing_legacy = [
+        metric for metric in LEGACY_AUDITED_PAIR_METRICS
+        if metric not in audited_metrics
+    ]
+    if missing_legacy:
+        raise ArtifactAuditError(
+            "paired comparison schema omits required legacy metrics: "
+            + ", ".join(missing_legacy)
+        )
+    include_declared_plan = "comparison_role" in stored_columns
     expected = _recompute_paired_comparisons(
         metric_rows,
         include_declared_plan=include_declared_plan,
+        pair_metrics=audited_metrics,
     )
     if len(expected) != len(paired_rows):
         raise ArtifactAuditError("paired comparison groups do not match scenario metrics")
@@ -569,6 +587,14 @@ def _verify_paired_comparisons(
                     raise ArtifactAuditError(f"paired {column} mismatch for {key}")
             elif abs(_parse_float(stored[column], column) - float(actual)) > 1e-12:
                 raise ArtifactAuditError(f"paired {column} mismatch for {key}")
+    unavailable_metrics = [
+        metric for metric in PAIR_METRICS if metric not in audited_metrics
+    ]
+    return {
+        "audited_metrics": list(audited_metrics),
+        "unavailable_newer_metrics": unavailable_metrics,
+        "declared_plan_columns_present": include_declared_plan,
+    }
 
 
 def _verify_truth_sidecars(
@@ -636,7 +662,10 @@ def _verify_truth_sidecars(
                 "prediction membership does not match eligible test truth"
             )
 
-    require_bitemporal = protocol_version == "independent-development-v2-2026-10-29"
+    require_bitemporal = (
+        protocol_version == "independent-development-v2-2026-10-29"
+        and artifact_schema_version >= 5
+    )
     policy_keys = [(
         row["scenario_id"],
         row["policy_id"],
@@ -933,6 +962,16 @@ def _verify_truth_sidecars(
             raise ArtifactAuditError("truth-only fields leaked into prediction rows")
     return {
         "present": True,
+        "artifact_schema_version": artifact_schema_version,
+        "policy_event_version_links_verified": require_bitemporal,
+        "legacy_schema_limitations": (
+            [
+                "event-level policy versions are unavailable in schema-v3 sidecars",
+                "employee-linked entitlement and temporal views are unavailable",
+            ]
+            if artifact_schema_version < 5
+            else []
+        ),
         "record_truth_rows": len(truth_rows),
         "administrative_event_rows": len(event_rows),
         "policy_epoch_rows": len(policy_rows),
@@ -1031,6 +1070,7 @@ def _recompute_paired_comparisons(
     rows: list[dict[str, str]],
     *,
     include_declared_plan: bool = False,
+    pair_metrics: tuple[str, ...] = PAIR_METRICS,
 ) -> list[dict[str, object]]:
     metric_keys = [
         (row["scenario_id"], row["method"], row["representation"], row["operating_point"])
@@ -1079,7 +1119,7 @@ def _recompute_paired_comparisons(
                 )
                 item["secondary_family_tested_size"] = 0
                 item["primary_recall_sign_flip_p"] = ""
-            for metric in PAIR_METRICS:
+            for metric in pair_metrics:
                 eligible_pairs = [
                     (raw, policy) for raw, policy in pairs
                     if raw[metric] != "" and policy[metric] != ""
@@ -1121,6 +1161,7 @@ def _recompute_paired_comparisons(
         (item, f"{metric}_delta_sign_flip_p")
         for item in comparisons
         for metric in LEGACY_AUDITED_PAIR_METRICS
+        if metric in pair_metrics
         if item.get(f"{metric}_delta_sign_flip_p") not in {"", None}
     ]
     adjusted = _holm_adjusted_pvalues([
