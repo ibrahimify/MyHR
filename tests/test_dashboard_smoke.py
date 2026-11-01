@@ -216,13 +216,6 @@ class DashboardSmokeTests(unittest.TestCase):
                 l7_rule.base_months = 36
                 session.commit()
 
-    @unittest.skip(
-        "Known pre-existing defect (both thesis and research, not from "
-        "consolidation): hangs under unittest offscreen via a blocking "
-        "_information success modal while only _warning is patched; its "
-        "currency-rejection premise does not match app input sanitization. "
-        "App verified working: launch, navigation, PDF export, shutdown."
-    )
     def test_level_management_rejects_invalid_promotion_targets(self):
         from src.ui.pages.settings import (
             AddLevelDialog,
@@ -230,25 +223,57 @@ class DashboardSmokeTests(unittest.TestCase):
             _valid_currency_code,
         )
 
+        def _unexpected_success(*args, **kwargs):
+            raise AssertionError(
+                "AddLevelDialog._save reached the success path; validation "
+                "should have rejected this input before any _information modal."
+            )
+
+        def _unexpected_error(*args, **kwargs):
+            raise AssertionError(
+                "AddLevelDialog._save raised and hit the error modal; "
+                "rejection should surface via _warning, not an exception. "
+                f"args={args!r}"
+            )
+
         with db.SessionLocal() as session:
             admin = session.query(db.SystemUser).filter_by(username="admin").one()
             l7 = session.query(db.Title).filter_by(name="L7").one()
             l6 = session.query(db.Title).filter_by(name="L6").one()
             l5 = session.query(db.Title).filter_by(name="L5").one()
+            # Explicit fixtures derived from the seeded database so the test
+            # does not depend on hard-coded strings elsewhere.
+            duplicate_label_value = l7.label  # "Entry Level"
             ids = {"l7": l7.id, "l6": l6.id, "l5": l5.id}
+            # Confirm the promotion chain used by the cycle case: L7 -> L6.
+            l7_rule = session.query(db.PromotionRule).filter_by(from_title_id=l7.id).one()
+            self.assertEqual(l7_rule.to_title_id, l6.id)
             user = SimpleNamespace(id=admin.id, username=admin.username, role=admin.role, full_name=admin.full_name)
 
+        # Guard every sub-case: patch both modals. _warning is asserted;
+        # _information is wired to raise so an accidental success path fails
+        # loudly instead of blocking the offscreen event loop.
+
+        # Case 1: a promotion whose salary range is not strictly below the
+        # target's maximum must be rejected. A new dialog always has a valid
+        # target preselected (there is no "no target" option for new levels),
+        # so we exercise the salary-ordering guard with an explicit over-range
+        # salary. L6's base_salary_max is 3500; setting the new level's max at
+        # or above that triggers promotion_salary_range_order_warning.
         add_dialog = AddLevelDialog(user)
         try:
-            add_dialog.level_name.setText("L8")
-            add_dialog.level_label.setText("Interns")
-            add_dialog.currency.setText("EUR")
-            add_dialog.salary_min.setValue(500)
-            add_dialog.salary_max.setValue(900)
             l6_index = add_dialog.target_title.findData(ids["l6"])
             self.assertGreaterEqual(l6_index, 0)
             add_dialog.target_title.setCurrentIndex(l6_index)
-            with patch("src.ui.pages.settings._warning", return_value=None) as warning:
+            add_dialog.level_name.setText("L8")
+            add_dialog.level_label.setText("Interns")
+            add_dialog.currency.setText("EUR")
+            add_dialog.salary_min.setValue(3600)
+            add_dialog.salary_max.setValue(4000)
+            self.assertEqual(add_dialog.currency.text(), "EUR")
+            with patch("src.ui.pages.settings._warning", return_value=None) as warning, \
+                    patch("src.ui.pages.settings._information", side_effect=_unexpected_success), \
+                    patch("src.ui.pages.settings._critical", side_effect=_unexpected_error):
                 add_dialog._save()
             warning.assert_called_once()
             with db.SessionLocal() as session:
@@ -256,38 +281,56 @@ class DashboardSmokeTests(unittest.TestCase):
         finally:
             add_dialog.close()
 
+        # Case 2: invalid currency must be rejected.
+        # Selecting a target invokes _load_target_defaults(), which overwrites
+        # the currency field with the target's currency. The invalid value must
+        # therefore be set AFTER target selection, and we assert it survived.
         invalid_currency_dialog = AddLevelDialog(user)
         try:
             invalid_currency_dialog.level_name.setText("L9")
             invalid_currency_dialog.level_label.setText("Temporary Track")
-            invalid_currency_dialog.currency.setText("$$$")
             invalid_currency_dialog.salary_min.setValue(100)
             invalid_currency_dialog.salary_max.setValue(200)
             l7_index = invalid_currency_dialog.target_title.findData(ids["l7"])
             self.assertGreaterEqual(l7_index, 0)
             invalid_currency_dialog.target_title.setCurrentIndex(l7_index)
-            with patch("src.ui.pages.settings._warning", return_value=None) as warning:
+            invalid_currency_dialog.currency.setText("$$$")
+            self.assertEqual(invalid_currency_dialog.currency.text(), "$$$")
+            with patch("src.ui.pages.settings._warning", return_value=None) as warning, \
+                    patch("src.ui.pages.settings._information", side_effect=_unexpected_success), \
+                    patch("src.ui.pages.settings._critical", side_effect=_unexpected_error):
                 invalid_currency_dialog._save()
             warning.assert_called_once()
+            with db.SessionLocal() as session:
+                self.assertIsNone(session.query(db.Title).filter_by(name="L9").first())
         finally:
             invalid_currency_dialog.close()
 
+        # Case 3: duplicate level label must be rejected. Set both the label and
+        # currency AFTER selecting a target, since _load_target_defaults would
+        # otherwise overwrite the currency field.
         duplicate_label_dialog = AddLevelDialog(user)
         try:
             duplicate_label_dialog.level_name.setText("L9")
-            duplicate_label_dialog.level_label.setText("Entry Level")
-            duplicate_label_dialog.currency.setText("EUR")
             duplicate_label_dialog.salary_min.setValue(100)
             duplicate_label_dialog.salary_max.setValue(200)
-            l7_index = duplicate_label_dialog.target_title.findData(ids["l7"])
-            self.assertGreaterEqual(l7_index, 0)
-            duplicate_label_dialog.target_title.setCurrentIndex(l7_index)
-            with patch("src.ui.pages.settings._warning", return_value=None) as warning:
+            l6_index = duplicate_label_dialog.target_title.findData(ids["l6"])
+            self.assertGreaterEqual(l6_index, 0)
+            duplicate_label_dialog.target_title.setCurrentIndex(l6_index)
+            duplicate_label_dialog.level_label.setText(duplicate_label_value)
+            duplicate_label_dialog.currency.setText("EUR")
+            self.assertEqual(duplicate_label_dialog.level_label.text(), duplicate_label_value)
+            with patch("src.ui.pages.settings._warning", return_value=None) as warning, \
+                    patch("src.ui.pages.settings._information", side_effect=_unexpected_success), \
+                    patch("src.ui.pages.settings._critical", side_effect=_unexpected_error):
                 duplicate_label_dialog._save()
             warning.assert_called_once()
+            with db.SessionLocal() as session:
+                self.assertIsNone(session.query(db.Title).filter_by(name="L9").first())
         finally:
             duplicate_label_dialog.close()
 
+        # Pure-function assertions documenting the validation primitives.
         self.assertTrue(_valid_currency_code("HUF"))
         self.assertFalse(_valid_currency_code("$$$"))
         with db.SessionLocal() as session:
@@ -297,12 +340,17 @@ class DashboardSmokeTests(unittest.TestCase):
                 "promotion_salary_range_order_warning",
             )
 
+        # Case 4: editing L6 to target L7 forms a promotion cycle
+        # (L6 -> L7 while L7 -> L6 already exists) and must be rejected
+        # without mutating the existing L6 -> L5 rule.
         edit_dialog = AddLevelDialog(user, title_id=ids["l6"])
         try:
             l7_index = edit_dialog.target_title.findData(ids["l7"])
             self.assertGreaterEqual(l7_index, 0)
             edit_dialog.target_title.setCurrentIndex(l7_index)
-            with patch("src.ui.pages.settings._warning", return_value=None) as warning:
+            with patch("src.ui.pages.settings._warning", return_value=None) as warning, \
+                    patch("src.ui.pages.settings._information", side_effect=_unexpected_success), \
+                    patch("src.ui.pages.settings._critical", side_effect=_unexpected_error):
                 edit_dialog._save()
             warning.assert_called_once()
             with db.SessionLocal() as session:
@@ -310,7 +358,6 @@ class DashboardSmokeTests(unittest.TestCase):
                 self.assertEqual(l6_rule.to_title_id, ids["l5"])
         finally:
             edit_dialog.close()
-
     def test_level_management_allows_other_policy_edits_without_rename(self):
         from src.ui.pages.settings import AddLevelDialog
 
