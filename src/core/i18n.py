@@ -906,6 +906,7 @@ TRANSLATIONS["en"].update({
 })
 
 TRANSLATIONS["hu"].update({
+    "anomaly_demo_outcome_chart": "Visszahívás és precizitás azonos ellenőrzési kapacitásnál",
     "admin_only_badge": "Csak admin",
     "personal_details": "Személyes adatok",
     "edit_profile": "Profil szerkesztése",
@@ -1275,6 +1276,7 @@ TRANSLATIONS["hu"].update({
 })
 
 TRANSLATIONS["ar"].update({
+    "anomaly_demo_outcome_chart": "الاستدعاء والدقة عند سعة مراجعة متساوية",
     "add_department": "إضافة قسم",
     "add_org_unit": "إضافة وحدة تنظيمية",
     "add_organization_unit": "إضافة وحدة تنظيمية",
@@ -3189,7 +3191,7 @@ TRANSLATIONS["en"].update({
     "anomaly_demo_priority_low": "Standard",
     "anomaly_demo_show_history": "Show source history",
     "anomaly_demo_hide_history": "Hide source history",
-    "anomaly_demo_outcome_chart": "Review outcomes: true positives / false positives",
+    "anomaly_demo_outcome_chart": "Recall and precision at equal review capacity",
     "anomaly_demo_analysis_details": "Analysis details",
     "anomaly_demo_equal_capacity": "Equal review capacity: {reviews} of {records} records per method. Nominal {nominal:.0%}; rounded realized capacity {realized:.1%}.",
     "anomaly_demo_model_config_details": "Isolation Forest: {trees} trees. Seeds: dataset {dataset_seed}, split {split_seed}, model {model_seed}.",
@@ -3222,6 +3224,29 @@ TRANSLATIONS["en"].update({
     "anomaly_demo_truth_label_frequent_promotion": "Frequent promotion",
     "anomaly_demo_truth_label_excessive_sanctions": "Excessive sanctions",
     "anomaly_demo_truth_label_unusual_admin_interval": "Unusual administrative interval",
+    "anomaly_demo_guide_terms": "Key terms",
+    "anomaly_demo_guide_step_0": "1. Review the ranked queue. Open a record to inspect the same synthetic employee's evidence.",
+    "anomaly_demo_guide_step_1": "2. Check the employee history, applicable policy and service calculation. Missing evidence stays visible.",
+    "anomaly_demo_guide_step_2": "3. Compare methods on the same eligible records and the same review budget.",
+    "anomaly_demo_guide_step_3": "4. Reveal generated truth only here to evaluate what each method found or missed.",
+    "anomaly_demo_guide_terms_0": "Review priority: relative queue order, not error probability.\n\nScore: model ranking value used only for prioritisation.",
+    "anomaly_demo_guide_terms_1": "Effective date: when an event applied.\n\nRecorded date: when the system learned it.\n\nDeficit: required service still missing after credits and delays.",
+    "anomaly_demo_guide_terms_2": "Recall: share of injected errors found.\n\nPrecision: share of reviewed records that were injected errors.\n\nEqual capacity: every method reviews the same number of records.",
+    "anomaly_demo_guide_terms_3": "Injected error: a known synthetic administrative error.\n\nLawful rare case: unusual but valid history that should not be treated as an error.",
+    "anomaly_demo_dataset_split": "Dataset split",
+    "anomaly_demo_seeds": "Reproducibility seeds",
+    "anomaly_demo_model_configuration": "Model configuration",
+    "anomaly_demo_split_value": "{employees} histories; 60% fit / 20% validation / 20% evaluation",
+    "anomaly_demo_model_value": "Isolation Forest; configuration shown after the run",
+    "anomaly_demo_model_config_short": "Isolation Forest; {trees} trees",
+    "anomaly_demo_search_placeholder": "Search employee, track or reason",
+    "anomaly_demo_previous": "Previous",
+    "anomaly_demo_next": "Next",
+    "anomaly_demo_interpretation_waiting": "Run an analysis to see a scenario-specific interpretation.",
+    "anomaly_demo_interpretation_no_positives": "This evaluation population contains no injected errors, so recall is undefined. The scenario remains visible and is not treated as a successful zero-recall result.",
+    "anomaly_demo_interpretation_zero": "In this live development scenario, the policy-aware method found none of the injected errors within the fixed review budget. This is an exploratory result, not a final research conclusion.",
+    "anomaly_demo_interpretation_no_attribution": "The policy-aware and wrong-policy controls produced the same aggregate true-positive and false-positive counts here. This scenario does not support attributing performance to correct policy information.",
+    "anomaly_demo_interpretation_exploratory": "The methods differ in this live development scenario. The exact table shows the result, but one scenario is not evidence of general superiority.",
 })
 
 TRANSLATIONS["hu"].update({
@@ -3364,6 +3389,59 @@ TRANSLATIONS["ar"].update({
     "anomaly_demo_truth_label_frequent_promotion": "ترقية متكررة",
     "anomaly_demo_truth_label_excessive_sanctions": "عقوبات كثيرة",
     "anomaly_demo_truth_label_unusual_admin_interval": "فاصل إداري غير معتاد",
+})
+
+
+TRANSLATIONS["hu"].update({
+    "anomaly_demo_guide_terms": "Kulcsfogalmak",
+    "anomaly_demo_guide_step_0": "1. Tekintse át a rangsorolt listát, majd nyissa meg ugyanazon szintetikus dolgozó bizonyítékait.",
+    "anomaly_demo_guide_step_1": "2. Ellenőrizze az előzményeket, a szabályzatot és a szolgálati számítást. A hiányzó bizonyíték látható marad.",
+    "anomaly_demo_guide_step_2": "3. Hasonlítsa össze a módszereket ugyanazokon a rekordokon, azonos ellenőrzési kerettel.",
+    "anomaly_demo_guide_step_3": "4. A generált igazság csak itt jelenik meg, hogy látható legyen, mit talált vagy hagyott ki a módszer.",
+    "anomaly_demo_guide_terms_0": "Ellenőrzési prioritás: relatív sorrend, nem hibavalószínűség.\n\nPontszám: kizárólag rangsorolásra használt modellérték.",
+    "anomaly_demo_guide_terms_1": "Hatályos dátum: amikor az esemény érvényes volt.\n\nRögzítési dátum: amikor a rendszer tudomást szerzett róla.\n\nHiány: a jóváírások és késleltetések után hiányzó szolgálati idő.",
+    "anomaly_demo_guide_terms_2": "Visszahívás: a megtalált beillesztett hibák aránya.\n\nPrecizitás: az ellenőrzött rekordok között talált hibák aránya.\n\nAzonos kapacitás: minden módszer ugyanannyi rekordot ellenőriz.",
+    "anomaly_demo_guide_terms_3": "Beillesztett hiba: ismert szintetikus adminisztratív hiba.\n\nJogos ritka eset: szokatlan, de érvényes előzmény, amely nem hiba.",
+    "anomaly_demo_dataset_split": "Adatfelosztás",
+    "anomaly_demo_seeds": "Reprodukciós magok",
+    "anomaly_demo_model_configuration": "Modellbeállítás",
+    "anomaly_demo_split_value": "{employees} előzmény; 60% illesztés / 20% validálás / 20% értékelés",
+    "anomaly_demo_model_value": "Isolation Forest; a beállítás futtatás után látható",
+    "anomaly_demo_model_config_short": "Isolation Forest; {trees} fa",
+    "anomaly_demo_search_placeholder": "Keresés dolgozó, pálya vagy ok szerint",
+    "anomaly_demo_previous": "Előző",
+    "anomaly_demo_next": "Következő",
+    "anomaly_demo_interpretation_waiting": "Futtasson elemzést a forgatókönyv értelmezéséhez.",
+    "anomaly_demo_interpretation_no_positives": "Ebben az értékelési populációban nincs beillesztett hiba, ezért a visszahívás nem értelmezhető. A forgatókönyv látható marad, és nem számít sikeres nulla-visszahívási eredménynek.",
+    "anomaly_demo_interpretation_zero": "Ebben a fejlesztési forgatókönyvben a szabályzattudatos módszer a rögzített kereten belül egy beillesztett hibát sem talált. Ez feltáró eredmény, nem végleges kutatási következtetés.",
+    "anomaly_demo_interpretation_no_attribution": "A szabályzattudatos és a hibás szabályzati kontroll itt azonos összesített valódi és téves találati számot adott. Ez nem támasztja alá, hogy a teljesítmény a helyes szabályzati információnak köszönhető.",
+    "anomaly_demo_interpretation_exploratory": "A módszerek ebben a fejlesztési forgatókönyvben eltérnek. A pontos értékek a táblázatban láthatók, de egy forgatókönyv nem bizonyít általános fölényt.",
+})
+
+TRANSLATIONS["ar"].update({
+    "anomaly_demo_guide_terms": "مصطلحات أساسية",
+    "anomaly_demo_guide_step_0": "1. راجع قائمة الأولوية وافتح السجل لفحص أدلة الموظف الاصطناعي نفسه.",
+    "anomaly_demo_guide_step_1": "2. افحص السجل والسياسة المطبقة وحساب الخدمة. تبقى الأدلة المفقودة ظاهرة.",
+    "anomaly_demo_guide_step_2": "3. قارن الطرق على السجلات المؤهلة نفسها وبميزانية مراجعة متساوية.",
+    "anomaly_demo_guide_step_3": "4. اكشف الحقيقة المولدة هنا فقط لتقييم ما وجدته كل طريقة أو فاتها.",
+    "anomaly_demo_guide_terms_0": "أولوية المراجعة: ترتيب نسبي وليست احتمال خطأ.\n\nالدرجة: قيمة ترتيب يستخدمها النموذج لتحديد الأولوية فقط.",
+    "anomaly_demo_guide_terms_1": "تاريخ السريان: وقت تطبيق الحدث.\n\nتاريخ التسجيل: وقت معرفة النظام به.\n\nالعجز: مدة الخدمة المتبقية بعد الائتمان والتأخير.",
+    "anomaly_demo_guide_terms_2": "الاستدعاء: نسبة الأخطاء المحقونة التي تم العثور عليها.\n\nالدقة: نسبة السجلات المراجعة التي كانت أخطاء محقونة.\n\nالسعة المتساوية: تراجع كل طريقة العدد نفسه من السجلات.",
+    "anomaly_demo_guide_terms_3": "خطأ محقون: خطأ إداري اصطناعي معروف.\n\nحالة نادرة مشروعة: سجل غير معتاد لكنه صحيح ولا ينبغي اعتباره خطأ.",
+    "anomaly_demo_dataset_split": "تقسيم البيانات",
+    "anomaly_demo_seeds": "بذور إعادة الإنتاج",
+    "anomaly_demo_model_configuration": "إعداد النموذج",
+    "anomaly_demo_split_value": "{employees} سجلا؛ 60% ملاءمة / 20% تحقق / 20% تقييم",
+    "anomaly_demo_model_value": "Isolation Forest؛ يظهر الإعداد بعد التشغيل",
+    "anomaly_demo_model_config_short": "Isolation Forest؛ {trees} شجرة",
+    "anomaly_demo_search_placeholder": "ابحث عن موظف أو مسار أو سبب",
+    "anomaly_demo_previous": "السابق",
+    "anomaly_demo_next": "التالي",
+    "anomaly_demo_interpretation_waiting": "شغل التحليل لعرض تفسير خاص بالسيناريو.",
+    "anomaly_demo_interpretation_no_positives": "لا تحتوي مجموعة التقييم هذه على أخطاء محقونة، لذلك يكون الاستدعاء غير معرف. يبقى السيناريو ظاهرا ولا يعامل كنتيجة ناجحة ذات استدعاء صفري.",
+    "anomaly_demo_interpretation_zero": "في سيناريو التطوير هذا لم تجد الطريقة الواعية بالسياسة أي خطأ محقون ضمن ميزانية المراجعة الثابتة. هذه نتيجة استكشافية وليست استنتاجا نهائيا.",
+    "anomaly_demo_interpretation_no_attribution": "أنتجت الطريقة الواعية بالسياسة وضابط السياسة الخاطئة الأعداد الإجمالية نفسها للإصابات الصحيحة والخاطئة هنا. لا يدعم هذا السيناريو نسبة الأداء إلى معلومات السياسة الصحيحة.",
+    "anomaly_demo_interpretation_exploratory": "تختلف الطرق في سيناريو التطوير هذا. يعرض الجدول القيم الدقيقة، لكن سيناريو واحد لا يثبت تفوقا عاما.",
 })
 
 

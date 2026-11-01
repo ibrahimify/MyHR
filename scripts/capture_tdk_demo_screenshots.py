@@ -103,6 +103,8 @@ def main() -> int:
 
         result = run_demo_scenario(0, employee_count=120)
         anomaly_page._on_completed(result)
+        anomaly_page.help_button.setChecked(True)
+        anomaly_page._toggle_help(True)
         app.processEvents()
         QTest.qWait(300)
 
@@ -117,7 +119,7 @@ def main() -> int:
             anomaly_page.tabs.setCurrentIndex(tab_index)
             QTest.qWait(120)
             if anomaly_scroll is not None:
-                anomaly_scroll.verticalScrollBar().setValue(285 if tab_index == 1 else 0)
+                anomaly_scroll.verticalScrollBar().setValue(0)
             QTest.qWait(180)
             path = args.output_dir / f"anomaly_{name}_{args.theme}.png"
             if not window.grab().save(str(path), "PNG"):

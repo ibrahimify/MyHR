@@ -1,6 +1,7 @@
 """End-to-end smoke checks for the interactive anomaly demonstration."""
 
 import os
+from dataclasses import replace
 from pathlib import Path
 from queue import Queue
 import tempfile
@@ -68,6 +69,11 @@ class AnomalyDemoUiTests(unittest.TestCase):
             self.assertFalse(page.events_table.isVisible())
             self.assertFalse(page.truth_cases_table.isVisible())
             self.assertFalse(page.export_button.isEnabled())
+            page.help_button.click()
+            self.assertFalse(page.guide_panel.isHidden())
+            self.assertIn("Review priority", page.guide_terms.text())
+            page.tabs.setCurrentIndex(2)
+            self.assertIn("Equal capacity", page.guide_terms.text())
             page._on_completed(self.completed_result)
             self.assertTrue(page.export_button.isEnabled())
             self.assertEqual(
@@ -81,6 +87,91 @@ class AnomalyDemoUiTests(unittest.TestCase):
                     for case in self.completed_result.truth_cases
                 ),
             )
+        finally:
+            page.close()
+
+    def test_queue_search_and_evidence_empty_state_are_semantic(self):
+        page = AnomalyReviewPage(SimpleNamespace(role="admin"))
+        try:
+            page._on_completed(self.completed_result)
+            employee_id = self.completed_result.queue[0].employee_id
+            page.queue_search.setText(employee_id)
+            self.app.processEvents()
+            self.assertEqual(page.queue_table.rowCount(), 1)
+            self.assertEqual(page.queue_table.item(0, 0).text(), employee_id)
+
+            without_calculation = next(
+                evidence
+                for evidence in self.completed_result.evidence_by_employee_id.values()
+                if not evidence.calculations
+            )
+            page._show_employee(without_calculation.employee_id)
+            self.assertFalse(page.no_calculation_label.isHidden())
+            self.assertTrue(page.calculation_table.isHidden())
+            self.assertTrue(page.service_arithmetic.isHidden())
+        finally:
+            page.close()
+
+    def test_comparison_copy_is_derived_from_live_outcomes(self):
+        from src.core.i18n import t
+
+        page = AnomalyReviewPage(SimpleNamespace(role="admin"))
+        try:
+            page._on_completed(self.completed_result)
+            policy = next(
+                item
+                for item in self.completed_result.comparisons
+                if item.representation == "policy_matched"
+            )
+            wrong = next(
+                item
+                for item in self.completed_result.comparisons
+                if item.representation == "wrong_policy_control"
+            )
+            if policy.true_positives == 0:
+                expected = t("anomaly_demo_interpretation_zero")
+            elif (
+                policy.true_positives == wrong.true_positives
+                and policy.false_positives == wrong.false_positives
+            ):
+                expected = t("anomaly_demo_interpretation_no_attribution")
+            else:
+                expected = t("anomaly_demo_interpretation_exploratory")
+            self.assertEqual(page.comparison_interpretation.text(), expected)
+            self.assertIn(
+                str(self.completed_result.model_estimators),
+                page.scenario_detail_values["model"].text(),
+            )
+        finally:
+            page.close()
+
+    def test_undefined_recall_is_reported_not_drawn_as_zero(self):
+        from src.core.i18n import t
+
+        page = AnomalyReviewPage(SimpleNamespace(role="admin"))
+        try:
+            comparisons = tuple(
+                replace(item, recall=None, true_positives=0, false_negatives=0)
+                for item in self.completed_result.comparisons
+            )
+            result = replace(
+                self.completed_result,
+                comparisons=comparisons,
+                evaluation=replace(
+                    self.completed_result.evaluation,
+                    positive_count=0,
+                    true_positives=0,
+                    false_negatives=0,
+                    recall=None,
+                ),
+            )
+            page._on_completed(result)
+            self.assertEqual(page.comparison_table.item(0, 5).text(), t("anomaly_demo_undefined"))
+            self.assertEqual(
+                page.comparison_interpretation.text(),
+                t("anomaly_demo_interpretation_no_positives"),
+            )
+            self.assertFalse(page.comparison_chart.grab().isNull())
         finally:
             page.close()
 
@@ -99,6 +190,13 @@ class AnomalyDemoUiTests(unittest.TestCase):
                 t("anomaly_demo_tab_comparison_short"),
             )
             self.assertFalse(page.demo_badge.isVisible())
+            page.help_button.click()
+            self.app.processEvents()
+            self.assertFalse(page.guide_panel.isHidden())
+            self.assertLess(
+                page.guide_panel.geometry().y(),
+                page.main_workspace.geometry().y(),
+            )
             self.assertEqual(
                 page.stat_grid.getItemPosition(
                     page.stat_grid.indexOf(page.stat_cards[2])
