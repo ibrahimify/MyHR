@@ -7,7 +7,7 @@
 **Institution:** Budapest University of Technology and Economics, Faculty of Electrical Engineering and Informatics
 
 **Paper language:** English
-**Status:** Supervisor review draft, 30 October 2026
+**Status:** Supervisor review draft, 1 November 2026
 
 ## Abstract
 
@@ -15,7 +15,7 @@ Workforce progression systems apply promotion, commendation, sanction, and salar
 
 The study uses MyHR, an offline HR decision-support application, as the experimental platform. A formal progression model specifies service requirements, commendation credits, sanction delays, policy changes, and annual increments independent of promotion. Isolation Forest models analyse sanction frequencies, promotion intervals, and administrative-event patterns using raw and policy-conditioned features. Deterministic validation addresses explicit inconsistencies, while eligibility explanations present the applicable rules, adjustments, and supporting records. A separate similarity-based matching component identifies potential duplicate employee records. Anomaly and duplicate alerts support human review rather than automatic personnel decisions or record merging.
 
-Evaluation uses reproducible synthetic histories containing documented injected errors and rare legitimate cases, with separate training, validation, and test partitions. Comparisons include rule checks, contextual statistical baselines, and Isolation Forest models with and without policy-conditioned features. Measures include precision, recall, F1 score, false-positive rate, review workload, and runtime. Duplicate detection is evaluated separately. Successive audits exposed and repaired defects in synthetic truth, temporal replay, pairwise evaluation, and provenance. In the latest clean exploratory progression artifact, deterministic rules flagged 0 of 72 generated test-split rare-legitimate labels; 24 of those artifact rows describe grandfathering for which employee-specific entitlement was not stored. Policy-aware minus raw recall at equal review capacity was +0.0278 with a 95% paired bootstrap interval from -0.0278 to +0.1019 and sign-flip p=0.6875. Wrong-policy context produced the same primary alert membership as the policy-matched representation, so the observed difference from raw features cannot be attributed to correct policy knowledge. No advantage was demonstrated, and the interval does not establish equivalence. Employee-linked entitlement and separate temporal views are now implemented in development code, but protocol-scale evidence, two nominated realism reviewers, protocol freeze, and confirmatory holdout evaluation remain incomplete.
+Evaluation uses reproducible synthetic histories containing documented injected errors and rare legitimate cases, with separate training, validation, and test partitions. Comparisons include rule checks, contextual statistical baselines, and Isolation Forest models with and without policy-conditioned features. Measures include precision, recall, F1 score, false-positive rate, review workload, and runtime. Duplicate detection is evaluated separately. Successive audits exposed and repaired defects in synthetic truth, temporal replay, pairwise evaluation, and provenance. In the clean audited 12-scenario artifact, deterministic rules flagged 0 of 72 generated test-split rare-legitimate labels; 24 of those rows describe grandfathering for which employee-specific entitlement was not stored. Policy-aware minus raw recall at equal review capacity was +0.0278 with a 95% paired bootstrap interval from -0.0278 to +0.1019 and sign-flip p=0.6875. Wrong-policy context selected the same records as policy-matched context. A later 900-scenario development diagnostic likewise found that wrong-policy features reproduced most of the raw-to-policy gain. No policy-aware advantage was demonstrated, and the 12-scenario interval does not establish equivalence. Employee-linked entitlement and separate temporal views are implemented in development code, but the confound, human realism review, protocol freeze, and confirmatory holdout evaluation remain unresolved.
 
 Keywords: machine learning, anomaly detection, Isolation Forest, workforce progression, rule-based decision support, synthetic data, duplicate detection, explainability
 
@@ -520,13 +520,16 @@ The corrected duplicate evaluation uses an explicit evaluation universe and set 
 
 The historical runs demonstrate why passing tests and reproducible arithmetic
 are insufficient when labels or evaluation universes are wrong. The corrected
-exploratory artifact demonstrates that the repaired pipeline executes
-reproducibly, but its 12 inspected scenarios are below protocol scale and
-predate the now-approved entitlement and temporal-view requirements. The
-compatibility rules are approved, while the balanced protocol-scale cell
-allocation remains unfrozen. Its primary interval crosses zero. The current
-evidence therefore supports the framework and its auditability, not a
-performance or product-effectiveness claim.
+12-scenario artifact executes reproducibly but predates parts of the approved
+entitlement and temporal-view contract, and its primary interval crosses zero.
+A later development-only run used 30 seeds per condition and produced 900
+scenarios in artifact `8f1494e4abf2d268` with `holdout_accessed: false`. Its
+policy-aware minus raw recall difference was +0.348, but wrong-policy features
+reproduced +0.284, or about 82% of that apparent gain. The remaining increment
+is still confounded with representation dimensionality, and the full offline
+audit of its 8,019,000 prediction rows remains incomplete. This diagnostic is
+not confirmatory evidence. The current evidence supports the framework, its
+controls, and its auditability, not a policy-aware performance claim.
 
 ### 6.9 Robustness Slices and What They Can Show
 
@@ -554,20 +557,20 @@ The current residual comparison does not justify a utility advantage. Although b
 
 ### 7.1 Answer to the Research Questions Today
 
-The corrected exploratory run did not demonstrate that policy context improves
-residual anomaly ranking. Its primary recall difference was positive but
-imprecise, with a paired interval crossing zero. The original generator remains
-conceptually coupled to the policy representation. Lawful scenario semantics
-and compatibility constraints are now author-approved, but the inspected
-artifact predates parts of that contract and the protocol-scale matrix remains
-unfrozen. No superiority, inferiority, or equivalence conclusion follows.
+The corrected exploratory evidence did not demonstrate that correct policy
+context improves residual anomaly ranking. The audited 12-scenario interval
+crosses zero. In the later 900-scenario development diagnostic, a deliberately
+wrong policy reproduces most of the apparent raw-to-policy gain. This points to
+representation and policy-structure coupling rather than an established policy
+effect. Lawful scenario semantics and compatibility constraints are approved,
+but the exact frozen matrix and dimensionality-matched raw control remain
+unresolved. No superiority, inferiority, or equivalence conclusion follows.
 
-Robustness across changed policies and populations cannot yet be established
-because the repaired comparison contains only twelve inspected scenario units.
-The approved plan requires 30 independent seeds for every included
-protocol-scale condition unless a written pre-run justification authorizes a
-different count. The balanced compatible-cell matrix, protocol-scale execution,
-and independent validation are still required.
+Robustness across changed policies and populations cannot yet be established.
+The 900-scenario development diagnostic used repeated seeds, but its wrong-policy
+control exposes a confound and its full artifact audit remains incomplete. A
+balanced compatible-cell matrix, dimensionality-matched control, independent
+validation, and human realism review are still required before a freeze.
 
 The rare-legitimate objective remains operationally important. The original validation run shows that reducing alerts in one legitimate subgroup can merely move the same number of false alerts elsewhere. The invalidated transition scenarios show why generated lawful status must be checked semantically before interpreting subgroup metrics. A valid future experiment must therefore report both subgroup and total false alerts at equal workload.
 
@@ -643,7 +646,7 @@ Checksums, manifests, source hashes, CI, and independent arithmetic audits make 
 
 ### 7.10 Approved Redesign and Remaining Freeze Gate
 
-The approved primary design retains a residual task after removing only invariant contradictions. It introduces policy context that is not consumed by that gate, including historical policy identity, effective-versus-recorded timing, recognized-service evidence, jurisdiction, and correction provenance. Raw and policy-aware Isolation Forest receive the same additional review capacity over the same remaining records, with recall at that capacity as the primary endpoint. The residual boundary, employee- and event-linked entitlement structure, and separate decision-time and later-review views are implemented in development code and tests. They remain unfrozen and have not yet been verified in a protocol-scale artifact.
+The approved primary design retains a residual task after removing only invariant contradictions. It introduces policy context that is not consumed by that gate, including historical policy identity, effective-versus-recorded timing, recognized-service evidence, jurisdiction, and correction provenance. Raw and policy-aware Isolation Forest receive the same additional review capacity over the same remaining records, with recall at that capacity as the primary endpoint. The residual boundary, employee- and event-linked entitlement structure, and separate decision-time and later-review views are implemented in development code and tests. A 900-scenario development diagnostic exercised the repeated-seed pipeline, but its wrong-policy result exposed an unresolved attribution confound; it therefore does not satisfy the freeze gate.
 
 The end-to-end rules-plus-ML review queue remains a secondary operational analysis. It measures the system a client would use, but it is reported separately because rules can dominate the queue and obscure the incremental contribution of the ML representation.
 
@@ -667,8 +670,8 @@ The same principle applies to explanations. A reviewer should see which facts ar
 | --- | --- | --- |
 | Generator-detector circularity | Independent simulator, controls, preserved negative findings | Approved review method not yet executed; conceptual realism unverified |
 | Test-threshold leakage | Validation-only thresholds | Deployment calibration unresolved |
-| Favorable seed selection | Recorded seed matrix and write-once artifacts | More replicated scenario seeds needed |
-| Missing denominators | Counts and pooled/scenario metrics stored; undefined recall/AP eligibility implemented | Repaired artifact `4feea4508de1bb05` certified at commit `56597d3`; protocol-scale development and validation remain needed |
+| Favorable seed selection | Recorded seed matrix, repeated development seeds, and write-once artifacts | Frozen matrix and independent validation still needed |
+| Missing denominators | Counts and pooled/scenario metrics stored; undefined recall/AP eligibility implemented | Protocol-scale artifact audit incomplete; confirmatory validation still needed |
 | Historical policy replay | Research bitemporal contract and golden replay tests implemented | Production temporal schema and correction-case matrix not frozen |
 | Citation overstatement | Provenance registry and claim ledger | Two references remain metadata-only |
 | External validity | Fictional data protect privacy | No organizational validation |
@@ -678,11 +681,11 @@ The same principle applies to explanations. A reviewer should see which facts ar
 
 This study set out to test whether explicit workforce-progression policy context improves anomaly detection beyond raw administrative features and deterministic validation. MyHR now contains the technical foundation required for a defensible investigation: a formal progression model, application-research parity tests, synthetic data contracts, deterministic and statistical baselines, Isolation Forest comparisons, policy controls, equal-budget reporting, write-once artifacts, citation provenance, and independent auditing.
 
-The development experiments do not establish the expected advantage. They first revealed why a superficially reasonable comparison can fail: the original generator was closely aligned with the policy representation, and the historical residual design removed all variation from its policy-specific features. The repaired experiment restores a testable residual comparison, but its primary recall interval crosses zero and its twelve inspected scenarios are below protocol scale. Preserving both failures and uncertain results prevents a false claim of success or equivalence.
+The development experiments do not establish the expected advantage. They first revealed why a superficially reasonable comparison can fail: the original generator was closely aligned with the policy representation, and the historical residual design removed all variation from its policy-specific features. The repaired 12-scenario experiment restores a testable residual comparison, but its primary interval crosses zero. A later 900-scenario diagnostic used repeated seeds, yet wrong-policy features reproduced most of the apparent gain. Preserving both failures and uncertain results prevents a false claim of success or equivalence.
 
 The historical-policy direction remains the most actionable, but its earlier quantification must be read with care. A preserved older artifact recorded that deterministic validation flagged 39 of 72 constructed rare-legitimate histories; that figure comes from an earlier generator and is retained only as historical development evidence. A second external audit (30 October 2026) later found that the policy-transition generator used to produce the 2026-10-30 artifacts constructed genuinely contradictory histories (promotions before hire, insufficient service), so an intermediate "8 of 72" reading was INVALIDATED: those alerts were responses to real contradictions, not false positives on lawful histories. The generator was repaired so transition cases are lawful by construction; see `TDK_SECOND_EXTERNAL_AUDIT_2026-10-30.md` and the roadmap repairs (R1–R10). No current figure should be presented as a historical-policy false-positive rate on lawful histories until the repaired scenarios are approved and re-evaluated.
 
-After the repairs, artifact `4feea4508de1bb05` was generated from clean commit `56597d3` and passed the strengthened repository audit with `holdout_accessed: false`. Deterministic policy rules flagged 0 of 72 generated test-split rare-legitimate labels, including 24 grandfathering labels without artifact-stored employee-specific entitlement. At an identical additional review budget, raw and policy-aware residual queues each reviewed 96 records, eight per 72-record scenario: a realized 11.11% queue from the nominal 10% ceiling rule. Raw found 36/108 anomalies with 60 false alerts, while policy-aware found 39/108 with 57 false alerts. The scenario-level recall difference was +0.0278, 95% CI [-0.0278, +0.1019], sign-flip p=0.6875. Wrong-policy context selected the identical records as policy-matched context, and single-policy-feature ablations found 42 anomalies. No benefit can therefore be attributed to correct policy knowledge in this run. No policy-aware advantage was demonstrated; the interval neither proves equivalence nor excludes a potentially useful effect. The author has since approved tighter entitlement, temporal-view, compatibility, repeated-seed, and multiplicity requirements, but this artifact predates parts of that contract and contains only 12 inspected scenario units. Remaining work includes nominating and running the blinded realism review, freezing a balanced protocol-scale matrix, generating development and validation evidence, and independently auditing the full design. Dependencies, analysis, and source revision then require a separate dated freeze approval. Only after that human approval may the locked holdout run once.
+After the repairs, artifact `4feea4508de1bb05` was generated from clean commit `56597d3` and passed the strengthened repository audit with `holdout_accessed: false`. Deterministic policy rules flagged 0 of 72 generated test-split rare-legitimate labels, including 24 grandfathering labels without artifact-stored employee-specific entitlement. At an identical additional review budget, raw and policy-aware residual queues each reviewed 96 records, eight per 72-record scenario: a realized 11.11% queue from the nominal 10% ceiling rule. Raw found 36/108 anomalies with 60 false alerts, while policy-aware found 39/108 with 57 false alerts. The scenario-level recall difference was +0.0278, 95% CI [-0.0278, +0.1019], sign-flip p=0.6875. Wrong-policy context selected the identical records as policy-matched context, and single-policy-feature ablations found 42 anomalies. No benefit can therefore be attributed to correct policy knowledge in this run. Artifact `8f1494e4abf2d268` later exercised 900 development scenarios, but wrong-policy features reproduced about 82% of its apparent raw-to-policy recall gain and its full offline audit is incomplete. That result is diagnostic, not confirmatory. Remaining work includes a dimensionality-matched raw control, the blinded realism review, independent validation, full artifact audit, and a dated freeze of the matrix, dependencies, analysis, and source revision. Only after separate human approval may the locked holdout run once.
 
 Duplicate detection remains a useful secondary experiment, and evidence-rich explanation remains a product contribution. Neither substitutes for a valid central anomaly-detection experiment. The present paper therefore offers a reproducible research platform, an honest diagnosis of a failed comparison, and a concrete path to a stronger confirmatory study.
 

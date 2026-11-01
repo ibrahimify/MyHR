@@ -402,8 +402,8 @@ def configure_document(document: Document) -> None:
     section = document.sections[0]
     section.page_width = Cm(21)
     section.page_height = Cm(29.7)
-    section.top_margin = Cm(3.5)
-    section.bottom_margin = Cm(3.5)
+    section.top_margin = Cm(3.0)
+    section.bottom_margin = Cm(3.0)
     section.left_margin = Cm(3.5)
     section.right_margin = Cm(3.5)
 
@@ -456,7 +456,7 @@ def add_title_pages(document: Document, lines: list[str]) -> None:
     subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
     subtitle.runs[0].font.size = Pt(14)
     document.add_paragraph()
-    for label, value in [("Author", AUTHOR), ("Supervisor", SUPERVISOR), ("Date", "30 October 2026")]:
+    for label, value in [("Author", AUTHOR), ("Supervisor", SUPERVISOR), ("Date", "1 November 2026")]:
         paragraph = document.add_paragraph()
         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
         paragraph.add_run(f"{label}: ").bold = True
