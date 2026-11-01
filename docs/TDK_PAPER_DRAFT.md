@@ -748,5 +748,5 @@ No holdout command is included. The holdout runner remains unavailable until the
    causal truth.
 6. Freeze exact dependencies, analysis code, configuration, and source revision after independent verification.
 
-Authorship and approval note: the methodology direction was authorized for implementation on 29 October 2026 by the project author (Muhammad Ibrahim Shoeb). A separately documented independent supervisor endorsement is not on record; earlier wording that implied "relayed supervisor answers" overstated this and has been corrected across the decision records. Implementation completeness, protocol freeze, and holdout access still require separate recorded human approval and cannot be granted by an AI agent.
+Approval note: project author Muhammad Ibrahim Shoeb authorized the implementation direction on 29 October 2026. No independent supervisor endorsement is recorded; earlier wording implying relayed supervisor answers was corrected in the decision records. Protocol freeze, holdout access, and final conclusions still require separate human approval and cannot be granted by an AI agent.
 
