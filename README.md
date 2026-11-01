@@ -8,19 +8,37 @@ the research pipeline that asks one question: **does explicit workforce-progress
 administrative errors for human review better than raw administrative features, without raising false alerts on
 unusual but lawful histories?**
 
-**Short answer: not demonstrated.** In the audited development artifact the policy-aware gain over raw features is
-small and its confidence interval includes zero. A deliberately wrong policy performs about as well as the correct
-one, so the gain cannot be attributed to policy knowledge. All results are development evidence on synthetic data.
-The protocol is a draft and the final holdout has never been generated or accessed.
+## Working implementation
+
+The research pipeline runs inside the MyHR desktop application, not only as scripts. Open **Anomaly Review** in the
+sidebar and select **Run analysis**. Everything below is produced by the same shared code that the experiments use.
+
+![MyHR demo](docs/media/demo/myhr_demo.gif)
+
+*28-second recording of the real application with synthetic data ([MP4](docs/media/demo/myhr_demo.mp4)).*
+
+| What you can check | Where in the application |
+| --- | --- |
+| Anomaly detection running in the app | **Anomaly Review**, then **Run analysis**; results appear in the **Review Queue** |
+| Why an item was flagged (drill-down) | **Employee Evidence**: the same employee's source events and the policy calculation (elapsed service, credit, delay, deficit) |
+| Does policy context help? | **Method Comparison**: raw, policy-aware, wrong-policy and shuffled-policy features at the same review capacity, as charts and an exact table |
+| Ground truth for the synthetic data | **Synthetic Evaluation**: injected errors, lawful rare cases, per-method outcomes |
+| Export | CSV and PDF report from the same result |
+
+Steps to run it are in [Run it](#run-it). The pipeline never changes employee records: every alert is a recommendation
+for a human reviewer.
+
+## Result
+
+**The policy-aware advantage is not demonstrated.** In the audited development artifact the gain over raw features is
+small and its confidence interval includes zero. A deliberately wrong policy performs about as well as the correct one,
+so the gain cannot be attributed to policy knowledge. All results are development evidence on synthetic data. The
+protocol is a draft and the final holdout has not been generated or accessed.
 
 ## Read the paper
 
 **[Final paper (PDF)](docs/paper/MyHR_Policy_Aware_Machine_Learning_for_Anomaly_Detection_in_Workforce_Progression.pdf)**,
 39 pages, of which 31 are main text. The Markdown source is [docs/TDK_PAPER_DRAFT.md](docs/TDK_PAPER_DRAFT.md).
-
-![MyHR demo](docs/media/demo/myhr_demo.gif)
-
-*28-second recording of the real application with synthetic data ([MP4](docs/media/demo/myhr_demo.mp4)).*
 
 ## Main findings
 
