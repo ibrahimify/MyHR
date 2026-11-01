@@ -156,6 +156,65 @@ class AnomalyDemoUiTests(unittest.TestCase):
         finally:
             page.close()
 
+    def test_comparison_visuals_and_evaluation_table_match_live_results(self):
+        from src.ui.theme import apply_theme, theme_manager, tokens
+
+        original_theme = theme_manager.theme
+        try:
+            theme_manager.set_theme("light", persist=False)
+            apply_theme(self.app)
+            page = AnomalyReviewPage(SimpleNamespace(role="admin"))
+            page._on_completed(self.completed_result)
+            page.resize(1500, 900)
+            page.show()
+            page.tabs.setCurrentIndex(2)
+            self.app.processEvents()
+
+            chart_image = page.comparison_chart.grab().toImage()
+            chart_colors = {
+                chart_image.pixelColor(x, y).name()
+                for x in range(chart_image.width())
+                for y in range(chart_image.height())
+            }
+            self.assertIn(tokens().brand.lower(), chart_colors)
+            self.assertIn(tokens().brand_accent.lower(), chart_colors)
+            self.assertNotIn("#2f80ed", chart_colors)
+            self.assertIn(tokens().surface_muted, page.comparison_table.styleSheet())
+            self.assertIn(
+                f"background: {tokens().brand}",
+                page.tabs.styleSheet(),
+            )
+
+            self.assertEqual(
+                page.evaluation_method_table.rowCount(),
+                len(self.completed_result.comparisons),
+            )
+            for row, comparison in enumerate(self.completed_result.comparisons):
+                self.assertEqual(
+                    page.evaluation_method_table.item(row, 1).text(),
+                    str(comparison.true_positives),
+                )
+                self.assertEqual(
+                    page.evaluation_method_table.item(row, 2).text(),
+                    str(comparison.false_negatives),
+                )
+                self.assertEqual(
+                    page.evaluation_method_table.item(row, 3).text(),
+                    str(comparison.false_positives),
+                )
+                self.assertEqual(
+                    page.evaluation_method_table.item(row, 4).text(),
+                    str(comparison.review_count),
+                )
+            self.assertIn(
+                str(page.employee_select.count()),
+                page.employee_position.text(),
+            )
+            page.close()
+        finally:
+            theme_manager.set_theme(original_theme, persist=False)
+            apply_theme(self.app)
+
     def test_undefined_recall_is_reported_not_drawn_as_zero(self):
         from src.core.i18n import t
 

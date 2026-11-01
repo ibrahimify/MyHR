@@ -3453,6 +3453,69 @@ TRANSLATIONS["ar"].update({
     "anomaly_demo_interpretation_exploratory": "تختلف الطرق في سيناريو التطوير هذا. يعرض الجدول القيم الدقيقة، لكن سيناريو واحد لا يثبت تفوقا عاما.",
 })
 
+TRANSLATIONS["en"].update({
+    "anomaly_demo_queue_title": "Review queue",
+    "anomaly_demo_queue_description": "Inspect the highest-priority synthetic records selected within the fixed review capacity.",
+    "anomaly_demo_evidence_title": "Employee evidence",
+    "anomaly_demo_evidence_description": "Inspect the same employee's workforce history, policy calculations and source records.",
+    "anomaly_demo_employee_position": "{current} of {total}",
+    "anomaly_demo_comparison_title": "Method comparison",
+    "anomaly_demo_comparison_description": "Compare each method on the same eligible records using the same review capacity.",
+    "anomaly_demo_comparison_chart_tooltip": "Recall is the share of injected errors found. Precision is the share of reviewed records that were injected errors.",
+    "anomaly_demo_outcome_chart": "Recall and precision",
+    "anomaly_demo_interpretation_title": "Interpretation",
+    "anomaly_demo_exact_values": "Exact values",
+    "anomaly_demo_model_details": "Model and seeds",
+    "anomaly_demo_truth_title": "Synthetic evaluation",
+    "anomaly_demo_truth_description": "Evaluate the methods against known injected errors and unusual but lawful histories.",
+    "anomaly_demo_truth_help": "Generated truth is used only for evaluation and is never a model input. Per-employee truth remains hidden from the investigation views; aggregate metrics use it here and in Method Comparison.",
+    "anomaly_demo_method_outcomes": "Method outcomes",
+    "anomaly_demo_missed_short": "Missed",
+    "anomaly_demo_policy_matrix_title": "Policy-aware outcome matrix (all evaluation histories)",
+})
+
+TRANSLATIONS["hu"].update({
+    "anomaly_demo_queue_title": "Ellenőrzési lista",
+    "anomaly_demo_queue_description": "A rögzített ellenőrzési kereten belül kiválasztott, legfontosabb szintetikus rekordok vizsgálata.",
+    "anomaly_demo_evidence_title": "Dolgozói bizonyíték",
+    "anomaly_demo_evidence_description": "Ugyanazon dolgozó előzményeinek, szabályzati számításainak és forrásrekordjainak vizsgálata.",
+    "anomaly_demo_employee_position": "{current} / {total}",
+    "anomaly_demo_comparison_title": "Módszerek összehasonlítása",
+    "anomaly_demo_comparison_description": "A módszerek összehasonlítása ugyanazokon a rekordokon, azonos ellenőrzési kerettel.",
+    "anomaly_demo_comparison_chart_tooltip": "A visszahívás a megtalált beillesztett hibák aránya. A precizitás az ellenőrzött rekordok között talált hibák aránya.",
+    "anomaly_demo_outcome_chart": "Visszahívás és precizitás",
+    "anomaly_demo_interpretation_title": "Értelmezés",
+    "anomaly_demo_exact_values": "Pontos értékek",
+    "anomaly_demo_model_details": "Modell és magok",
+    "anomaly_demo_truth_title": "Szintetikus értékelés",
+    "anomaly_demo_truth_description": "A módszerek értékelése ismert beillesztett hibákon és szokatlan, de jogos előzményeken.",
+    "anomaly_demo_truth_help": "A generált igazság csak értékelésre szolgál, és soha nem modellbemenet. Az egyedi igazságcímkék rejtve maradnak a vizsgálati nézetekben; az összesített mutatók itt és a Módszerek összehasonlítása lapon használják őket.",
+    "anomaly_demo_method_outcomes": "Módszerek eredményei",
+    "anomaly_demo_missed_short": "Kihagyott",
+    "anomaly_demo_policy_matrix_title": "Szabályzattudatos eredménymátrix (minden értékelési előzmény)",
+})
+
+TRANSLATIONS["ar"].update({
+    "anomaly_demo_queue_title": "قائمة المراجعة",
+    "anomaly_demo_queue_description": "فحص السجلات الاصطناعية الأعلى أولوية ضمن سعة المراجعة الثابتة.",
+    "anomaly_demo_evidence_title": "أدلة الموظف",
+    "anomaly_demo_evidence_description": "فحص سجل الموظف نفسه وحسابات السياسة والسجلات المصدرية.",
+    "anomaly_demo_employee_position": "{current} من {total}",
+    "anomaly_demo_comparison_title": "مقارنة الطرق",
+    "anomaly_demo_comparison_description": "مقارنة كل طريقة على السجلات المؤهلة نفسها وبسعة مراجعة متساوية.",
+    "anomaly_demo_comparison_chart_tooltip": "الاستدعاء هو نسبة الأخطاء المحقونة المكتشفة. الدقة هي نسبة السجلات المراجعة التي كانت أخطاء محقونة.",
+    "anomaly_demo_outcome_chart": "الاستدعاء والدقة",
+    "anomaly_demo_interpretation_title": "التفسير",
+    "anomaly_demo_exact_values": "القيم الدقيقة",
+    "anomaly_demo_model_details": "النموذج والبذور",
+    "anomaly_demo_truth_title": "التقييم الاصطناعي",
+    "anomaly_demo_truth_description": "تقييم الطرق مقابل الأخطاء المحقونة المعروفة والسجلات غير المعتادة لكنها مشروعة.",
+    "anomaly_demo_truth_help": "تستخدم الحقيقة المولدة للتقييم فقط ولا تدخل النموذج أبدا. تبقى تسميات الحقيقة الفردية مخفية عن شاشات التحقيق، بينما تستخدم المقاييس المجمعة هنا وفي مقارنة الطرق.",
+    "anomaly_demo_method_outcomes": "نتائج الطرق",
+    "anomaly_demo_missed_short": "فائتة",
+    "anomaly_demo_policy_matrix_title": "مصفوفة نتائج الطريقة الواعية بالسياسة (كل سجلات التقييم)",
+})
+
 
 def set_language(lang_code: str):
     """Set the active session language."""
