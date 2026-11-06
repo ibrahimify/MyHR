@@ -1,4 +1,24 @@
 # TDK Autonomous Research Roadmap
+## Repository Maintenance After Submission - 2026-11-06
+
+- Two independent read-only audits reviewed the tracked repository structure,
+  local research-evidence inventory, permanent branches, PR #14, Issues #2-#11,
+  CI, tags, README files, and demo media. No experiment or holdout command was
+  run, and private notes and database contents were not inspected.
+- Root-level presentation notes and fictional import data were moved to
+  `docs/presentations/` and `examples/import/`. The final tracked temporary UI
+  sheet and three superseded dated records were preserved under the
+  checksum-bearing documentation archive rather than deleted.
+- The research README now identifies the paper as the submitted TDK manuscript,
+  keeps the draft-protocol and locked-holdout boundary prominent, and links the
+  fictional import example from its new location.
+- The issue-disposition document now reflects PR #14 and the completed figure
+  pipeline. Engineering-complete trackers can close with explicit scientific
+  caveats; #10 and #11 remain open for genuine unresolved research work.
+- Ignored local evidence remains unchanged: 43 artifact directories, 547 files,
+  and approximately 3.7 GB. All cited canonical artifacts are present and
+  checksum-complete; six noncanonical artifacts still require provenance review.
+
 ## UI Repair, Paper Reconciliation and Package v2 - 2026-11-01
 - Anomaly Review repair (`f3cb0f2`): left-aligned tables, opaque tab hover, stateful button icons, distinguishable recall/precision greens, a labelled true/false-positive queue chart derived from the same comparison objects, content-sized tabs and tables, and single-threaded BLAS in the worker after an OpenBLAS allocation failure on the laptop. Verified by driving the real login and Anomaly Review flow (all tabs, filters, search, inspect, employee navigation, disclosures, Help, CSV/PDF export, rerun, cancellation by navigation, failure display). Full suite 329 tests OK. No scientific threshold changed.
 - Paper reconciled with software and evidence: Section 1.6 lists every registered-abstract commitment with status; the optional user study and the confirmatory holdout assessment are marked not conducted. Section 5.6 separates the in-app demonstration (three fixed 24-record scenarios; not evidence) from research artifacts. Prose revised for length and register without changing numbers.

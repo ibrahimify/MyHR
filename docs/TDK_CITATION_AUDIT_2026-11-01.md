@@ -2,7 +2,7 @@
 
 Role: Research & Citation Specialist (sixth research role). This audit verifies identifiers, metadata, and claim support. It does not approve protocol decisions, scientific conclusions, or the paper. The final holdout was not touched.
 
-Earlier audits: [TDK_CITATION_AUDIT_2026-10-29.md](TDK_CITATION_AUDIT_2026-10-29.md) and [TDK_CITATION_INDEPENDENT_AUDIT_2026-10-29.md](TDK_CITATION_INDEPENDENT_AUDIT_2026-10-29.md). Both are preserved unchanged.
+Earlier audits: [TDK_CITATION_AUDIT_2026-10-29.md](archive/research-audits/TDK_CITATION_AUDIT_2026-10-29.md) and [TDK_CITATION_INDEPENDENT_AUDIT_2026-10-29.md](TDK_CITATION_INDEPENDENT_AUDIT_2026-10-29.md). Both are preserved unchanged.
 
 ## Scope and method
 

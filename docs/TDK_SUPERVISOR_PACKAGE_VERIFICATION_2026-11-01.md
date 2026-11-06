@@ -3,7 +3,7 @@
 This record covers the package at `TDK/final/2026-11-01-v2-supervisor`. Earlier
 packages (`2026-10-30-supervisor`, `2026-11-01-supervisor`) and their reports
 are preserved unchanged; the earlier report is
-[TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-10-30.md](TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-10-30.md).
+[TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-10-30.md](archive/supervisor-packages/TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-10-30.md).
 
 Status: development evidence only. The protocol is draft, the final holdout has
 not been generated or accessed, and no human expert review or supervisor

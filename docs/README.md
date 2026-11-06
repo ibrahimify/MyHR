@@ -31,8 +31,7 @@ Use the [ChatGPT research tutor prompt](CHATGPT_RESEARCH_TUTOR_PROMPT.md) to beg
 | [TDK_2026_SUBMISSION_REQUIREMENTS.md](TDK_2026_SUBMISSION_REQUIREMENTS.md) | 2026 portal deadlines, paper format, and upload checklist | Current submission checklist; final portal deadline still requires manual confirmation |
 | [TDK_PAPER_DRAFT.md](TDK_PAPER_DRAFT.md) | English supervisor-review manuscript source | Current development-evidence draft; not a confirmatory paper |
 | [TDK_SUPERVISOR_BRIEF_2026-10-30.md](TDK_SUPERVISOR_BRIEF_2026-10-30.md) | Professor-facing executive summary and meeting request | Current supervisor package entry point |
-| [TDK_REPOSITORY_APPROVAL_GATE_2026-10-30.md](TDK_REPOSITORY_APPROVAL_GATE_2026-10-30.md) | Prepared issue, PR, and branch dispositions | Human approval gate; authorizes no repository mutation |
-| [TDK_CITATION_AUDIT_2026-10-29.md](TDK_CITATION_AUDIT_2026-10-29.md) | Complete reference audit, corrections, and unresolved evidence gaps | Dated audit evidence |
+| [TDK_CITATION_AUDIT_2026-11-01.md](TDK_CITATION_AUDIT_2026-11-01.md) | Latest complete citation audit, corrections, and unresolved evidence gaps | Current dated citation evidence; earlier audits are archived |
 | [TDK_CITATION_INDEPENDENT_AUDIT_2026-10-29.md](TDK_CITATION_INDEPENDENT_AUDIT_2026-10-29.md) | Hostile citation-governance review, remediation, and readiness verdict | Dated independent audit |
 | [TDK_LITERATURE_WORKFLOW.md](TDK_LITERATURE_WORKFLOW.md) | Reusable free literature workflow | Current operational guidance |
 
@@ -78,13 +77,14 @@ No AI agent can approve implementation completeness, protocol freeze, holdout ac
 | [QA_CHECKLIST.md](QA_CHECKLIST.md) | Manual release and demo checks |
 | [LICENSING_AND_IP.md](LICENSING_AND_IP.md) | Licensing and intellectual-property status |
 | [RESEARCH_ISSUE_DISPOSITION.md](RESEARCH_ISSUE_DISPOSITION.md) | Evidence-based recommendations for issues #2-#11; no issue state changed |
-| [TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-10-30.md](TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-10-30.md) | Reproducibility, page-count, citation, artifact, CI, and package-integrity report for the supervisor draft |
+| [TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-11-01.md](TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-11-01.md) | Latest reproducibility, page-count, citation, artifact, CI, and package-integrity report for the submitted paper package |
 | [TEMPORARY_ASSET_REVIEW.md](TEMPORARY_ASSET_REVIEW.md) | Inventory and approval boundary for tracked `tmp_*` UI captures |
 
 ## Product Guides And Media
 
 - Editable guides: [MyHR User Guide](guides/MyHR_User_Guide.docx) and [MyHR Developer Guide](guides/MyHR_Developer_Guide.docx).
 - Current screenshots and demo media: [`media/`](media/).
+- Current speaker notes: [`presentations/`](presentations/).
 - Older rendered guides, presentations, planning notes, and project-lab artifacts: [`archive/`](archive/).
 
 ## Archive And Local Notes

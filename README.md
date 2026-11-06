@@ -3,6 +3,11 @@
 BME VIK TDK 2026 research project by Muhammad Ibrahim Shoeb. Supervisor: Dr. Husam Al-Magsoosi.
 Budapest University of Technology and Economics, Faculty of Electrical Engineering and Informatics.
 
+> **TDK submission branch.** The paper has been submitted, but the experiment
+> protocol remains a draft and the final holdout remains locked. This repository
+> preserves the submitted manuscript, development evidence, and unresolved
+> scientific limitations without presenting them as confirmatory results.
+
 MyHR is an offline HR desktop application (Python, PySide6, SQLite). This branch (`research`) also contains
 the research pipeline that asks one question: **does explicit workforce-progression policy context help rank
 administrative errors for human review better than raw administrative features, without raising false alerts on
@@ -35,9 +40,9 @@ small and its confidence interval includes zero. A deliberately wrong policy per
 so the gain cannot be attributed to policy knowledge. All results are development evidence on synthetic data. The
 protocol is a draft and the final holdout has not been generated or accessed.
 
-## Read the paper
+## TDK submission manuscript
 
-**[Final paper (PDF)](docs/paper/MyHR_Policy_Aware_Machine_Learning_for_Anomaly_Detection_in_Workforce_Progression.pdf)**,
+**[Submitted paper (PDF)](docs/paper/MyHR_Policy_Aware_Machine_Learning_for_Anomaly_Detection_in_Workforce_Progression.pdf)**,
 39 pages, of which 31 are main text. The Markdown source is [docs/TDK_PAPER_DRAFT.md](docs/TDK_PAPER_DRAFT.md).
 
 ## Main findings
@@ -140,6 +145,9 @@ pip install -r requirements.txt -r requirements-research.txt
 python scripts/seed_demo_company.py      # optional: synthetic demo company
 python main.py
 ```
+
+A small fictional spreadsheet for checking the import workflow is available at
+[`examples/import/demo_import_10_employees.xlsx`](examples/import/demo_import_10_employees.xlsx).
 
 Sign in as `admin` / `admin123` (local demo database only). Then open **Employees**, search `Peter Ahmed`, and open
 the **Performance** tab. Then open **Anomaly Review**, choose a scenario and select **Run analysis**.

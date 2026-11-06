@@ -1,8 +1,10 @@
 # Research Issue Disposition
 
-Date: 2026-10-29  
-Branch reviewed: `maintenance/research-repository-hygiene`  
-Research PR: [#1](https://github.com/ibrahimify/MyHR/pull/1), draft and unmerged
+Date: 2026-11-06
+
+Branch reviewed: `research` at `6808eae` before this maintenance change
+
+Research PR: [#14](https://github.com/ibrahimify/MyHR/pull/14), draft, conflicting, and intentionally unmerged
 
 ## Purpose And Decision Boundary
 
@@ -18,9 +20,9 @@ An implementation can satisfy its engineering acceptance criteria without valida
 | #3 Synthetic generator | **Close with evidence** | Determinism, metadata, splits, labels, and edge cases are implemented and tested; final scientific scenario validity remains under #10. |
 | #4 Deterministic checks | **Close with evidence** | Explainable findings and clean/error/rare-case tests exist. |
 | #5 Feature extraction | **Close with evidence** | Both representations and their intended rare-case distinction are implemented and tested; the later residual experiment exposed a separate validity failure. |
-| #6 Baselines and Isolation Forest | **Rescope** | The software and metrics exist, but the central scientific comparison is not estimable from the inspected residual design. |
+| #6 Baselines and Isolation Forest | **Close with evidence** | The development baselines, controls, metrics, and comparisons are implemented; their inconclusive and confounded scientific interpretation remains tracked under #10. |
 | #7 Duplicate detection | **Close with evidence** | All three matching methods, metrics, and field-level explanations exist and are tested. |
-| #8 Reports and figures | **Rescope** | Reproducible tabular artifacts exist, but final paper-ready figures and approved final results do not. |
+| #8 Reports and figures | **Close with evidence** | Reproducible paper tables and figures exist and pass source-table checks; they remain development evidence, not confirmatory holdout results. |
 | #9 Thesis/TDK scope audit | **Close with evidence** | The required pass/fail checklist and residual-risk lists exist. |
 | #10 Non-circular validation | **Keep open** | Supervisor review, protocol freeze, and a scientifically adequate residual design remain unresolved; holdout work is forbidden. |
 | #11 Literature workflow | **Keep open** | Tests and two live sources pass, but the required live Semantic Scholar smoke test remains incomplete. |
@@ -91,7 +93,7 @@ An implementation can satisfy its engineering acceptance criteria without valida
 
 ### #6 Run statistical baselines and Isolation Forest comparison
 
-**Recommendation: Rescope to "Maintain development-only baseline implementations; final comparison governed by #10."**
+**Recommendation: Close with evidence as development-baseline implementation complete; final scientific comparison remains governed by #10.**
 
 **Criteria already satisfied**
 
@@ -99,7 +101,7 @@ An implementation can satisfy its engineering acceptance criteria without valida
 - Experiment outputs include precision, recall, F1, false-positive rate, workload-related counts/rates, runtime, method, seed, configuration, timestamp, and provenance. Later protocol artifacts add explicit denominators, average precision, equal-budget comparisons, paired uncertainty, controls, and write-once manifests.
 - Relevant behavior is covered by `tests/test_anomaly_detection_skeleton.py`, `tests/test_tdk_protocol_v2.py`, and `tests/test_protocol_artifact_audit.py`.
 
-**Why the original goal is not complete**
+**Scientific boundary retained under #10**
 
 - [TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md](TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md) records that the original generator is coupled to the detector and that the independent residual design has no varying policy-specific signal after filtering.
 - Six of twelve independent scenarios have no residual positives. The current residual AP comparison is arithmetically reproducible but scientifically vacuous for the stated policy-aware hypothesis.
@@ -128,7 +130,7 @@ An implementation can satisfy its engineering acceptance criteria without valida
 
 ### #8 Create reproducible experiment reports and paper figures
 
-**Recommendation: Rescope to "Generate final traceable paper tables and figures after protocol approval."**
+**Recommendation: Close with evidence as reproducible reporting implementation complete.**
 
 **Criteria already satisfied**
 
@@ -136,11 +138,17 @@ An implementation can satisfy its engineering acceptance criteria without valida
 - `scripts/run_tdk_protocol_experiment.py` now emits scenario configuration, record predictions, aggregate metrics, paired comparisons, robustness slices, utility sensitivity, and a checksum manifest.
 - `scripts/audit_tdk_protocol_artifact.py` independently recomputes metric rows, paired inference, denominators, and hashes; adversarial coverage exists in `tests/test_protocol_artifact_audit.py`.
 
-**Why the original issue should not close unchanged**
+**Current completion evidence**
 
-- The repository contains reproducible result tables but no implemented paper-figure generation (`matplotlib` is documented for later figures).
-- Existing development and validation artifacts are diagnostics, not approved final paper results. A fresh run can regenerate development evidence, but no final paper numbers can exist before protocol approval and the one-time locked evaluation.
-- The narrowed issue should require every eventual table and figure to cite its artifact run ID, source revision, configuration, and seeds, without selecting favorable rows.
+- `scripts/build_tdk_figures.py` generates the submitted paper figures from
+  traceable source tables and manifests. The latest roadmap records 36
+  paper-versus-CSV checks with zero mismatches.
+- The submitted manuscript, figure manifest, source diagrams, vector exports,
+  PNG exports, and exact-value tables are preserved under `docs/paper/`,
+  `docs/figures/`, and `docs/tables/`.
+- Existing development and validation artifacts remain diagnostics, not
+  approved confirmatory results. Closing the reporting implementation issue
+  does not authorize a holdout run or strengthen the claims.
 
 **Residual limitations**
 
@@ -206,10 +214,10 @@ An implementation can satisfy its engineering acceptance criteria without valida
 ## Recommended Maintainer Sequence
 
 1. Close #2, #3, #4, #5, #7, and #9 individually with links to this review and their evidence commits. State explicitly that closure records implementation completion only.
-2. Edit the scope of #6 and #8 before any closure decision. Keep their development evidence and limitations visible, and cross-link #10 for all claim-bearing work.
+2. Close #6 and #8 with their development-only and non-confirmatory boundaries stated explicitly; cross-link #10 for all claim-bearing work.
 3. Keep #10 open and unchanged until qualified human methodology review. Do not generate, inspect, score, or unlock a holdout.
 4. Keep #11 open until a free-key Semantic Scholar live smoke artifact is verified and recorded. Do not adopt a paid workaround.
-5. Keep PR #1 draft and unmerged. Issue disposition does not authorize merging or protocol approval.
+5. Keep PR #14 draft and unmerged. Issue disposition does not authorize merging or protocol approval.
 
 ## Verification Basis
 

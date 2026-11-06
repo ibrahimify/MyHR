@@ -13,6 +13,8 @@ currently preserved here.
 | [`project-lab/`](project-lab/) | Early report, presentations, rendered PDF guides, and progress page | Historical project-lab deliverables; editable current guides remain under `docs/guides/` | [Documentation guide](../README.md#product-guides-and-media) |
 | [`research-audits/`](research-audits/) | Dated early research and methodology audits | Findings are preserved, but later evidence supersedes their status summaries | [Independent review](../TDK_INDEPENDENT_REVIEW_2026-10-17.md), [development report](../TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md), and [roadmap](../TDK_AUTONOMOUS_RESEARCH_ROADMAP.md) |
 | [`research-plans/`](research-plans/) | Initial research implementation plan | Implementation progressed beyond this plan | [Roadmap](../TDK_AUTONOMOUS_RESEARCH_ROADMAP.md) |
+| [`supervisor-packages/`](supervisor-packages/) | Superseded approval gate and package-verification records | Later submission records and current GitHub state supersede these snapshots | [Latest package verification](../TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-11-01.md) |
+| [`ui-audits/`](ui-audits/) | Final retained image from the pre-research temporary UI capture set | Preserved for provenance after the other scratch captures were removed from the active tree | [Temporary asset review](../TEMPORARY_ASSET_REVIEW.md) |
 
 ## Interpretation Rules
 

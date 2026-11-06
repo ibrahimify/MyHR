@@ -1,12 +1,13 @@
 # Temporary Asset Review
 
-Status: **removed from the `research` branch on 2026-10-30 (172 of 173 files; see note)**
+Status: **removed from the active tree or archived (173 of 173 files)**
 
 Recorded: 2026-10-29
 
-Update: the tracked `tmp_*` directories listed below were deleted from `research`
-as scratch cleanup after submission. They remain in git history and on the
-`thesis` branch (`git checkout thesis -- tmp_chart_audit` restores one). The
+Update: the tracked `tmp_*` directories listed below were removed from
+`research` as scratch cleanup after submission. They remain in Git history and
+on the `thesis` branch. The one retained quality sheet was moved without byte
+changes to `docs/archive/ui-audits/tmp_icon_quality_sheet.png`. The
 recommendation section below is the original, now superseded, inventory advice.
 
 This inventory separates tracked UI-review captures from research evidence. The
