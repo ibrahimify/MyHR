@@ -1,14 +1,14 @@
 
-# MyHR -  Employee Management System
+# MyHR - Employee Management System
 
 
 
-A standalone, offline desktop application for managing employee records, organizational hierarchy, promotions, commendations, and sanctions in government like organizations.
+A standalone, offline desktop application for managing employee records, organizational hierarchy, promotions, commendations, and sanctions in structured organizations.
 
 ![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
 ![Qt](https://img.shields.io/badge/PySide6-Qt6-41CD52?logo=qt&logoColor=white)
 ![SQLite](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite&logoColor=white) <br/>
-![Status](https://img.shields.io/badge/Status-Semester%201%20Complete-brightgreen)
+![Status](https://img.shields.io/badge/Status-Project%20Lab%20Checkpoint-brightgreen)
 
 
 <p align="center">
@@ -20,7 +20,21 @@ A standalone, offline desktop application for managing employee records, organiz
 **Supervisor:** Dr. Husam Al-Magsoosi   
 **Developer:** Muhammad Ibrahim Shoeb  
 **Institution:** Budapest University of Technology and Economics   
-**Status:** Project Lab finished. Thesis part starts from this checkpoint.
+**Status:** Preserved Project Lab submission checkpoint.
+
+---
+
+## Repository Branches
+
+This branch preserves the original Project Lab application and demonstration.
+Later work is maintained separately so the submitted checkpoint remains
+reproducible:
+
+| Branch | Purpose |
+|---|---|
+| [`master`](https://github.com/ibrahimify/MyHR/tree/master) | Project Lab submission and original demonstration |
+| [`thesis`](https://github.com/ibrahimify/MyHR/tree/thesis) | Verified full application with the current product walkthrough |
+| [`research`](https://github.com/ibrahimify/MyHR/tree/research) | TDK policy-aware anomaly-detection research and professor demonstration |
 
 ---
 
@@ -76,7 +90,7 @@ npm run preview
 ```
 
 ---
-## 2. Running the Desktop Appication
+## 2. Running the Desktop Application
 
 ## Install & Run
 
