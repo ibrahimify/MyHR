@@ -13,9 +13,25 @@ in SQLite, and the desktop UI is implemented with PySide6.
 
 ---
 
+## Application Walkthrough
+
+<p align="center">
+  <img src="docs/media/demo/myhr_thesis_demo.gif" alt="MyHR thesis application walkthrough" width="900"/>
+</p>
+
+The [28-second MP4 walkthrough](docs/media/demo/myhr_thesis_demo.mp4) was
+recorded from the real `thesis` application using a freshly generated fictional
+300-employee company. It covers the dashboard, employee records and profile,
+Peter Ahmed's populated performance reviews, organization hierarchy,
+promotions, commendations, sanctions, audit log, import workflow, settings,
+and both themes. Capture details and checksums are recorded in
+[`myhr_thesis_demo.provenance.json`](docs/media/demo/myhr_thesis_demo.provenance.json).
+
+---
+
 ## Project Status
 
-Current checkpoint: pre-packaging polish complete.
+Current checkpoint: application feature work and pre-packaging polish complete.
 
 Completed:
 - Core desktop app workflow

@@ -1,0 +1,46 @@
+{
+  "artifact": "MyHR thesis-branch application walkthrough",
+  "source": {
+    "branch": "thesis",
+    "revision": "f8f1941bada2bcd16a21f88b28e3a2e8741a5491",
+    "capture_date": "2026-11-06",
+    "command": "python main.py"
+  },
+  "data": {
+    "classification": "fictional seeded demonstration data",
+    "generator": "scripts/seed_demo_company.py",
+    "employees": 300,
+    "credentials_recorded": false,
+    "private_employee_data_used": false
+  },
+  "coverage": [
+    "Dashboard",
+    "Employee Management",
+    "Peter Ahmed employee profile",
+    "Populated performance review charts and history",
+    "Org Hierarchy",
+    "Promotions",
+    "Commendations",
+    "Sanctions",
+    "Audit Log",
+    "Import Data",
+    "System Settings",
+    "Light and dark themes"
+  ],
+  "files": {
+    "myhr_thesis_demo.mp4": {
+      "bytes": 996742,
+      "sha256": "f0cf3e15dedaa81108bbcd600fe9b2b2bf87860a79266e0db83842db5eb6c84b",
+      "duration_seconds": 27.667,
+      "resolution": "1280x722",
+      "codec": "H.264"
+    },
+    "myhr_thesis_demo.gif": {
+      "bytes": 1853304,
+      "sha256": "9660b41b06a071d68f35c0dcb198ad4e534a859e0772a0296d62290b379abed7",
+      "width": 900,
+      "frames_per_second": 8
+    }
+  },
+  "editing": "The maximized application window was captured directly and accelerated to keep the walkthrough below 30 seconds. Loading and navigation remain visible only where needed for continuity. No overlays, captions, or pixel edits were added."
+}
