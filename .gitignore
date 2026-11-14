@@ -64,6 +64,11 @@ tmp_*/
 ~$*.pptx
 ~$*.xlsx
 
+# AI and planning artifacts (never commit)
+.agents/
+.scratch/
+*.plan.md
+
 # Private research notes
 docs/research/
 research_outputs/
