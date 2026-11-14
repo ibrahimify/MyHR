@@ -1,0 +1,1 @@
+"""MyHR FastAPI backend package."""
