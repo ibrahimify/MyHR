@@ -69,6 +69,11 @@ tmp_*/
 .scratch/
 *.plan.md
 
+# Local tooling config (may contain secrets)
+.kiro/settings/mcp.json
+.env
+.env.*
+
 # Private research notes
 docs/research/
 research_outputs/
