@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MyHR Frontend
 
-## Getting Started
+Next.js App Router frontend for the MyHR web platform.
 
-First, run the development server:
+## Current status
 
-```bash
+The frontend is an intentionally small Phase 1 scaffold. It builds successfully
+with TypeScript, Tailwind CSS and Framer Motion. Authenticated application
+screens are deferred until the FastAPI authentication and endpoint contracts
+are implemented. The current page is not a production deployment.
+
+## Development
+
+```powershell
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Checks
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```powershell
+npm run lint
+npm run build
+```
 
-## Learn More
+## Boundaries
 
-To learn more about Next.js, take a look at the following resources:
+- Reuse the established MyHR information architecture and terminology.
+- Treat the FastAPI OpenAPI contract as the source of truth for server data.
+- Never place Supabase service-role keys or database credentials in frontend
+  environment variables.
+- Browser-visible Supabase values must be limited to intentionally public
+  configuration, with authorization enforced by the backend and RLS.
+- Do not expose desktop demonstration credentials in the web interface.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See the repository [README](../README.md) and
+[Web Port Handover](../docs/WEB_PORT_HANDOVER.md) for architecture and roadmap.

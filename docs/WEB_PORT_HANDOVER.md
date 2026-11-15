@@ -36,7 +36,7 @@ PySide6 desktop stays as-is on local SQLite.
 - UI fidelity: feature-identical to the desktop, but a clean modern web look
   (not a pixel copy of the Qt UI).
 - Desktop: local SQLite, untouched. Cloud is optional for desktop, later.
-- Landing page: product name "MyHR", no tagline, brutally minimalist
+- Landing page: product name "MyHR", no tagline, restrained minimalist design
   (Linear/Vercel/Resend style). Footer has the author name plus
   https://linkedin.com/in/ibrahimify and https://github.com/ibrahimify.
 
@@ -45,31 +45,29 @@ PySide6 desktop stays as-is on local SQLite.
 - All web work on branch `web` (already created off `research`).
 - Never touch `master`, `thesis`, `research`, or the tag `tdk-2026-submission`.
 - Never force-push, reset --hard, or `git clean`.
-- Commit messages: plain, imperative, no em dashes, no emojis, no AI phrasing,
-  no words like "comprehensive"/"robust", nothing that reveals AI authorship.
-- `.gitignore` already excludes `.agents/`, `.scratch/`, `*.plan.md`,
-  `.kiro/settings/mcp.json`, `.env`, `.env.*`. Keep it that way. No planning or
-  AI-authored scratch files in the committed tree.
-- The existing desktop test suite (329 tests) must stay green after every phase
-  (`python -m pytest tests` from repo root). Record the result in the commit.
+- Commit messages are plain, imperative and specific to the change.
+- `.gitignore` excludes local planning, temporary configuration and environment
+  files. Keep those files and generated outputs out of the committed tree.
+- The existing desktop test suite (332 tests plus 17 subtests) must stay green
+  after every phase (`python -m pytest tests` from repo root). Record the result
+  in the commit.
 - Tag milestones: `web-v0.1` (done, scaffold), `web-v0.2` (on Supabase),
   `web-v1.0` (parity + landing page).
 
 ## Status so far
 
-- Phase 0 (done): read-only API contract written to
-  `.agents/tasks/web-port-api-contract.md` (git-ignored). It maps every table,
-  the 10 feature areas to REST endpoints, the auth model, SQLite coupling to
-  fix, and the tenancy-C FK plan. READ THIS FIRST — it is the implementation
-  map. (If missing because `.agents/` was cleaned, regenerate by re-reading
-  `src/database/models.py`, `src/database/connection.py`, `src/services/*`, and
-  `src/ui/pages/*`.)
+- Phase 0 (done): a local API contract maps every table, the 10 feature areas
+  to REST endpoints, the auth model, SQLite coupling to fix and the tenancy-C
+  foreign-key plan. It is the implementation map. If the ignored local copy is
+  unavailable, regenerate it by reading `src/database/models.py`,
+  `src/database/connection.py`, `src/services/*` and `src/ui/pages/*`.
 - Phase 1 (done): branch `web` + tag `web-v0.1`, pushed. Monorepo scaffold:
   `backend/` FastAPI with `/health` and env-switchable engine, reusing
   `src.database` and `src.services` (no duplication); `frontend/` Next.js +
   Tailwind + Framer Motion placeholder; `.github/workflows/web-ci.yml` runs
-  backend pytest + frontend build. Desktop suite still 329 passing.
-- Phase 2 (in progress): the shared models now include the default organization,
+  backend pytest + frontend build. Desktop suite now has 332 tests plus 17
+  subtests passing.
+- Phase 2 (local implementation complete): the shared models now include the default organization,
   tenant FKs and scoped uniqueness; Alembic owns the web schema; reference IDs
   use atomic tenant-scoped counters. Migration and compatibility tests run on
   SQLite, and the migration compiles as PostgreSQL SQL. Applying it to a
@@ -110,7 +108,7 @@ backfill existing rows to it. Leave `commendation_employee` (junction)
 unscoped. When tenancy is enabled, `username` is unique per org (not global),
 and the ref/ID generators scope their counters per org.
 
-## Supabase access (for the new agent)
+## Supabase access
 
 - Preferred: use the Supabase MCP server (project ref `cqyrkbpuaclhrphpezka`),
   so no password is in code. The hosted/npx server needs a
