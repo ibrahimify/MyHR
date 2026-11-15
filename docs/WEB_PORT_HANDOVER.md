@@ -69,6 +69,12 @@ PySide6 desktop stays as-is on local SQLite.
   `src.database` and `src.services` (no duplication); `frontend/` Next.js +
   Tailwind + Framer Motion placeholder; `.github/workflows/web-ci.yml` runs
   backend pytest + frontend build. Desktop suite still 329 passing.
+- Phase 2 (in progress): the shared models now include the default organization,
+  tenant FKs and scoped uniqueness; Alembic owns the web schema; reference IDs
+  use atomic tenant-scoped counters. Migration and compatibility tests run on
+  SQLite, and the migration compiles as PostgreSQL SQL. Applying it to a
+  Supabase database branch and adding auth-backed RLS remain pending because no
+  Supabase token or database URL is configured locally.
 
 ## Key facts from the API contract (summary)
 
@@ -122,14 +128,13 @@ and the ref/ID generators scope their counters per org.
 
 ## Next up (Phase 2 — database to Supabase)
 
-1. Add the `organization` table + `organization_id` FK on the 11 tables above;
-   seed one default org; reserve the `superadmin` role.
-2. Set up Alembic migrations (replace the SQLite PRAGMA migrations for the
-   Postgres path). Keep SQLite working for the desktop via the env switch.
+1. Apply the tested Alembic migration to a Supabase database branch.
+2. Add auth-backed RLS policies after the Supabase user-to-organization profile
+   mapping is available; do not trust client-supplied organization IDs.
 3. Point the backend at Supabase via `MYHR_DATABASE_URL` / MCP; confirm models
    create and services run on Postgres. Prefer a DB branch first.
-4. Make the ID/ref generators concurrency-safe.
-5. Keep the desktop suite green. Tag `web-v0.2`.
+4. Run the PostgreSQL integration checks, keep the desktop suite green, and tag
+   `web-v0.2` only after the live branch verification succeeds.
 
 Then: Phase 3 backend endpoints (+ extract CRUD into services), Phase 4 frontend
 core, Phase 5 the 10 feature pages, Phase 6 landing page, Phase 7 Windows

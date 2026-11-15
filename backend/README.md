@@ -15,6 +15,8 @@ backend/
     main.py         FastAPI app factory and /health endpoint
     config.py       Settings loaded from environment
     db.py           Config-switchable SQLAlchemy engine (SQLite by default)
+  alembic/          Versioned database migrations
+  alembic.ini       Alembic configuration
   tests/
     test_health.py  Health endpoint test
   requirements.txt
@@ -26,7 +28,14 @@ backend/
 The engine is config-switchable through `MYHR_DATABASE_URL`. When unset it
 defaults to the existing desktop SQLite database (`myhr.db` at the repository
 root), so local development matches the desktop app. Set
-`MYHR_DATABASE_URL=postgresql+psycopg://...` to point at Postgres later.
+`MYHR_DATABASE_URL=postgresql+psycopg://...` to point at Postgres.
+
+Apply the schema before starting the API:
+
+```
+cd backend
+alembic upgrade head
+```
 
 ## Local development
 

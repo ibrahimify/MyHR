@@ -2,6 +2,7 @@
 
 import os
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app._paths import REPO_ROOT
@@ -23,6 +24,13 @@ class Settings(BaseSettings):
 
     app_name: str = "MyHR API"
     database_url: str = _DEFAULT_DATABASE_URL
+
+    @field_validator("database_url")
+    @classmethod
+    def select_psycopg_driver(cls, value: str) -> str:
+        if value.startswith("postgresql://"):
+            return value.replace("postgresql://", "postgresql+psycopg://", 1)
+        return value
 
 
 def get_settings() -> Settings:

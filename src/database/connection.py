@@ -18,13 +18,15 @@ from collections import defaultdict
 from datetime import datetime, date
 from hashlib import sha256
 from sqlalchemy import create_engine
+from sqlalchemy.dialects.postgresql import insert as postgresql_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import sessionmaker, Session, joinedload
 
 from src.core.i18n import t
 from src.core.time import utc_now
 from src.services.promotion_policy import PromotionRaceInput, calculate_promotion_race
 from src.database.models import (
-    Base, SystemUser, Title, PromotionRule, Employee, OrgUnit,
+    Base, Organization, ReferenceCounter, SystemUser, Title, PromotionRule, Employee, OrgUnit,
     Commendation, CommendationEmployee, Sanction,
     PromotionHistory, SalaryIncrementHistory, PerformanceScore, AuditLog
 )
@@ -39,6 +41,8 @@ SessionLocal = sessionmaker(bind=engine)
 
 OTHER_TITLE_NAME = "Other"
 OTHER_ORG_UNIT_NAME = "OTHERS"
+DEFAULT_ORGANIZATION_ID = 1
+DEFAULT_ORGANIZATION_SLUG = "default"
 
 
 # Initialization and seed data
@@ -53,6 +57,34 @@ def init_db():
 def _migrate_schema():
     """Apply small SQLite migrations that create_all cannot add to existing DBs."""
     with engine.begin() as conn:
+        conn.exec_driver_sql(
+            """
+            INSERT OR IGNORE INTO organization (id, name, slug, created_at, updated_at)
+            VALUES (1, 'MyHR Demo Organization', 'default', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """
+        )
+        tenant_tables = (
+            "employee", "org_unit", "title", "promotion_rule", "commendation",
+            "sanction", "promotion_history", "salary_increment_history",
+            "performance_score", "audit_log", "system_user",
+        )
+        for table_name in tenant_tables:
+            table_columns = {
+                row[1]
+                for row in conn.exec_driver_sql(
+                    f"PRAGMA table_info({table_name})"
+                ).fetchall()
+            }
+            if table_columns and "organization_id" not in table_columns:
+                conn.exec_driver_sql(
+                    f"ALTER TABLE {table_name} "
+                    "ADD COLUMN organization_id INTEGER NOT NULL DEFAULT 1"
+                )
+            if table_columns:
+                conn.exec_driver_sql(
+                    f"UPDATE {table_name} SET organization_id = 1 "
+                    "WHERE organization_id IS NULL"
+                )
         columns = {
             row[1]
             for row in conn.exec_driver_sql("PRAGMA table_info(audit_log)").fetchall()
@@ -104,6 +136,11 @@ def _migrate_schema():
             "CREATE INDEX IF NOT EXISTS ix_salary_increment_employee_date ON salary_increment_history(employee_id, applied_at)",
             "CREATE INDEX IF NOT EXISTS ix_performance_score_employee_date ON performance_score(employee_id, evaluation_date)",
             "CREATE INDEX IF NOT EXISTS ix_audit_log_performed_at ON audit_log(performed_at)",
+            *(
+                f"CREATE INDEX IF NOT EXISTS ix_{table_name}_organization_id "
+                f"ON {table_name}(organization_id)"
+                for table_name in tenant_tables
+            ),
         ]:
             conn.exec_driver_sql(statement)
         conn.exec_driver_sql(
@@ -121,16 +158,32 @@ def _migrate_schema():
 def _seed_defaults(session: Session):
     """Seed default admin, HR officer, salary levels, and promotion rules."""
 
+    organization = session.get(Organization, DEFAULT_ORGANIZATION_ID)
+    if organization is None:
+        organization = Organization(
+            id=DEFAULT_ORGANIZATION_ID,
+            name="MyHR Demo Organization",
+            slug=DEFAULT_ORGANIZATION_SLUG,
+        )
+        session.add(organization)
+        session.flush()
+
     # Default users
-    if not session.query(SystemUser).filter_by(username="admin").first():
+    if not session.query(SystemUser).filter_by(
+        organization_id=organization.id, username="admin"
+    ).first():
         session.add(SystemUser(
+            organization_id=organization.id,
             username="admin",
             password_hash=_hash("admin123"),
             role="admin",
             full_name="System Administrator",
         ))
-    if not session.query(SystemUser).filter_by(username="hr_officer").first():
+    if not session.query(SystemUser).filter_by(
+        organization_id=organization.id, username="hr_officer"
+    ).first():
         session.add(SystemUser(
+            organization_id=organization.id,
             username="hr_officer",
             password_hash=_hash("hr123"),
             role="hr_officer",
@@ -151,9 +204,11 @@ def _seed_defaults(session: Session):
     ]
     titles = {}
     for d in defaults:
-        existing = session.query(Title).filter_by(name=d["name"]).first()
+        existing = session.query(Title).filter_by(
+            organization_id=organization.id, name=d["name"]
+        ).first()
         if not existing:
-            obj = Title(**d)
+            obj = Title(organization_id=organization.id, **d)
             session.add(obj)
             session.flush()
             titles[d["name"]] = obj
@@ -174,10 +229,13 @@ def _seed_defaults(session: Session):
         tt = titles.get(r["to"])
         if ft and tt:
             exists = session.query(PromotionRule).filter_by(
-                from_title_id=ft.id, to_title_id=tt.id
+                organization_id=organization.id,
+                from_title_id=ft.id,
+                to_title_id=tt.id,
             ).first()
             if not exists:
                 session.add(PromotionRule(
+                    organization_id=organization.id,
                     from_title_id=ft.id,
                     to_title_id=tt.id,
                     base_months=r["base_months"],
@@ -189,11 +247,17 @@ def _seed_defaults(session: Session):
 
 def _seed_demo_performance_reviews(session: Session):
     """Seed review examples for the demo employee without overwriting user data."""
-    employee = session.query(Employee).filter_by(employee_id="EMP-0034").first()
+    employee = session.query(Employee).filter_by(
+        organization_id=DEFAULT_ORGANIZATION_ID,
+        employee_id="EMP-0034",
+    ).first()
     if not employee:
         return
     evaluator = (
-        session.query(SystemUser).filter_by(username="admin").first()
+        session.query(SystemUser).filter_by(
+            organization_id=DEFAULT_ORGANIZATION_ID,
+            username="admin",
+        ).first()
         or session.query(SystemUser).order_by(SystemUser.id.asc()).first()
     )
     if not evaluator:
@@ -288,18 +352,24 @@ class UserSession:
     Plain Python object holding logged-in user data.
     Avoids SQLAlchemy DetachedInstanceError - no session dependency.
     """
-    def __init__(self, id, username, full_name, role):
-        self.id        = id
-        self.username  = username
-        self.full_name = full_name
-        self.role      = role
+    def __init__(self, id, username, full_name, role, organization_id):
+        self.id              = id
+        self.username        = username
+        self.full_name       = full_name
+        self.role            = role
+        self.organization_id = organization_id
 
 
-def verify_login(username: str, password: str):
+def verify_login(
+    username: str,
+    password: str,
+    organization_id: int = DEFAULT_ORGANIZATION_ID,
+):
     """Returns UserSession if valid credentials, else None."""
     hashed = _hash(password)
     with SessionLocal() as session:
         user = session.query(SystemUser).filter_by(
+            organization_id=organization_id,
             username=username,
             password_hash=hashed,
             is_active=True
@@ -312,36 +382,119 @@ def verify_login(username: str, password: str):
                 username=user.username,
                 full_name=user.full_name,
                 role=user.role,
+                organization_id=user.organization_id,
             )
         return None
 
 
 # ID generators
-def generate_employee_id(session: Session) -> str:
-    """Generates next sequential EMP-XXXX ID."""
-    last = session.query(Employee).order_by(Employee.id.desc()).first()
-    next_num = (last.id + 1) if last else 1
+def _next_reference_value(
+    session: Session,
+    *,
+    organization_id: int,
+    namespace: str,
+    current_max: int,
+) -> int:
+    """Atomically increment a tenant-scoped counter on SQLite or Postgres."""
+    dialect_name = session.get_bind().dialect.name
+    if dialect_name == "postgresql":
+        insert = postgresql_insert
+    elif dialect_name == "sqlite":
+        insert = sqlite_insert
+    else:
+        raise RuntimeError(f"Unsupported database dialect: {dialect_name}")
+
+    statement = insert(ReferenceCounter).values(
+        organization_id=organization_id,
+        namespace=namespace,
+        value=current_max + 1,
+    )
+    statement = statement.on_conflict_do_update(
+        index_elements=[
+            ReferenceCounter.organization_id,
+            ReferenceCounter.namespace,
+        ],
+        set_={"value": ReferenceCounter.value + 1},
+    ).returning(ReferenceCounter.value)
+    return session.execute(statement).scalar_one()
+
+
+def _max_reference_suffix(values: list[str], prefix: str) -> int:
+    suffixes = []
+    for value in values:
+        if not value or not value.startswith(prefix):
+            continue
+        try:
+            suffixes.append(int(value.rsplit("-", 1)[-1]))
+        except ValueError:
+            continue
+    return max(suffixes, default=0)
+
+
+def generate_employee_id(
+    session: Session,
+    organization_id: int = DEFAULT_ORGANIZATION_ID,
+) -> str:
+    """Generate the next tenant-scoped sequential EMP-XXXX ID."""
+    values = [
+        row[0]
+        for row in session.query(Employee.employee_id).filter_by(
+            organization_id=organization_id
+        ).all()
+    ]
+    next_num = _next_reference_value(
+        session,
+        organization_id=organization_id,
+        namespace="employee",
+        current_max=_max_reference_suffix(values, "EMP-"),
+    )
     return f"EMP-{next_num:04d}"
 
 
-def generate_commendation_ref(session: Session) -> str:
-    """Generates COM-YYYY-MMDD-NNN format."""
+def generate_commendation_ref(
+    session: Session,
+    organization_id: int = DEFAULT_ORGANIZATION_ID,
+) -> str:
+    """Generate a tenant-scoped COM-YYYY-MMDD-NNN reference."""
     today = utc_now()
     prefix = f"COM-{today.year}-{today.month:02d}{today.day:02d}"
-    count = session.query(Commendation).filter(
-        Commendation.commendation_ref.like(f"{prefix}%")
-    ).count()
-    return f"{prefix}-{count + 1:03d}"
+    values = [
+        row[0]
+        for row in session.query(Commendation.commendation_ref).filter(
+            Commendation.organization_id == organization_id,
+            Commendation.commendation_ref.like(f"{prefix}%"),
+        ).all()
+    ]
+    next_num = _next_reference_value(
+        session,
+        organization_id=organization_id,
+        namespace=f"commendation:{prefix}",
+        current_max=_max_reference_suffix(values, prefix),
+    )
+    return f"{prefix}-{next_num:03d}"
 
 
-def generate_sanction_ref(session: Session) -> str:
-    """Generates SAN-YYYY-MMDD-NNN format."""
+def generate_sanction_ref(
+    session: Session,
+    organization_id: int = DEFAULT_ORGANIZATION_ID,
+) -> str:
+    """Generate a tenant-scoped SAN-YYYY-MMDD-NNN reference."""
     today = utc_now()
     prefix = f"SAN-{today.year}-{today.month:02d}{today.day:02d}"
-    count = session.query(Sanction).filter(
-        Sanction.sanction_ref.like(f"{prefix}%")
-    ).count()
-    return f"{prefix}-{count + 1:03d}"
+    values = [
+        row[0]
+        for row in session.query(Sanction.sanction_ref).filter(
+            Sanction.organization_id == organization_id,
+            Sanction.sanction_ref.like(f"{prefix}%"),
+        ).all()
+    ]
+    next_num = _next_reference_value(
+        session,
+        organization_id=organization_id,
+        namespace=f"sanction:{prefix}",
+        current_max=_max_reference_suffix(values, prefix),
+    )
+    return f"{prefix}-{next_num:03d}"
 
 
 # Promotion race calculation (LIVE - never stored)

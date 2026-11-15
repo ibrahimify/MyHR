@@ -14,7 +14,7 @@ Key design decisions:
 from datetime import datetime
 from sqlalchemy import (
     Column, Integer, String, Float, Boolean,
-    DateTime, ForeignKey, Text, Enum
+    DateTime, ForeignKey, Text, Enum, UniqueConstraint
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 import enum
@@ -24,6 +24,29 @@ from src.core.time import utc_now
 
 class Base(DeclarativeBase):
     pass
+
+
+# Tenant root. Desktop installations use the seeded default organization.
+class Organization(Base):
+    __tablename__ = "organization"
+
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    name       = Column(String(255), nullable=False)
+    slug       = Column(String(100), nullable=False, unique=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+    def __repr__(self):
+        return f"<Organization {self.slug}>"
+
+
+class ReferenceCounter(Base):
+    """Transaction-safe counters for human-readable references."""
+    __tablename__ = "reference_counter"
+
+    organization_id = Column(Integer, ForeignKey("organization.id"), primary_key=True)
+    namespace       = Column(String(100), primary_key=True)
+    value           = Column(Integer, nullable=False, default=0)
 
 
 # 1. OrgUnit: self-referencing hierarchy
@@ -36,13 +59,22 @@ class OrgUnit(Base):
     __tablename__ = "org_unit"
 
     id               = Column(Integer, primary_key=True, autoincrement=True)
+    organization_id  = Column(Integer, ForeignKey("organization.id"), nullable=False, default=1, server_default="1", index=True)
     name             = Column(String(255), nullable=False)
     unit_type        = Column(
         Enum("organization", "division", "department", "unit", "team", "position", name="unit_type_enum"),
         nullable=False
     )
     parent_id        = Column(Integer, ForeignKey("org_unit.id"), nullable=True)
-    head_employee_id = Column(Integer, ForeignKey("employee.id"), nullable=True)
+    head_employee_id = Column(
+        Integer,
+        ForeignKey(
+            "employee.id",
+            name="fk_org_unit_head_employee",
+            use_alter=True,
+        ),
+        nullable=True,
+    )
     created_at       = Column(DateTime, default=utc_now)
     updated_at       = Column(DateTime, default=utc_now, onupdate=utc_now)
 
@@ -65,9 +97,13 @@ class Title(Base):
     promotion_salary_increase_pct: salary bump % when promoted to this level
     """
     __tablename__ = "title"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "name", name="uq_title_org_name"),
+    )
 
     id                           = Column(Integer, primary_key=True, autoincrement=True)
-    name                         = Column(String(50), nullable=False, unique=True)   # "L7", "L6"...
+    organization_id              = Column(Integer, ForeignKey("organization.id"), nullable=False, default=1, server_default="1", index=True)
+    name                         = Column(String(50), nullable=False)                # "L7", "L6"...
     label                        = Column(String(100), nullable=False)               # "Entry Level"
     degree_requirement           = Column(
         Enum("BSc", "MSc", "PhD", "any", name="degree_enum"),
@@ -107,9 +143,13 @@ class Employee(Base):
     salary_increment_approved: whether current year's increment has been applied
     """
     __tablename__ = "employee"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "employee_id", name="uq_employee_org_employee_id"),
+    )
 
     id              = Column(Integer, primary_key=True, autoincrement=True)
-    employee_id     = Column(String(20), nullable=False, unique=True)  # "EMP-1001"
+    organization_id = Column(Integer, ForeignKey("organization.id"), nullable=False, default=1, server_default="1", index=True)
+    employee_id     = Column(String(20), nullable=False)  # "EMP-1001"
 
     # Personal data: admin only
     first_name      = Column(String(100), nullable=False)
@@ -175,8 +215,15 @@ class PromotionRule(Base):
     After promotion, the clock resets; there is no carryover.
     """
     __tablename__ = "promotion_rule"
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "from_title_id", "to_title_id",
+            name="uq_promotion_rule_org_transition",
+        ),
+    )
 
     id             = Column(Integer, primary_key=True, autoincrement=True)
+    organization_id = Column(Integer, ForeignKey("organization.id"), nullable=False, default=1, server_default="1", index=True)
     from_title_id  = Column(Integer, ForeignKey("title.id"), nullable=False)
     to_title_id    = Column(Integer, ForeignKey("title.id"), nullable=False)
     base_months    = Column(Integer, nullable=False, default=36)  # base race duration
@@ -202,6 +249,7 @@ class PromotionHistory(Base):
     __tablename__ = "promotion_history"
 
     id              = Column(Integer, primary_key=True, autoincrement=True)
+    organization_id = Column(Integer, ForeignKey("organization.id"), nullable=False, default=1, server_default="1", index=True)
     employee_id     = Column(Integer, ForeignKey("employee.id"), nullable=False)
     from_title_id   = Column(Integer, ForeignKey("title.id"), nullable=False)
     to_title_id     = Column(Integer, ForeignKey("title.id"), nullable=False)
@@ -232,9 +280,16 @@ class Commendation(Base):
     commendation_ref: unique human-readable ID e.g. "COM-2026-0418-001"
     """
     __tablename__ = "commendation"
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "commendation_ref",
+            name="uq_commendation_org_ref",
+        ),
+    )
 
     id              = Column(Integer, primary_key=True, autoincrement=True)
-    commendation_ref = Column(String(30), nullable=False, unique=True)  # "COM-2026-0418-001"
+    organization_id = Column(Integer, ForeignKey("organization.id"), nullable=False, default=1, server_default="1", index=True)
+    commendation_ref = Column(String(30), nullable=False)  # "COM-2026-0418-001"
     title           = Column(String(255), nullable=False)
     description     = Column(Text, nullable=True)
     category        = Column(Integer, nullable=False)  # 1, 2, or 3
@@ -268,9 +323,13 @@ class Sanction(Base):
     is_resolved: when marked resolved by admin.
     """
     __tablename__ = "sanction"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "sanction_ref", name="uq_sanction_org_ref"),
+    )
 
     id           = Column(Integer, primary_key=True, autoincrement=True)
-    sanction_ref = Column(String(30), nullable=False, unique=True)  # "SAN-2026-0418-001"
+    organization_id = Column(Integer, ForeignKey("organization.id"), nullable=False, default=1, server_default="1", index=True)
+    sanction_ref = Column(String(30), nullable=False)  # "SAN-2026-0418-001"
     employee_id  = Column(Integer, ForeignKey("employee.id"), nullable=False)
     sanction_type = Column(
         Enum("verbal_warning", "written_warning", "suspension", "final_warning", name="sanction_type_enum"),
@@ -302,6 +361,7 @@ class SalaryIncrementHistory(Base):
     __tablename__ = "salary_increment_history"
 
     id              = Column(Integer, primary_key=True, autoincrement=True)
+    organization_id = Column(Integer, ForeignKey("organization.id"), nullable=False, default=1, server_default="1", index=True)
     employee_id     = Column(Integer, ForeignKey("employee.id"), nullable=False)
     approved_by_id  = Column(Integer, ForeignKey("system_user.id"), nullable=False)
     salary_before   = Column(Float, nullable=False)
@@ -331,6 +391,7 @@ class PerformanceScore(Base):
     __tablename__ = "performance_score"
 
     id              = Column(Integer, primary_key=True, autoincrement=True)
+    organization_id = Column(Integer, ForeignKey("organization.id"), nullable=False, default=1, server_default="1", index=True)
     employee_id     = Column(Integer, ForeignKey("employee.id"), nullable=False)
     evaluator_id    = Column(Integer, ForeignKey("system_user.id"), nullable=False)
     score           = Column(Float, nullable=False)
@@ -368,6 +429,7 @@ class AuditLog(Base):
     __tablename__ = "audit_log"
 
     id              = Column(Integer, primary_key=True, autoincrement=True)
+    organization_id = Column(Integer, ForeignKey("organization.id"), nullable=False, default=1, server_default="1", index=True)
     performed_by_id = Column(Integer, ForeignKey("system_user.id"), nullable=True)
     performed_by_username = Column(String(100), nullable=True)
     performed_by_name = Column(String(255), nullable=True)
@@ -393,12 +455,16 @@ class SystemUser(Base):
     language preference is per-session, not stored here.
     """
     __tablename__ = "system_user"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "username", name="uq_system_user_org_username"),
+    )
 
     id            = Column(Integer, primary_key=True, autoincrement=True)
-    username      = Column(String(100), nullable=False, unique=True)
+    organization_id = Column(Integer, ForeignKey("organization.id"), nullable=False, default=1, server_default="1", index=True)
+    username      = Column(String(100), nullable=False)
     password_hash = Column(String(255), nullable=False)
     role          = Column(
-        Enum("admin", "hr_officer", name="role_enum"),
+        Enum("admin", "hr_officer", "superadmin", name="role_enum"),
         nullable=False
     )
     full_name     = Column(String(255), nullable=False)
