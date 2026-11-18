@@ -242,3 +242,18 @@ change the primary endpoint, or access the holdout. Before protocol freeze, the
 method parameters, comparison family, condition matrix, and statistical analysis
 must be fixed from development evidence and scientific justification rather
 than favorable outcomes.
+
+## Proposal 8 - condition-balanced paired inference
+
+Proposed 2026-11-18. **PENDING HUMAN APPROVAL.** Repeated scenario seeds remain
+the paired observations, but each predeclared design condition receives equal
+weight in the reported effect. Confidence intervals use a hierarchical bootstrap
+that resamples conditions and then seed replicates within conditions. The paired
+sign-flip test operates on seed-level effects with weights that prevent conditions
+with more usable seeds from dominating the estimate.
+
+This replaces pooled inference that treated all scenario rows as exchangeable.
+It is necessary when zero-positive scenarios make the number of usable seeds
+unequal across conditions. The artifact must report both condition and seed
+counts. This proposal does not approve the condition matrix itself or authorize
+holdout access.

@@ -20,6 +20,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.run_tdk_research_experiment import _provenance
+from src.research.condition_statistics import condition_balanced_paired_summary
 from src.services.anomaly_detection.protocol_evaluation import evaluate_scenario
 from src.services.anomaly_detection.scenario_generation import (
     ScenarioConfig,
@@ -339,6 +340,11 @@ def _paired_comparisons(rows: list[dict[str, object]]) -> list[dict[str, object]
                 "method": method,
                 "operating_point": operating_point,
                 "scenario_count": len(pairs),
+                "condition_count": len({
+                    _condition_id(str(raw["scenario_id"]))
+                    for raw, _ in pairs
+                }),
+                "inference_unit": "scenario_seed_condition_stratified",
             }
             is_primary_comparison = (method, operating_point) == PRIMARY_COMPARISON
             item["comparison_role"] = (
@@ -358,11 +364,18 @@ def _paired_comparisons(rows: list[dict[str, object]]) -> list[dict[str, object]
                     if raw.get(metric) not in {"", None}
                     and policy.get(metric) not in {"", None}
                 ]
+                deltas_by_condition: dict[str, list[float]] = defaultdict(list)
+                for raw, policy in eligible_pairs:
+                    deltas_by_condition[
+                        _condition_id(str(raw["scenario_id"]))
+                    ].append(float(policy[metric]) - float(raw[metric]))
                 deltas = [
-                    float(policy[metric]) - float(raw[metric])
-                    for raw, policy in eligible_pairs
+                    value
+                    for condition_values in deltas_by_condition.values()
+                    for value in condition_values
                 ]
                 item[f"{metric}_scenario_count"] = len(deltas)
+                item[f"{metric}_condition_count"] = len(deltas_by_condition)
                 if not deltas:
                     for suffix in (
                         "delta_mean", "delta_median", "delta_std",
@@ -372,19 +385,20 @@ def _paired_comparisons(rows: list[dict[str, object]]) -> list[dict[str, object]
                         item[f"{metric}_{suffix}"] = ""
                     item[f"{metric}_delta_holm_all_p"] = ""
                     item[f"{metric}_delta_holm_secondary_p"] = ""
+                    item[f"{metric}_condition_seed_counts"] = ""
                     continue
-                ci_low, ci_high = _bootstrap_mean_ci(
-                    deltas,
+                summary = condition_balanced_paired_summary(
+                    deltas_by_condition,
                     seed=_stable_seed(method, operating_point, metric),
                 )
-                item[f"{metric}_delta_mean"] = mean(deltas)
-                item[f"{metric}_delta_median"] = median(deltas)
-                item[f"{metric}_delta_std"] = stdev(deltas) if len(deltas) > 1 else 0.0
-                item[f"{metric}_delta_ci95_low"] = ci_low
-                item[f"{metric}_delta_ci95_high"] = ci_high
-                item[f"{metric}_delta_sign_flip_p"] = _paired_sign_flip_pvalue(
-                    deltas,
-                    seed=_stable_seed("sign", method, operating_point, metric),
+                item[f"{metric}_delta_mean"] = summary.effect_mean
+                item[f"{metric}_delta_median"] = summary.effect_median
+                item[f"{metric}_delta_std"] = summary.effect_std
+                item[f"{metric}_delta_ci95_low"] = summary.ci95_low
+                item[f"{metric}_delta_ci95_high"] = summary.ci95_high
+                item[f"{metric}_delta_sign_flip_p"] = summary.sign_flip_pvalue
+                item[f"{metric}_condition_seed_counts"] = "|".join(
+                    str(value) for value in summary.condition_seed_counts
                 )
                 item[f"{metric}_delta_holm_all_p"] = ""
                 item[f"{metric}_delta_holm_secondary_p"] = ""
