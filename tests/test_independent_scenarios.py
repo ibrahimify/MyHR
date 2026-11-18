@@ -324,7 +324,7 @@ class IndependentScenarioTests(unittest.TestCase):
     def test_holdout_purpose_is_not_defined(self):
         spec = replace(independent_scenario_matrix(employee_count=120)[0], run_purpose="holdout")
 
-        with self.assertRaisesRegex(ValueError, "development-only"):
+        with self.assertRaisesRegex(ValueError, "holdout.*undefined.*locked"):
             generate_independent_world(spec)
 
     def test_generation_is_reproducible_and_truth_is_separate(self):

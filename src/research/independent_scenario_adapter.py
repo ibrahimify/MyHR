@@ -114,7 +114,7 @@ def adapt_independent_world(world: IndependentWorld) -> ScenarioDataset:
         split_seed=spec.split_seed,
         model_seed=spec.model_seed,
         employee_count=spec.employee_count,
-        policy_profile="standard",
+        policy_profile=spec.policy_variant,
         population_profile=spec.population,
         anomaly_mechanism=spec.mechanism,
         rare_pattern=spec.rare_pattern,

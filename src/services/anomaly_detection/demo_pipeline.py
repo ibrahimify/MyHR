@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Callable
 
-from src.research.independent_scenario_adapter import adapt_independent_world
 from src.research.independent_scenarios import (
     IndependentScenarioSpec,
     generate_independent_world,
@@ -191,6 +190,10 @@ def run_demo_scenario(
     _ensure_not_cancelled(cancelled)
     _report(progress, 8, "generate")
     world = generate_independent_world(spec)
+    # Import lazily so the independent adapter can use anomaly-detection
+    # submodules without cycling through this application-facing module.
+    from src.research.independent_scenario_adapter import adapt_independent_world
+
     scenario = adapt_independent_world(world)
 
     _ensure_not_cancelled(cancelled)

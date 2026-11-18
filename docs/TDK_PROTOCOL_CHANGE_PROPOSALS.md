@@ -257,3 +257,20 @@ It is necessary when zero-positive scenarios make the number of usable seeds
 unequal across conditions. The artifact must report both condition and seed
 counts. This proposal does not approve the condition matrix itself or authorize
 holdout access.
+
+## Proposal 9 - independent pairwise covering design
+
+Proposed 2026-11-19. **PENDING HUMAN APPROVAL.** The independent generator now
+supports separate development and validation seed ranges and three observable
+policy variants. A deterministic 36-condition covering design includes every valid pair of
+policy variant, population, discrepancy mechanism, lawful rare pattern, error
+rate, and rare-case rate while excluding impossible population-pattern pairs.
+Each factor's marginal counts differ by at most one condition.
+
+This design replaces neither the historical 12-scenario diagnostic nor any
+stored result. Its purpose is to avoid duplicated cells and the direct factor
+aliasing found in the earlier development matrix without requiring a full
+factorial experiment. Pairwise coverage does not estimate every higher-order
+interaction, so factor counts and uncovered higher-order combinations must be
+reported as limitations. Development and validation use disjoint seeds. No
+holdout matrix or seed range is defined by this proposal.

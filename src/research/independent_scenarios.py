@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import Enum
+from functools import lru_cache
 from hashlib import sha256
 from random import Random
 
@@ -85,12 +86,16 @@ class IndependentScenarioSpec:
     population: str
     mechanism: str
     rare_pattern: str
+    policy_variant: str = "standard"
     error_rate: float = 0.12
     rare_rate: float = 0.08
 
     def validate(self) -> None:
-        if self.run_purpose != "independent_development":
-            raise ValueError("independent scenarios are development-only; holdout is undefined")
+        if self.run_purpose not in {
+            "independent_development",
+            "independent_validation",
+        }:
+            raise ValueError("independent holdout scenarios are undefined and locked")
         if self.employee_count < 120:
             raise ValueError("employee_count must be at least 120")
         if self.population not in population_families():
@@ -99,6 +104,8 @@ class IndependentScenarioSpec:
             raise ValueError(f"unknown mechanism: {self.mechanism}")
         if self.rare_pattern not in rare_legitimate_patterns():
             raise ValueError(f"unknown rare pattern: {self.rare_pattern}")
+        if self.policy_variant not in policy_variants():
+            raise ValueError(f"unknown policy variant: {self.policy_variant}")
         compatible = compatible_rare_patterns_by_population()[self.population]
         if self.rare_pattern not in compatible:
             raise ValueError(
@@ -165,6 +172,10 @@ class IndependentWorld:
 
 def population_families() -> tuple[str, ...]:
     return "stable_administration", "rapid_expansion", "merger_migration"
+
+
+def policy_variants() -> tuple[str, ...]:
+    return "accelerated", "standard", "conservative"
 
 
 def anomaly_mechanisms() -> tuple[str, ...]:
@@ -269,9 +280,124 @@ def independent_scenario_matrix(
     return tuple(specs)
 
 
+@lru_cache(maxsize=4)
+def independent_covering_scenario_matrix(
+    run_purpose: str,
+    employee_count: int = 360,
+) -> tuple[IndependentScenarioSpec, ...]:
+    """Return a compact pairwise covering design over independent factors.
+
+    The design includes every valid pair of policy, population, discrepancy
+    mechanism, lawful rare pattern, error rate, and rare-case rate. It is a
+    development proposal and does not define or unlock a holdout.
+    """
+
+    if run_purpose not in {
+        "independent_development",
+        "independent_validation",
+    }:
+        raise ValueError("holdout scenario generation remains undefined and locked")
+    candidates = tuple(
+        values
+        for values in (
+            (
+                policy,
+                population,
+                mechanism,
+                rare_pattern,
+                error_rate,
+                rare_rate,
+            )
+            for policy in policy_variants()
+            for population in population_families()
+            for mechanism in anomaly_mechanisms()
+            for rare_pattern in rare_legitimate_patterns()
+            for error_rate in (0.08, 0.16)
+            for rare_rate in (0.04, 0.10)
+        )
+        if values[3] in compatible_rare_patterns_by_population()[values[1]]
+    )
+    uncovered = set().union(*(_factor_pairs(values) for values in candidates))
+    selected: list[tuple[object, ...]] = []
+    remaining = set(candidates)
+    while uncovered:
+        best = min(
+            remaining,
+            key=lambda values: (-len(_factor_pairs(values) & uncovered), values),
+        )
+        covered = _factor_pairs(best) & uncovered
+        if not covered:
+            raise RuntimeError("pairwise covering design could not cover all valid pairs")
+        selected.append(best)
+        uncovered -= covered
+        remaining.remove(best)
+
+    target_condition_count = 36
+    while len(selected) < target_condition_count:
+        best = min(
+            remaining,
+            key=lambda values: (
+                _marginal_balance_penalty(
+                    (*selected, values),
+                    candidates,
+                    target_condition_count,
+                ),
+                values,
+            ),
+        )
+        selected.append(best)
+        remaining.remove(best)
+
+    base_seed = 121_000 if run_purpose == "independent_development" else 221_000
+    prefix = "ind-dev-cover" if run_purpose == "independent_development" else "ind-val-cover"
+    specs = []
+    for index, values in enumerate(selected):
+        policy, population, mechanism, rare_pattern, error_rate, rare_rate = values
+        specs.append(IndependentScenarioSpec(
+            scenario_id=f"{prefix}-{index + 1:03d}",
+            run_purpose=run_purpose,
+            seed=base_seed + index * 17 + 1,
+            split_seed=base_seed + index * 17 + 3,
+            model_seed=base_seed + index * 17 + 7,
+            employee_count=employee_count,
+            population=str(population),
+            mechanism=str(mechanism),
+            rare_pattern=str(rare_pattern),
+            policy_variant=str(policy),
+            error_rate=float(error_rate),
+            rare_rate=float(rare_rate),
+        ))
+    return tuple(specs)
+
+
+def _factor_pairs(values: tuple[object, ...]) -> set[tuple[int, object, int, object]]:
+    return {
+        (left, values[left], right, values[right])
+        for left in range(len(values))
+        for right in range(left + 1, len(values))
+    }
+
+
+def _marginal_balance_penalty(
+    selected: tuple[tuple[object, ...], ...],
+    candidates: tuple[tuple[object, ...], ...],
+    target_count: int,
+) -> float:
+    penalty = 0.0
+    for factor_index in range(len(candidates[0])):
+        levels = {values[factor_index] for values in candidates}
+        ideal = target_count / len(levels)
+        counts = {
+            level: sum(values[factor_index] == level for values in selected)
+            for level in levels
+        }
+        penalty += sum(((count - ideal) / ideal) ** 2 for count in counts.values())
+    return penalty
+
+
 def generate_independent_world(spec: IndependentScenarioSpec) -> IndependentWorld:
     spec.validate()
-    policies = _policy_cards()
+    policies = _policy_cards(spec.policy_variant)
     split_by_index = _split_assignments(spec)
     base_employees = tuple(
         _base_employee(
@@ -348,7 +474,14 @@ def generate_independent_world(spec: IndependentScenarioSpec) -> IndependentWorl
     )
 
 
-def _policy_cards() -> tuple[IndependentPolicyCard, ...]:
+def _policy_cards(variant: str = "standard") -> tuple[IndependentPolicyCard, ...]:
+    current_requirements = {
+        "accelerated": {"L7": 30, "L6": 30, "L5": 36, "L4": 42, "L3": 48, "L2": 54},
+        "standard": {"L7": 36, "L6": 36, "L5": 42, "L4": 48, "L3": 54, "L2": 60},
+        "conservative": {"L7": 42, "L6": 42, "L5": 48, "L4": 54, "L3": 60, "L2": 66},
+    }
+    if variant not in current_requirements:
+        raise ValueError(f"unknown policy variant: {variant}")
     return (
         IndependentPolicyCard(
             "legacy-pre-2023",
@@ -367,7 +500,7 @@ def _policy_cards() -> tuple[IndependentPolicyCard, ...]:
             None,
             date(2022, 10, 1),
             "organization-wide",
-            {"L7": 36, "L6": 36, "L5": 42, "L4": 48, "L3": 54, "L2": 60},
+            current_requirements[variant],
             True,
         ),
     )
