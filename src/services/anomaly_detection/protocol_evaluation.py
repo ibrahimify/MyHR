@@ -15,6 +15,7 @@ from .deterministic_checks import (
 from .features import FeatureVector, extract_policy_aware_features, extract_raw_features
 from .isolation_forest import score_isolation_forest
 from .metrics import BinaryClassificationMetrics, confusion_counts
+from .outlier_scoring import OutlierScorerConfig, score_outliers
 from .policy_model import PromotionPolicy
 from .scenario_generation import ScenarioDataset, policy_profiles
 from .statistical_baselines import fit_iqr_baseline, fit_z_score_baseline, score_baseline
@@ -564,6 +565,115 @@ def evaluate_fixed_budget_demo(
         prediction_rows.extend(rows)
     if progress is not None:
         progress(len(representations), len(representations))
+    return ScenarioEvaluation(tuple(metric_rows), tuple(prediction_rows))
+
+
+def evaluate_residual_model_comparison(
+    scenario: ScenarioDataset,
+    review_budget: float = 0.10,
+    methods: tuple[OutlierScorerConfig, ...] | None = None,
+    representations: tuple[str, ...] = (
+        "raw_matched",
+        "policy_matched",
+        "wrong_policy_control",
+        "shuffled_policy_control",
+    ),
+) -> ScenarioEvaluation:
+    """Compare label-free scorers on identical invariant-negative records.
+
+    This is an exploratory development path. It does not alter the historical
+    Isolation Forest evaluation, select methods from outcomes, or authorize a
+    holdout run.
+    """
+
+    if not 0 < review_budget < 0.5:
+        raise ValueError("review_budget must be between 0 and 0.5")
+    scorer_configs = methods or tuple(
+        OutlierScorerConfig(method)
+        for method in (
+            "isolation_forest",
+            "local_outlier_factor",
+            "one_class_svm",
+            "robust_z_score",
+            "iqr",
+        )
+    )
+    if not scorer_configs:
+        raise ValueError("At least one outlier scorer is required")
+
+    available = {item.name: item for item in feature_representations()}
+    unknown = set(representations) - set(available)
+    if unknown:
+        raise ValueError(f"unknown feature representations: {sorted(unknown)}")
+
+    train = _records(scenario, DatasetSplit.TRAIN)
+    test = _records(scenario, DatasetSplit.TEST)
+    invariant_started = perf_counter()
+    invariant_train_scores = tuple(
+        float(len(validate_invariant_record(record))) for record in train
+    )
+    invariant_test_scores = tuple(
+        float(len(validate_invariant_record(record))) for record in test
+    )
+    invariant_runtime_ms = (perf_counter() - invariant_started) * 1000
+    residual_train = tuple(
+        record for record, score in zip(train, invariant_train_scores) if score <= 0
+    )
+    residual_test = tuple(
+        record for record, score in zip(test, invariant_test_scores) if score <= 0
+    )
+    residual_truth = [record.has_progression_anomaly for record in residual_test]
+    tie_keys = tuple(record.identity.employee_id for record in residual_test)
+    metric_rows: list[dict[str, object]] = []
+    prediction_rows: list[dict[str, object]] = []
+
+    for representation_name in representations:
+        representation = available[representation_name]
+        train_vectors = _vectors(residual_train, representation, scenario)
+        test_vectors = _vectors(residual_test, representation, scenario)
+        for config in scorer_configs:
+            started = perf_counter()
+            result = score_outliers(
+                train_vectors,
+                test_vectors,
+                representation.feature_names,
+                config,
+                random_state=scenario.config.model_seed,
+            )
+            scorer_runtime_ms = (perf_counter() - started) * 1000
+            predictions = _top_budget_predictions(
+                result.scores,
+                review_budget,
+                tie_keys,
+            )
+            row, rows = _evaluation_output(
+                scenario,
+                residual_test,
+                residual_truth,
+                result.scores,
+                predictions,
+                method=result.method,
+                representation=representation_name,
+                operating_point="fixed_review_budget",
+                threshold=None,
+                validation_selection=None,
+                runtime_ms=scorer_runtime_ms + invariant_runtime_ms,
+            )
+            row.update({
+                "comparison_status": "exploratory_development",
+                "retained_feature_names": "|".join(result.feature_names),
+                "dropped_feature_names": "|".join(result.dropped_feature_names),
+                "scorer_parameters_json": json.dumps(
+                    result.realized_parameters,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                "invariant_filter_runtime_ms": invariant_runtime_ms,
+                "scorer_runtime_ms": scorer_runtime_ms,
+            })
+            metric_rows.append(row)
+            prediction_rows.extend(rows)
+
     return ScenarioEvaluation(tuple(metric_rows), tuple(prediction_rows))
 
 

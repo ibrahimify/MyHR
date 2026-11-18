@@ -221,3 +221,24 @@ rare-legitimate histories. Its scenario construction is retained as historical
 development evidence; the later decision addendum approves only the constrained
 compatibility and eligibility contract, not retroactive reinterpretation of
 this artifact or the final matrix.
+
+## Proposal 7 - exploratory multi-method residual comparison
+
+Proposed 2026-11-18. **PENDING HUMAN APPROVAL.** This proposal does not change
+the registered primary endpoint, historical Isolation Forest results, scenario
+definitions, or holdout status.
+
+The development pipeline now supports a separate comparison of Isolation
+Forest, Local Outlier Factor, One-Class SVM, robust z-score, and IQR scoring.
+Every method receives the same invariant-negative training and evaluation
+records, uses preprocessing fitted only on training records, ranks scores in a
+common direction, and receives the same fixed review capacity. Generated truth
+is used only after ranking to calculate evaluation metrics. Constant training
+features and all realized model parameters are recorded.
+
+The proposed purpose is to test whether any observed representation effect is
+specific to Isolation Forest. It is not permission to select a favorable model,
+change the primary endpoint, or access the holdout. Before protocol freeze, the
+method parameters, comparison family, condition matrix, and statistical analysis
+must be fixed from development evidence and scientific justification rather
+than favorable outcomes.

@@ -90,8 +90,14 @@ from .protocol_evaluation import (
     ScenarioEvaluation,
     ThresholdSelection,
     evaluate_fixed_budget_demo,
+    evaluate_residual_model_comparison,
     evaluate_scenario,
     feature_representations,
+)
+from .outlier_scoring import (
+    OutlierScorerConfig,
+    OutlierScores,
+    score_outliers,
 )
 from .demo_pipeline import (
     DemoEmployeeEvidence,
@@ -136,6 +142,8 @@ __all__ = [
     "IsolationForestUnavailableError",
     "LatentPerson",
     "MethodEvaluation",
+    "OutlierScorerConfig",
+    "OutlierScores",
     "PromotionPolicy",
     "PolicyEpoch",
     "PromotionRaceInput",
@@ -156,6 +164,7 @@ __all__ = [
     "confusion_counts",
     "evaluate_duplicate_detection",
     "evaluate_fixed_budget_demo",
+    "evaluate_residual_model_comparison",
     "evaluate_statistical_baseline",
     "evaluate_scenario",
     "extract_features",
@@ -178,6 +187,7 @@ __all__ = [
     "run_isolation_forest",
     "score_baseline",
     "score_isolation_forest",
+    "score_outliers",
     "scenario_matrix",
     "serialize_dataset",
     "sklearn_is_available",
