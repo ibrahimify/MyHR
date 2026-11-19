@@ -169,7 +169,12 @@ def _provenance() -> dict[str, Any]:
     return {
         "command": [sys.executable, *sys.argv],
         "git_commit": _git_output("rev-parse", "HEAD"),
-        "git_dirty": bool(_git_output("status", "--porcelain")),
+        "git_dirty": bool(_git_output(
+            "status",
+            "--porcelain",
+            "--untracked-files=no",
+        )),
+        "git_dirty_scope": "tracked_files_only",
         "python_version": sys.version,
         "platform": platform.platform(),
         "packages": packages,

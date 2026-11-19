@@ -2,6 +2,7 @@ import csv
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 from hashlib import sha256
 from pathlib import Path
 
@@ -24,7 +25,7 @@ from scripts.run_tdk_protocol_experiment import (
     _paired_comparisons,
     _robustness_slices,
 )
-from scripts.run_tdk_research_experiment import PROVENANCE_SOURCE_PATHS
+from scripts.run_tdk_research_experiment import PROVENANCE_SOURCE_PATHS, _provenance
 from src.research.independent_scenario_adapter import adapt_independent_world
 from src.research.independent_scenarios import (
     generate_independent_world,
@@ -56,6 +57,32 @@ def _complete_source_hashes() -> dict:
 
 
 class ProtocolArtifactAuditTests(unittest.TestCase):
+    def test_provenance_dirty_flag_is_scoped_to_tracked_files(self):
+        calls = []
+
+        def fake_git_output(*arguments):
+            calls.append(arguments)
+            return "revision" if arguments[0] == "rev-parse" else ""
+
+        with patch(
+            "scripts.run_tdk_research_experiment._git_output",
+            side_effect=fake_git_output,
+        ), patch(
+            "scripts.run_tdk_research_experiment._git_object_bytes",
+            return_value=b"tracked source",
+        ), patch(
+            "scripts.run_tdk_research_experiment.version",
+            return_value="test-version",
+        ):
+            provenance = _provenance()
+
+        self.assertFalse(provenance["git_dirty"])
+        self.assertEqual(provenance["git_dirty_scope"], "tracked_files_only")
+        self.assertIn(
+            ("status", "--porcelain", "--untracked-files=no"),
+            calls,
+        )
+
     def test_model_comparison_is_independently_verified(self):
         spec = independent_covering_scenario_matrix(
             "independent_development",
