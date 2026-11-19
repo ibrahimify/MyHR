@@ -37,8 +37,24 @@
 - Verification checkpoint: the complete local suite passed 356 tests in 573.28
   seconds before the later shard and control additions; focused tests for those
   additions pass. GitHub Actions run `44577221952` passed at commit `7a03035`.
-  A 30-seed development run remains required before validation or protocol
-  freeze can be considered.
+  GitHub Actions also passed at experiment revision `ca98df8`.
+- Audited development artifact `951d516ebf6ba222` contains 36 conditions and
+  30 seeds per condition (1,080 scenarios). It includes 81,000 primary metric
+  rows, 27,000 multi-method metric rows, 5,832,000 primary predictions, and
+  1,944,000 multi-method predictions. Every shard and the combined artifact
+  passed manifest, provenance, metric, population, budget, bitemporal, and
+  truth-separation checks; `holdout_accessed` is false.
+- Development evidence shows method-dependent effects. Policy-aware minus raw
+  recall ranges from -0.0002 for IQR to +0.0770 for Local Outlier Factor. For
+  Isolation Forest the difference is +0.0368, 95% interval [+0.0115, +0.0624],
+  while policy-aware minus wrong-policy is +0.0200, interval [-0.0048, +0.0447].
+  This does not isolate a consistent benefit from correct policy knowledge.
+  Validation remains unrun and no scorer may be selected from this development
+  result.
+- Independent recomputation reproduced populations, eight-slot queues, recall,
+  confusion counts, rare-legitimate rates, and AP. AP reproduction requires
+  round-trip binary64 CSV parsing; a default pandas parser can collapse adjacent
+  scores that differ at the final represented bit.
 
 ## Repository Maintenance After Submission - 2026-11-06
 

@@ -35,10 +35,13 @@ for a human reviewer.
 
 ## Result
 
-**The policy-aware advantage is not demonstrated.** In the audited development artifact the gain over raw features is
-small and its confidence interval includes zero. A deliberately wrong policy performs about as well as the correct one,
-so the gain cannot be attributed to policy knowledge. All results are development evidence on synthetic data. The
-protocol is a draft and the final holdout has not been generated or accessed.
+The completed 1,080-scenario development experiment shows that policy-derived
+features can improve ranking over the tested raw representations, but it does
+not yet isolate a consistent benefit from using the correct policy. Results
+vary by scorer, and comparisons with wrong-policy and policy-free controls
+remain mixed. This is synthetic development evidence, not a final validation
+claim. The protocol is still a draft and the final holdout has not been
+generated or accessed.
 
 ## TDK submission manuscript
 
@@ -46,6 +49,14 @@ protocol is a draft and the final holdout has not been generated or accessed.
 39 pages, of which 31 are main text. The Markdown source is [docs/TDK_PAPER_DRAFT.md](docs/TDK_PAPER_DRAFT.md).
 
 ## Main findings
+
+**Current recovery experiment.** Artifact `951d516ebf6ba222` contains 36
+conditions with 30 seeds each. All five scorers used identical residual records
+and review budgets. Policy-aware minus raw recall ranged from -0.02 percentage
+points for IQR to +7.70 points for Local Outlier Factor. Isolation Forest gained
+3.68 points (95% interval +1.15 to +6.24), but its gain over the wrong-policy
+control was 2.00 points with an interval spanning zero. These development
+results support further validation, not a superiority claim.
 
 All numbers below are copied from the audited artifacts and appear in the paper (Sections 6.7 and 6.8).
 
@@ -116,11 +127,12 @@ representations at equal capacity, and the generated truth on a separate tab.
 
 ## Future work
 
-1. Add a raw control with extra non-policy columns of comparable variance, to separate the effect of the added
-   columns from policy knowledge.
+1. Independently validate the fixed representations and controls without
+   selecting a scorer from the development results.
 2. Run the blinded realism review with two independent human reviewers.
 3. Freeze the protocol, then run the locked holdout once, after supervisor approval.
-4. Use a balanced scenario matrix with 30 seeds per cell and finish the audit of the 900-scenario artifact.
+4. Extend the scenario matrix only through a documented protocol decision to
+   cover factors not varied in the 36-condition development design.
 5. Report the baselines, duplicate-detection benchmark and runtime.
 6. Study how explanations affect reviewers, then validate on a real organisation with its own policies.
 

@@ -2,6 +2,56 @@
 
 Research title: **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**
 
+## Recovery Development Result - 2026-11-19
+
+Status: **Audited development evidence. Validation has not run. The protocol is
+not frozen and the final holdout remains locked.**
+
+Artifact `951d516ebf6ba222` contains 36 independent conditions with 30 seeds per
+condition (1,080 scenarios). Each method scored the same 77,760 residual test
+records and received the same 8,640 total review slots. The nominal 10% budget
+therefore realizes as 8 of 72 records (11.11%) in every scenario. The artifact was
+generated from clean revision `ca98df8`, copied to
+`research_outputs/independent_development/`, verified against its 20-file
+SHA-256 manifest, and independently recomputed by the artifact auditor. It
+records `holdout_accessed: false`.
+
+Stored scores must be read as round-trip binary64 values. Pandas' default float
+parser can collapse adjacent tied-looking scores and produce a different AP;
+`float_precision="round_trip"`, Python's CSV parser, and direct scenario
+regeneration reproduce the stored AP exactly.
+
+The exploratory comparison uses five label-free scorers and five feature
+representations. Policy-aware minus raw recall at fixed review capacity was:
+
+| Scorer | Recall difference | 95% hierarchical interval | AP difference |
+| --- | ---: | ---: | ---: |
+| Isolation Forest | +0.0368 | [+0.0115, +0.0624] | +0.0449 |
+| Local Outlier Factor | +0.0770 | [+0.0379, +0.1176] | +0.0625 |
+| One-Class SVM | +0.0574 | [+0.0352, +0.0813] | +0.0643 |
+| Robust z-score | +0.0079 | [+0.0001, +0.0171] | +0.0107 |
+| IQR | -0.0002 | [-0.0018, +0.0014] | +0.0005 |
+
+For Isolation Forest, policy-aware features found 3,803 of 9,720 anomalies;
+raw features found 3,418. Both reviewed 8,640 records. Policy-aware features
+raised 4,837 false alerts versus 5,222 for raw features and flagged 484 of
+5,400 rare-legitimate histories versus 561 for raw features.
+
+These raw comparisons do not by themselves establish that correct policy
+knowledge caused the difference. For Isolation Forest, policy-aware minus
+wrong-policy recall was +0.0200 with interval [-0.0048, +0.0447]. Policy-aware
+minus the dimension-matched policy-free rate control was +0.0496 with interval
+[+0.0249, +0.0748]. Local Outlier Factor showed no recall advantage over the
+wrong-policy control (-0.0013, interval [-0.0275, +0.0212]) and increased
+rare-legitimate alerts relative to raw features. The methods therefore disagree
+about both effect size and false-alert behavior.
+
+The supported development conclusion is narrow: policy-derived features change
+ranking and can improve recall over the tested raw representations, but this
+experiment has not isolated a consistent causal benefit from correct policy
+knowledge. The result requires independent validation under a frozen analysis
+before any final claim. It does not justify choosing the most favorable scorer.
+
 ## Superseding Methodological Correction - 2026-10-18
 
 The 2026-10-17 independent review found that deterministic filtering forces all three policy-specific residual features to zero. The residual AP comparison below is retained as development history, but it cannot test incremental policy context. Six of twelve independent scenarios also contain no residual positives and were assigned AP zero under the implemented convention. No residual superiority, equivalence, or mechanism-specific policy effect may be inferred from these values.
