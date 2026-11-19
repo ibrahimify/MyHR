@@ -1,4 +1,22 @@
 # TDK Autonomous Research Roadmap
+## Duplicate Evidence Infrastructure - Issue 16
+
+- Isolated implementation adds a duplicate-only development runner and separate
+  saved-evidence auditor without changing matchers, scenario definitions, or the
+  protocol. Exact roles distinguish validation calibration from development
+  evaluation; neither is the final holdout.
+- Full pair scores, threshold search, separate entity truth, hard-negative
+  anchors, explicit evaluation universes, source snapshots and checksums replace
+  incomplete legacy exports for future runs. Historical artifacts remain intact.
+- Focused semantic and tamper tests are in `tests/test_duplicate_evidence.py`.
+  See `TDK_DUPLICATE_DEVELOPMENT_EVIDENCE.md` for scope, commands and limitations.
+- Verification: 39 focused tests passed on Python 3.13.5, including a temporary
+  80-record standalone runner and auditor round trip. No research performance
+  result is inferred from these fixtures.
+- This is not a new benchmark result or independent validation campaign. Full
+  tests and CI remain outside this task; Issue #16 is not closed. No protocol
+  freeze or holdout access is authorized or performed.
+
 ## Research Recovery - 2026-11-19
 
 - Recovery work is isolated on `research-recovery-2026-11-18`; the submitted
