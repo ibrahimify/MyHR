@@ -14,7 +14,6 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from hashlib import sha256
-from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
 
@@ -160,12 +159,10 @@ def _git_object_bytes(revision: str, relative_path: str) -> bytes:
 
 
 def _provenance() -> dict[str, Any]:
-    packages = {}
-    for package in ("scikit-learn", "numpy", "pandas", "scipy"):
-        try:
-            packages[package] = version(package)
-        except PackageNotFoundError:
-            packages[package] = "not-installed"
+    from scripts.verify_research_environment import environment_report
+
+    environment = environment_report()
+    packages = dict(environment["packages"])
     return {
         "command": [sys.executable, *sys.argv],
         "git_commit": _git_output("rev-parse", "HEAD"),
@@ -178,6 +175,12 @@ def _provenance() -> dict[str, Any]:
         "python_version": sys.version,
         "platform": platform.platform(),
         "packages": packages,
+        "research_environment": {
+            "expected_python_version": environment["expected_python_version"],
+            "lock_file": environment["lock_file"],
+            "lock_sha256": environment["lock_sha256"],
+            "mismatches": environment["mismatches"],
+        },
         "source_sha256": {
             relative_path: sha256(_git_object_bytes("HEAD", relative_path)).hexdigest()
             for relative_path in PROVENANCE_SOURCE_PATHS

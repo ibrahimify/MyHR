@@ -88,8 +88,14 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
             "scripts.run_tdk_research_experiment._git_object_bytes",
             return_value=b"tracked source",
         ), patch(
-            "scripts.run_tdk_research_experiment.version",
-            return_value="test-version",
+            "scripts.verify_research_environment.environment_report",
+            return_value={
+                "expected_python_version": "3.13.5",
+                "lock_file": "requirements-research-lock.txt",
+                "lock_sha256": "lock-hash",
+                "mismatches": [],
+                "packages": {"numpy": "test-version"},
+            },
         ):
             provenance = _provenance()
 
