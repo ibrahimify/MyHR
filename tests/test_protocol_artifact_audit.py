@@ -61,8 +61,49 @@ def _complete_source_hashes() -> dict:
     return hashes
 
 
+def _environment_provenance_at_head() -> dict:
+    import subprocess
+
+    declaration_bytes = subprocess.run(
+        ["git", "show", "HEAD:research-environment.json"],
+        cwd=Path.cwd(),
+        check=True,
+        capture_output=True,
+    ).stdout
+    declaration = json.loads(declaration_bytes.decode("utf-8"))
+    lock_file = declaration["lock_file"]
+    lock_bytes = subprocess.run(
+        ["git", "show", f"HEAD:{lock_file}"],
+        cwd=Path.cwd(),
+        check=True,
+        capture_output=True,
+    ).stdout
+    packages = {}
+    for raw_line in lock_bytes.decode("utf-8").splitlines():
+        line = raw_line.strip()
+        if line and not line.startswith("#"):
+            package, package_version = line.split("==", 1)
+            packages[package.casefold().replace("_", "-")] = package_version
+    return {
+        "python_version": declaration["python_version"] + " (fixture)",
+        "packages": packages,
+        "research_environment": {
+            "expected_python_version": declaration["python_version"],
+            "declaration_file": "research-environment.json",
+            "declaration_sha256": sha256(declaration_bytes).hexdigest(),
+            "lock_file": lock_file,
+            "lock_sha256": sha256(lock_bytes).hexdigest(),
+            "mismatches": [],
+        },
+    }
+
+
 class ProtocolArtifactAuditTests(unittest.TestCase):
     def test_schema_eight_environment_provenance_matches_locked_revision(self):
+        declaration_bytes = (
+            b'{"python_version":"3.13.5",'
+            b'"lock_file":"requirements-research-lock.txt"}\n'
+        )
         lock_bytes = b"numpy==2.5.4\nscipy==1.18.1\n"
         metadata = {
             "artifact_schema_version": 8,
@@ -72,6 +113,8 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
                 "packages": {"numpy": "2.5.4", "scipy": "1.18.1"},
                 "research_environment": {
                     "expected_python_version": "3.13.5",
+                    "declaration_file": "research-environment.json",
+                    "declaration_sha256": sha256(declaration_bytes).hexdigest(),
                     "lock_file": "requirements-research-lock.txt",
                     "lock_sha256": sha256(lock_bytes).hexdigest(),
                     "mismatches": [],
@@ -81,20 +124,32 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
 
         with patch(
             "scripts.audit_tdk_protocol_artifact.subprocess.run",
-            return_value=SimpleNamespace(returncode=0, stdout=lock_bytes),
+            side_effect=(
+                SimpleNamespace(returncode=0, stdout=declaration_bytes),
+                SimpleNamespace(returncode=0, stdout=lock_bytes),
+            ),
         ):
             _verify_research_environment(metadata, Path.cwd())
 
     def test_schema_eight_environment_provenance_rejects_drift(self):
+        declaration_bytes = (
+            b'{"python_version":"3.13.5",'
+            b'"lock_file":"requirements-research-lock.txt"}\n'
+        )
         metadata = {
             "artifact_schema_version": 8,
             "provenance": {
+                "git_commit": "revision",
                 "research_environment": {"mismatches": ["numpy drift"]},
             },
         }
 
-        with self.assertRaisesRegex(ArtifactAuditError, "environment drift"):
-            _verify_research_environment(metadata, Path.cwd())
+        with patch(
+            "scripts.audit_tdk_protocol_artifact.subprocess.run",
+            return_value=SimpleNamespace(returncode=0, stdout=declaration_bytes),
+        ):
+            with self.assertRaisesRegex(ArtifactAuditError, "environment drift"):
+                _verify_research_environment(metadata, Path.cwd())
 
     def test_legacy_environment_provenance_remains_optional(self):
         _verify_research_environment({"artifact_schema_version": 7}, Path.cwd())
@@ -130,6 +185,8 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
             "scripts.verify_research_environment.environment_report",
             return_value={
                 "expected_python_version": "3.13.5",
+                "declaration_file": "research-environment.json",
+                "declaration_sha256": "declaration-hash",
                 "lock_file": "requirements-research-lock.txt",
                 "lock_sha256": "lock-hash",
                 "mismatches": [],
@@ -738,8 +795,10 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
 
     @staticmethod
     def _write_fixture(run_dir: Path) -> None:
+        environment = _environment_provenance_at_head()
         metadata = {
             "artifact_id": "fixture",
+            "artifact_schema_version": 8,
             "holdout_accessed": False,
             "protocol_status": "draft_validation_holdout_locked",
             "protocol_version": "fixture",
@@ -749,6 +808,7 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
                 "git_commit": "HEAD",
                 "git_dirty": False,
                 "source_sha256": _complete_source_hashes(),
+                **environment,
             },
         }
         (run_dir / "metadata.json").write_text(

@@ -182,6 +182,8 @@ def _provenance() -> dict[str, Any]:
         "packages": packages,
         "research_environment": {
             "expected_python_version": environment["expected_python_version"],
+            "declaration_file": "research-environment.json",
+            "declaration_sha256": environment["declaration_sha256"],
             "lock_file": environment["lock_file"],
             "lock_sha256": environment["lock_sha256"],
             "mismatches": environment["mismatches"],

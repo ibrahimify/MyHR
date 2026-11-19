@@ -155,6 +155,7 @@ def main() -> None:
     identity = {
         "protocol_version": PROTOCOL_VERSION,
         "protocol_status": PROTOCOL_STATUS,
+        "artifact_schema_version": 8,
         "analysis_plan_version": ANALYSIS_PLAN_VERSION,
         "run_purpose": args.run_purpose,
         "scenario_configs": [asdict(config) for config in configs],

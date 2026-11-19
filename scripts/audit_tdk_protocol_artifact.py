@@ -434,26 +434,46 @@ def _verify_source_revision(metadata: dict[str, Any], repo_root: Path) -> None:
 
 
 def _verify_research_environment(metadata: dict[str, Any], repo_root: Path) -> None:
-    """Verify environment provenance for schema-v8 and later artifacts."""
-    if int(metadata.get("artifact_schema_version", 0)) < 8:
-        return
-
     provenance = metadata.get("provenance", {})
+    revision = provenance.get("git_commit")
+    declaration_result = subprocess.run(
+        ["git", "show", f"{revision}:research-environment.json"],
+        cwd=repo_root,
+        check=False,
+        capture_output=True,
+    )
+    if declaration_result.returncode != 0:
+        if int(metadata.get("artifact_schema_version", 0)) < 8:
+            return
+        raise ArtifactAuditError("cannot read research environment declaration")
+
     environment = provenance.get("research_environment")
     if not isinstance(environment, dict):
         raise ArtifactAuditError("research environment provenance is missing")
     if environment.get("mismatches") != []:
         raise ArtifactAuditError("artifact records research environment drift")
 
-    expected_python = str(environment.get("expected_python_version", ""))
+    try:
+        declaration = json.loads(declaration_result.stdout.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ArtifactAuditError("research environment declaration is invalid") from error
+    if environment.get("declaration_file") != "research-environment.json":
+        raise ArtifactAuditError("research environment declaration path is invalid")
+    if sha256(declaration_result.stdout.replace(b"\r\n", b"\n")).hexdigest() != environment.get(
+        "declaration_sha256"
+    ):
+        raise ArtifactAuditError("research environment declaration checksum differs")
+
+    expected_python = str(declaration.get("python_version", ""))
+    if environment.get("expected_python_version") != expected_python:
+        raise ArtifactAuditError("declared Python metadata differs from source revision")
     recorded_python = str(provenance.get("python_version", ""))
     if not expected_python or not recorded_python.startswith(expected_python + " "):
         raise ArtifactAuditError("recorded Python does not match the declared runtime")
 
     lock_file = environment.get("lock_file")
-    if lock_file != "requirements-research-lock.txt":
+    if lock_file != declaration.get("lock_file") or lock_file != "requirements-research-lock.txt":
         raise ArtifactAuditError("research lock path is not the declared repository lock")
-    revision = provenance.get("git_commit")
     result = subprocess.run(
         ["git", "show", f"{revision}:{lock_file}"],
         cwd=repo_root,
@@ -462,7 +482,7 @@ def _verify_research_environment(metadata: dict[str, Any], repo_root: Path) -> N
     )
     if result.returncode != 0:
         raise ArtifactAuditError("cannot read research lock at source revision")
-    if sha256(result.stdout).hexdigest() != environment.get("lock_sha256"):
+    if sha256(result.stdout.replace(b"\r\n", b"\n")).hexdigest() != environment.get("lock_sha256"):
         raise ArtifactAuditError("research lock checksum does not match source revision")
 
     expected_packages: dict[str, str] = {}
@@ -473,7 +493,7 @@ def _verify_research_environment(metadata: dict[str, Any], repo_root: Path) -> N
         if "==" not in line:
             raise ArtifactAuditError("research lock contains a non-exact entry")
         package, package_version = line.split("==", 1)
-        expected_packages[package.casefold()] = package_version
+        expected_packages[package.casefold().replace("_", "-")] = package_version
     if provenance.get("packages") != expected_packages:
         raise ArtifactAuditError("recorded packages do not match the research lock")
 

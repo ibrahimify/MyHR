@@ -4,9 +4,11 @@ numpy==2.5.4
 pandas==2.3.3
 scipy==1.18.1
 scikit-learn==1.9.1
+cloudpickle==3.1.2
 joblib==1.6.0
 threadpoolctl==3.7.0
 matplotlib==3.11.2
+narwhals==2.27.1
 contourpy==1.4.0
 cycler==0.12.1
 fonttools==4.66.1
