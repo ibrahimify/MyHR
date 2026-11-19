@@ -576,6 +576,26 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
         with self.assertRaisesRegex(ArtifactAuditError, "replicates are incomplete"):
             _verify_declared_matrix(metadata, configs, metrics)
 
+    def test_declared_matrix_accepts_explicit_shard_replicate_range(self):
+        configs = [{
+            "scenario_id": f"c1-seed-{replicate:02d}",
+            "condition_id": "c1",
+            "seed_replicate": str(replicate),
+            "seed": str(100 + replicate),
+            "split_seed": str(200 + replicate),
+            "model_seed": str(300 + replicate),
+        } for replicate in (7, 8)]
+        metrics = [{"scenario_id": row["scenario_id"]} for row in configs]
+        metadata = {
+            "protocol_version": "seed-provenance-test",
+            "scenario_count": 2,
+            "condition_count": 1,
+            "seeds_per_condition": 2,
+            "seed_replicate_start": 7,
+        }
+
+        _verify_declared_matrix(metadata, configs, metrics)
+
     def test_audit_rejects_duplicate_metric_keys_and_incomplete_pairs(self):
         prediction = {
             "scenario_id": "s1", "employee_id": "E1", "method": "m",

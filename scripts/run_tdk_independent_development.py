@@ -109,6 +109,12 @@ def main() -> None:
     parser.add_argument("--employee-count", type=int, default=360)
     parser.add_argument("--seeds-per-condition", type=int, default=30)
     parser.add_argument(
+        "--seed-replicate-start",
+        type=int,
+        default=1,
+        help="One-based first replicate index, used for resumable seed shards.",
+    )
+    parser.add_argument(
         "--seed-count-justification",
         default="",
         help="Required written justification when using fewer than 30 seeds per condition.",
@@ -133,6 +139,7 @@ def main() -> None:
     specs = _replicate_independent_specs(
         condition_specs,
         args.seeds_per_condition,
+        start_replicate=args.seed_replicate_start,
     )
     provenance = _provenance()
     identity = {
@@ -143,6 +150,7 @@ def main() -> None:
         "review_budget": args.review_budget,
         "target_validation_fpr": args.target_validation_fpr,
         "seeds_per_condition": args.seeds_per_condition,
+        "seed_replicate_start": args.seed_replicate_start,
         "seed_count_justification": args.seed_count_justification.strip(),
         "run_purpose": args.run_purpose,
         "design": args.design,
@@ -224,6 +232,7 @@ def main() -> None:
             "condition_count": len(condition_specs),
             "scenario_count": len(specs),
             "seeds_per_condition": args.seeds_per_condition,
+            "seed_replicate_start": args.seed_replicate_start,
             "minimum_seeds_per_condition": MIN_SEEDS_PER_CONDITION,
             "seed_count_justification": args.seed_count_justification.strip(),
             "employee_count_per_scenario": args.employee_count,
@@ -324,12 +333,18 @@ def _select_independent_conditions(
 def _replicate_independent_specs(
     conditions: tuple[IndependentScenarioSpec, ...],
     seeds_per_condition: int,
+    start_replicate: int = 1,
 ) -> tuple[IndependentScenarioSpec, ...]:
     if seeds_per_condition < 1:
         raise ValueError("seeds_per_condition must be positive")
+    if start_replicate < 1:
+        raise ValueError("start_replicate must be positive")
     replicated = []
     for condition in conditions:
-        for replicate_index in range(seeds_per_condition):
+        for replicate_index in range(
+            start_replicate - 1,
+            start_replicate - 1 + seeds_per_condition,
+        ):
             offset = replicate_index * 1_000_003
             spec = replace(
                 condition,

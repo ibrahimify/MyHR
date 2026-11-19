@@ -5,6 +5,8 @@ from itertools import combinations, product
 import pytest
 
 from scripts.run_tdk_independent_development import _select_independent_conditions
+from scripts.run_tdk_independent_development import _replicate_independent_specs
+from scripts.combine_tdk_independent_shards import _validate_shard_set
 from src.research.independent_scenarios import (
     anomaly_mechanisms,
     compatible_rare_patterns_by_population,
@@ -93,6 +95,110 @@ def test_development_and_validation_designs_use_disjoint_seeds() -> None:
     assert {spec.model_seed for spec in development}.isdisjoint({
         spec.model_seed for spec in validation
     })
+
+
+def test_seed_shards_equal_monolithic_replication() -> None:
+    conditions = independent_covering_scenario_matrix(
+        "independent_development",
+        employee_count=120,
+    )[:2]
+    monolithic = _replicate_independent_specs(conditions, 3)
+    sharded = tuple(
+        spec
+        for replicate in (1, 2, 3)
+        for spec in _replicate_independent_specs(
+            conditions,
+            1,
+            start_replicate=replicate,
+        )
+    )
+
+    assert {spec.scenario_id: spec for spec in monolithic} == {
+        spec.scenario_id: spec for spec in sharded
+    }
+
+
+def test_shard_combiner_requires_complete_nonoverlapping_replicates() -> None:
+    base = {
+        "protocol_version": "test",
+        "protocol_status": "draft_holdout_locked",
+        "analysis_plan_version": "test",
+        "run_purpose": "development",
+        "generator_run_purpose": "independent_development",
+        "design": "covering",
+        "artifact_schema_version": 7,
+        "condition_count": 2,
+        "employee_count_per_scenario": 120,
+        "review_budget": 0.1,
+        "target_validation_fpr": 0.05,
+        "model_comparison_included": True,
+        "holdout_accessed": False,
+        "provenance": {"git_commit": "abc123"},
+    }
+    metadata = [dict(base), dict(base), dict(base)]
+    shards = []
+    for replicate in (1, 2, 3):
+        shards.append([{
+            "scenario_id": f"{condition}-seed-{replicate:02d}",
+            "condition_id": condition,
+            "seed_replicate": str(replicate),
+        } for condition in ("c1", "c2")])
+
+    _, combined = _validate_shard_set(
+        metadata,
+        shards,
+        expected_seeds_per_condition=3,
+    )
+    assert len(combined) == 6
+
+    with pytest.raises(ValueError, match="incomplete"):
+        _validate_shard_set(
+            metadata[:2],
+            shards[:2],
+            expected_seeds_per_condition=3,
+        )
+    with pytest.raises(ValueError, match="overlapping"):
+        _validate_shard_set(
+            metadata,
+            [shards[0], shards[0], shards[2]],
+            expected_seeds_per_condition=3,
+        )
+
+
+def test_shard_combiner_rejects_mixed_source_revisions() -> None:
+    base = {
+        "protocol_version": "test",
+        "protocol_status": "draft_holdout_locked",
+        "analysis_plan_version": "test",
+        "run_purpose": "development",
+        "generator_run_purpose": "independent_development",
+        "design": "covering",
+        "artifact_schema_version": 7,
+        "condition_count": 1,
+        "employee_count_per_scenario": 120,
+        "review_budget": 0.1,
+        "target_validation_fpr": 0.05,
+        "model_comparison_included": True,
+        "holdout_accessed": False,
+        "provenance": {"git_commit": "abc123"},
+    }
+    changed = {**base, "provenance": {"git_commit": "different"}}
+    configs = [[{
+        "scenario_id": "c1-seed-01",
+        "condition_id": "c1",
+        "seed_replicate": "1",
+    }], [{
+        "scenario_id": "c1-seed-02",
+        "condition_id": "c1",
+        "seed_replicate": "2",
+    }]]
+
+    with pytest.raises(ValueError, match="different revisions"):
+        _validate_shard_set(
+            [base, changed],
+            configs,
+            expected_seeds_per_condition=2,
+        )
 
 
 def test_holdout_design_remains_unavailable() -> None:

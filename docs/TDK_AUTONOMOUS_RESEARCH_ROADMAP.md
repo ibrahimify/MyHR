@@ -1,4 +1,36 @@
 # TDK Autonomous Research Roadmap
+## Research Recovery - 2026-11-19
+
+- Recovery work is isolated on `research-recovery-2026-11-18`; the submitted
+  revision is preserved by tags and an external verified bundle. The final
+  holdout remains undefined, locked, and untouched.
+- A shared label-free scoring contract now compares Isolation Forest, Local
+  Outlier Factor, One-Class SVM, robust z-score, and IQR after identical
+  train-fitted preprocessing. All methods use the same invariant-negative
+  records and fixed review capacity. Historical Isolation Forest outputs were
+  not rewritten.
+- Paired inference now reports condition-balanced effects with hierarchical
+  bootstrap intervals while retaining scenario seeds as paired observations.
+  Policy-aware results are also contrasted with raw, wrong-policy, and
+  shuffled-policy representations in a separately labelled exploratory Holm
+  family.
+- The independent generator now supports three policy variants and disjoint
+  development/validation seed ranges. The proposed 36-condition design is
+  marginally balanced, excludes unlawful population-pattern combinations, and
+  covers every valid factor pair. It is not a frozen holdout design.
+- Write-once artifacts now include separate multi-method files. The independent
+  auditor verifies their metrics, populations, budgets, preprocessing,
+  condition-aware inference, truth separation, source revision, and checksums.
+  Seed shards reproduce the monolithic specification exactly; a strict combiner
+  rejects missing, overlapping, or mixed-revision shards.
+- Non-evidentiary smoke artifact `cf31e785fb27f77e` exercised 36 conditions and
+  passed the independent audit with `holdout_accessed: false`. Its model values
+  are integration diagnostics and must not be cited as research findings.
+- Verification checkpoint: 356 repository tests passed in 573.28 seconds before
+  the later shard/contrast additions; focused tests for those additions pass.
+  A fresh full-suite run and clean-revision shard smoke remain required before
+  protocol-scale development execution.
+
 ## Repository Maintenance After Submission - 2026-11-06
 
 - Two independent read-only audits reviewed the tracked repository structure,

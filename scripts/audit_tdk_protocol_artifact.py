@@ -452,7 +452,11 @@ def _verify_declared_matrix(
             by_condition[row["condition_id"]].append(row)
         if len(by_condition) != condition_count:
             raise ArtifactAuditError("declared condition count is incorrect")
-        expected_replicates = set(range(1, seeds_per_condition + 1))
+        replicate_start = int(metadata.get("seed_replicate_start", 1))
+        expected_replicates = set(range(
+            replicate_start,
+            replicate_start + seeds_per_condition,
+        ))
         for condition_id, rows in by_condition.items():
             replicates = {int(row["seed_replicate"]) for row in rows}
             if replicates != expected_replicates:
