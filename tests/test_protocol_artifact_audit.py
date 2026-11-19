@@ -23,6 +23,7 @@ from scripts.audit_tdk_protocol_artifact import (
 from scripts.run_tdk_protocol_experiment import (
     _aggregate_rows,
     _paired_comparisons,
+    _representation_control_contrasts,
     _robustness_slices,
 )
 from scripts.run_tdk_research_experiment import PROVENANCE_SOURCE_PATHS, _provenance
@@ -107,6 +108,10 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
             self._write_csv(
                 run_dir / "model_comparison_paired.csv",
                 _paired_comparisons(metrics),
+            )
+            self._write_csv(
+                run_dir / "model_comparison_control_contrasts.csv",
+                _representation_control_contrasts(metrics),
             )
             self._write_csv(
                 run_dir / "model_comparison_robustness.csv",

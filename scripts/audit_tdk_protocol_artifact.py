@@ -79,6 +79,18 @@ SECONDARY_COMPARISON_METRICS = (
     "rare_legitimate_flagged_rate",
     "ordinary_clean_flagged_rate",
 )
+CONTROL_CONTRAST_METRICS = (
+    "recall",
+    "precision",
+    "average_precision",
+    "false_positives",
+    "rare_legitimate_flagged_rate",
+)
+CONTROL_CONTRASTS = (
+    ("policy_matched", "raw_matched", "policy_minus_raw"),
+    ("policy_matched", "wrong_policy_control", "policy_minus_wrong_policy"),
+    ("policy_matched", "shuffled_policy_control", "policy_minus_shuffled_policy"),
+)
 
 
 class ArtifactAuditError(RuntimeError):
@@ -142,6 +154,7 @@ def _verify_model_comparison(
         "model_comparison_predictions.csv",
         "model_comparison_aggregates.csv",
         "model_comparison_paired.csv",
+        "model_comparison_control_contrasts.csv",
         "model_comparison_robustness.csv",
     )
     present = tuple(name for name in names if (run_dir / name).is_file())
@@ -157,9 +170,11 @@ def _verify_model_comparison(
     prediction_rows = _read_csv(run_dir / names[1])
     aggregate_rows = _read_csv(run_dir / names[2])
     paired_rows = _read_csv(run_dir / names[3])
+    contrast_rows = _read_csv(run_dir / names[4])
     _verify_scenario_metrics(metric_rows, prediction_rows)
     _verify_aggregates(metric_rows, aggregate_rows)
     paired_schema = _verify_paired_comparisons(metric_rows, paired_rows)
+    _verify_control_contrasts(metric_rows, contrast_rows)
 
     expected_methods = {
         "isolation_forest",
@@ -213,7 +228,140 @@ def _verify_model_comparison(
         "metric_rows": len(metric_rows),
         "prediction_rows": len(prediction_rows),
         "paired_schema": paired_schema,
+        "control_contrast_rows": len(contrast_rows),
     }
+
+
+def _verify_control_contrasts(
+    metric_rows: list[dict[str, str]],
+    stored_rows: list[dict[str, str]],
+) -> None:
+    expected = _audit_control_contrasts(metric_rows)
+    key_fields = ("method", "operating_point", "contrast")
+    stored = {
+        tuple(row[field] for field in key_fields): row
+        for row in stored_rows
+    }
+    if len(stored) != len(stored_rows) or len(stored) != len(expected):
+        raise ArtifactAuditError("control contrast groups do not match metrics")
+    string_fields = {
+        "method",
+        "operating_point",
+        "contrast",
+        "reference_representation",
+        "comparator_representation",
+        "comparison_status",
+        "inference_unit",
+    }
+    for item in expected:
+        key = tuple(str(item[field]) for field in key_fields)
+        row = stored.get(key)
+        if row is None:
+            raise ArtifactAuditError(f"missing control contrast: {key}")
+        for column, actual in item.items():
+            if actual == "":
+                if row[column] != "":
+                    raise ArtifactAuditError(f"control contrast {column} must be blank")
+            elif column in string_fields or column.endswith("_condition_seed_counts"):
+                if row[column] != str(actual):
+                    raise ArtifactAuditError(f"control contrast {column} mismatch")
+            elif (
+                column in {"scenario_count", "condition_count", "holm_family_size"}
+                or column.endswith("_scenario_count")
+                or column.endswith("_condition_count")
+            ):
+                if int(row[column]) != int(actual):
+                    raise ArtifactAuditError(f"control contrast {column} mismatch")
+            elif abs(_parse_float(row[column], column) - float(actual)) > 1e-12:
+                raise ArtifactAuditError(f"control contrast {column} mismatch")
+
+
+def _audit_control_contrasts(
+    rows: list[dict[str, str]],
+) -> list[dict[str, object]]:
+    indexed = {
+        (row["scenario_id"], row["method"], row["representation"], row["operating_point"]): row
+        for row in rows
+    }
+    output: list[dict[str, object]] = []
+    for method in sorted({row["method"] for row in rows}):
+        for operating_point in sorted({row["operating_point"] for row in rows}):
+            family = []
+            for reference, comparator, contrast in CONTROL_CONTRASTS:
+                pairs = []
+                for scenario_id in sorted({row["scenario_id"] for row in rows}):
+                    left = indexed.get((scenario_id, method, reference, operating_point))
+                    right = indexed.get((scenario_id, method, comparator, operating_point))
+                    if left is not None and right is not None:
+                        pairs.append((left, right))
+                if not pairs:
+                    continue
+                item: dict[str, object] = {
+                    "method": method,
+                    "operating_point": operating_point,
+                    "contrast": contrast,
+                    "reference_representation": reference,
+                    "comparator_representation": comparator,
+                    "comparison_status": "exploratory_development",
+                    "scenario_count": len(pairs),
+                    "condition_count": len({
+                        _condition_id(left["scenario_id"]) for left, _ in pairs
+                    }),
+                    "inference_unit": "scenario_seed_condition_stratified",
+                }
+                for metric in CONTROL_CONTRAST_METRICS:
+                    grouped: dict[str, list[float]] = defaultdict(list)
+                    for left, right in pairs:
+                        if left[metric] == "" or right[metric] == "":
+                            continue
+                        grouped[_condition_id(left["scenario_id"])].append(
+                            _parse_float(left[metric], metric)
+                            - _parse_float(right[metric], metric)
+                        )
+                    item[f"{metric}_scenario_count"] = sum(map(len, grouped.values()))
+                    item[f"{metric}_condition_count"] = len(grouped)
+                    if not grouped:
+                        for suffix in (
+                            "delta_mean", "delta_median", "delta_std",
+                            "delta_ci95_low", "delta_ci95_high",
+                            "delta_sign_flip_p", "delta_holm_p",
+                        ):
+                            item[f"{metric}_{suffix}"] = ""
+                        item[f"{metric}_condition_seed_counts"] = ""
+                        continue
+                    summary = _audit_condition_balanced_summary(
+                        grouped,
+                        _stable_seed(
+                            "control", method, operating_point, contrast, metric
+                        ),
+                    )
+                    item[f"{metric}_delta_mean"] = summary["mean"]
+                    item[f"{metric}_delta_median"] = summary["median"]
+                    item[f"{metric}_delta_std"] = summary["std"]
+                    item[f"{metric}_delta_ci95_low"] = summary["ci_low"]
+                    item[f"{metric}_delta_ci95_high"] = summary["ci_high"]
+                    item[f"{metric}_delta_sign_flip_p"] = summary["sign_flip_p"]
+                    item[f"{metric}_delta_holm_p"] = ""
+                    item[f"{metric}_condition_seed_counts"] = "|".join(
+                        str(value) for value in summary["seed_counts"]
+                    )
+                family.append(item)
+            locations = [
+                (item, metric)
+                for item in family
+                for metric in CONTROL_CONTRAST_METRICS
+                if item.get(f"{metric}_delta_sign_flip_p") not in {"", None}
+            ]
+            adjusted = _holm_adjusted_pvalues([
+                float(item[f"{metric}_delta_sign_flip_p"])
+                for item, metric in locations
+            ])
+            for (item, metric), value in zip(locations, adjusted):
+                item[f"{metric}_delta_holm_p"] = value
+            for item in family:
+                item["holm_family_size"] = len(locations)
+            output.extend(family)
+    return output
 
 
 def _verify_boundary(metadata: dict[str, Any]) -> None:

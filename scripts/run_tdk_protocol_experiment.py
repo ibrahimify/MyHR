@@ -43,6 +43,18 @@ SECONDARY_COMPARISON_METRICS = (
     "rare_legitimate_flagged_rate",
     "ordinary_clean_flagged_rate",
 )
+CONTROL_CONTRAST_METRICS = (
+    "recall",
+    "precision",
+    "average_precision",
+    "false_positives",
+    "rare_legitimate_flagged_rate",
+)
+CONTROL_CONTRASTS = (
+    ("policy_matched", "raw_matched", "policy_minus_raw"),
+    ("policy_matched", "wrong_policy_control", "policy_minus_wrong_policy"),
+    ("policy_matched", "shuffled_policy_control", "policy_minus_shuffled_policy"),
+)
 LEGACY_AUDITED_PAIR_METRICS = (
     "precision",
     "recall",
@@ -442,6 +454,118 @@ def _paired_comparisons(rows: list[dict[str, object]]) -> list[dict[str, object]
             "",
         )
     return comparisons
+
+
+def _representation_control_contrasts(
+    rows: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    """Compare policy-aware scores with raw and policy-negative controls."""
+
+    indexed = {
+        (
+            str(row["scenario_id"]),
+            str(row["method"]),
+            str(row["representation"]),
+            str(row["operating_point"]),
+        ): row
+        for row in rows
+    }
+    methods = sorted({str(row["method"]) for row in rows})
+    operating_points = sorted({str(row["operating_point"]) for row in rows})
+    scenario_ids = sorted({str(row["scenario_id"]) for row in rows})
+    output: list[dict[str, object]] = []
+    for method in methods:
+        for operating_point in operating_points:
+            family_rows = []
+            for reference, comparator, contrast_name in CONTROL_CONTRASTS:
+                pairs = []
+                for scenario_id in scenario_ids:
+                    left = indexed.get((scenario_id, method, reference, operating_point))
+                    right = indexed.get((scenario_id, method, comparator, operating_point))
+                    if left is not None and right is not None:
+                        pairs.append((left, right))
+                if not pairs:
+                    continue
+                item: dict[str, object] = {
+                    "method": method,
+                    "operating_point": operating_point,
+                    "contrast": contrast_name,
+                    "reference_representation": reference,
+                    "comparator_representation": comparator,
+                    "comparison_status": "exploratory_development",
+                    "scenario_count": len(pairs),
+                    "condition_count": len({
+                        _condition_id(str(left["scenario_id"]))
+                        for left, _ in pairs
+                    }),
+                    "inference_unit": "scenario_seed_condition_stratified",
+                }
+                for metric in CONTROL_CONTRAST_METRICS:
+                    deltas_by_condition: dict[str, list[float]] = defaultdict(list)
+                    for left, right in pairs:
+                        if (
+                            left.get(metric) in {"", None}
+                            or right.get(metric) in {"", None}
+                        ):
+                            continue
+                        deltas_by_condition[
+                            _condition_id(str(left["scenario_id"]))
+                        ].append(float(left[metric]) - float(right[metric]))
+                    item[f"{metric}_scenario_count"] = sum(
+                        len(values) for values in deltas_by_condition.values()
+                    )
+                    item[f"{metric}_condition_count"] = len(deltas_by_condition)
+                    if not deltas_by_condition:
+                        for suffix in (
+                            "delta_mean",
+                            "delta_median",
+                            "delta_std",
+                            "delta_ci95_low",
+                            "delta_ci95_high",
+                            "delta_sign_flip_p",
+                            "delta_holm_p",
+                        ):
+                            item[f"{metric}_{suffix}"] = ""
+                        item[f"{metric}_condition_seed_counts"] = ""
+                        continue
+                    summary = condition_balanced_paired_summary(
+                        deltas_by_condition,
+                        seed=_stable_seed(
+                            "control",
+                            method,
+                            operating_point,
+                            contrast_name,
+                            metric,
+                        ),
+                    )
+                    item[f"{metric}_delta_mean"] = summary.effect_mean
+                    item[f"{metric}_delta_median"] = summary.effect_median
+                    item[f"{metric}_delta_std"] = summary.effect_std
+                    item[f"{metric}_delta_ci95_low"] = summary.ci95_low
+                    item[f"{metric}_delta_ci95_high"] = summary.ci95_high
+                    item[f"{metric}_delta_sign_flip_p"] = summary.sign_flip_pvalue
+                    item[f"{metric}_delta_holm_p"] = ""
+                    item[f"{metric}_condition_seed_counts"] = "|".join(
+                        str(value) for value in summary.condition_seed_counts
+                    )
+                family_rows.append(item)
+
+            locations = [
+                (item, metric)
+                for item in family_rows
+                for metric in CONTROL_CONTRAST_METRICS
+                if item.get(f"{metric}_delta_sign_flip_p") not in {"", None}
+            ]
+            adjusted = _holm_adjusted_pvalues([
+                float(item[f"{metric}_delta_sign_flip_p"])
+                for item, metric in locations
+            ])
+            for (item, metric), adjusted_pvalue in zip(locations, adjusted):
+                item[f"{metric}_delta_holm_p"] = adjusted_pvalue
+            for item in family_rows:
+                item["holm_family_size"] = len(locations)
+            output.extend(family_rows)
+    return output
 
 
 def _robustness_slices(rows: list[dict[str, object]]) -> list[dict[str, object]]:

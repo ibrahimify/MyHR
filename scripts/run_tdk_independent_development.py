@@ -28,6 +28,7 @@ from scripts.run_tdk_protocol_experiment import (
     SECONDARY_COMPARISON_METRICS,
     _aggregate_rows,
     _paired_comparisons,
+    _representation_control_contrasts,
     _robustness_slices,
     _utility_sensitivity,
     _write_csv,
@@ -274,6 +275,12 @@ def main() -> None:
             _write_csv(
                 run_dir / "model_comparison_paired.csv",
                 _paired_comparisons(model_comparison_metric_rows),
+            )
+            _write_csv(
+                run_dir / "model_comparison_control_contrasts.csv",
+                _representation_control_contrasts(
+                    model_comparison_metric_rows
+                ),
             )
             _write_csv(
                 run_dir / "model_comparison_robustness.csv",
