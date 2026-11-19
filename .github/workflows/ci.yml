@@ -6,6 +6,7 @@ on:
       - master
       - thesis
       - research
+      - "research-recovery-*"
   pull_request:
     branches:
       - master
@@ -50,15 +51,16 @@ jobs:
           python -m py_compile src/ui/pages/dashboard.py
           python -m py_compile src/services/anomaly_detection/*.py
           python -m py_compile src/research/literature.py
-          python -m py_compile src/research/independent_scenarios.py src/research/independent_scenario_adapter.py
+          python -m py_compile src/research/independent_scenarios.py src/research/independent_scenario_adapter.py src/research/condition_statistics.py
           python -m py_compile scripts/refresh_tdk_literature.py scripts/fetch_tdk_fulltext.py
           python -m py_compile scripts/build_tdk_citation_network.py scripts/verify_literature_artifact.py
           python -m py_compile scripts/audit_tdk_protocol_artifact.py
           python -m py_compile scripts/run_tdk_independent_development.py
+          python -m py_compile scripts/combine_tdk_independent_shards.py
           python -m py_compile scripts/verify_tdk_citations.py scripts/record_tdk_claim.py
 
       - name: Verify research citation governance
         run: python scripts/verify_tdk_citations.py
 
       - name: Run full test suite
-        run: python -m unittest discover -s tests
+        run: python -m pytest tests -q
