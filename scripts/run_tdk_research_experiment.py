@@ -162,6 +162,11 @@ def _provenance() -> dict[str, Any]:
     from scripts.verify_research_environment import environment_report
 
     environment = environment_report()
+    if environment["mismatches"]:
+        raise RuntimeError(
+            "research environment does not match the declared lock: "
+            + "; ".join(environment["mismatches"])
+        )
     packages = dict(environment["packages"])
     return {
         "command": [sys.executable, *sys.argv],

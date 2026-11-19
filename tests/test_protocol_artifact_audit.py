@@ -2,6 +2,7 @@ import csv
 import json
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 from hashlib import sha256
 from pathlib import Path
@@ -15,6 +16,7 @@ from scripts.audit_tdk_protocol_artifact import (
     _verify_declared_matrix,
     _verify_paired_comparisons,
     _verify_model_comparison,
+    _verify_research_environment,
     _requires_bitemporal_contract,
     _verify_scenario_metrics,
     _verify_temporal_view_rows,
@@ -60,6 +62,43 @@ def _complete_source_hashes() -> dict:
 
 
 class ProtocolArtifactAuditTests(unittest.TestCase):
+    def test_schema_eight_environment_provenance_matches_locked_revision(self):
+        lock_bytes = b"numpy==2.5.4\nscipy==1.18.1\n"
+        metadata = {
+            "artifact_schema_version": 8,
+            "provenance": {
+                "git_commit": "revision",
+                "python_version": "3.13.5 (main, test)",
+                "packages": {"numpy": "2.5.4", "scipy": "1.18.1"},
+                "research_environment": {
+                    "expected_python_version": "3.13.5",
+                    "lock_file": "requirements-research-lock.txt",
+                    "lock_sha256": sha256(lock_bytes).hexdigest(),
+                    "mismatches": [],
+                },
+            },
+        }
+
+        with patch(
+            "scripts.audit_tdk_protocol_artifact.subprocess.run",
+            return_value=SimpleNamespace(returncode=0, stdout=lock_bytes),
+        ):
+            _verify_research_environment(metadata, Path.cwd())
+
+    def test_schema_eight_environment_provenance_rejects_drift(self):
+        metadata = {
+            "artifact_schema_version": 8,
+            "provenance": {
+                "research_environment": {"mismatches": ["numpy drift"]},
+            },
+        }
+
+        with self.assertRaisesRegex(ArtifactAuditError, "environment drift"):
+            _verify_research_environment(metadata, Path.cwd())
+
+    def test_legacy_environment_provenance_remains_optional(self):
+        _verify_research_environment({"artifact_schema_version": 7}, Path.cwd())
+
     def test_current_independent_protocol_requires_bitemporal_contract(self):
         self.assertTrue(_requires_bitemporal_contract(
             "independent-scenarios-v3-2026-11-19",
@@ -105,6 +144,14 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
             ("status", "--porcelain", "--untracked-files=no"),
             calls,
         )
+
+    def test_provenance_rejects_environment_drift(self):
+        with patch(
+            "scripts.verify_research_environment.environment_report",
+            return_value={"mismatches": ["python drift"]},
+        ):
+            with self.assertRaisesRegex(RuntimeError, "python drift"):
+                _provenance()
 
     def test_model_comparison_is_independently_verified(self):
         spec = independent_covering_scenario_matrix(

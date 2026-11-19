@@ -226,7 +226,7 @@ def main() -> None:
             ),
             "generator_run_purpose": args.run_purpose,
             "design": args.design,
-            "artifact_schema_version": 7,
+            "artifact_schema_version": 8,
             "analysis_plan_version": ANALYSIS_PLAN_VERSION,
             "truth_sidecars_required": True,
             "condition_count": len(condition_specs),
