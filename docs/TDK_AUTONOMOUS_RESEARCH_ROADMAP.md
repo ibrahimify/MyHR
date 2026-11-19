@@ -26,10 +26,19 @@
 - Non-evidentiary smoke artifact `cf31e785fb27f77e` exercised 36 conditions and
   passed the independent audit with `holdout_accessed: false`. Its model values
   are integration diagnostics and must not be cited as research findings.
-- Verification checkpoint: 356 repository tests passed in 573.28 seconds before
-  the later shard/contrast additions; focused tests for those additions pass.
-  A fresh full-suite run and clean-revision shard smoke remain required before
-  protocol-scale development execution.
+- A dimension-matched policy-free rate control now separates the possible value
+  of correct policy knowledge from the value of three additional continuous
+  rate features. It is included only in the exploratory multi-method comparison
+  and the auditor verifies its population, budget, preprocessing, and contrasts.
+- Clean-commit smoke artifact `234de0b1afe5b02c` exercised all 36 conditions,
+  five feature representations, and five outlier scorers. Its 900 model metric
+  rows and 21,600 model predictions passed the independent artifact audit with
+  `holdout_accessed: false`. It is an integration check, not research evidence.
+- Verification checkpoint: the complete local suite passed 356 tests in 573.28
+  seconds before the later shard and control additions; focused tests for those
+  additions pass. GitHub Actions run `44577221952` passed at commit `7a03035`.
+  A 30-seed development run remains required before validation or protocol
+  freeze can be considered.
 
 ## Repository Maintenance After Submission - 2026-11-06
 
