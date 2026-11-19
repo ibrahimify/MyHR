@@ -12,6 +12,7 @@ on:
       - master
       - thesis
       - research
+      - "research-recovery-*"
 
 jobs:
   test:
