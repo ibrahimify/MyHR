@@ -62,6 +62,7 @@ from src.services.anomaly_detection.temporal_diagnostics import (
 
 
 PROTOCOL_VERSION = "independent-scenarios-v3-2026-11-19"
+ARTIFACT_SCHEMA_VERSION = 8
 
 
 @contextmanager
@@ -226,7 +227,7 @@ def main() -> None:
             ),
             "generator_run_purpose": args.run_purpose,
             "design": args.design,
-            "artifact_schema_version": 8,
+            "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
             "analysis_plan_version": ANALYSIS_PLAN_VERSION,
             "truth_sidecars_required": True,
             "condition_count": len(condition_specs),

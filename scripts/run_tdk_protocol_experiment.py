@@ -31,6 +31,7 @@ from src.services.anomaly_detection.scenario_generation import (
 
 PROTOCOL_VERSION = "draft-v2.4-2026-10-16"
 PROTOCOL_STATUS = "draft_validation_holdout_locked"
+ARTIFACT_SCHEMA_VERSION = 8
 ANALYSIS_PLAN_VERSION = "approved-evaluation-v1-2026-10-30"
 MIN_SEEDS_PER_CONDITION = 30
 PRIMARY_COMPARISON = (
@@ -155,7 +156,7 @@ def main() -> None:
     identity = {
         "protocol_version": PROTOCOL_VERSION,
         "protocol_status": PROTOCOL_STATUS,
-        "artifact_schema_version": 8,
+        "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
         "analysis_plan_version": ANALYSIS_PLAN_VERSION,
         "run_purpose": args.run_purpose,
         "scenario_configs": [asdict(config) for config in configs],
@@ -203,6 +204,7 @@ def main() -> None:
         "artifact_id": artifact_id,
         "protocol_version": PROTOCOL_VERSION,
         "protocol_status": PROTOCOL_STATUS,
+        "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
         "analysis_plan_version": ANALYSIS_PLAN_VERSION,
         "holdout_accessed": False,
         "run_purpose": args.run_purpose,

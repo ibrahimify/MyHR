@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from hashlib import sha256
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -14,9 +15,20 @@ from scripts.verify_research_environment import (
     read_lock,
     unlocked_dependencies,
 )
+from scripts.run_tdk_independent_development import (
+    ARTIFACT_SCHEMA_VERSION as INDEPENDENT_SCHEMA_VERSION,
+)
+from scripts.run_tdk_protocol_experiment import (
+    ARTIFACT_SCHEMA_VERSION as PROTOCOL_SCHEMA_VERSION,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_current_artifact_runners_declare_schema_eight() -> None:
+    assert INDEPENDENT_SCHEMA_VERSION == 8
+    assert PROTOCOL_SCHEMA_VERSION == 8
 
 
 def test_research_lock_contains_only_exact_versions(tmp_path: Path) -> None:
@@ -61,6 +73,16 @@ def test_canonical_hash_ignores_checkout_line_endings(tmp_path: Path) -> None:
     crlf.write_bytes(b"numpy==2.5.4\r\n")
 
     assert sha256(_canonical_bytes(lf)).digest() == sha256(_canonical_bytes(crlf)).digest()
+
+
+def test_unlocked_dependency_is_reported() -> None:
+    with patch(
+        "scripts.verify_research_environment.distribution",
+        return_value=SimpleNamespace(requires=["unlocked-package>=1"]),
+    ):
+        assert unlocked_dependencies({"root-package": "1.0"}) == [
+            "root-package -> unlocked-package"
+        ]
 
 
 def test_environment_report_detects_python_and_package_drift() -> None:

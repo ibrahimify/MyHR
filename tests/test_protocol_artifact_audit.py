@@ -1,4 +1,5 @@
 import csv
+import copy
 import json
 import tempfile
 import unittest
@@ -131,6 +132,67 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
         ):
             _verify_research_environment(metadata, Path.cwd())
 
+    def test_environment_provenance_rejects_forged_metadata(self):
+        declaration_bytes = (
+            b'{"python_version":"3.13.5",'
+            b'"lock_file":"requirements-research-lock.txt"}\n'
+        )
+        lock_bytes = b"numpy==2.5.4\n"
+        base = {
+            "artifact_schema_version": 8,
+            "provenance": {
+                "git_commit": "revision",
+                "python_version": "3.13.5 (main, test)",
+                "packages": {"numpy": "2.5.4"},
+                "research_environment": {
+                    "expected_python_version": "3.13.5",
+                    "declaration_file": "research-environment.json",
+                    "declaration_sha256": sha256(declaration_bytes).hexdigest(),
+                    "lock_file": "requirements-research-lock.txt",
+                    "lock_sha256": sha256(lock_bytes).hexdigest(),
+                    "mismatches": [],
+                },
+            },
+        }
+        mutations = (
+            lambda value: value["provenance"]["research_environment"].update(
+                expected_python_version="3.12.0"
+            ),
+            lambda value: value["provenance"]["research_environment"].update(
+                declaration_sha256="forged"
+            ),
+            lambda value: value["provenance"]["research_environment"].update(
+                lock_sha256="forged"
+            ),
+            lambda value: value["provenance"]["packages"].update(numpy="0.0"),
+        )
+        for mutate in mutations:
+            metadata = copy.deepcopy(base)
+            mutate(metadata)
+            with self.subTest(metadata=metadata), patch(
+                "scripts.audit_tdk_protocol_artifact.subprocess.run",
+                side_effect=(
+                    SimpleNamespace(returncode=0, stdout=declaration_bytes),
+                    SimpleNamespace(returncode=0, stdout=lock_bytes),
+                ),
+            ):
+                with self.assertRaises(ArtifactAuditError):
+                    _verify_research_environment(metadata, Path.cwd())
+
+    def test_schema_downgrade_cannot_bypass_new_revision_checks(self):
+        declaration_bytes = b'{"python_version":"3.13.5","lock_file":"requirements-research-lock.txt"}\n'
+        metadata = {
+            "artifact_schema_version": 7,
+            "provenance": {"git_commit": "new-revision"},
+        }
+
+        with patch(
+            "scripts.audit_tdk_protocol_artifact.subprocess.run",
+            return_value=SimpleNamespace(returncode=0, stdout=declaration_bytes),
+        ):
+            with self.assertRaisesRegex(ArtifactAuditError, "provenance is missing"):
+                _verify_research_environment(metadata, Path.cwd())
+
     def test_schema_eight_environment_provenance_rejects_drift(self):
         declaration_bytes = (
             b'{"python_version":"3.13.5",'
@@ -152,7 +214,17 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
                 _verify_research_environment(metadata, Path.cwd())
 
     def test_legacy_environment_provenance_remains_optional(self):
-        _verify_research_environment({"artifact_schema_version": 7}, Path.cwd())
+        with patch(
+            "scripts.audit_tdk_protocol_artifact.subprocess.run",
+            return_value=SimpleNamespace(returncode=1, stdout=b""),
+        ):
+            _verify_research_environment(
+                {
+                    "artifact_schema_version": 7,
+                    "provenance": {"git_commit": "historical-revision"},
+                },
+                Path.cwd(),
+            )
 
     def test_current_independent_protocol_requires_bitemporal_contract(self):
         self.assertTrue(_requires_bitemporal_contract(
