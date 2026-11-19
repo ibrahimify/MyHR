@@ -112,6 +112,7 @@ def audit_artifact(run_dir: Path, repo_root: Path | None = None) -> dict[str, An
         protocol_version=str(metadata.get("protocol_version", "")),
         artifact_schema_version=int(metadata.get("artifact_schema_version", 0)),
     )
+    model_comparison = _verify_model_comparison(run_dir, metadata)
 
     scenarios = {row["scenario_id"] for row in metric_rows}
     return {
@@ -126,8 +127,92 @@ def audit_artifact(run_dir: Path, repo_root: Path | None = None) -> dict[str, An
         "paired_comparison_rows": len(paired_rows),
         "paired_comparison_schema": paired_schema,
         "truth_sidecars": truth_sidecars,
+        "model_comparison": model_comparison,
         "manifest_file_count": len(manifest["files"]),
         "selected_results": _selected_results(aggregate_rows),
+    }
+
+
+def _verify_model_comparison(
+    run_dir: Path,
+    metadata: dict[str, Any],
+) -> dict[str, Any]:
+    names = (
+        "model_comparison_metrics.csv",
+        "model_comparison_predictions.csv",
+        "model_comparison_aggregates.csv",
+        "model_comparison_paired.csv",
+        "model_comparison_robustness.csv",
+    )
+    present = tuple(name for name in names if (run_dir / name).is_file())
+    required = metadata.get("model_comparison_included") is True
+    if not present:
+        if required:
+            raise ArtifactAuditError("declared model comparison files are missing")
+        return {"present": False}
+    if present != names:
+        raise ArtifactAuditError("model comparison file set is incomplete")
+
+    metric_rows = _read_csv(run_dir / names[0])
+    prediction_rows = _read_csv(run_dir / names[1])
+    aggregate_rows = _read_csv(run_dir / names[2])
+    paired_rows = _read_csv(run_dir / names[3])
+    _verify_scenario_metrics(metric_rows, prediction_rows)
+    _verify_aggregates(metric_rows, aggregate_rows)
+    paired_schema = _verify_paired_comparisons(metric_rows, paired_rows)
+
+    expected_methods = {
+        "isolation_forest",
+        "local_outlier_factor",
+        "one_class_svm",
+        "robust_z_score",
+        "iqr",
+    }
+    expected_representations = {
+        "raw_matched",
+        "policy_matched",
+        "wrong_policy_control",
+        "shuffled_policy_control",
+    }
+    by_scenario: dict[str, list[dict[str, str]]] = defaultdict(list)
+    predictions_by_scenario: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for row in metric_rows:
+        by_scenario[row["scenario_id"]].append(row)
+        if row.get("comparison_status") != "exploratory_development":
+            raise ArtifactAuditError("model comparison status is not exploratory")
+        parameters = json.loads(row["scorer_parameters_json"])
+        if parameters.get("preprocessing") != "train_fitted_robust_scaler":
+            raise ArtifactAuditError("model comparison preprocessing is inconsistent")
+        if parameters.get("score_direction") != "larger_is_more_anomalous":
+            raise ArtifactAuditError("model comparison score direction is inconsistent")
+        if {"labels", "review_budget", "anomaly_prevalence"}.intersection(parameters):
+            raise ArtifactAuditError("evaluation information leaked into scorer parameters")
+    for row in prediction_rows:
+        predictions_by_scenario[row["scenario_id"]].append(row)
+
+    expected_matrix = set(product(expected_methods, expected_representations))
+    for scenario_id, rows in by_scenario.items():
+        actual_matrix = {(row["method"], row["representation"]) for row in rows}
+        if actual_matrix != expected_matrix:
+            raise ArtifactAuditError(
+                f"model comparison matrix is incomplete for {scenario_id}"
+            )
+        if len({int(row["evaluation_count"]) for row in rows}) != 1:
+            raise ArtifactAuditError("model comparison populations differ")
+        if len({int(row["alert_count"]) for row in rows}) != 1:
+            raise ArtifactAuditError("model comparison review capacities differ")
+        groups: dict[tuple[str, str], set[str]] = defaultdict(set)
+        for row in predictions_by_scenario[scenario_id]:
+            groups[(row["method"], row["representation"])].add(row["employee_id"])
+        if set(groups) != expected_matrix or len({frozenset(ids) for ids in groups.values()}) != 1:
+            raise ArtifactAuditError("model comparison employee populations differ")
+
+    return {
+        "present": True,
+        "scenario_count": len(by_scenario),
+        "metric_rows": len(metric_rows),
+        "prediction_rows": len(prediction_rows),
+        "paired_schema": paired_schema,
     }
 
 
@@ -545,10 +630,12 @@ def _verify_paired_comparisons(
             + ", ".join(missing_legacy)
         )
     include_declared_plan = "comparison_role" in stored_columns
+    condition_aware = "inference_unit" in stored_columns
     expected = _recompute_paired_comparisons(
         metric_rows,
         include_declared_plan=include_declared_plan,
         pair_metrics=audited_metrics,
+        condition_aware=condition_aware,
     )
     if len(expected) != len(paired_rows):
         raise ArtifactAuditError("paired comparison groups do not match scenario metrics")
@@ -575,14 +662,15 @@ def _verify_paired_comparisons(
                 continue
             if column in {
                 "method", "operating_point", "comparison_role",
-                "primary_endpoint",
-            }:
-                if stored[column] != actual:
+                "primary_endpoint", "inference_unit",
+            } or column.endswith("_condition_seed_counts"):
+                if stored[column] != str(actual):
                     raise ArtifactAuditError(f"paired {column} mismatch for {key}")
             elif column in {
-                "scenario_count", "secondary_family_declared_size",
+                "scenario_count", "condition_count",
+                "secondary_family_declared_size",
                 "secondary_family_tested_size",
-            }:
+            } or column.endswith("_condition_count"):
                 if int(stored[column]) != actual:
                     raise ArtifactAuditError(f"paired {column} mismatch for {key}")
             elif abs(_parse_float(stored[column], column) - float(actual)) > 1e-12:
@@ -1071,6 +1159,7 @@ def _recompute_paired_comparisons(
     *,
     include_declared_plan: bool = False,
     pair_metrics: tuple[str, ...] = PAIR_METRICS,
+    condition_aware: bool = False,
 ) -> list[dict[str, object]]:
     metric_keys = [
         (row["scenario_id"], row["method"], row["representation"], row["operating_point"])
@@ -1108,6 +1197,12 @@ def _recompute_paired_comparisons(
                 "operating_point": operating_point,
                 "scenario_count": len(pairs),
             }
+            if condition_aware:
+                item["condition_count"] = len({
+                    _condition_id(raw["scenario_id"])
+                    for raw, _ in pairs
+                })
+                item["inference_unit"] = "scenario_seed_condition_stratified"
             is_primary = (method, operating_point) == PRIMARY_COMPARISON
             if include_declared_plan:
                 item["comparison_role"] = (
@@ -1124,12 +1219,20 @@ def _recompute_paired_comparisons(
                     (raw, policy) for raw, policy in pairs
                     if raw[metric] != "" and policy[metric] != ""
                 ]
+                deltas_by_condition: dict[str, list[float]] = defaultdict(list)
+                for raw, policy in eligible_pairs:
+                    deltas_by_condition[_condition_id(raw["scenario_id"])].append(
+                        _parse_float(policy[metric], metric)
+                        - _parse_float(raw[metric], metric)
+                    )
                 deltas = [
-                    _parse_float(policy[metric], metric)
-                    - _parse_float(raw[metric], metric)
-                    for raw, policy in eligible_pairs
+                    value
+                    for condition_values in deltas_by_condition.values()
+                    for value in condition_values
                 ]
                 item[f"{metric}_scenario_count"] = len(deltas)
+                if condition_aware:
+                    item[f"{metric}_condition_count"] = len(deltas_by_condition)
                 if not deltas:
                     for suffix in (
                         "delta_mean", "delta_median", "delta_std",
@@ -1140,19 +1243,36 @@ def _recompute_paired_comparisons(
                     if include_declared_plan:
                         item[f"{metric}_delta_holm_all_p"] = ""
                         item[f"{metric}_delta_holm_secondary_p"] = ""
+                    if condition_aware:
+                        item[f"{metric}_condition_seed_counts"] = ""
                     continue
-                ci_low, ci_high = _bootstrap_mean_ci(
-                    deltas, _stable_seed(method, operating_point, metric)
-                )
                 prefix = f"{metric}_delta"
-                item[f"{prefix}_mean"] = mean(deltas)
-                item[f"{prefix}_median"] = median(deltas)
-                item[f"{prefix}_std"] = stdev(deltas) if len(deltas) > 1 else 0.0
-                item[f"{prefix}_ci95_low"] = ci_low
-                item[f"{prefix}_ci95_high"] = ci_high
-                item[f"{prefix}_sign_flip_p"] = _paired_sign_flip_pvalue(
-                    deltas, _stable_seed("sign", method, operating_point, metric)
-                )
+                if condition_aware:
+                    summary = _audit_condition_balanced_summary(
+                        deltas_by_condition,
+                        _stable_seed(method, operating_point, metric),
+                    )
+                    item[f"{prefix}_mean"] = summary["mean"]
+                    item[f"{prefix}_median"] = summary["median"]
+                    item[f"{prefix}_std"] = summary["std"]
+                    item[f"{prefix}_ci95_low"] = summary["ci_low"]
+                    item[f"{prefix}_ci95_high"] = summary["ci_high"]
+                    item[f"{prefix}_sign_flip_p"] = summary["sign_flip_p"]
+                    item[f"{metric}_condition_seed_counts"] = "|".join(
+                        str(value) for value in summary["seed_counts"]
+                    )
+                else:
+                    ci_low, ci_high = _bootstrap_mean_ci(
+                        deltas, _stable_seed(method, operating_point, metric)
+                    )
+                    item[f"{prefix}_mean"] = mean(deltas)
+                    item[f"{prefix}_median"] = median(deltas)
+                    item[f"{prefix}_std"] = stdev(deltas) if len(deltas) > 1 else 0.0
+                    item[f"{prefix}_ci95_low"] = ci_low
+                    item[f"{prefix}_ci95_high"] = ci_high
+                    item[f"{prefix}_sign_flip_p"] = _paired_sign_flip_pvalue(
+                        deltas, _stable_seed("sign", method, operating_point, metric)
+                    )
                 if include_declared_plan:
                     item[f"{metric}_delta_holm_all_p"] = ""
                     item[f"{metric}_delta_holm_secondary_p"] = ""
@@ -1276,6 +1396,84 @@ def _average_precision(y_true: list[bool], scores: list[float]) -> float:
 def _stable_seed(*parts: str) -> int:
     digest = sha256(":".join(parts).encode("utf-8")).digest()
     return int.from_bytes(digest[:4], "big")
+
+
+def _condition_id(scenario_id: str) -> str:
+    return scenario_id.rsplit("-seed-", 1)[0]
+
+
+def _audit_condition_balanced_summary(
+    deltas_by_condition: dict[str, list[float]],
+    seed: int,
+    bootstrap_samples: int = 10000,
+    sign_flip_samples: int = 100000,
+) -> dict[str, object]:
+    """Independently reproduce condition-balanced paired inference."""
+
+    import numpy as np
+
+    ordered = [
+        np.asarray(deltas_by_condition[key], dtype=float)
+        for key in sorted(deltas_by_condition)
+    ]
+    condition_count = len(ordered)
+    rng = np.random.default_rng(seed)
+    selected_conditions = rng.integers(
+        0,
+        condition_count,
+        size=(bootstrap_samples, condition_count),
+    )
+    sampled_means = np.empty_like(selected_conditions, dtype=float)
+    for slot in range(condition_count):
+        for condition_index, values in enumerate(ordered):
+            selected_rows = np.flatnonzero(
+                selected_conditions[:, slot] == condition_index
+            )
+            if selected_rows.size == 0:
+                continue
+            seed_indices = rng.integers(
+                0,
+                values.size,
+                size=(selected_rows.size, values.size),
+            )
+            sampled_means[selected_rows, slot] = values[seed_indices].mean(axis=1)
+    bootstrap_effects = sampled_means.mean(axis=1)
+    ci_low, ci_high = np.quantile(bootstrap_effects, (0.025, 0.975))
+
+    weighted = np.concatenate([
+        values / (condition_count * values.size)
+        for values in ordered
+    ])
+    nonzero = weighted[np.abs(weighted) > 1e-15]
+    if nonzero.size == 0:
+        sign_flip_p = 1.0
+    else:
+        observed = abs(float(nonzero.sum()))
+        if nonzero.size <= 18:
+            statistics = (
+                abs(sum(sign * value for sign, value in zip(signs, nonzero)))
+                for signs in product((-1.0, 1.0), repeat=int(nonzero.size))
+            )
+            total = 2 ** int(nonzero.size)
+            sign_flip_p = (
+                sum(value >= observed - 1e-15 for value in statistics) / total
+            )
+        else:
+            signs = rng.choice((-1.0, 1.0), size=(sign_flip_samples, nonzero.size))
+            statistics = np.abs(signs @ nonzero)
+            extreme = int(np.count_nonzero(statistics >= observed - 1e-15))
+            sign_flip_p = (extreme + 1) / (sign_flip_samples + 1)
+
+    condition_means = [float(values.mean()) for values in ordered]
+    return {
+        "mean": mean(condition_means),
+        "median": median(condition_means),
+        "std": stdev(condition_means) if condition_count > 1 else 0.0,
+        "ci_low": float(ci_low),
+        "ci_high": float(ci_high),
+        "sign_flip_p": sign_flip_p,
+        "seed_counts": tuple(int(values.size) for values in ordered),
+    }
 
 
 def _bootstrap_mean_ci(

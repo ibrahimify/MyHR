@@ -13,13 +13,26 @@ from scripts.audit_tdk_protocol_artifact import (
     _expected_metric_suffixes,
     _verify_declared_matrix,
     _verify_paired_comparisons,
+    _verify_model_comparison,
     _verify_scenario_metrics,
     _verify_temporal_view_rows,
     _verify_truth_sidecars,
     audit_artifact,
 )
-from scripts.run_tdk_protocol_experiment import _paired_comparisons
+from scripts.run_tdk_protocol_experiment import (
+    _aggregate_rows,
+    _paired_comparisons,
+    _robustness_slices,
+)
 from scripts.run_tdk_research_experiment import PROVENANCE_SOURCE_PATHS
+from src.research.independent_scenario_adapter import adapt_independent_world
+from src.research.independent_scenarios import (
+    generate_independent_world,
+    independent_covering_scenario_matrix,
+)
+from src.services.anomaly_detection.protocol_evaluation import (
+    evaluate_residual_model_comparison,
+)
 
 
 def _complete_source_hashes() -> dict:
@@ -43,6 +56,45 @@ def _complete_source_hashes() -> dict:
 
 
 class ProtocolArtifactAuditTests(unittest.TestCase):
+    def test_model_comparison_is_independently_verified(self):
+        spec = independent_covering_scenario_matrix(
+            "independent_development",
+            employee_count=120,
+        )[0]
+        scenario = adapt_independent_world(generate_independent_world(spec))
+        evaluation = evaluate_residual_model_comparison(scenario)
+        metrics = list(evaluation.metric_rows)
+        predictions = list(evaluation.prediction_rows)
+
+        with tempfile.TemporaryDirectory() as directory:
+            run_dir = Path(directory)
+            self._write_csv(run_dir / "model_comparison_metrics.csv", metrics)
+            self._write_csv(
+                run_dir / "model_comparison_predictions.csv",
+                predictions,
+            )
+            self._write_csv(
+                run_dir / "model_comparison_aggregates.csv",
+                _aggregate_rows(metrics),
+            )
+            self._write_csv(
+                run_dir / "model_comparison_paired.csv",
+                _paired_comparisons(metrics),
+            )
+            self._write_csv(
+                run_dir / "model_comparison_robustness.csv",
+                _robustness_slices(metrics),
+            )
+
+            result = _verify_model_comparison(
+                run_dir,
+                {"model_comparison_included": True},
+            )
+
+        self.assertTrue(result["present"])
+        self.assertEqual(result["scenario_count"], 1)
+        self.assertEqual(result["metric_rows"], 20)
+
     def test_required_truth_sidecars_cannot_all_be_removed(self):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaisesRegex(ArtifactAuditError, "required truth sidecars"):

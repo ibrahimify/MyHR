@@ -4,6 +4,7 @@ from itertools import combinations, product
 
 import pytest
 
+from scripts.run_tdk_independent_development import _select_independent_conditions
 from src.research.independent_scenarios import (
     anomaly_mechanisms,
     compatible_rare_patterns_by_population,
@@ -97,6 +98,23 @@ def test_development_and_validation_designs_use_disjoint_seeds() -> None:
 def test_holdout_design_remains_unavailable() -> None:
     with pytest.raises(ValueError, match="holdout"):
         independent_covering_scenario_matrix("holdout")
+
+
+def test_runner_requires_covering_design_for_validation() -> None:
+    with pytest.raises(ValueError, match="no validation design"):
+        _select_independent_conditions(
+            "independent_validation",
+            "legacy",
+            120,
+        )
+
+    validation = _select_independent_conditions(
+        "independent_validation",
+        "covering",
+        120,
+    )
+    assert len(validation) == 36
+    assert all(spec.run_purpose == "independent_validation" for spec in validation)
 
 
 def test_policy_variants_change_observable_policy_cards() -> None:

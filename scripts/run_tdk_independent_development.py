@@ -44,9 +44,13 @@ from src.research.independent_scenarios import (
     REFERENCE_DATE,
     TruthCategory,
     generate_independent_world,
+    independent_covering_scenario_matrix,
     independent_scenario_matrix,
 )
-from src.services.anomaly_detection.protocol_evaluation import evaluate_scenario
+from src.services.anomaly_detection.protocol_evaluation import (
+    evaluate_residual_model_comparison,
+    evaluate_scenario,
+)
 from src.services.anomaly_detection.synthetic_data import (
     AdministrativeEventType,
     DatasetSplit,
@@ -85,6 +89,22 @@ def _staged_artifact_directory(final_dir: Path) -> Iterator[Path]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--run-purpose",
+        choices=("independent_development", "independent_validation"),
+        default="independent_development",
+    )
+    parser.add_argument(
+        "--design",
+        choices=("legacy", "covering"),
+        default="legacy",
+        help="Use the historical 12-cell diagnostic or proposed 36-cell covering design.",
+    )
+    parser.add_argument(
+        "--include-model-comparison",
+        action="store_true",
+        help="Write the exploratory five-method residual comparison as separate files.",
+    )
     parser.add_argument("--employee-count", type=int, default=360)
     parser.add_argument("--seeds-per-condition", type=int, default=30)
     parser.add_argument(
@@ -104,7 +124,11 @@ def main() -> None:
         args.seeds_per_condition,
         args.seed_count_justification,
     )
-    condition_specs = independent_scenario_matrix(args.employee_count)
+    condition_specs = _select_independent_conditions(
+        args.run_purpose,
+        args.design,
+        args.employee_count,
+    )
     specs = _replicate_independent_specs(
         condition_specs,
         args.seeds_per_condition,
@@ -119,10 +143,13 @@ def main() -> None:
         "target_validation_fpr": args.target_validation_fpr,
         "seeds_per_condition": args.seeds_per_condition,
         "seed_count_justification": args.seed_count_justification.strip(),
+        "run_purpose": args.run_purpose,
+        "design": args.design,
+        "include_model_comparison": args.include_model_comparison,
         "source_sha256": provenance["source_sha256"],
     }
     artifact_id = sha256(json.dumps(identity, sort_keys=True).encode("utf-8")).hexdigest()[:16]
-    final_dir = args.output_dir / f"independent_development_{artifact_id}"
+    final_dir = args.output_dir / f"{args.run_purpose}_{artifact_id}"
 
     with _staged_artifact_directory(final_dir) as run_dir:
         metric_rows = []
@@ -133,7 +160,13 @@ def main() -> None:
         policy_rows = []
         entitlement_rows = []
         temporal_view_rows = []
-        for spec in specs:
+        model_comparison_metric_rows = []
+        model_comparison_prediction_rows = []
+        for spec_index, spec in enumerate(specs, start=1):
+            print(
+                f"[{spec_index}/{len(specs)}] evaluating {spec.scenario_id}",
+                flush=True,
+            )
             world = generate_independent_world(spec)
             scenario = adapt_independent_world(world)
             evaluation = evaluate_scenario(
@@ -143,6 +176,13 @@ def main() -> None:
             )
             metric_rows.extend(evaluation.metric_rows)
             prediction_rows.extend(evaluation.prediction_rows)
+            if args.include_model_comparison:
+                model_comparison = evaluate_residual_model_comparison(
+                    scenario,
+                    review_budget=args.review_budget,
+                )
+                model_comparison_metric_rows.extend(model_comparison.metric_rows)
+                model_comparison_prediction_rows.extend(model_comparison.prediction_rows)
             truth_rows.extend(_record_truth_rows(world))
             event_rows.extend(_event_ledger_rows(world))
             policy_rows.extend(_policy_epoch_rows(world))
@@ -164,14 +204,20 @@ def main() -> None:
         _require_primary_policy_signal(metric_rows)
 
         metadata = {
-            "title": "MyHR independent development-only scenario evaluation",
+            "title": "MyHR independent scenario evaluation",
             "generated_at_utc": datetime.now(timezone.utc).isoformat(),
             "artifact_id": artifact_id,
             "protocol_version": PROTOCOL_VERSION,
             "protocol_status": PROTOCOL_STATUS,
             "holdout_accessed": False,
-            "run_purpose": "development",
-            "artifact_schema_version": 6,
+            "run_purpose": (
+                "development"
+                if args.run_purpose == "independent_development"
+                else "validation"
+            ),
+            "generator_run_purpose": args.run_purpose,
+            "design": args.design,
+            "artifact_schema_version": 7,
             "analysis_plan_version": ANALYSIS_PLAN_VERSION,
             "truth_sidecars_required": True,
             "condition_count": len(condition_specs),
@@ -182,6 +228,7 @@ def main() -> None:
             "employee_count_per_scenario": args.employee_count,
             "review_budget": args.review_budget,
             "target_validation_fpr": args.target_validation_fpr,
+            "model_comparison_included": args.include_model_comparison,
             "analysis_plan": {
                 "primary_method": PRIMARY_COMPARISON[0],
                 "primary_operating_point": PRIMARY_COMPARISON[1],
@@ -195,7 +242,7 @@ def main() -> None:
             },
             "provenance": provenance,
             "interpretation_warning": (
-                "Independent scenarios are adversarial development evidence, not a final holdout."
+                "Independent scenarios are development or validation evidence, not a final holdout."
             ),
         }
         _write_json(run_dir / "metadata.json", metadata)
@@ -211,10 +258,33 @@ def main() -> None:
         _write_csv(run_dir / "paired_comparisons.csv", _paired_comparisons(metric_rows))
         _write_csv(run_dir / "robustness_slices.csv", _robustness_slices(metric_rows))
         _write_csv(run_dir / "utility_sensitivity.csv", _utility_sensitivity(metric_rows))
+        if args.include_model_comparison:
+            _write_csv(
+                run_dir / "model_comparison_metrics.csv",
+                model_comparison_metric_rows,
+            )
+            _write_csv(
+                run_dir / "model_comparison_predictions.csv",
+                model_comparison_prediction_rows,
+            )
+            _write_csv(
+                run_dir / "model_comparison_aggregates.csv",
+                _aggregate_rows(model_comparison_metric_rows),
+            )
+            _write_csv(
+                run_dir / "model_comparison_paired.csv",
+                _paired_comparisons(model_comparison_metric_rows),
+            )
+            _write_csv(
+                run_dir / "model_comparison_robustness.csv",
+                _robustness_slices(model_comparison_metric_rows),
+            )
         (run_dir / "README.md").write_text(
-            "# Independent Development Scenario Artifact\n\n"
+            "# Independent Scenario Artifact\n\n"
             f"Artifact ID: `{artifact_id}`\n\n"
-            "This artifact is development-only. The final holdout was not accessed.\n",
+            f"Purpose: `{args.run_purpose}`\n\n"
+            f"Design: `{args.design}`\n\n"
+            "This artifact is not a final holdout. The holdout was not accessed.\n",
             encoding="utf-8",
         )
         _write_manifest(run_dir)
@@ -225,8 +295,23 @@ def main() -> None:
         "scenario_count": len(specs),
         "metric_rows": len(metric_rows),
         "prediction_rows": len(prediction_rows),
+        "model_comparison_metric_rows": len(model_comparison_metric_rows),
         "holdout_accessed": False,
     }, indent=2, sort_keys=True))
+
+
+def _select_independent_conditions(
+    run_purpose: str,
+    design: str,
+    employee_count: int,
+) -> tuple[IndependentScenarioSpec, ...]:
+    if design == "legacy":
+        if run_purpose != "independent_development":
+            raise ValueError("the legacy diagnostic has no validation design")
+        return independent_scenario_matrix(employee_count)
+    if design == "covering":
+        return independent_covering_scenario_matrix(run_purpose, employee_count)
+    raise ValueError(f"unknown independent design: {design}")
 
 
 def _replicate_independent_specs(

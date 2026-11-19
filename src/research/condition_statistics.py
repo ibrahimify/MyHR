@@ -50,16 +50,27 @@ def condition_balanced_paired_summary(
 
     condition_means = [float(values.mean()) for values in ordered]
     rng = np.random.default_rng(seed)
-    bootstrap_effects = np.empty(bootstrap_samples, dtype=float)
     condition_count = len(ordered)
-    for sample_index in range(bootstrap_samples):
-        selected_conditions = rng.integers(0, condition_count, size=condition_count)
-        sampled_means = []
-        for condition_index in selected_conditions:
-            values = ordered[int(condition_index)]
-            sampled = values[rng.integers(0, values.size, size=values.size)]
-            sampled_means.append(float(sampled.mean()))
-        bootstrap_effects[sample_index] = mean(sampled_means)
+    selected_conditions = rng.integers(
+        0,
+        condition_count,
+        size=(bootstrap_samples, condition_count),
+    )
+    sampled_means = np.empty_like(selected_conditions, dtype=float)
+    for slot in range(condition_count):
+        for condition_index, values in enumerate(ordered):
+            selected_rows = np.flatnonzero(
+                selected_conditions[:, slot] == condition_index
+            )
+            if selected_rows.size == 0:
+                continue
+            seed_indices = rng.integers(
+                0,
+                values.size,
+                size=(selected_rows.size, values.size),
+            )
+            sampled_means[selected_rows, slot] = values[seed_indices].mean(axis=1)
+    bootstrap_effects = sampled_means.mean(axis=1)
     ci_low, ci_high = np.quantile(bootstrap_effects, (0.025, 0.975))
 
     weighted_effects = np.concatenate([
