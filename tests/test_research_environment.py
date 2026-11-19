@@ -16,10 +16,10 @@ from scripts.verify_research_environment import (
     unlocked_dependencies,
 )
 from scripts.run_tdk_independent_development import (
-    ARTIFACT_SCHEMA_VERSION as INDEPENDENT_SCHEMA_VERSION,
+    _artifact_schema_metadata as independent_schema,
 )
 from scripts.run_tdk_protocol_experiment import (
-    ARTIFACT_SCHEMA_VERSION as PROTOCOL_SCHEMA_VERSION,
+    _artifact_schema_metadata as protocol_schema,
 )
 
 
@@ -27,8 +27,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_current_artifact_runners_declare_schema_eight() -> None:
-    assert INDEPENDENT_SCHEMA_VERSION == 8
-    assert PROTOCOL_SCHEMA_VERSION == 8
+    assert independent_schema() == {"artifact_schema_version": 8}
+    assert protocol_schema() == {"artifact_schema_version": 8}
 
 
 def test_research_lock_contains_only_exact_versions(tmp_path: Path) -> None:

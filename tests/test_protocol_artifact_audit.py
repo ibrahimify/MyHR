@@ -214,16 +214,42 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
                 _verify_research_environment(metadata, Path.cwd())
 
     def test_legacy_environment_provenance_remains_optional(self):
-        with patch(
-            "scripts.audit_tdk_protocol_artifact.subprocess.run",
-            return_value=SimpleNamespace(returncode=1, stdout=b""),
-        ):
+        import subprocess
+
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "config", "user.email", "fixture@example.test"],
+                cwd=repo,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Fixture"],
+                cwd=repo,
+                check=True,
+            )
+            (repo / "historical.txt").write_text("legacy\n", encoding="utf-8")
+            subprocess.run(["git", "add", "historical.txt"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "commit", "-qm", "Historical fixture"],
+                cwd=repo,
+                check=True,
+            )
+            revision = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+
             _verify_research_environment(
                 {
                     "artifact_schema_version": 7,
-                    "provenance": {"git_commit": "historical-revision"},
+                    "provenance": {"git_commit": revision},
                 },
-                Path.cwd(),
+                repo,
             )
 
     def test_current_independent_protocol_requires_bitemporal_contract(self):

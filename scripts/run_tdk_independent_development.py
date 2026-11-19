@@ -65,6 +65,10 @@ PROTOCOL_VERSION = "independent-scenarios-v3-2026-11-19"
 ARTIFACT_SCHEMA_VERSION = 8
 
 
+def _artifact_schema_metadata() -> dict[str, int]:
+    return {"artifact_schema_version": ARTIFACT_SCHEMA_VERSION}
+
+
 @contextmanager
 def _staged_artifact_directory(final_dir: Path) -> Iterator[Path]:
     """Publish a completed artifact atomically without exposing partial output."""
@@ -227,7 +231,7 @@ def main() -> None:
             ),
             "generator_run_purpose": args.run_purpose,
             "design": args.design,
-            "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
+            **_artifact_schema_metadata(),
             "analysis_plan_version": ANALYSIS_PLAN_VERSION,
             "truth_sidecars_required": True,
             "condition_count": len(condition_specs),
