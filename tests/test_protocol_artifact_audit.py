@@ -15,6 +15,7 @@ from scripts.audit_tdk_protocol_artifact import (
     _verify_declared_matrix,
     _verify_paired_comparisons,
     _verify_model_comparison,
+    _requires_bitemporal_contract,
     _verify_scenario_metrics,
     _verify_temporal_view_rows,
     _verify_truth_sidecars,
@@ -59,6 +60,20 @@ def _complete_source_hashes() -> dict:
 
 
 class ProtocolArtifactAuditTests(unittest.TestCase):
+    def test_current_independent_protocol_requires_bitemporal_contract(self):
+        self.assertTrue(_requires_bitemporal_contract(
+            "independent-scenarios-v3-2026-11-19",
+            7,
+        ))
+        self.assertTrue(_requires_bitemporal_contract(
+            "independent-development-v2-2026-10-29",
+            5,
+        ))
+        self.assertFalse(_requires_bitemporal_contract(
+            "independent-scenarios-v3-2026-11-19",
+            4,
+        ))
+
     def test_provenance_dirty_flag_is_scoped_to_tracked_files(self):
         calls = []
 

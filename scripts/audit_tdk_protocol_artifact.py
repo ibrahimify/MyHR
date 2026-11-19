@@ -904,9 +904,9 @@ def _verify_truth_sidecars(
                 "prediction membership does not match eligible test truth"
             )
 
-    require_bitemporal = (
-        protocol_version == "independent-development-v2-2026-10-29"
-        and artifact_schema_version >= 5
+    require_bitemporal = _requires_bitemporal_contract(
+        protocol_version,
+        artifact_schema_version,
     )
     policy_keys = [(
         row["scenario_id"],
@@ -1220,6 +1220,16 @@ def _verify_truth_sidecars(
         "entitlement_evidence_rows": len(entitlement_rows),
         "temporal_view_rows": len(temporal_rows),
     }
+
+
+def _requires_bitemporal_contract(
+    protocol_version: str,
+    artifact_schema_version: int,
+) -> bool:
+    return (
+        artifact_schema_version >= 5
+        and protocol_version.startswith("independent-")
+    )
 
 
 def _verify_temporal_view_rows(
