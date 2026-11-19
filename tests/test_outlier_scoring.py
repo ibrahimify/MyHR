@@ -1,4 +1,4 @@
-from dataclasses import fields
+from dataclasses import fields, replace
 
 import pytest
 
@@ -182,6 +182,24 @@ def test_residual_model_comparison_uses_equal_population_and_review_capacity() -
                 if row["method"] == method and row["representation"] == representation
             }
             assert observed_ids == expected_ids
+
+
+def test_residual_model_comparison_labels_validation_rows() -> None:
+    scenario = generate_scenario_dataset(
+        scenario_matrix("development", count=1, employee_count=120)[0]
+    )
+    scenario = replace(
+        scenario,
+        config=replace(scenario.config, run_purpose="independent_validation"),
+    )
+
+    result = evaluate_residual_model_comparison(
+        scenario,
+        methods=(OutlierScorerConfig("robust_z_score"),),
+        representations=("raw_matched",),
+    )
+
+    assert result.metric_rows[0]["comparison_status"] == "exploratory_validation"
 
 
 def test_model_comparison_does_not_modify_original_protocol_evaluator() -> None:

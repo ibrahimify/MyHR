@@ -61,8 +61,7 @@ from src.services.anomaly_detection.temporal_diagnostics import (
 )
 
 
-PROTOCOL_VERSION = "independent-development-v2-2026-10-29"
-PROTOCOL_STATUS = "draft_independent_development_holdout_locked"
+PROTOCOL_VERSION = "independent-scenarios-v3-2026-11-19"
 
 
 @contextmanager
@@ -142,9 +141,10 @@ def main() -> None:
         start_replicate=args.seed_replicate_start,
     )
     provenance = _provenance()
+    protocol_status = _protocol_status(args.run_purpose)
     identity = {
         "protocol_version": PROTOCOL_VERSION,
-        "protocol_status": PROTOCOL_STATUS,
+        "protocol_status": protocol_status,
         "analysis_plan_version": ANALYSIS_PLAN_VERSION,
         "specs": [asdict(spec) for spec in specs],
         "review_budget": args.review_budget,
@@ -217,7 +217,7 @@ def main() -> None:
             "generated_at_utc": datetime.now(timezone.utc).isoformat(),
             "artifact_id": artifact_id,
             "protocol_version": PROTOCOL_VERSION,
-            "protocol_status": PROTOCOL_STATUS,
+            "protocol_status": protocol_status,
             "holdout_accessed": False,
             "run_purpose": (
                 "development"
@@ -328,6 +328,16 @@ def _select_independent_conditions(
     if design == "covering":
         return independent_covering_scenario_matrix(run_purpose, employee_count)
     raise ValueError(f"unknown independent design: {design}")
+
+
+def _protocol_status(run_purpose: str) -> str:
+    purpose = {
+        "independent_development": "development",
+        "independent_validation": "validation",
+    }.get(run_purpose)
+    if purpose is None:
+        raise ValueError(f"unsupported run purpose: {run_purpose}")
+    return f"draft_independent_{purpose}_holdout_locked"
 
 
 def _replicate_independent_specs(

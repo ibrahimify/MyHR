@@ -6,6 +6,7 @@ import pytest
 
 from scripts.run_tdk_independent_development import _select_independent_conditions
 from scripts.run_tdk_independent_development import _replicate_independent_specs
+from scripts.run_tdk_independent_development import _protocol_status
 from scripts.combine_tdk_independent_shards import _validate_shard_set
 from src.research.independent_scenarios import (
     anomaly_mechanisms,
@@ -95,6 +96,17 @@ def test_development_and_validation_designs_use_disjoint_seeds() -> None:
     assert {spec.model_seed for spec in development}.isdisjoint({
         spec.model_seed for spec in validation
     })
+
+
+def test_protocol_status_names_the_actual_partition() -> None:
+    assert _protocol_status("independent_development") == (
+        "draft_independent_development_holdout_locked"
+    )
+    assert _protocol_status("independent_validation") == (
+        "draft_independent_validation_holdout_locked"
+    )
+    with pytest.raises(ValueError, match="unsupported run purpose"):
+        _protocol_status("holdout")
 
 
 def test_seed_shards_equal_monolithic_replication() -> None:

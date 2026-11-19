@@ -599,9 +599,9 @@ def evaluate_residual_model_comparison(
 ) -> ScenarioEvaluation:
     """Compare label-free scorers on identical invariant-negative records.
 
-    This is an exploratory development path. It does not alter the historical
-    Isolation Forest evaluation, select methods from outcomes, or authorize a
-    holdout run.
+    This is an exploratory development or validation path. It does not alter
+    the historical Isolation Forest evaluation, select methods from outcomes,
+    or authorize a holdout run.
     """
 
     if not 0 < review_budget < 0.5:
@@ -677,8 +677,13 @@ def evaluate_residual_model_comparison(
                 validation_selection=None,
                 runtime_ms=scorer_runtime_ms + invariant_runtime_ms,
             )
+            comparison_stage = (
+                "validation"
+                if scenario.config.run_purpose == "independent_validation"
+                else "development"
+            )
             row.update({
-                "comparison_status": "exploratory_development",
+                "comparison_status": f"exploratory_{comparison_stage}",
                 "retained_feature_names": "|".join(result.feature_names),
                 "dropped_feature_names": "|".join(result.dropped_feature_names),
                 "scorer_parameters_json": json.dumps(
