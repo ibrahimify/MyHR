@@ -235,8 +235,9 @@ records, uses preprocessing fitted only on training records, ranks scores in a
 common direction, and receives the same fixed review capacity. Generated truth
 is used only after ranking to calculate evaluation metrics. Constant training
 features and all realized model parameters are recorded. Policy-aware results
-are contrasted separately with raw, wrong-policy, and shuffled-policy
-representations; the exploratory control family uses a Holm adjustment.
+are contrasted separately with raw, a dimension-matched policy-free rate
+control, wrong-policy, and shuffled-policy representations; the exploratory
+control family uses a Holm adjustment.
 
 The proposed purpose is to test whether any observed representation effect is
 specific to Isolation Forest. It is not permission to select a favorable model,

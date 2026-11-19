@@ -156,6 +156,7 @@ def test_residual_model_comparison_uses_equal_population_and_review_capacity() -
     }
     representations = {
         "raw_matched",
+        "raw_rate_control",
         "policy_matched",
         "wrong_policy_control",
         "shuffled_policy_control",

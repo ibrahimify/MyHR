@@ -34,6 +34,7 @@ from src.research.independent_scenarios import (
 )
 from src.services.anomaly_detection.protocol_evaluation import (
     evaluate_residual_model_comparison,
+    exploratory_feature_representations,
 )
 
 
@@ -125,7 +126,18 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
 
         self.assertTrue(result["present"])
         self.assertEqual(result["scenario_count"], 1)
-        self.assertEqual(result["metric_rows"], 20)
+        self.assertEqual(result["metric_rows"], 25)
+
+    def test_raw_rate_control_is_policy_free_and_dimension_matched(self):
+        representations = {
+            item.name: item for item in exploratory_feature_representations()
+        }
+        control = representations["raw_rate_control"]
+        policy = representations["policy_matched"]
+
+        self.assertEqual(len(control.feature_names), len(policy.feature_names))
+        self.assertEqual(control.policy_mode, "raw_rates")
+        self.assertTrue(all(not name.startswith("policy_") for name in control.feature_names))
 
     def test_required_truth_sidecars_cannot_all_be_removed(self):
         with tempfile.TemporaryDirectory() as directory:

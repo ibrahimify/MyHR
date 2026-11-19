@@ -88,6 +88,7 @@ CONTROL_CONTRAST_METRICS = (
 )
 CONTROL_CONTRASTS = (
     ("policy_matched", "raw_matched", "policy_minus_raw"),
+    ("policy_matched", "raw_rate_control", "policy_minus_raw_rate"),
     ("policy_matched", "wrong_policy_control", "policy_minus_wrong_policy"),
     ("policy_matched", "shuffled_policy_control", "policy_minus_shuffled_policy"),
 )
@@ -185,6 +186,7 @@ def _verify_model_comparison(
     }
     expected_representations = {
         "raw_matched",
+        "raw_rate_control",
         "policy_matched",
         "wrong_policy_control",
         "shuffled_policy_control",

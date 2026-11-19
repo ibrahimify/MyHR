@@ -91,6 +91,7 @@ from .protocol_evaluation import (
     ThresholdSelection,
     evaluate_fixed_budget_demo,
     evaluate_residual_model_comparison,
+    exploratory_feature_representations,
     evaluate_scenario,
     feature_representations,
 )
@@ -165,6 +166,7 @@ __all__ = [
     "evaluate_duplicate_detection",
     "evaluate_fixed_budget_demo",
     "evaluate_residual_model_comparison",
+    "exploratory_feature_representations",
     "evaluate_statistical_baseline",
     "evaluate_scenario",
     "extract_features",

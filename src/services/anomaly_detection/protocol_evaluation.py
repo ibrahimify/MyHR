@@ -40,6 +40,11 @@ POLICY_MATCHED_FEATURES = COMMON_CORE_FEATURES + (
     "policy_service_deficit_ratio",
     "policy_unexplained_short_promotion",
 )
+RAW_RATE_CONTROL_FEATURES = COMMON_CORE_FEATURES + (
+    "raw_promotions_per_year",
+    "raw_commendations_per_year",
+    "raw_min_promotion_interval_ratio",
+)
 
 
 @dataclass(frozen=True)
@@ -97,6 +102,18 @@ def feature_representations() -> tuple[FeatureRepresentation, ...]:
         ),
         FeatureRepresentation("wrong_policy_control", POLICY_MATCHED_FEATURES, "wrong"),
         FeatureRepresentation("shuffled_policy_control", POLICY_MATCHED_FEATURES, "shuffled"),
+    )
+
+
+def exploratory_feature_representations() -> tuple[FeatureRepresentation, ...]:
+    """Return historical representations plus the policy-free rate control."""
+
+    return feature_representations() + (
+        FeatureRepresentation(
+            "raw_rate_control",
+            RAW_RATE_CONTROL_FEATURES,
+            "raw_rates",
+        ),
     )
 
 
@@ -574,6 +591,7 @@ def evaluate_residual_model_comparison(
     methods: tuple[OutlierScorerConfig, ...] | None = None,
     representations: tuple[str, ...] = (
         "raw_matched",
+        "raw_rate_control",
         "policy_matched",
         "wrong_policy_control",
         "shuffled_policy_control",
@@ -601,7 +619,7 @@ def evaluate_residual_model_comparison(
     if not scorer_configs:
         raise ValueError("At least one outlier scorer is required")
 
-    available = {item.name: item for item in feature_representations()}
+    available = {item.name: item for item in exploratory_feature_representations()}
     unknown = set(representations) - set(available)
     if unknown:
         raise ValueError(f"unknown feature representations: {sorted(unknown)}")
@@ -697,6 +715,26 @@ def _vectors(
 ) -> tuple[FeatureVector, ...]:
     if representation.policy_mode == "raw":
         return tuple(extract_raw_features(record) for record in records)
+    if representation.policy_mode == "raw_rates":
+        vectors = []
+        for record in records:
+            raw = extract_raw_features(record)
+            values = dict(raw.values)
+            months = max(values["months_since_hire"], 1.0)
+            years = months / 12.0
+            values.update({
+                "raw_promotions_per_year": values["promotion_count"] / years,
+                "raw_commendations_per_year": values["commendation_count"] / years,
+                "raw_min_promotion_interval_ratio": (
+                    values["min_promotion_interval_months"] / months
+                ),
+            })
+            vectors.append(FeatureVector(
+                employee_id=raw.employee_id,
+                feature_set="raw_rate_control",
+                values=values,
+            ))
+        return tuple(vectors)
     if representation.policy_mode == "shuffled":
         observed = tuple(
             extract_policy_aware_features(
