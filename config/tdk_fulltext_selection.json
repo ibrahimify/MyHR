@@ -118,6 +118,13 @@
       "expected_title": "A Reliable Framework for Human-in-the-Loop Anomaly Detection in Time Series",
       "pdf_url": "https://arxiv.org/pdf/2405.03234",
       "access_basis": "arXiv author submission"
+    },
+    {
+      "id": "krippendorff2004_reliability",
+      "doi": "10.1111/j.1468-2958.2004.tb00738.x",
+      "expected_title": "Reliability in Content Analysis: Some Common Misconceptions and Recommendations",
+      "pdf_url": "https://repository.upenn.edu/bitstreams/9bb32ddb-0121-4f2d-9c26-a9691fcbdece/download",
+      "access_basis": "Author manuscript in the University of Pennsylvania repository"
     }
   ]
 }

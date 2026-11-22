@@ -22,6 +22,13 @@ from src.research.literature import ArxivClient, HttpTransport, OpenAlexClient
 
 
 MAX_PDF_BYTES = 50 * 1024 * 1024
+PDF_DOWNLOAD_HEADERS = {
+    "Accept": "application/pdf",
+    "User-Agent": (
+        "Mozilla/5.0 (compatible; MyHRResearch/1.0; "
+        "+https://github.com/ibrahimify/MyHR)"
+    ),
+}
 
 
 def main() -> None:
@@ -69,7 +76,7 @@ def main() -> None:
         paper_id = _safe_id(str(paper["id"]))
         response = download_transport.get(
             str(paper["pdf_url"]),
-            headers={"Accept": "application/pdf"},
+            headers=PDF_DOWNLOAD_HEADERS,
         )
         validate_pdf_bytes(response.body, max_bytes=MAX_PDF_BYTES)
         pdf_path = pdf_dir / f"{paper_id}.pdf"
