@@ -76,13 +76,17 @@ If a failure leaves an incomplete directory,
 preserve it for investigation; it is not an accepted artifact and is never
 overwritten. Existing research artifacts are not read, changed, or replaced.
 
-The separate auditor imports neither producer nor matcher. It reconstructs
+The separate auditor does not import the producer or matcher. It reconstructs
 identity blocking and scores, validates entity containment and link graphs,
 derives threshold selection, and recomputes both confusion universes, tied-score
-AP and workload from stored evidence. Score and threshold comparisons preserve
-exact binary64 values; derived rate arithmetic allows numerical rounding.
-Rehashed semantic tampering is covered by tests. Checksums detect corruption,
-not a coordinated forgery of an entire self-consistent artifact.
+AP and workload from stored evidence. For generated evidence, it also regenerates
+the dataset from the recorded configuration and compares the resulting metadata,
+identity projection and duplicate truth. Generated evidence is certified only
+when every stored source snapshot matches the recorded revision. Hand-calculated
+test fixtures receive arithmetic verification only. Score and threshold
+comparisons preserve exact binary64 values; derived rate arithmetic allows
+numerical rounding. Rehashed semantic tampering is covered by tests. Checksums
+detect corruption, not a coordinated forgery of an entire self-consistent artifact.
 
 ## Remaining Limits
 
@@ -92,20 +96,21 @@ not a coordinated forgery of an entire self-consistent artifact.
   the complete protocol coverage matrix; explicit diacritics, shared contacts
   and conflicting-field coverage remain incomplete.
 - Hard negatives preferentially populate development evaluation, not validation.
-- The auditor validates declared truth consistency, not real-world identity
-  realism or an independently regenerated causal ledger.
+- Regeneration verifies synthetic provenance and internal truth consistency, not
+  real-world identity realism or external validity.
 - A single artifact is infrastructure evidence, not a repeated-seed result or
   an independent validation campaign. No model superiority claim follows.
 - Full-suite verification and CI are deferred during this focused task. No
   commit, push, issue closure, or protocol approval is implied.
 
-## Focused Verification - 2026-11-20
+## Focused Verification - 2026-11-22
 
-- 39 focused evidence tests passed on Python 3.13.5 in 98.51 seconds. They cover
+- 41 focused evidence tests passed after the provenance repair. They cover
   identity truth, candidate universes, hard negatives, calibration, missing
-  values, instrumentation, tampering and source drift.
+  values, truth-stripped threshold scoring, generator regeneration,
+  instrumentation, tampering and source drift.
 - A temporary 80-record fixture exercised the actual runner and standalone
   auditor commands, including refusal to overwrite the generated output.
   This was a software test, not new research performance evidence.
-- No full suite, benchmark campaign or holdout operation was run. CI remains
-  pending until the implementation is committed and reviewed.
+- No benchmark campaign or holdout operation was run. Full-suite and CI results
+  are recorded in the pull request before integration.
