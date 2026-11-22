@@ -27,7 +27,6 @@ from src.services.anomaly_detection.duplicate_detection import (
     find_exact_duplicate_candidates,
     find_normalized_exact_duplicate_candidates,
     find_similarity_duplicate_candidates,
-    select_similarity_threshold,
 )
 from src.services.anomaly_detection.synthetic_data import (
     AnomalyType, DatasetSplit, ExperimentConfig, SyntheticDataset, generate_synthetic_dataset,
@@ -137,7 +136,18 @@ def calibrate_threshold(dataset, *, split=DatasetSplit.VALIDATION):
         rows.append({"threshold": threshold, **_counts(predicted, truth, universe)})
     status = ("empty_validation" if not records else "no_blocked_pairs" if not scored
               else "no_blocked_positive_pairs" if not truth & universe else "selected")
-    threshold = select_similarity_threshold(dataset, split=split) if status == "selected" else None
+    threshold = None
+    if status == "selected":
+        best = max(
+            rows,
+            key=lambda row: (
+                row["f1"] or 0,
+                row["precision"] or 0,
+                row["recall"] or 0,
+                row["threshold"],
+            ),
+        )
+        threshold = best["threshold"]
     return {
         "partition": "validation", "status": status, "threshold": threshold,
         "objective": "candidate_f1_then_precision_then_recall_then_higher_threshold",
@@ -265,6 +275,15 @@ def write_artifact(dataset, output_dir, *, configuration, data_origin="existing_
         actual_hashes = {name: sha256(content).hexdigest() for name, content in snapshots.items()}
         if actual_hashes != expected_source_hashes:
             raise RuntimeError("source changed during dataset generation")
+    if data_origin == "existing_synthetic_generator":
+        expected_dataset = generate_synthetic_dataset(ExperimentConfig(**configuration))
+        if dataset != expected_dataset:
+            raise ValueError("dataset does not match the recorded generator configuration")
+        generation_verification = "regenerated_and_matched"
+    elif data_origin == "hand_calculated_test_fixture":
+        generation_verification = "caller_asserted_fixture"
+    else:
+        raise ValueError(f"unsupported data origin: {data_origin}")
     revision = _git("rev-parse", "HEAD").decode().strip()
     payload = build_evidence(dataset)
     sources = {}
@@ -282,7 +301,8 @@ def write_artifact(dataset, output_dir, *, configuration, data_origin="existing_
         "protocol_reference": {"path": "docs/TDK_EXPERIMENT_PROTOCOL.md",
                                "sha256": sources["docs/TDK_EXPERIMENT_PROTOCOL.md"]["sha256"]},
         "holdout_accessed": False, "partition_roles": ROLES,
-        "data_origin": data_origin, "configuration": configuration,
+        "data_origin": data_origin, "generation_verification": generation_verification,
+        "configuration": configuration,
         "dataset_metadata": asdict(dataset.metadata),
         "seeds": {"dataset_seed": dataset.metadata.seed, "split_seed": dataset.metadata.seed,
                   "split_seed_independent": False, "model_seed": None},

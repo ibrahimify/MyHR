@@ -86,7 +86,9 @@ def test_hand_calculated_cluster_siblings_and_hard_negative(tmp_path, histories)
         assert row["end_to_end"]["false_positives"] == 0
         assert row["end_to_end"]["false_negatives"] == 0
     path = publish(tmp_path, histories)
-    assert audit_artifact(path)["verified"] is True
+    report = audit_artifact(path)
+    assert report["verified"] is False
+    assert report["verification_status"] == "arithmetic_verified_test_fixture"
     assert not any("latent" in r or "duplicate_of" in r for r in payload["identities.json"])
 
 
@@ -99,6 +101,21 @@ def test_validation_only_and_test_changes_cannot_change_selection(histories):
     assert calibrate_threshold(modified) == expected
     with pytest.raises(ValueError, match="validation"):
         calibrate_threshold(histories, split=syn.DatasetSplit.TEST)
+
+
+def test_threshold_scoring_receives_no_truth_fields(histories, monkeypatch):
+    original = producer.find_similarity_duplicate_candidates
+
+    def guarded(records, *args, **kwargs):
+        assert all(record.duplicate_of_employee_id is None for record in records)
+        assert all(record.latent_person_id is None for record in records)
+        assert all(record.hard_nonduplicate_kind is None for record in records)
+        assert all(record.hard_nonduplicate_anchor_id is None for record in records)
+        assert all(record.anomaly_labels == (syn.AnomalyType.CLEAN,) for record in records)
+        return original(records, *args, **kwargs)
+
+    monkeypatch.setattr(producer, "find_similarity_duplicate_candidates", guarded)
+    assert calibrate_threshold(histories)["status"] == "selected"
 
 
 def test_mixed_score_validation_selects_existing_f1_optimum(tmp_path):
@@ -115,7 +132,7 @@ def test_mixed_score_validation_selects_existing_f1_optimum(tmp_path):
     chosen = next(r for r in selection["search"] if r["threshold"] == selection["threshold"])
     assert chosen["true_positives"] == 1 and chosen["false_positives"] == 0
     assert chosen["f1"] == 1.0
-    assert audit_artifact(publish(tmp_path, data))["verified"]
+    assert audit_artifact(publish(tmp_path, data))["verification_status"] == "arithmetic_verified_test_fixture"
 
 
 @pytest.mark.parametrize("mode", ["empty", "no_pairs", "no_positives", "blocking_miss"])
@@ -131,7 +148,7 @@ def test_uninformative_validation_does_not_invent_threshold(tmp_path, mode):
     assert selection["threshold"] is None
     assert selection["status"] != "selected"
     path = publish(tmp_path, data)
-    assert audit_artifact(path)["verified"]
+    assert audit_artifact(path)["verification_status"] == "arithmetic_verified_test_fixture"
     similarity = [r for r in build_evidence(data)["metrics.json"] if r["method"] == "similarity"]
     assert all(r["end_to_end"] is None for r in similarity)
 
@@ -150,7 +167,7 @@ def test_blocking_miss_affects_end_to_end_not_candidate_counts(tmp_path, histori
     assert row["end_to_end"]["false_negatives"] == 1
     assert row["candidate"]["false_negatives"] == 0
     assert row["candidate_average_precision"] is None
-    assert audit_artifact(publish(tmp_path, data))["verified"]
+    assert audit_artifact(publish(tmp_path, data))["verification_status"] == "arithmetic_verified_test_fixture"
 
 
 def test_ties_missing_values_and_zero_positive_evaluation(tmp_path, histories):
@@ -166,7 +183,7 @@ def test_ties_missing_values_and_zero_positive_evaluation(tmp_path, histories):
     row = next(r for r in payload["metrics.json"] if r["partition"] == "test" and r["method"] == "similarity")
     assert row["end_to_end"]["recall"] is None
     assert row["candidate_average_precision"] is None
-    assert audit_artifact(publish(tmp_path, data))["verified"]
+    assert audit_artifact(publish(tmp_path, data))["verification_status"] == "arithmetic_verified_test_fixture"
 
 
 def test_average_precision_groups_tied_positive_and_negative_pairs(tmp_path, histories):
@@ -179,7 +196,7 @@ def test_average_precision_groups_tied_positive_and_negative_pairs(tmp_path, his
         assert row["candidate_average_precision"] == pytest.approx(1 / 3)
         assert row["end_to_end"]["true_positives"] == 1
         assert row["end_to_end"]["false_positives"] == 2
-    assert audit_artifact(publish(tmp_path, data))["verified"]
+    assert audit_artifact(publish(tmp_path, data))["verification_status"] == "arithmetic_verified_test_fixture"
 
 
 @pytest.mark.parametrize("defect", ["cross_partition", "dangling", "cycle", "duplicate_id", "latent_conflict", "hard_truth"])
@@ -225,7 +242,7 @@ def test_write_once(tmp_path, histories):
 def test_auditor_is_read_only(tmp_path, histories):
     path = publish(tmp_path, histories)
     before = {p.relative_to(path): p.read_bytes() for p in path.rglob("*") if p.is_file()}
-    audit_artifact(path)
+    assert audit_artifact(path)["verification_status"] == "arithmetic_verified_test_fixture"
     assert {p.relative_to(path): p.read_bytes() for p in path.rglob("*") if p.is_file()} == before
 
 
@@ -260,16 +277,42 @@ def test_standalone_commands_with_existing_generator(tmp_path):
     completed = subprocess.run(command, cwd=repo, capture_output=True, text=True, check=True)
     artifact = Path(completed.stdout.strip())
     assert artifact.parent == tmp_path
-    report = subprocess.run([sys.executable, "scripts/audit_tdk_duplicate_artifact.py", str(artifact)],
-                            cwd=repo, capture_output=True, text=True, check=True)
-    assert json.loads(report.stdout)["verified"] is True
     metadata = json.loads((artifact / "metadata.json").read_text(encoding="utf-8"))
+    report = subprocess.run([sys.executable, "scripts/audit_tdk_duplicate_artifact.py", str(artifact)],
+                            cwd=repo, capture_output=True, text=True)
+    if metadata["source_snapshot_matches_revision"]:
+        assert report.returncode == 0
+        assert json.loads(report.stdout)["verified"] is True
+    else:
+        assert report.returncode != 0
+        assert "do not match the recorded source revision" in report.stderr
     assert metadata["data_origin"] == "existing_synthetic_generator"
+    assert metadata["generation_verification"] == "regenerated_and_matched"
     assert metadata["configuration"]["employee_count"] == 80
     assert metadata["command"] == command
     before = (artifact / "manifest.json").read_bytes()
     assert subprocess.run(command, cwd=repo, capture_output=True).returncode != 0
     assert (artifact / "manifest.json").read_bytes() == before
+
+
+def test_generated_origin_rejects_dataset_not_created_by_recorded_configuration(tmp_path, histories):
+    config = syn.ExperimentConfig(seed=2026, employee_count=80)
+    with pytest.raises(ValueError, match="does not match"):
+        write_artifact(
+            histories,
+            tmp_path / "false-origin",
+            configuration={
+                "seed": config.seed,
+                "employee_count": config.employee_count,
+                "anomaly_rate": config.anomaly_rate,
+                "rare_legitimate_rate": config.rare_legitimate_rate,
+                "train_ratio": config.train_ratio,
+                "validation_ratio": config.validation_ratio,
+                "test_ratio": config.test_ratio,
+            },
+            data_origin="existing_synthetic_generator",
+        )
+    assert not (tmp_path / "false-origin" / "manifest.json").exists()
 
 
 @pytest.mark.parametrize("name,mutate", [

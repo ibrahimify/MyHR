@@ -261,11 +261,55 @@ def _audit(path, repo_root):
     _equal(metadata["seeds"], {"dataset_seed": seed, "split_seed": seed,
                                "split_seed_independent": False, "model_seed": None}, "seed provenance")
     if metadata["data_origin"] == "existing_synthetic_generator":
+        _require(all(matches), "artifact sources do not match the recorded source revision")
         config = metadata["configuration"]
         _require(set(config) == {"seed", "employee_count", "anomaly_rate", "rare_legitimate_rate",
                                  "train_ratio", "validation_ratio", "test_ratio"}, "incomplete generator configuration")
         _equal(config["seed"], seed, "configuration seed")
         _equal(config["employee_count"], len(by_id), "configuration record count")
+        _equal(metadata["generation_verification"], "regenerated_and_matched",
+               "generation verification")
+        from dataclasses import asdict
+        from src.services.anomaly_detection.synthetic_data import (
+            ExperimentConfig,
+            generate_synthetic_dataset,
+        )
+        regenerated = generate_synthetic_dataset(ExperimentConfig(**config))
+        regenerated_identities = []
+        regenerated_truth = []
+        regenerated_by_id = {record.identity.employee_id: record for record in regenerated.records}
+        regenerated_roots = {}
+        for employee_id, record in regenerated_by_id.items():
+            current = employee_id
+            while regenerated_by_id[current].duplicate_of_employee_id is not None:
+                current = regenerated_by_id[current].duplicate_of_employee_id
+            regenerated_roots[employee_id] = current
+            identity = asdict(record.identity)
+            identity["date_of_birth"] = (
+                record.identity.date_of_birth.isoformat()
+                if record.identity.date_of_birth else None
+            )
+            regenerated_identities.append({"partition": record.split.value, **identity})
+            regenerated_truth.append({
+                "employee_id": employee_id,
+                "cluster_root": regenerated_roots[employee_id],
+                "duplicate_of_employee_id": record.duplicate_of_employee_id,
+                "latent_person_id": record.latent_person_id,
+                "hard_nonduplicate_kind": (
+                    record.hard_nonduplicate_kind.value
+                    if record.hard_nonduplicate_kind else None
+                ),
+                "hard_nonduplicate_anchor_id": record.hard_nonduplicate_anchor_id,
+            })
+        regenerated_identities.sort(key=lambda row: row["employee_id"])
+        regenerated_truth.sort(key=lambda row: row["employee_id"])
+        _equal(asdict(regenerated.metadata), metadata["dataset_metadata"],
+               "regenerated dataset metadata")
+        _equal(regenerated_identities, identities, "regenerated identities")
+        _equal(regenerated_truth, _read(path / "truth.json"), "regenerated truth")
+    else:
+        _equal(metadata["generation_verification"], "caller_asserted_fixture",
+               "fixture verification")
     expected_pairs, views = [], {}
     for partition in ("validation", "test"):
         ids = sorted(k for k in by_id if by_id[k]["partition"] == partition)
@@ -333,10 +377,14 @@ def _audit(path, repo_root):
         }
         _resources(row)
         _equal({k: v for k, v in row.items() if k != "resources"}, expected, f"metrics {partition}/{method}")
-    return {"verified": True, "run_purpose": "duplicate_development", "holdout_accessed": False,
+    generated = metadata["data_origin"] == "existing_synthetic_generator"
+    return {"verified": generated,
+            "verification_status": ("certified_generated_evidence" if generated
+                                    else "arithmetic_verified_test_fixture"),
+            "run_purpose": "duplicate_development", "holdout_accessed": False,
             "records": len(by_id), "pair_rows": len(expected_pairs), "metric_rows": 6,
             "threshold_status": status, "source_snapshot_matches_revision": all(matches),
-            "limitations": ["No dataset regeneration or truth-realism certification.",
+            "limitations": ["Synthetic regeneration verifies provenance, not real-world realism.",
                             "Resource values are structurally checked, not independently measured.",
                             "Self-contained hashes are integrity checks, not authenticated signatures."]}
 
