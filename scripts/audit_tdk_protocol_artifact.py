@@ -1707,9 +1707,22 @@ def _audit_condition_balanced_summary(
                 sum(value >= observed - 1e-15 for value in statistics) / total
             )
         else:
-            signs = rng.choice((-1.0, 1.0), size=(sign_flip_samples, nonzero.size))
-            statistics = np.abs(signs @ nonzero)
-            extreme = int(np.count_nonzero(statistics >= observed - 1e-15))
+            max_sign_elements = 2_000_000
+            chunk_size = max(
+                1,
+                min(sign_flip_samples, max_sign_elements // nonzero.size),
+            )
+            extreme = 0
+            remaining = sign_flip_samples
+            while remaining:
+                current = min(chunk_size, remaining)
+                draws = rng.integers(0, 2, size=(current, nonzero.size))
+                signs = draws * 2 - 1
+                statistics = np.abs(signs @ nonzero)
+                extreme += int(np.count_nonzero(
+                    statistics >= observed - 1e-15
+                ))
+                remaining -= current
             sign_flip_p = (extreme + 1) / (sign_flip_samples + 1)
 
     condition_means = [float(values.mean()) for values in ordered]
