@@ -309,47 +309,55 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
                 _provenance()
 
     def test_model_comparison_is_independently_verified(self):
-        spec = independent_covering_scenario_matrix(
+        for run_purpose in (
             "independent_development",
-            employee_count=120,
-        )[0]
-        scenario = adapt_independent_world(generate_independent_world(spec))
-        evaluation = evaluate_residual_model_comparison(scenario)
-        metrics = list(evaluation.metric_rows)
-        predictions = list(evaluation.prediction_rows)
+            "independent_validation",
+        ):
+            with self.subTest(run_purpose=run_purpose):
+                spec = independent_covering_scenario_matrix(
+                    run_purpose,
+                    employee_count=120,
+                )[0]
+                scenario = adapt_independent_world(generate_independent_world(spec))
+                evaluation = evaluate_residual_model_comparison(scenario)
+                metrics = list(evaluation.metric_rows)
+                predictions = list(evaluation.prediction_rows)
 
-        with tempfile.TemporaryDirectory() as directory:
-            run_dir = Path(directory)
-            self._write_csv(run_dir / "model_comparison_metrics.csv", metrics)
-            self._write_csv(
-                run_dir / "model_comparison_predictions.csv",
-                predictions,
-            )
-            self._write_csv(
-                run_dir / "model_comparison_aggregates.csv",
-                _aggregate_rows(metrics),
-            )
-            self._write_csv(
-                run_dir / "model_comparison_paired.csv",
-                _paired_comparisons(metrics),
-            )
-            self._write_csv(
-                run_dir / "model_comparison_control_contrasts.csv",
-                _representation_control_contrasts(metrics),
-            )
-            self._write_csv(
-                run_dir / "model_comparison_robustness.csv",
-                _robustness_slices(metrics),
-            )
+                with tempfile.TemporaryDirectory() as directory:
+                    run_dir = Path(directory)
+                    self._write_csv(run_dir / "model_comparison_metrics.csv", metrics)
+                    self._write_csv(
+                        run_dir / "model_comparison_predictions.csv",
+                        predictions,
+                    )
+                    self._write_csv(
+                        run_dir / "model_comparison_aggregates.csv",
+                        _aggregate_rows(metrics),
+                    )
+                    self._write_csv(
+                        run_dir / "model_comparison_paired.csv",
+                        _paired_comparisons(metrics),
+                    )
+                    self._write_csv(
+                        run_dir / "model_comparison_control_contrasts.csv",
+                        _representation_control_contrasts(metrics),
+                    )
+                    self._write_csv(
+                        run_dir / "model_comparison_robustness.csv",
+                        _robustness_slices(metrics),
+                    )
 
-            result = _verify_model_comparison(
-                run_dir,
-                {"model_comparison_included": True},
-            )
+                    result = _verify_model_comparison(
+                        run_dir,
+                        {
+                            "model_comparison_included": True,
+                            "run_purpose": run_purpose,
+                        },
+                    )
 
-        self.assertTrue(result["present"])
-        self.assertEqual(result["scenario_count"], 1)
-        self.assertEqual(result["metric_rows"], 25)
+                self.assertTrue(result["present"])
+                self.assertEqual(result["scenario_count"], 1)
+                self.assertEqual(result["metric_rows"], 25)
 
     def test_raw_rate_control_is_policy_free_and_dimension_matched(self):
         representations = {

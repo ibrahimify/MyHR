@@ -471,6 +471,16 @@ def _representation_control_contrasts(
 ) -> list[dict[str, object]]:
     """Compare policy-aware scores with raw and policy-negative controls."""
 
+    comparison_statuses = {
+        str(row.get("comparison_status", "")) for row in rows
+    }
+    if len(comparison_statuses) != 1 or not comparison_statuses.issubset({
+        "exploratory_development",
+        "exploratory_validation",
+    }):
+        raise ValueError("model comparison rows have inconsistent status")
+    comparison_status = comparison_statuses.pop()
+
     indexed = {
         (
             str(row["scenario_id"]),
@@ -502,7 +512,7 @@ def _representation_control_contrasts(
                     "contrast": contrast_name,
                     "reference_representation": reference,
                     "comparator_representation": comparator,
-                    "comparison_status": "exploratory_development",
+                    "comparison_status": comparison_status,
                     "scenario_count": len(pairs),
                     "condition_count": len({
                         _condition_id(str(left["scenario_id"]))

@@ -176,7 +176,16 @@ def _verify_model_comparison(
     _verify_scenario_metrics(metric_rows, prediction_rows)
     _verify_aggregates(metric_rows, aggregate_rows)
     paired_schema = _verify_paired_comparisons(metric_rows, paired_rows)
-    _verify_control_contrasts(metric_rows, contrast_rows)
+    expected_status = (
+        "exploratory_validation"
+        if metadata.get("run_purpose") in {"validation", "independent_validation"}
+        else "exploratory_development"
+    )
+    _verify_control_contrasts(
+        metric_rows,
+        contrast_rows,
+        comparison_status=expected_status,
+    )
 
     expected_methods = {
         "isolation_forest",
@@ -196,8 +205,10 @@ def _verify_model_comparison(
     predictions_by_scenario: dict[str, list[dict[str, str]]] = defaultdict(list)
     for row in metric_rows:
         by_scenario[row["scenario_id"]].append(row)
-        if row.get("comparison_status") != "exploratory_development":
-            raise ArtifactAuditError("model comparison status is not exploratory")
+        if row.get("comparison_status") != expected_status:
+            raise ArtifactAuditError(
+                "model comparison status does not match the artifact purpose"
+            )
         parameters = json.loads(row["scorer_parameters_json"])
         if parameters.get("preprocessing") != "train_fitted_robust_scaler":
             raise ArtifactAuditError("model comparison preprocessing is inconsistent")
@@ -238,8 +249,13 @@ def _verify_model_comparison(
 def _verify_control_contrasts(
     metric_rows: list[dict[str, str]],
     stored_rows: list[dict[str, str]],
+    *,
+    comparison_status: str,
 ) -> None:
-    expected = _audit_control_contrasts(metric_rows)
+    expected = _audit_control_contrasts(
+        metric_rows,
+        comparison_status=comparison_status,
+    )
     key_fields = ("method", "operating_point", "contrast")
     stored = {
         tuple(row[field] for field in key_fields): row
@@ -281,6 +297,8 @@ def _verify_control_contrasts(
 
 def _audit_control_contrasts(
     rows: list[dict[str, str]],
+    *,
+    comparison_status: str,
 ) -> list[dict[str, object]]:
     indexed = {
         (row["scenario_id"], row["method"], row["representation"], row["operating_point"]): row
@@ -305,7 +323,7 @@ def _audit_control_contrasts(
                     "contrast": contrast,
                     "reference_representation": reference,
                     "comparator_representation": comparator,
-                    "comparison_status": "exploratory_development",
+                    "comparison_status": comparison_status,
                     "scenario_count": len(pairs),
                     "condition_count": len({
                         _condition_id(left["scenario_id"]) for left, _ in pairs
