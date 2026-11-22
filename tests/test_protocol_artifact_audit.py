@@ -1,7 +1,9 @@
 import csv
+import copy
 import json
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 from hashlib import sha256
 from pathlib import Path
@@ -15,6 +17,7 @@ from scripts.audit_tdk_protocol_artifact import (
     _verify_declared_matrix,
     _verify_paired_comparisons,
     _verify_model_comparison,
+    _verify_research_environment,
     _requires_bitemporal_contract,
     _verify_scenario_metrics,
     _verify_temporal_view_rows,
@@ -59,7 +62,196 @@ def _complete_source_hashes() -> dict:
     return hashes
 
 
+def _environment_provenance_at_head() -> dict:
+    import subprocess
+
+    declaration_bytes = subprocess.run(
+        ["git", "show", "HEAD:research-environment.json"],
+        cwd=Path.cwd(),
+        check=True,
+        capture_output=True,
+    ).stdout
+    declaration = json.loads(declaration_bytes.decode("utf-8"))
+    lock_file = declaration["lock_file"]
+    lock_bytes = subprocess.run(
+        ["git", "show", f"HEAD:{lock_file}"],
+        cwd=Path.cwd(),
+        check=True,
+        capture_output=True,
+    ).stdout
+    packages = {}
+    for raw_line in lock_bytes.decode("utf-8").splitlines():
+        line = raw_line.strip()
+        if line and not line.startswith("#"):
+            package, package_version = line.split("==", 1)
+            packages[package.casefold().replace("_", "-")] = package_version
+    return {
+        "python_version": declaration["python_version"] + " (fixture)",
+        "packages": packages,
+        "research_environment": {
+            "expected_python_version": declaration["python_version"],
+            "declaration_file": "research-environment.json",
+            "declaration_sha256": sha256(declaration_bytes).hexdigest(),
+            "lock_file": lock_file,
+            "lock_sha256": sha256(lock_bytes).hexdigest(),
+            "mismatches": [],
+        },
+    }
+
+
 class ProtocolArtifactAuditTests(unittest.TestCase):
+    def test_schema_eight_environment_provenance_matches_locked_revision(self):
+        declaration_bytes = (
+            b'{"python_version":"3.13.5",'
+            b'"lock_file":"requirements-research-lock.txt"}\n'
+        )
+        lock_bytes = b"numpy==2.5.4\nscipy==1.18.1\n"
+        metadata = {
+            "artifact_schema_version": 8,
+            "provenance": {
+                "git_commit": "revision",
+                "python_version": "3.13.5 (main, test)",
+                "packages": {"numpy": "2.5.4", "scipy": "1.18.1"},
+                "research_environment": {
+                    "expected_python_version": "3.13.5",
+                    "declaration_file": "research-environment.json",
+                    "declaration_sha256": sha256(declaration_bytes).hexdigest(),
+                    "lock_file": "requirements-research-lock.txt",
+                    "lock_sha256": sha256(lock_bytes).hexdigest(),
+                    "mismatches": [],
+                },
+            },
+        }
+
+        with patch(
+            "scripts.audit_tdk_protocol_artifact.subprocess.run",
+            side_effect=(
+                SimpleNamespace(returncode=0, stdout=declaration_bytes),
+                SimpleNamespace(returncode=0, stdout=lock_bytes),
+            ),
+        ):
+            _verify_research_environment(metadata, Path.cwd())
+
+    def test_environment_provenance_rejects_forged_metadata(self):
+        declaration_bytes = (
+            b'{"python_version":"3.13.5",'
+            b'"lock_file":"requirements-research-lock.txt"}\n'
+        )
+        lock_bytes = b"numpy==2.5.4\n"
+        base = {
+            "artifact_schema_version": 8,
+            "provenance": {
+                "git_commit": "revision",
+                "python_version": "3.13.5 (main, test)",
+                "packages": {"numpy": "2.5.4"},
+                "research_environment": {
+                    "expected_python_version": "3.13.5",
+                    "declaration_file": "research-environment.json",
+                    "declaration_sha256": sha256(declaration_bytes).hexdigest(),
+                    "lock_file": "requirements-research-lock.txt",
+                    "lock_sha256": sha256(lock_bytes).hexdigest(),
+                    "mismatches": [],
+                },
+            },
+        }
+        mutations = (
+            lambda value: value["provenance"]["research_environment"].update(
+                expected_python_version="3.12.0"
+            ),
+            lambda value: value["provenance"]["research_environment"].update(
+                declaration_sha256="forged"
+            ),
+            lambda value: value["provenance"]["research_environment"].update(
+                lock_sha256="forged"
+            ),
+            lambda value: value["provenance"]["packages"].update(numpy="0.0"),
+        )
+        for mutate in mutations:
+            metadata = copy.deepcopy(base)
+            mutate(metadata)
+            with self.subTest(metadata=metadata), patch(
+                "scripts.audit_tdk_protocol_artifact.subprocess.run",
+                side_effect=(
+                    SimpleNamespace(returncode=0, stdout=declaration_bytes),
+                    SimpleNamespace(returncode=0, stdout=lock_bytes),
+                ),
+            ):
+                with self.assertRaises(ArtifactAuditError):
+                    _verify_research_environment(metadata, Path.cwd())
+
+    def test_schema_downgrade_cannot_bypass_new_revision_checks(self):
+        declaration_bytes = b'{"python_version":"3.13.5","lock_file":"requirements-research-lock.txt"}\n'
+        metadata = {
+            "artifact_schema_version": 7,
+            "provenance": {"git_commit": "new-revision"},
+        }
+
+        with patch(
+            "scripts.audit_tdk_protocol_artifact.subprocess.run",
+            return_value=SimpleNamespace(returncode=0, stdout=declaration_bytes),
+        ):
+            with self.assertRaisesRegex(ArtifactAuditError, "provenance is missing"):
+                _verify_research_environment(metadata, Path.cwd())
+
+    def test_schema_eight_environment_provenance_rejects_drift(self):
+        declaration_bytes = (
+            b'{"python_version":"3.13.5",'
+            b'"lock_file":"requirements-research-lock.txt"}\n'
+        )
+        metadata = {
+            "artifact_schema_version": 8,
+            "provenance": {
+                "git_commit": "revision",
+                "research_environment": {"mismatches": ["numpy drift"]},
+            },
+        }
+
+        with patch(
+            "scripts.audit_tdk_protocol_artifact.subprocess.run",
+            return_value=SimpleNamespace(returncode=0, stdout=declaration_bytes),
+        ):
+            with self.assertRaisesRegex(ArtifactAuditError, "environment drift"):
+                _verify_research_environment(metadata, Path.cwd())
+
+    def test_legacy_environment_provenance_remains_optional(self):
+        import subprocess
+
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "config", "user.email", "fixture@example.test"],
+                cwd=repo,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Fixture"],
+                cwd=repo,
+                check=True,
+            )
+            (repo / "historical.txt").write_text("legacy\n", encoding="utf-8")
+            subprocess.run(["git", "add", "historical.txt"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "commit", "-qm", "Historical fixture"],
+                cwd=repo,
+                check=True,
+            )
+            revision = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+
+            _verify_research_environment(
+                {
+                    "artifact_schema_version": 7,
+                    "provenance": {"git_commit": revision},
+                },
+                repo,
+            )
+
     def test_current_independent_protocol_requires_bitemporal_contract(self):
         self.assertTrue(_requires_bitemporal_contract(
             "independent-scenarios-v3-2026-11-19",
@@ -88,8 +280,16 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
             "scripts.run_tdk_research_experiment._git_object_bytes",
             return_value=b"tracked source",
         ), patch(
-            "scripts.run_tdk_research_experiment.version",
-            return_value="test-version",
+            "scripts.verify_research_environment.environment_report",
+            return_value={
+                "expected_python_version": "3.13.5",
+                "declaration_file": "research-environment.json",
+                "declaration_sha256": "declaration-hash",
+                "lock_file": "requirements-research-lock.txt",
+                "lock_sha256": "lock-hash",
+                "mismatches": [],
+                "packages": {"numpy": "test-version"},
+            },
         ):
             provenance = _provenance()
 
@@ -99,6 +299,14 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
             ("status", "--porcelain", "--untracked-files=no"),
             calls,
         )
+
+    def test_provenance_rejects_environment_drift(self):
+        with patch(
+            "scripts.verify_research_environment.environment_report",
+            return_value={"mismatches": ["python drift"]},
+        ):
+            with self.assertRaisesRegex(RuntimeError, "python drift"):
+                _provenance()
 
     def test_model_comparison_is_independently_verified(self):
         spec = independent_covering_scenario_matrix(
@@ -685,8 +893,10 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
 
     @staticmethod
     def _write_fixture(run_dir: Path) -> None:
+        environment = _environment_provenance_at_head()
         metadata = {
             "artifact_id": "fixture",
+            "artifact_schema_version": 8,
             "holdout_accessed": False,
             "protocol_status": "draft_validation_holdout_locked",
             "protocol_version": "fixture",
@@ -696,6 +906,7 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
                 "git_commit": "HEAD",
                 "git_dirty": False,
                 "source_sha256": _complete_source_hashes(),
+                **environment,
             },
         }
         (run_dir / "metadata.json").write_text(
