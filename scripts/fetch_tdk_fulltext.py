@@ -75,6 +75,14 @@ def main() -> None:
         pdf_path = pdf_dir / f"{paper_id}.pdf"
         pdf_path.write_bytes(response.body)
         extracted_text, page_count = extract_pdf_text(response.body)
+        document_title_coverage = title_token_coverage(
+            str(paper["expected_title"]), extracted_text[:12_000]
+        )
+        if document_title_coverage < 0.75:
+            raise ValueError(
+                f"document title mismatch for {paper_id}: "
+                f"coverage={document_title_coverage:.3f}"
+            )
         text_path = text_dir / f"{paper_id}.txt"
         text_sha256 = write_text_and_hash(text_path, extracted_text)
 
@@ -135,6 +143,7 @@ def main() -> None:
             "text_sha256": text_sha256,
             "text_characters": len(extracted_text),
             "page_count": page_count,
+            "document_title_token_coverage": document_title_coverage,
             "metadata_verification": verification,
         })
         print(f"{paper_id}: {page_count} pages, {len(extracted_text):,} text characters")
@@ -195,6 +204,14 @@ def title_token_similarity(expected: str, actual: str) -> float:
     if not expected_tokens or not actual_tokens:
         return 0.0
     return len(expected_tokens & actual_tokens) / len(expected_tokens | actual_tokens)
+
+
+def title_token_coverage(expected: str, document_text: str) -> float:
+    expected_tokens = set(re.findall(r"[a-z0-9]+", expected.lower()))
+    document_tokens = set(re.findall(r"[a-z0-9]+", document_text.lower()))
+    if not expected_tokens:
+        return 0.0
+    return len(expected_tokens & document_tokens) / len(expected_tokens)
 
 
 def _safe_id(value: str) -> str:

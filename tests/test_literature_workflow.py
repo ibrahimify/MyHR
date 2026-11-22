@@ -17,6 +17,7 @@ from src.research.literature import (
 )
 from scripts.fetch_tdk_fulltext import (
     extract_pdf_text,
+    title_token_coverage,
     title_token_similarity,
     validate_pdf_bytes,
     write_text_and_hash,
@@ -288,6 +289,20 @@ class LiteratureClientTests(unittest.TestCase):
             "Isolation-Based Anomaly Detection",
             "Isolation Based Anomaly Detection",
         ), 0.99)
+        self.assertEqual(
+            title_token_coverage(
+                "Reliability in Content Analysis",
+                "Reliability in Content Analysis: recommendations and evidence",
+            ),
+            1.0,
+        )
+        self.assertLess(
+            title_token_coverage(
+                "Reliability in Content Analysis",
+                "Measuring qualitative text coding",
+            ),
+            0.75,
+        )
         with self.assertRaisesRegex(ValueError, "fewer than 500"):
             extract_pdf_text(payload.getvalue())
 
