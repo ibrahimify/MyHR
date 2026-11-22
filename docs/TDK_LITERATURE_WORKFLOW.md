@@ -133,6 +133,14 @@ This is an integration limitation, not missing research evidence: OpenAlex, arXi
 
 Official service documentation was rechecked before the integration update: OpenAlex documents free keyless casual access and an optional free key, Crossref documents free public and polite-pool access, arXiv documents its query interface and three-second pacing guidance, and Semantic Scholar documents header-based optional API keys.
 
+## Evidence Recheck On 2026-11-22
+
+- The curated corpus now contains 17 legally accessible full texts. The added Krippendorff paper was resolved through the University of Pennsylvania repository and matched to its DOI and document title.
+- The first repository bitstream candidate was rejected because its extracted title did not match the selected paper. Full-text retrieval now enforces document-title token coverage, preventing metadata from being paired with the wrong PDF.
+- The 18-entry bibliography and 15-claim evidence ledger pass strict local-artifact verification with no unverified records or claims.
+- The reliability claim is deliberately limited to what the inspected paper supports: independent coders, common instructions, and agreement assessment. Disagreement retention and adjudication remain MyHR study-design choices.
+- OpenAlex, arXiv, and Crossref remain operational. Semantic Scholar's anonymous endpoint returned HTTP `429` after bounded retries; the integration is implemented and tested, but a reliable live check still requires the optional free API key.
+
 ## Refresh Rules
 
 1. Never replace an old artifact directory.

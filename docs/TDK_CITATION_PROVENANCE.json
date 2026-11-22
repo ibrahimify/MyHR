@@ -2,7 +2,7 @@
     "schema_version": "1.0",
     "purpose": "Central provenance registry for the deduplicated TDK bibliography",
     "bibliography": "docs/TDK_REFERENCES.bib",
-    "full_text_artifact": "research_outputs/literature_fulltext/20261017T215119Z_4b354b03c1af",
+    "full_text_artifact": "research_outputs/literature_fulltext/20261122T025623Z_9549626b1373",
     "known_artifact_limitations": [
         {
             "code": "legacy_text_hash_pre_newline_normalization",
@@ -443,7 +443,7 @@
         {
             "citation_key": "krippendorff2004reliability",
             "doi": "10.1111/j.1468-2958.2004.tb00738.x",
-            "verification_status": "metadata_verified",
+            "verification_status": "full_text_reviewed",
             "sources": [
                 {
                     "service": "crossref",
@@ -454,11 +454,16 @@
                     "service": "crossref",
                     "identifier": "10.1111/j.1468-2958.2004.tb00738.x",
                     "retrieved_at": "2026-11-01"
+                },
+                {
+                    "service": "local_fulltext",
+                    "identifier": "krippendorff2004_reliability",
+                    "retrieved_at": "2026-11-22"
                 }
             ],
-            "metadata_rechecked_at": "2026-11-01",
-            "metadata_recheck_report": "docs/TDK_CITATION_AUDIT_2026-11-01.md",
-            "metadata_recheck_note": "2026-11-01: Crossref record confirms title 'Reliability in Content Analysis' with subtitle 'Some Common Misconceptions and Recommendations', HCR 30(3):411-433. An author copy is listed in the University of Pennsylvania ScholarlyCommons repository (repository.upenn.edu/asc_papers/242) but automated retrieval returned a bot-challenge page, so the full text was not inspected or preserved."
+            "metadata_rechecked_at": "2026-11-22",
+            "metadata_recheck_report": "docs/TDK_CITATION_INDEPENDENT_AUDIT_2026-11-22.md",
+            "metadata_recheck_note": "The DOI metadata and University of Pennsylvania repository copy were matched by title and identifier. The preserved PDF contains the cited recommendations on independent coding, common instructions, and agreement assessment."
         }
     ],
     "metadata_recheck": {

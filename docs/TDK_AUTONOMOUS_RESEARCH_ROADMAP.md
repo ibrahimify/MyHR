@@ -1,4 +1,20 @@
 # TDK Autonomous Research Roadmap
+## Citation Workflow Verification - Issue 11
+
+- The curated legal full-text corpus now contains 17 papers. A University of
+  Pennsylvania copy closes the remaining reliability-evidence gap; DOI,
+  document title, page locators, and checksums were independently verified.
+- Retrieval now rejects a PDF whose extracted title does not match the selected
+  paper. This check caught and excluded an incorrect repository bitstream before
+  it entered the evidence ledger.
+- All 18 bibliography records and 15 claim records pass strict local-artifact
+  verification. An independent read-only audit confirmed the bounded claim and
+  found no remaining evidence-scope blocker.
+- OpenAlex, arXiv, and Crossref remain usable through the free workflow.
+  Semantic Scholar's anonymous endpoint still returns HTTP 429 after bounded
+  retries; client behavior is tested and the optional free-key setup is
+  documented. No paid service or credential was added.
+
 ## Duplicate Evidence Infrastructure - Issue 16
 
 - Isolated implementation adds a duplicate-only development runner and separate
