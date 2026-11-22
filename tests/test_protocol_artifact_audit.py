@@ -100,6 +100,20 @@ def _environment_provenance_at_head() -> dict:
 
 
 class ProtocolArtifactAuditTests(unittest.TestCase):
+    def test_provenance_covers_analysis_and_audit_sources(self):
+        self.assertIn(
+            "src/research/condition_statistics.py",
+            PROVENANCE_SOURCE_PATHS,
+        )
+        self.assertIn(
+            "scripts/combine_tdk_independent_shards.py",
+            PROVENANCE_SOURCE_PATHS,
+        )
+        self.assertIn(
+            "scripts/audit_tdk_protocol_artifact.py",
+            PROVENANCE_SOURCE_PATHS,
+        )
+
     def test_schema_eight_environment_provenance_matches_locked_revision(self):
         declaration_bytes = (
             b'{"python_version":"3.13.5",'
