@@ -16,7 +16,6 @@ from src.research.literature import (
     redact_url,
 )
 from scripts.fetch_tdk_fulltext import (
-    PDF_DOWNLOAD_HEADERS,
     extract_pdf_text,
     title_token_similarity,
     validate_pdf_bytes,
@@ -271,8 +270,6 @@ class LiteratureClientTests(unittest.TestCase):
         self.assertIn(".env", gitignore)
 
     def test_pdf_validation_rejects_non_pdf_and_oversize_payloads(self):
-        self.assertEqual(PDF_DOWNLOAD_HEADERS["Accept"], "application/pdf")
-        self.assertTrue(PDF_DOWNLOAD_HEADERS["User-Agent"].startswith("Mozilla/5.0"))
         with self.assertRaisesRegex(ValueError, "PDF header"):
             validate_pdf_bytes(b"<html>not a paper</html>", max_bytes=100)
         with self.assertRaisesRegex(ValueError, "safety limit"):
