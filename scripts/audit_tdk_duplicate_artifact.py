@@ -269,6 +269,9 @@ def _audit(path, repo_root):
         _equal(config["employee_count"], len(by_id), "configuration record count")
         _equal(metadata["generation_verification"], "regenerated_and_matched",
                "generation verification")
+        import sys
+        if str(repo_root) not in sys.path:
+            sys.path.insert(0, str(repo_root))
         from dataclasses import asdict
         from src.services.anomaly_detection.synthetic_data import (
             ExperimentConfig,
