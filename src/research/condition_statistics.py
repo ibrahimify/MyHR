@@ -99,7 +99,11 @@ def _weighted_sign_flip_pvalue(
     weighted_effects: np.ndarray,
     rng: np.random.Generator,
     samples: int,
+    *,
+    max_sign_elements: int = 2_000_000,
 ) -> float:
+    if max_sign_elements < 1:
+        raise ValueError("max_sign_elements must be positive")
     nonzero = weighted_effects[np.abs(weighted_effects) > 1e-15]
     if nonzero.size == 0:
         return 1.0
@@ -111,7 +115,18 @@ def _weighted_sign_flip_pvalue(
         )
         total = 2 ** int(nonzero.size)
         return sum(value >= observed - 1e-15 for value in statistics) / total
-    signs = rng.choice((-1.0, 1.0), size=(samples, nonzero.size))
-    statistics = np.abs(signs @ nonzero)
-    extreme = int(np.count_nonzero(statistics >= observed - 1e-15))
+    chunk_size = max(1, min(samples, max_sign_elements // nonzero.size))
+    extreme = 0
+    remaining = samples
+    while remaining:
+        current = min(chunk_size, remaining)
+        draws = rng.integers(
+            0,
+            2,
+            size=(current, nonzero.size),
+        )
+        signs = draws * 2 - 1
+        statistics = np.abs(signs @ nonzero)
+        extreme += int(np.count_nonzero(statistics >= observed - 1e-15))
+        remaining -= current
     return (extreme + 1) / (samples + 1)

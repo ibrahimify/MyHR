@@ -93,25 +93,18 @@ def main() -> None:
         expected_seeds_per_condition=args.expected_seeds_per_condition,
     )
 
-    rows = {
-        name: [
-            row
-            for shard in shards
-            for row in _read_csv(shard / name)
-        ]
-        for name in RAW_FILES
-    }
-    rows["scenario_configs.csv"] = combined_configs
+    metric_rows = [
+        row
+        for shard in shards
+        for row in _read_csv(shard / "scenario_metrics.csv")
+    ]
     include_models = base["model_comparison_included"] is True
     if include_models:
-        rows.update({
-            name: [
-                row
-                for shard in shards
-                for row in _read_csv(shard / name)
-            ]
-            for name in MODEL_RAW_FILES
-        })
+        model_metrics = [
+            row
+            for shard in shards
+            for row in _read_csv(shard / "model_comparison_metrics.csv")
+        ]
 
     artifact_identity = {
         "source_revision": base["provenance"]["git_commit"],
@@ -148,21 +141,33 @@ def main() -> None:
         ),
     })
 
-    metric_rows = rows["scenario_metrics.csv"]
     _require_primary_policy_signal(metric_rows)
     with _staged_artifact_directory(final_dir) as run_dir:
         _write_json(run_dir / "metadata.json", metadata)
         for name in RAW_FILES:
-            _write_csv(run_dir / name, rows[name])
+            if name == "scenario_configs.csv":
+                _write_csv(run_dir / name, combined_configs)
+            elif name == "scenario_metrics.csv":
+                _write_csv(run_dir / name, metric_rows)
+            else:
+                _concatenate_csv_files(
+                    run_dir / name,
+                    tuple(shard / name for shard in shards),
+                )
         _write_csv(run_dir / "aggregate_metrics.csv", _aggregate_rows(metric_rows))
         _write_csv(run_dir / "paired_comparisons.csv", _paired_comparisons(metric_rows))
         _write_csv(run_dir / "robustness_slices.csv", _robustness_slices(metric_rows))
         _write_csv(run_dir / "utility_sensitivity.csv", _utility_sensitivity(metric_rows))
 
         if include_models:
-            model_metrics = rows["model_comparison_metrics.csv"]
             for name in MODEL_RAW_FILES:
-                _write_csv(run_dir / name, rows[name])
+                if name == "model_comparison_metrics.csv":
+                    _write_csv(run_dir / name, model_metrics)
+                else:
+                    _concatenate_csv_files(
+                        run_dir / name,
+                        tuple(shard / name for shard in shards),
+                    )
             _write_csv(
                 run_dir / "model_comparison_aggregates.csv",
                 _aggregate_rows(model_metrics),
@@ -260,6 +265,29 @@ def _read_json(path: Path) -> dict[str, Any]:
 def _read_csv(path: Path) -> list[dict[str, str]]:
     with path.open(newline="", encoding="utf-8") as handle:
         return list(csv.DictReader(handle))
+
+
+def _concatenate_csv_files(output: Path, inputs: tuple[Path, ...]) -> None:
+    """Concatenate aligned CSV files without retaining record-level rows in memory."""
+    if not inputs:
+        raise ValueError("CSV concatenation requires at least one input")
+    fieldnames: list[str] | None = None
+    with output.open("w", newline="", encoding="utf-8") as destination:
+        writer: csv.DictWriter[str] | None = None
+        for path in inputs:
+            with path.open(newline="", encoding="utf-8") as source:
+                reader = csv.DictReader(source)
+                current = list(reader.fieldnames or ())
+                if not current:
+                    raise ValueError(f"CSV input has no header: {path}")
+                if fieldnames is None:
+                    fieldnames = current
+                    writer = csv.DictWriter(destination, fieldnames=fieldnames)
+                    writer.writeheader()
+                elif current != fieldnames:
+                    raise ValueError(f"CSV headers disagree for {path}")
+                assert writer is not None
+                writer.writerows(reader)
 
 
 if __name__ == "__main__":

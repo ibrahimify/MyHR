@@ -2,10 +2,62 @@
 
 Research title: **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**
 
+## Independent Validation Result - 2026-11-23
+
+Status: **Audited independent synthetic validation evidence. This is not the
+final holdout, the protocol is not frozen, and the holdout remains untouched.**
+
+Artifact `c5b0723409c2394e` contains 36 conditions with 30 seeds per condition
+(1,080 scenarios). It was generated from revision `dc055c3` and passed the
+standalone artifact audit. The manifest covers 20 files, including 1,944,000
+exploratory multi-model predictions. The stored metadata records
+`holdout_accessed: false`.
+
+The primary raw and policy-aware Isolation Forest representations scored the
+same 77,760 invariant-negative test histories and each received 8,640 review
+slots. The population contained 9,720 injected errors, 5,400 rare-legitimate
+histories, and 62,640 ordinary clean histories.
+
+| Primary method at fixed capacity | TP | FP | FN | Mean recall | Mean AP | Rare-legitimate flags | Ordinary-clean flags |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Raw features | 3,348 | 5,292 | 6,372 | 0.3664 | 0.4674 | 607/5,400 | 4,685/62,640 |
+| Policy-aware features | 3,800 | 4,840 | 5,920 | 0.4102 | 0.5161 | 513/5,400 | 4,327/62,640 |
+
+The condition-balanced policy-aware minus raw recall difference is +0.0438,
+with a 95% hierarchical interval [+0.0177, +0.0698] and paired sign-flip
+`p approximately 0.000010` (the minimum from 100,000 Monte Carlo draws). The
+Average Precision difference is +0.0487, interval [+0.0206, +0.0774], with
+Holm-adjusted `p approximately 0.000030` in the declared secondary family.
+
+The pooled rare-legitimate count is lower for policy-aware features, but the
+condition-balanced rate difference is -0.0167 with interval [-0.0431, +0.0090].
+Its Holm-adjusted sign-flip `p` is 0.000490. The hierarchical interval and the
+paired test therefore disagree because they encode different sensitivity to
+condition heterogeneity. Both are retained; because the interval crosses zero,
+the conservative conclusion is that a stable reduction across conditions is
+not established. The ordinary-clean flag-rate difference is -0.00595 with
+interval [-0.00996, -0.00225] and Holm-adjusted
+`p approximately 0.000030`. Counts and scenario-balanced effects answer
+different questions and are reported together.
+
+The five-scorer extension is exploratory and does not replace the predeclared
+primary comparison. Its effects vary by method. For exploratory Isolation
+Forest, policy-aware minus wrong-policy recall is +0.0245 with interval
+[+0.0004, +0.0496], while the wrong-policy representation flags many more
+rare-legitimate histories. These controls show that policy representation
+matters in this generator, but they do not prove that the observed advantage
+will transfer to real employee data or unseen policy systems.
+
+This validation supports a narrow conclusion: under the independent synthetic
+matrix and equal review capacity, policy-aware features changed ranking and
+improved mean recall over the tested raw representation. It does not establish
+deployment validity, justify automated personnel action, validate realism, or
+authorize choosing whichever exploratory scorer performed best.
+
 ## Recovery Development Result - 2026-11-19
 
-Status: **Audited development evidence. Validation has not run. The protocol is
-not frozen and the final holdout remains locked.**
+Status: **Audited development evidence, retained as the pre-validation result.
+The protocol is not frozen and the final holdout remains locked.**
 
 Artifact `951d516ebf6ba222` contains 36 independent conditions with 30 seeds per
 condition (1,080 scenarios). Each method scored the same 77,760 residual test
@@ -136,4 +188,10 @@ The stored paired AP difference is `+0.0005`, 95% interval `[-0.1173, 0.1079]`, 
 
 ## Readiness
 
-Implementation confidence is high for the tested mechanics and artifact integrity. Internal validity of the central residual comparison is insufficient because the intended policy signal is absent. The work is ready for supervisor methodological redesign, not protocol freeze, holdout execution, or publication claims.
+Implementation confidence is high for the tested mechanics and artifact
+integrity. Independent validation now demonstrates a synthetic ranking
+difference for the predeclared Isolation Forest comparison, while the
+rare-legitimate effect remains uncertain and exploratory methods disagree.
+Expert realism evidence, a frozen protocol and an authorized one-time holdout
+run are still missing. The work is ready for protocol-freeze review, not a
+deployment claim or an unlocked holdout.

@@ -1,5 +1,6 @@
 from dataclasses import replace
 from collections import Counter
+import csv
 from itertools import combinations, product
 
 import pytest
@@ -7,7 +8,10 @@ import pytest
 from scripts.run_tdk_independent_development import _select_independent_conditions
 from scripts.run_tdk_independent_development import _replicate_independent_specs
 from scripts.run_tdk_independent_development import _protocol_status
-from scripts.combine_tdk_independent_shards import _validate_shard_set
+from scripts.combine_tdk_independent_shards import (
+    _concatenate_csv_files,
+    _validate_shard_set,
+)
 from src.research.independent_scenarios import (
     anomaly_mechanisms,
     compatible_rare_patterns_by_population,
@@ -233,6 +237,34 @@ def test_runner_requires_covering_design_for_validation() -> None:
     )
     assert len(validation) == 36
     assert all(spec.run_purpose == "independent_validation" for spec in validation)
+
+
+def test_combined_record_csvs_are_streamed_with_one_header(tmp_path) -> None:
+    first = tmp_path / "first.csv"
+    second = tmp_path / "second.csv"
+    output = tmp_path / "combined.csv"
+    first.write_text("id,value\n1,alpha\n2,beta\n", encoding="utf-8")
+    second.write_text("id,value\n3,gamma\n", encoding="utf-8")
+
+    _concatenate_csv_files(output, (first, second))
+
+    with output.open(newline="", encoding="utf-8") as handle:
+        assert list(csv.DictReader(handle)) == [
+            {"id": "1", "value": "alpha"},
+            {"id": "2", "value": "beta"},
+            {"id": "3", "value": "gamma"},
+        ]
+
+
+def test_combined_record_csvs_reject_header_drift(tmp_path) -> None:
+    first = tmp_path / "first.csv"
+    second = tmp_path / "second.csv"
+    output = tmp_path / "combined.csv"
+    first.write_text("id,value\n1,alpha\n", encoding="utf-8")
+    second.write_text("id,other\n2,beta\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="headers disagree"):
+        _concatenate_csv_files(output, (first, second))
 
 
 def test_policy_variants_change_observable_policy_cards() -> None:

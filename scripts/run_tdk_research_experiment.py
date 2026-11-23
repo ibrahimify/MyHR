@@ -59,10 +59,13 @@ PROVENANCE_SOURCE_PATHS = (
     "src/services/anomaly_detection/protocol_evaluation.py",
     "src/research/independent_scenarios.py",
     "src/research/independent_scenario_adapter.py",
+    "src/research/condition_statistics.py",
     "scripts/run_tdk_research_experiment.py",
     "scripts/run_tdk_research_multiseed.py",
     "scripts/run_tdk_protocol_experiment.py",
     "scripts/run_tdk_independent_development.py",
+    "scripts/combine_tdk_independent_shards.py",
+    "scripts/audit_tdk_protocol_artifact.py",
 )
 
 

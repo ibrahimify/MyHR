@@ -1,10 +1,17 @@
+import numpy as np
 import pytest
 
-from src.research.condition_statistics import condition_balanced_paired_summary
+from src.research.condition_statistics import (
+    _weighted_sign_flip_pvalue,
+    condition_balanced_paired_summary,
+)
 from scripts.run_tdk_protocol_experiment import (
     PAIR_METRICS,
     PRIMARY_COMPARISON,
     _paired_comparisons,
+)
+from scripts.audit_tdk_protocol_artifact import (
+    _audit_condition_balanced_summary,
 )
 
 
@@ -58,6 +65,70 @@ def test_zero_effect_has_unit_sign_flip_pvalue() -> None:
     )
 
     assert summary.sign_flip_pvalue == 1.0
+
+
+def test_chunked_sign_flip_matches_single_matrix_sampling() -> None:
+    effects = np.linspace(-0.2, 0.4, 25) + 0.001
+    samples = 1_000
+    expected_rng = np.random.default_rng(91)
+    expected_draws = expected_rng.integers(
+        0,
+        2,
+        size=(samples, effects.size),
+    )
+    expected_signs = expected_draws * 2 - 1
+    observed = abs(float(effects.sum()))
+    expected_extreme = np.count_nonzero(
+        np.abs(expected_signs @ effects) >= observed - 1e-15
+    )
+    expected = (int(expected_extreme) + 1) / (samples + 1)
+
+    actual = _weighted_sign_flip_pvalue(
+        effects,
+        np.random.default_rng(91),
+        samples,
+        max_sign_elements=100,
+    )
+
+    assert actual == expected
+
+
+def test_sign_flip_sampling_is_bounded_for_validation_scale() -> None:
+    effects = np.linspace(-0.1, 0.2, 649)
+
+    result = _weighted_sign_flip_pvalue(
+        effects,
+        np.random.default_rng(17),
+        2_000,
+        max_sign_elements=1_000,
+    )
+
+    assert 0.0 < result <= 1.0
+
+
+def test_independent_auditor_reproduces_chunked_sign_flip() -> None:
+    values = {
+        f"condition-{condition:02d}": tuple(
+            (condition - 18) / 100 + replicate / 1000
+            for replicate in range(30)
+        )
+        for condition in range(36)
+    }
+
+    generated = condition_balanced_paired_summary(
+        values,
+        seed=73,
+        bootstrap_samples=500,
+        sign_flip_samples=2_000,
+    )
+    audited = _audit_condition_balanced_summary(
+        {key: list(items) for key, items in values.items()},
+        seed=73,
+        bootstrap_samples=500,
+        sign_flip_samples=2_000,
+    )
+
+    assert audited["sign_flip_p"] == generated.sign_flip_pvalue
 
 
 @pytest.mark.parametrize(

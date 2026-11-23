@@ -35,13 +35,13 @@ for a human reviewer.
 
 ## Result
 
-The completed 1,080-scenario development experiment shows that policy-derived
-features can improve ranking over the tested raw representations, but it does
-not yet isolate a consistent benefit from using the correct policy. Results
-vary by scorer, and comparisons with wrong-policy and policy-free controls
-remain mixed. This is synthetic development evidence, not a final validation
-claim. The protocol is still a draft and the final holdout has not been
-generated or accessed.
+The completed independent validation contains 1,080 synthetic scenarios across
+36 conditions and 30 seeds. At equal review capacity, the predeclared
+policy-aware Isolation Forest improved mean recall over the raw representation
+by 4.38 percentage points (95% interval 1.77 to 6.98). The result is synthetic,
+rare-legitimate false-alert reduction remains uncertain, and exploratory
+scorers do not provide a uniform causal explanation. The protocol is still a
+draft and the final holdout has not been generated or accessed.
 
 ## TDK submission manuscript
 
@@ -50,13 +50,20 @@ generated or accessed.
 
 ## Main findings
 
-**Current recovery experiment.** Artifact `951d516ebf6ba222` contains 36
-conditions with 30 seeds each. All five scorers used identical residual records
-and review budgets. Policy-aware minus raw recall ranged from -0.02 percentage
-points for IQR to +7.70 points for Local Outlier Factor. Isolation Forest gained
-3.68 points (95% interval +1.15 to +6.24), but its gain over the wrong-policy
-control was 2.00 points with an interval spanning zero. These development
-results support further validation, not a superiority claim.
+**Current validation experiment.** Artifact `c5b0723409c2394e` contains 36
+conditions with 30 seeds each. Raw and policy-aware Isolation Forest scored the
+same 77,760 residual records and each reviewed 8,640. Policy-aware features
+found 3,800 of 9,720 injected errors versus 3,348 for raw features. The
+condition-balanced recall difference was +4.38 percentage points (95% interval
++1.77 to +6.98; paired sign-flip p approximately 0.000010). Policy-aware features flagged
+513 of 5,400 rare-legitimate histories versus 607 for raw features, but the
+interval for that rate difference crossed zero. This supports a synthetic
+ranking difference, not a deployment or causal-superiority claim.
+
+**Recovery development experiment.** Artifact `951d516ebf6ba222` remains the
+pre-validation record. Its five exploratory scorers produced different effect
+sizes, and comparisons with wrong-policy and policy-free controls limited causal
+attribution. No scorer was selected from those inspected development results.
 
 All numbers below are copied from the audited artifacts and appear in the paper (Sections 6.7 and 6.8).
 
@@ -119,18 +126,22 @@ representations at equal capacity, and the generated truth on a separate tab.
 ## Limitations
 
 - Synthetic data only. Realism has not been reviewed by humans.
-- The policy-aware advantage is not demonstrated, and the 12-scenario interval does not show equivalence either.
+- The validation advantage is limited to synthetic ranking under the tested
+  matrix; transfer to real organisations and unseen policy systems is unknown.
+- The rare-legitimate false-alert effect remains uncertain even though the
+  pooled validation count is lower for policy-aware features.
 - Not reported in the paper: numerical results for the IQR and z-score baselines, the duplicate-detection comparison
   and runtime. These parts are implemented in the code.
 - The optional user study of explanations was not conducted.
-- The independent citation re-audit is pending, and one reference (Krippendorff) is still unverified.
+- The citation registry passes strict local-artifact verification for all 18
+  bibliography records and 15 claim records.
 
 ## Future work
 
-1. Independently validate the fixed representations and controls without
-   selecting a scorer from the development results.
-2. Run the blinded realism review with two independent human reviewers.
-3. Freeze the protocol, then run the locked holdout once, after supervisor approval.
+1. Run the blinded realism review with two independent human reviewers.
+2. Freeze the protocol and analysis revision without selecting a scorer from
+   inspected exploratory results.
+3. Run the locked holdout once only after the remaining authorization gates.
 4. Extend the scenario matrix only through a documented protocol decision to
    cover factors not varied in the 36-condition development design.
 5. Report the baselines, duplicate-detection benchmark and runtime.
