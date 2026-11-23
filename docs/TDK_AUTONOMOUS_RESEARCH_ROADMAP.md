@@ -1,4 +1,40 @@
 # TDK Autonomous Research Roadmap
+## Independent Validation - Issue 10
+
+- Authoritative artifact `c5b0723409c2394e` contains 36 independently
+  specified conditions with 30 seeds each (1,080 scenarios). It was generated
+  from revision `dc055c3`; all 30 shards and the combined 20-file artifact
+  passed the independent manifest, provenance, population, metric, temporal,
+  and truth-separation audit. It records `holdout_accessed: false`.
+- Every primary representation scored the same 77,760 invariant-negative test
+  histories and received 8,640 review slots. There were 9,720 injected errors,
+  5,400 rare-legitimate histories, and 62,640 ordinary clean histories.
+- At the fixed review capacity, policy-aware Isolation Forest found 3,800
+  errors and raised 4,840 false alerts; raw Isolation Forest found 3,348 errors
+  and raised 5,292 false alerts. The condition-balanced mean recall difference
+  was +0.0438 with a 95% hierarchical interval [+0.0177, +0.0698] and paired
+  Monte Carlo sign-flip p approximately 0.000010.
+- Average precision increased by 0.0487 (95% interval [+0.0206, +0.0774];
+  Holm-adjusted p approximately 0.000030). Rare-legitimate flags were 513/5,400 versus
+  607/5,400; the hierarchical interval for the rate difference crosses zero,
+  while the Holm-adjusted sign-flip p is 0.000490. The discordance reflects
+  condition heterogeneity versus the paired sign test; both are retained, and
+  the conservative interpretation is that stable rare-case reduction is not
+  established. Ordinary-clean flags were 4,327/62,640 versus 4,685/62,640.
+- The separately labelled five-scorer comparison remains exploratory. Effects
+  vary by scorer, and wrong-policy controls limit causal attribution. The
+  validation result supports a ranking difference under these synthetic
+  conditions; it does not establish deployment validity or authorize selecting
+  a model after inspecting outcomes.
+- Three implementation defects were exposed before certification: validation
+  stage labels disagreed, sign-flip sampling could exhaust memory, and artifact
+  identity omitted analysis sources. A fourth operational defect loaded all
+  combined CSV records into memory. Regression tests now cover all four, and
+  large record files are combined by streaming.
+- The final holdout remains undefined, locked, and untouched. Protocol freeze,
+  expert realism evidence, and a one-time holdout authorization remain open
+  scientific gates rather than completed work.
+
 ## Citation Workflow Verification - Issue 11
 
 - The curated legal full-text corpus now contains 17 papers. A University of
@@ -83,8 +119,8 @@
   Isolation Forest the difference is +0.0368, 95% interval [+0.0115, +0.0624],
   while policy-aware minus wrong-policy is +0.0200, interval [-0.0048, +0.0447].
   This does not isolate a consistent benefit from correct policy knowledge.
-  Validation remains unrun and no scorer may be selected from this development
-  result.
+  The later independent validation is reported above. No scorer was selected
+  from this development result.
 - Independent recomputation reproduced populations, eight-slot queues, recall,
   confusion counts, rare-legitimate rates, and AP. AP reproduction requires
   round-trip binary64 CSV parsing; a default pandas parser can collapse adjacent
