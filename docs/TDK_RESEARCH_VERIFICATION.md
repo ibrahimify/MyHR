@@ -1,5 +1,10 @@
 # TDK Research Verification
 
+> Historical verification guide. Some commands remain useful, but the status
+> statements predate the November 23 independent validation. Start with
+> [Current Research Status](TDK_CURRENT_RESEARCH_STATUS.md) and verify commands
+> against the current scripts before use.
+
 Research title:
 
 **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**

@@ -1,5 +1,9 @@
 # MyHR Research Handover
 
+> Historical snapshot dated 2026-11-01. It is retained because published
+> figure provenance cites its worked examples. For current evidence and next
+> steps, use [Current Research Status](TDK_CURRENT_RESEARCH_STATUS.md).
+
 Research title: **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**
 
 Status date: 2026-11-01
@@ -291,7 +295,8 @@ Do not run any holdout command. The exact artifact location may be local or inte
 2. Work through Section 5 with a calculator and reproduce the promotion example and confusion-metric formulas.
 3. Read Sections 8 and 9, then inspect the tables in `TDK_INDEPENDENT_REVIEW_2026-10-17.md`.
 4. Read `TDK_SUPERVISOR_DECISION_SHEET.md` and write one question beside each undecided item.
-5. Open `CHATGPT_RESEARCH_TUTOR_PROMPT.md`, paste it into ChatGPT with the repository link, and begin Lesson 1 only.
+5. The former repository-learning prompt is preserved under
+   `archive/teaching/RESEARCH_TUTOR_PROMPT_2026-11-01.md` as historical material.
 
 ### Deeper sequence
 

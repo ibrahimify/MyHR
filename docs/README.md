@@ -4,35 +4,32 @@ This index separates current authority, dated evidence, derivative summaries, pe
 
 ## Recommended Reading Order
 
-1. [Research handover](RESEARCH_HANDOVER.md) - beginner-friendly synthesis of the research and its present limits. It is a derivative snapshot, not the live status authority.
-2. [Autonomous research roadmap](TDK_AUTONOMOUS_RESEARCH_ROADMAP.md) - sole live ledger for current status, blockers, validation, and next actions.
-3. [Data and test correctness audit](TDK_DATA_TEST_CORRECTNESS_AUDIT_2026-10-29.md) - reproduced generator, evaluation, duplicate, temporal, and test defects; records corrections and remaining gaps.
-4. [Independent methodology review](TDK_INDEPENDENT_REVIEW_2026-10-17.md) - dated adversarial review of revision `697344a`; read it with the later remediation sources identified below.
-5. [Supervisor methodology decisions](TDK_SUPERVISOR_DECISIONS_2026-10-29.md) - approved design direction and the remaining implementation and freeze gate.
-6. [Experiment protocol](TDK_EXPERIMENT_PROTOCOL.md) - draft normative boundary. Approved components are partly implemented, but independent clean-revision verification and freeze remain pending; the holdout is locked.
-
-Use the [ChatGPT research tutor prompt](CHATGPT_RESEARCH_TUTOR_PROMPT.md) to begin a guided course through the repository.
+1. [Current research status](TDK_CURRENT_RESEARCH_STATUS.md) - concise current result, exact denominators, limitations, and evidence links.
+2. [Development and validation report](TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md) - full current result plus preserved earlier diagnostics.
+3. [Research roadmap](TDK_RESEARCH_ROADMAP.md) - detailed chronology of implementation, failures, repairs, and verification.
+4. [Experiment protocol](TDK_EXPERIMENT_PROTOCOL.md) - draft normative boundary; the final holdout remains locked.
+5. [Independent scenario specification](TDK_INDEPENDENT_SCENARIO_SPEC.md) - implemented synthetic validation design.
+6. [Literature review](TDK_LITERATURE_REVIEW.md) - verified background and evidence limits.
 
 ## Authority And Status
 
 | Document | Role | Status and interpretation |
 | --- | --- | --- |
-| [TDK_AUTONOMOUS_RESEARCH_ROADMAP.md](TDK_AUTONOMOUS_RESEARCH_ROADMAP.md) | Live research status ledger | Current authority for completed work, blockers, validation evidence, and next actions |
-| [TDK_EXPERIMENT_PROTOCOL.md](TDK_EXPERIMENT_PROTOCOL.md) | Normative experiment boundary | Methodology approved; foundational implementation completed; independent clean-revision verification and freeze pending; final holdout locked |
+| [TDK_CURRENT_RESEARCH_STATUS.md](TDK_CURRENT_RESEARCH_STATUS.md) | Public current-status entry point | Current headline evidence, limitations, and links to exact reports |
+| [TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md](TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md) | Current result report | Audited synthetic development and validation evidence; not a final holdout |
+| [TDK_RESEARCH_ROADMAP.md](TDK_RESEARCH_ROADMAP.md) | Detailed research chronology | Current implementation ledger and preserved negative findings |
+| [TDK_EXPERIMENT_PROTOCOL.md](TDK_EXPERIMENT_PROTOCOL.md) | Normative experiment boundary | Draft; foundational implementation and independent validation completed; final holdout locked |
 | [TDK_DATA_TEST_CORRECTNESS_AUDIT_2026-10-29.md](TDK_DATA_TEST_CORRECTNESS_AUDIT_2026-10-29.md) | Reproduced data, test, temporal, duplicate, and evaluation defects plus remediation | Current dated corrective audit; does not establish favorable results or holdout readiness |
 | [TDK_INDEPENDENT_SCENARIO_SPEC.md](TDK_INDEPENDENT_SCENARIO_SPEC.md) | Independent development scenario specification | Current implemented specification; does not authorize holdout work |
-| [TDK_RESEARCH_VERIFICATION.md](TDK_RESEARCH_VERIFICATION.md) | Verification and artifact interpretation | Current operational guidance |
+| [TDK_RESEARCH_VERIFICATION.md](TDK_RESEARCH_VERIFICATION.md) | Historical verification guide | Preserved because dated audits and figure provenance cite it; check current commands against the status report and code |
 | [RESEARCH_EVIDENCE_PRESERVATION.md](RESEARCH_EVIDENCE_PRESERVATION.md) | Read-only evidence inventory and retention boundary | Current maintenance guidance; does not authorize deletion |
 | [TDK_LITERATURE_REVIEW.md](TDK_LITERATURE_REVIEW.md) | Verified literature synthesis | Current synthesis; literature is not proof of this project's results |
 | [TDK_REFERENCES.bib](TDK_REFERENCES.bib) | Verified bibliography | Current bibliography |
 | [TDK_CITATION_PROVENANCE.json](TDK_CITATION_PROVENANCE.json) | Identifier, retrieval, and full-text provenance for each bibliography entry | Current evidence registry |
 | [TDK_CLAIM_EVIDENCE_LEDGER.json](TDK_CLAIM_EVIDENCE_LEDGER.json) | Machine-checked mapping from research claims to exact source evidence | Current evidence ledger |
-| [TDK_RESEARCH_AGENT_WORKFLOW.md](TDK_RESEARCH_AGENT_WORKFLOW.md) | Six-role workflow and citation/auditor gates | Current agent governance |
-| [TDK_2026_SUBMISSION_REQUIREMENTS.md](TDK_2026_SUBMISSION_REQUIREMENTS.md) | 2026 portal deadlines, paper format, and upload checklist | Current submission checklist; final portal deadline still requires manual confirmation |
-| [TDK_PAPER_DRAFT.md](TDK_PAPER_DRAFT.md) | English supervisor-review manuscript source | Current development-evidence draft; not a confirmatory paper |
-| [TDK_SUPERVISOR_BRIEF_2026-10-30.md](TDK_SUPERVISOR_BRIEF_2026-10-30.md) | Professor-facing executive summary and meeting request | Current supervisor package entry point |
-| [TDK_CITATION_AUDIT_2026-11-01.md](TDK_CITATION_AUDIT_2026-11-01.md) | Latest complete citation audit, corrections, and unresolved evidence gaps | Current dated citation evidence; earlier audits are archived |
-| [TDK_CITATION_INDEPENDENT_AUDIT_2026-10-29.md](TDK_CITATION_INDEPENDENT_AUDIT_2026-10-29.md) | Hostile citation-governance review, remediation, and readiness verdict | Dated independent audit |
+| [TDK_PAPER_DRAFT.md](TDK_PAPER_DRAFT.md) | Submitted manuscript source | Historical submission evidence; it predates the November 23 validation |
+| [TDK_CITATION_INDEPENDENT_AUDIT_2026-11-22.md](TDK_CITATION_INDEPENDENT_AUDIT_2026-11-22.md) | Latest independent citation verification | Current strict local-artifact audit |
+| [TDK_CITATION_AUDIT_2026-11-01.md](TDK_CITATION_AUDIT_2026-11-01.md) | Citation correction record | Dated evidence; read with the November 22 independent verification |
 | [TDK_LITERATURE_WORKFLOW.md](TDK_LITERATURE_WORKFLOW.md) | Reusable free literature workflow | Current operational guidance |
 
 ## Dated Evidence And Remediation
@@ -41,7 +38,7 @@ These documents preserve what was reviewed or measured at a specific revision. L
 
 | Document | Evidence boundary | Later interpretation or remediation |
 | --- | --- | --- |
-| [TDK_INDEPENDENT_REVIEW_2026-10-17.md](TDK_INDEPENDENT_REVIEW_2026-10-17.md) | Adversarial review of revision `697344a`; independently re-derived key stored metrics and identified the structurally invalid residual comparison | Read with the [development and validation report](TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md) and the remediation record in the [roadmap](TDK_AUTONOMOUS_RESEARCH_ROADMAP.md) |
+| [TDK_INDEPENDENT_REVIEW_2026-10-17.md](TDK_INDEPENDENT_REVIEW_2026-10-17.md) | Adversarial review of revision `697344a`; independently re-derived key stored metrics and identified the structurally invalid residual comparison | Read with the [development and validation report](TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md) and the remediation record in the [roadmap](TDK_RESEARCH_ROADMAP.md) |
 | [TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md](TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md) | Dated development and validation diagnostics with corrected interpretation | Retains superseded results as history; does not establish protocol approval or holdout readiness |
 
 The independent review's historical implementation objections remain valid for the revision it reviewed. The roadmap records later auditor, provenance, metric-checking, and documentation corrections; those remediations do not convert the original residual experiment into a valid test of incremental policy context.
@@ -51,8 +48,7 @@ The independent review's historical implementation objections remain valid for t
 | Document | Role | Status |
 | --- | --- | --- |
 | [TDK_PAPER_METHODS_DRAFT.md](TDK_PAPER_METHODS_DRAFT.md) | Artifact-traceable methods prose | Draft; subordinate to the protocol and evidence artifacts |
-| [RESEARCH_HANDOVER.md](RESEARCH_HANDOVER.md) | Educational synthesis and project handover | Derivative snapshot; check the roadmap for live status |
-| [CHATGPT_RESEARCH_TUTOR_PROMPT.md](CHATGPT_RESEARCH_TUTOR_PROMPT.md) | Repository-grounded learning prompt | Teaching aid, not research authority |
+| [RESEARCH_HANDOVER.md](RESEARCH_HANDOVER.md) | Educational synthesis and project handover | Historical snapshot dated 2026-11-01; retained because figure provenance cites its worked examples |
 
 ## Recorded Decisions And Pending Execution
 
@@ -64,7 +60,8 @@ The independent review's historical implementation objections remain valid for t
 | [TDK_SUPERVISOR_REVIEW_PACKAGE.md](TDK_SUPERVISOR_REVIEW_PACKAGE.md) | Dated, derivative supervisor-facing evidence package |
 | [TDK_EXPERT_REVIEW_PACKET.md](TDK_EXPERT_REVIEW_PACKET.md) | Review method approved; reviewer identities, sample parameters, and distribution pending |
 
-No AI agent can approve implementation completeness, protocol freeze, holdout access, or any proposal not covered by the recorded human decisions.
+Protocol freeze, holdout access, and decisions outside the recorded approvals
+require explicit human authorization.
 
 ## Contracts And Boundaries
 
@@ -76,9 +73,7 @@ No AI agent can approve implementation completeness, protocol freeze, holdout ac
 | [UI_RULES.md](UI_RULES.md) | Required UI component conventions |
 | [QA_CHECKLIST.md](QA_CHECKLIST.md) | Manual release and demo checks |
 | [LICENSING_AND_IP.md](LICENSING_AND_IP.md) | Licensing and intellectual-property status |
-| [RESEARCH_ISSUE_DISPOSITION.md](RESEARCH_ISSUE_DISPOSITION.md) | Evidence-based recommendations for issues #2-#11; no issue state changed |
 | [TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-11-01.md](TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-11-01.md) | Latest reproducibility, page-count, citation, artifact, CI, and package-integrity report for the submitted paper package |
-| [TEMPORARY_ASSET_REVIEW.md](TEMPORARY_ASSET_REVIEW.md) | Inventory and approval boundary for tracked `tmp_*` UI captures |
 
 ## Product Guides And Media
 
@@ -89,7 +84,11 @@ No AI agent can approve implementation completeness, protocol freeze, holdout ac
 
 ## Archive And Local Notes
 
-[`archive/`](archive/) preserves superseded evidence and project history. Archived files are not deleted or silently rewritten and should not be cited as current without checking the authority documents above. See the [archive index and metadata policy](archive/README.md).
+[`archive/`](archive/) preserves superseded evidence, expired submission notes,
+teaching material, operational workflows, repository audits, and project
+history. Archived files are not deleted or silently rewritten and should not be
+cited as current without checking the authority documents above. See the
+[archive index and metadata policy](archive/README.md).
 
 `research/` contains local, ignored registration and planning notes. Those files are not repository authority and may differ from the submitted portal record. The exact submitted registration should be preserved separately from the conference portal when available.
 

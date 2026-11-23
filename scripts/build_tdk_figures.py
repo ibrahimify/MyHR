@@ -56,7 +56,7 @@ INTER_DIR = REPO / "research_outputs" / "independent_development" / "independent
 VAL_DIR = REPO / "research_outputs" / "protocol_v2_verified" / "validation_c5878ca7b927ccd2"
 DIAG_DIR = REPO / "research_outputs" / "protocol_dev_30seed" / "development_8f1494e4abf2d268"
 PAPER = REPO / "docs" / "TDK_PAPER_DRAFT.md"
-ROADMAP = REPO / "docs" / "TDK_AUTONOMOUS_RESEARCH_ROADMAP.md"
+ROADMAP = REPO / "docs" / "TDK_RESEARCH_ROADMAP.md"
 
 # Physical design size. Figures are placed at 6.0 in in an A4 page with 3.5 cm margins.
 FIG_WIDTH_IN = 6.0
@@ -736,7 +736,7 @@ def fig_confound_diagnostic() -> dict:
             source(DIAG_DIR / "scenario_metrics.csv", ["scenario_id", "representation", "recall"], f"method == '{PRIMARY_METHOD}' and operating_point == '{PRIMARY_OP}'",
                    "Control paired means (wrong-policy, shuffled, policy minus wrong-policy) are computed by this script as the mean of per-scenario differences; the artifact stores no paired interval for them, so none is drawn."),
         ],
-        "evidence_status": "development diagnostic; artifact checksums stored, independent offline audit of record-level predictions incomplete (docs/TDK_AUTONOMOUS_RESEARCH_ROADMAP.md); values in this figure come from artifact CSVs, not from audit text",
+        "evidence_status": "development diagnostic; artifact checksums stored, independent offline audit of record-level predictions incomplete (docs/TDK_RESEARCH_ROADMAP.md); values in this figure come from artifact CSVs, not from audit text",
         "derived_values": {f"{a} minus {b}": {"paired_mean": round(m, 6), "paired_scenarios": k} for (a, b), (m, k) in deltas.items()},
     }
 
