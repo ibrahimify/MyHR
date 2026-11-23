@@ -43,6 +43,10 @@ rare-legitimate false-alert reduction remains uncertain, and exploratory
 scorers do not provide a uniform causal explanation. The protocol is still a
 draft and the final holdout has not been generated or accessed.
 
+See the [current research status](docs/TDK_CURRENT_RESEARCH_STATUS.md) and the
+[full validation report](docs/TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md)
+for exact counts, inference, controls, and limitations.
+
 ## TDK submission manuscript
 
 **[Submitted paper (PDF)](docs/paper/MyHR_Policy_Aware_Machine_Learning_for_Anomaly_Detection_in_Workforce_Progression.pdf)**,
@@ -65,7 +69,11 @@ pre-validation record. Its five exploratory scorers produced different effect
 sizes, and comparisons with wrong-policy and policy-free controls limited causal
 attribution. No scorer was selected from those inspected development results.
 
-All numbers below are copied from the audited artifacts and appear in the paper (Sections 6.7 and 6.8).
+### Submitted-paper findings
+
+The diagnostics below are preserved from the submitted paper and predate the
+November 23 validation result. They remain useful research history, but they are
+not the current headline evidence.
 
 **1. Equal review capacity, 12 development scenarios** (artifact `4feea4508de1bb05`: 864 test histories,
 108 injected errors, 96 alerts reviewed per method).
@@ -155,8 +163,9 @@ representations at equal capacity, and the generated truth on a separate tab.
 | All figures and the data behind them | [docs/figures/](docs/figures/README.md), [FIGURE_MANIFEST.json](docs/figures/FIGURE_MANIFEST.json) |
 | Result tables (LaTeX) | [docs/tables/](docs/tables/README.md) |
 | Experiment protocol (draft) | [docs/TDK_EXPERIMENT_PROTOCOL.md](docs/TDK_EXPERIMENT_PROTOCOL.md) |
-| Research handover and decisions | [docs/RESEARCH_HANDOVER.md](docs/RESEARCH_HANDOVER.md), [roadmap](docs/TDK_AUTONOMOUS_RESEARCH_ROADMAP.md) |
-| Audits | [citations](docs/TDK_CITATION_AUDIT_2026-11-01.md), [second external audit](docs/TDK_SECOND_EXTERNAL_AUDIT_2026-10-30.md) |
+| Current research evidence | [status](docs/TDK_CURRENT_RESEARCH_STATUS.md), [validation report](docs/TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md) |
+| Decisions and chronology | [protocol](docs/TDK_EXPERIMENT_PROTOCOL.md), [roadmap](docs/TDK_RESEARCH_ROADMAP.md) |
+| Audits | [latest citation verification](docs/TDK_CITATION_INDEPENDENT_AUDIT_2026-11-22.md), [second external audit](docs/TDK_SECOND_EXTERNAL_AUDIT_2026-10-30.md) |
 | References | [docs/TDK_REFERENCES.bib](docs/TDK_REFERENCES.bib) |
 | Anomaly code | [src/services/anomaly_detection/](src/services/anomaly_detection/), [src/ui/pages/anomaly_review.py](src/ui/pages/anomaly_review.py) |
 | Tag of the submitted version | `tdk-2026-submission` |

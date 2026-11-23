@@ -17,7 +17,7 @@ The stored arithmetic is internally reproducible under the implemented conventio
 Reviewed documents included:
 
 - `AGENTS.md`
-- `docs/TDK_AUTONOMOUS_RESEARCH_ROADMAP.md`
+- `docs/TDK_RESEARCH_ROADMAP.md` (renamed after this dated review)
 - `docs/TDK_EXPERIMENT_PROTOCOL.md`
 - `docs/TDK_PROTOCOL_CHANGE_PROPOSALS.md`
 - `docs/TDK_SUPERVISOR_REVIEW_PACKAGE.md`

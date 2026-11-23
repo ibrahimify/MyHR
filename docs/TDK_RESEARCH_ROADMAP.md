@@ -1,4 +1,4 @@
-# TDK Autonomous Research Roadmap
+# TDK Research Roadmap
 ## Independent Validation - Issue 10
 
 - Authoritative artifact `c5b0723409c2394e` contains 36 independently

@@ -542,7 +542,7 @@
           "note": "Control paired means (wrong-policy, shuffled, policy minus wrong-policy) are computed by this script as the mean of per-scenario differences; the artifact stores no paired interval for them, so none is drawn."
         }
       ],
-      "evidence_status": "development diagnostic; artifact checksums stored, independent offline audit of record-level predictions incomplete (docs/TDK_AUTONOMOUS_RESEARCH_ROADMAP.md); values in this figure come from artifact CSVs, not from audit text",
+      "evidence_status": "development diagnostic; artifact checksums stored, independent offline audit of record-level predictions incomplete (docs/TDK_RESEARCH_ROADMAP.md); values in this figure come from artifact CSVs, not from audit text",
       "derived_values": {
         "policy_matched minus raw_matched": {
           "paired_mean": 0.348333,

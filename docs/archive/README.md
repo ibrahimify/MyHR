@@ -10,11 +10,15 @@ currently preserved here.
 | Folder | Contents | Why archived | Current reference |
 | --- | --- | --- | --- |
 | [`product-planning/`](product-planning/) | Launch audit and thesis completion plan | Milestone plans are substantially completed or superseded | [Scope audit](../SCOPE_AUDIT.md) and [architecture roadmap](../ARCHITECTURE_ROADMAP.md) |
+| [`operational/`](operational/) | Historical research coordination workflow | Preserved process history; repository rules and current status now define active work | [Current research status](../TDK_CURRENT_RESEARCH_STATUS.md) |
 | [`project-lab/`](project-lab/) | Early report, presentations, rendered PDF guides, and progress page | Historical project-lab deliverables; editable current guides remain under `docs/guides/` | [Documentation guide](../README.md#product-guides-and-media) |
-| [`research-audits/`](research-audits/) | Dated early research and methodology audits | Findings are preserved, but later evidence supersedes their status summaries | [Independent review](../TDK_INDEPENDENT_REVIEW_2026-10-17.md), [development report](../TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md), and [roadmap](../TDK_AUTONOMOUS_RESEARCH_ROADMAP.md) |
-| [`research-plans/`](research-plans/) | Initial research implementation plan | Implementation progressed beyond this plan | [Roadmap](../TDK_AUTONOMOUS_RESEARCH_ROADMAP.md) |
+| [`repository-audits/`](repository-audits/) | Dated issue-disposition review | GitHub state and scientific evidence changed after the review | [Current research status](../TDK_CURRENT_RESEARCH_STATUS.md) |
+| [`research-audits/`](research-audits/) | Dated early research and methodology audits | Findings are preserved, but later evidence supersedes their status summaries | [Independent review](../TDK_INDEPENDENT_REVIEW_2026-10-17.md), [development report](../TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md), and [roadmap](../TDK_RESEARCH_ROADMAP.md) |
+| [`research-plans/`](research-plans/) | Initial research implementation plan | Implementation progressed beyond this plan | [Roadmap](../TDK_RESEARCH_ROADMAP.md) |
+| [`submission/`](submission/) | 2026 conference dates, format, and upload checklist | The submission period has ended; retained as submission history | [Submitted paper](../paper/MyHR_Policy_Aware_Machine_Learning_for_Anomaly_Detection_in_Workforce_Progression.pdf) |
 | [`supervisor-packages/`](supervisor-packages/) | Superseded approval gate and package-verification records | Later submission records and current GitHub state supersede these snapshots | [Latest package verification](../TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-11-01.md) |
-| [`ui-audits/`](ui-audits/) | Final retained image from the pre-research temporary UI capture set | Preserved for provenance after the other scratch captures were removed from the active tree | [Temporary asset review](../TEMPORARY_ASSET_REVIEW.md) |
+| [`teaching/`](teaching/) | Dated repository-learning prompt | It contains obsolete branch and status instructions and is not research authority | [Documentation guide](../README.md) |
+| [`ui-audits/`](ui-audits/) | Temporary asset review and retained pre-research UI sheet | Preserved for provenance after scratch captures left the active tree | [Documentation guide](../README.md#product-guides-and-media) |
 
 ## Interpretation Rules
 

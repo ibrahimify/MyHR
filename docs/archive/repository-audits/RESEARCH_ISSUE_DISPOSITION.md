@@ -35,7 +35,7 @@ An implementation can satisfy its engineering acceptance criteria without valida
 
 **Acceptance evidence**
 
-- The schema and anomaly definitions are documented in [TDK_SYNTHETIC_DATA_CONTRACT.md](TDK_SYNTHETIC_DATA_CONTRACT.md), including record fields, employment tracks, anomaly labels, expected signals, and scientific guardrails.
+- The schema and anomaly definitions are documented in [TDK_SYNTHETIC_DATA_CONTRACT.md](../../TDK_SYNTHETIC_DATA_CONTRACT.md), including record fields, employment tracks, anomaly labels, expected signals, and scientific guardrails.
 - Typed structures, `ExperimentConfig`, `AnomalyType`, `WorkforceHistoryRecord`, metadata, and dataset containers are implemented in `src/services/anomaly_detection/synthetic_data.py` by commit [`02897f9`](https://github.com/ibrahimify/MyHR/commit/02897f9).
 - `tests/test_anomaly_detection_skeleton.py` verifies the taxonomy, non-anomalous rare-legitimate labels, anomalous injected-error labels, stable run IDs, and deterministic partitions.
 - The document explicitly makes no experimental performance claim.
@@ -54,7 +54,7 @@ An implementation can satisfy its engineering acceptance criteria without valida
 - `generate_synthetic_dataset()` and deterministic configuration-derived run IDs were introduced in commit [`22c16d9`](https://github.com/ibrahimify/MyHR/commit/22c16d9).
 - `tests/test_anomaly_detection_skeleton.py` verifies repeatability for a fixed seed, split and label metadata, duplicate source links, proportional label distribution, policy-valid clean/rare histories, track restrictions, and invalid configuration handling.
 - `src/services/anomaly_detection/scenario_generation.py` and `tests/test_tdk_protocol_v2.py` add separate dataset/split/model seeds, development/validation separation, scenario-dimension coverage, and a locked holdout boundary.
-- Generated CSV/JSON metadata and tabular outputs are consumed by the experiment runners documented in [TDK_RESEARCH_VERIFICATION.md](TDK_RESEARCH_VERIFICATION.md).
+- Generated CSV/JSON metadata and tabular outputs are consumed by the experiment runners documented in [TDK_RESEARCH_VERIFICATION.md](../../TDK_RESEARCH_VERIFICATION.md).
 
 **Residual limitations**
 
@@ -84,7 +84,7 @@ An implementation can satisfy its engineering acceptance criteria without valida
 
 - Commit [`b4c45d2`](https://github.com/ibrahimify/MyHR/commit/b4c45d2) added raw and policy-aware transformations for the same `WorkforceHistoryRecord` inputs in `src/services/anomaly_detection/features.py`.
 - `tests/test_anomaly_detection_skeleton.py` verifies raw counts and intervals, policy explanations for rare-legitimate promotions, policy-residual feature selection, and rejection of unknown feature sets.
-- [TDK_SYNTHETIC_DATA_CONTRACT.md](TDK_SYNTHETIC_DATA_CONTRACT.md) documents both representations and their intended comparison.
+- [TDK_SYNTHETIC_DATA_CONTRACT.md](../../TDK_SYNTHETIC_DATA_CONTRACT.md) documents both representations and their intended comparison.
 
 **Residual limitations**
 
@@ -103,7 +103,7 @@ An implementation can satisfy its engineering acceptance criteria without valida
 
 **Scientific boundary retained under #10**
 
-- [TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md](TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md) records that the original generator is coupled to the detector and that the independent residual design has no varying policy-specific signal after filtering.
+- [TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md](../../TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md) records that the original generator is coupled to the detector and that the independent residual design has no varying policy-specific signal after filtering.
 - Six of twelve independent scenarios have no residual positives. The current residual AP comparison is arithmetically reproducible but scientifically vacuous for the stated policy-aware hypothesis.
 - The issue should retain the implemented methods as development baselines while transferring any claim-bearing comparison, threshold selection, scenario eligibility, and final evaluation to #10.
 
@@ -161,7 +161,7 @@ An implementation can satisfy its engineering acceptance criteria without valida
 
 **Acceptance evidence**
 
-- Commit [`3bb1d49`](https://github.com/ibrahimify/MyHR/commit/3bb1d49) added [SCOPE_AUDIT.md](SCOPE_AUDIT.md).
+- Commit [`3bb1d49`](https://github.com/ibrahimify/MyHR/commit/3bb1d49) added [SCOPE_AUDIT.md](../../SCOPE_AUDIT.md).
 - The audit records pass/complete, mostly complete, partial, optional, and not-final states for the thesis and TDK components with implementation references.
 - It explicitly lists remaining packaging risks and pre-final-result requirements, including clean-environment tests, private-output checks, protocol approval, dependency/scenario freeze, one-time holdout execution, artifact preservation, and limitation reporting.
 
@@ -198,7 +198,7 @@ An implementation can satisfy its engineering acceptance criteria without valida
 **Completed evidence**
 
 - Commit [`5105b5c`](https://github.com/ibrahimify/MyHR/commit/5105b5c) added free direct clients, retry/rate-limit handling, optional environment-only keys, query configuration, identifier normalization, legal full-text retrieval, checksums, provenance, verification scripts, the literature review, and the bibliography.
-- [TDK_LITERATURE_WORKFLOW.md](TDK_LITERATURE_WORKFLOW.md) records successful live OpenAlex and arXiv checks, DOI/arXiv verification, citation-network construction, and verified local metadata/full-text artifacts.
+- [TDK_LITERATURE_WORKFLOW.md](../../TDK_LITERATURE_WORKFLOW.md) records successful live OpenAlex and arXiv checks, DOI/arXiv verification, citation-network construction, and verified local metadata/full-text artifacts.
 - `tests/test_literature_workflow.py` covers all three clients, key redaction, DOI/arXiv lookups, citation networks, cross-source merging, PDF safety, text extraction, and artifact verification.
 - No paid service is enabled, and the outside paid-service suggestion on the issue is not part of the approved workflow.
 
