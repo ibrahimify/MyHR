@@ -15,6 +15,7 @@ from scripts.audit_tdk_protocol_artifact import (
     _event_rows_sha256,
     _expected_metric_suffixes,
     _verify_declared_matrix,
+    _verify_boundary,
     _verify_paired_comparisons,
     _verify_model_comparison,
     _verify_research_environment,
@@ -100,6 +101,95 @@ def _environment_provenance_at_head() -> dict:
 
 
 class ProtocolArtifactAuditTests(unittest.TestCase):
+    def test_holdout_boundary_requires_matching_successful_ledger(self):
+        gate = {
+            "attempt_id": "attempt-1",
+            "authorization_sha256": "a" * 64,
+            "matrix_sha256": "b" * 64,
+            "frozen_git_commit": "c" * 40,
+        }
+        metadata = {
+            "run_purpose": "holdout",
+            "holdout_accessed": True,
+            "protocol_status": "frozen_independent_holdout",
+            "holdout_gate": gate,
+            "provenance": {"git_commit": gate["frozen_git_commit"]},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            run_dir = Path(directory)
+            ledger_path = run_dir / "holdout_execution_ledger.json"
+            ledger_path.write_text(json.dumps({
+                **gate,
+                "state": "succeeded",
+                "outcome": {"success": True},
+            }), encoding="utf-8")
+
+            with (
+                patch(
+                    "scripts.audit_tdk_protocol_artifact.parse_authorization_json",
+                    return_value={},
+                ),
+                patch(
+                    "scripts.audit_tdk_protocol_artifact.inspect_repository"
+                ),
+                patch(
+                    "scripts.audit_tdk_protocol_artifact.validate_authorization",
+                    return_value=gate["authorization_sha256"],
+                ),
+            ):
+                result = _verify_boundary(
+                    metadata,
+                    run_dir,
+                    Path.cwd(),
+                    Path("external-authorization.json"),
+                    ledger_path,
+                )
+
+            self.assertTrue(result["verified"])
+            tampered = json.loads(ledger_path.read_text(encoding="utf-8"))
+            tampered["matrix_sha256"] = "d" * 64
+            ledger_path.write_text(json.dumps(tampered), encoding="utf-8")
+            with self.assertRaisesRegex(ArtifactAuditError, "matrix_sha256"):
+                _verify_boundary(
+                    metadata,
+                    run_dir,
+                    Path.cwd(),
+                    Path("external-authorization.json"),
+                    ledger_path,
+                )
+
+    def test_holdout_boundary_rejects_missing_or_failed_ledger(self):
+        metadata = {
+            "run_purpose": "holdout",
+            "holdout_accessed": True,
+            "protocol_status": "frozen_independent_holdout",
+            "holdout_gate": {
+                "attempt_id": "attempt-1",
+                "authorization_sha256": "a" * 64,
+                "matrix_sha256": "b" * 64,
+                "frozen_git_commit": "c" * 40,
+            },
+            "provenance": {"git_commit": "c" * 40},
+        }
+        with self.assertRaisesRegex(ArtifactAuditError, "requires"):
+            _verify_boundary(metadata)
+        with tempfile.TemporaryDirectory() as directory:
+            run_dir = Path(directory)
+            ledger_path = run_dir / "holdout_execution_ledger.json"
+            ledger_path.write_text(json.dumps({
+                **metadata["holdout_gate"],
+                "state": "failed",
+                "outcome": {"success": False},
+            }), encoding="utf-8")
+            with self.assertRaisesRegex(ArtifactAuditError, "not successfully"):
+                _verify_boundary(
+                    metadata,
+                    run_dir,
+                    Path.cwd(),
+                    Path("external-authorization.json"),
+                    ledger_path,
+                )
+
     def test_provenance_covers_analysis_and_audit_sources(self):
         self.assertIn(
             "src/research/condition_statistics.py",

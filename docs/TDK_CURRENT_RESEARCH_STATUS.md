@@ -1,5 +1,15 @@
 # Current Research Status
 
+## Freeze preparation - 23 November 2026
+
+The supervisor and two experts were reported by the author to have authorized
+continued work. A checksum-bound holdout matrix and fail-closed one-time
+execution gate are now under verification. The gate requires named reviewer
+qualifications and completed blinded-review evidence before it can execute; no
+such details have been entered, so the protocol remains a freeze candidate and
+the holdout remains untouched. See
+`TDK_PROTOCOL_FREEZE_RECORD_2026-11-23.md`.
+
 Status date: 2026-11-23
 
 Research question: under equal human-review capacity, does adding explicit
@@ -48,7 +58,8 @@ wrong-policy controls limit a simple causal interpretation.
 - The data are synthetic and have not completed the planned blinded realism
   review by two independent domain reviewers.
 - The protocol is still a draft.
-- The final holdout is undefined, locked, and untouched.
+- The final holdout candidate is defined but not frozen; it remains locked and
+  untouched pending completed reviewer evidence and a frozen clean revision.
 - No result authorizes automatic personnel action or post-validation model
   selection.
 

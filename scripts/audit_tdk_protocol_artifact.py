@@ -21,6 +21,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from src.research.holdout_gate import (
+    HoldoutGateError,
+    inspect_repository,
+    parse_authorization_json,
+    validate_authorization,
+)
+
 
 COUNT_COLUMNS = (
     "evaluation_count",
@@ -98,15 +105,26 @@ class ArtifactAuditError(RuntimeError):
     """Raised when a saved research artifact fails an integrity check."""
 
 
-def audit_artifact(run_dir: Path, repo_root: Path | None = None) -> dict[str, Any]:
+def audit_artifact(
+    run_dir: Path,
+    repo_root: Path | None = None,
+    holdout_authorization: Path | None = None,
+    holdout_ledger: Path | None = None,
+) -> dict[str, Any]:
     """Verify checksums, provenance, denominators, and stored predictions."""
 
     run_dir = run_dir.resolve()
     repo_root = (repo_root or Path.cwd()).resolve()
     metadata = _read_json(run_dir / "metadata.json")
     manifest = _read_json(run_dir / "manifest.json")
-    _verify_boundary(metadata)
     _verify_manifest(run_dir, manifest)
+    holdout_gate = _verify_boundary(
+        metadata,
+        run_dir,
+        repo_root,
+        holdout_authorization,
+        holdout_ledger,
+    )
     _verify_source_revision(metadata, repo_root)
     _verify_research_environment(metadata, repo_root)
 
@@ -135,6 +153,7 @@ def audit_artifact(run_dir: Path, repo_root: Path | None = None) -> dict[str, An
         "run_purpose": metadata["run_purpose"],
         "protocol_version": metadata["protocol_version"],
         "holdout_accessed": metadata["holdout_accessed"],
+        "holdout_gate": holdout_gate,
         "scenario_count": len(scenarios),
         "scenario_metric_rows": len(metric_rows),
         "prediction_rows": len(prediction_rows),
@@ -385,13 +404,71 @@ def _audit_control_contrasts(
     return output
 
 
-def _verify_boundary(metadata: dict[str, Any]) -> None:
-    if metadata.get("holdout_accessed") is not False:
-        raise ArtifactAuditError("artifact does not attest holdout_accessed=false")
-    if metadata.get("run_purpose") not in {"development", "validation"}:
-        raise ArtifactAuditError("only development or validation artifacts may be audited here")
-    if "holdout_locked" not in str(metadata.get("protocol_status", "")):
-        raise ArtifactAuditError("artifact protocol status does not preserve the holdout lock")
+def _verify_boundary(
+    metadata: dict[str, Any],
+    run_dir: Path | None = None,
+    repo_root: Path | None = None,
+    holdout_authorization: Path | None = None,
+    holdout_ledger: Path | None = None,
+) -> dict[str, Any]:
+    purpose = metadata.get("run_purpose")
+    if purpose in {"development", "validation"}:
+        if metadata.get("holdout_accessed") is not False:
+            raise ArtifactAuditError("artifact does not attest holdout_accessed=false")
+        if "holdout_locked" not in str(metadata.get("protocol_status", "")):
+            raise ArtifactAuditError("artifact protocol status does not preserve the holdout lock")
+        return {"required": False}
+    if purpose != "holdout":
+        raise ArtifactAuditError("unsupported artifact run purpose")
+    if metadata.get("holdout_accessed") is not True:
+        raise ArtifactAuditError("holdout artifact does not attest holdout_accessed=true")
+    if metadata.get("protocol_status") != "frozen_independent_holdout":
+        raise ArtifactAuditError("holdout artifact is not bound to the frozen protocol")
+    gate = metadata.get("holdout_gate")
+    if not isinstance(gate, dict):
+        raise ArtifactAuditError("holdout artifact has no authorization-gate identity")
+    if run_dir is None or repo_root is None:
+        raise ArtifactAuditError("holdout audit requires artifact and repository paths")
+    if holdout_ledger is None:
+        raise ArtifactAuditError("holdout audit requires the external execution ledger")
+    ledger = _read_json(holdout_ledger)
+    if ledger.get("state") != "succeeded":
+        raise ArtifactAuditError("holdout execution ledger is not successfully finalized")
+    if ledger.get("outcome", {}).get("success") is not True:
+        raise ArtifactAuditError("holdout execution ledger has no successful outcome")
+    for field in (
+        "attempt_id",
+        "authorization_sha256",
+        "matrix_sha256",
+        "frozen_git_commit",
+    ):
+        if ledger.get(field) != gate.get(field):
+            raise ArtifactAuditError(f"holdout ledger {field} does not match artifact")
+    provenance_commit = metadata.get("provenance", {}).get("git_commit")
+    if gate.get("frozen_git_commit") != provenance_commit:
+        raise ArtifactAuditError("holdout frozen revision does not match artifact provenance")
+    if holdout_authorization is None:
+        raise ArtifactAuditError("holdout audit requires the external authorization record")
+    try:
+        authorization = parse_authorization_json(holdout_authorization)
+        authorization_sha256 = validate_authorization(
+            authorization,
+            repository_state=inspect_repository(repo_root),
+            repository_root=repo_root,
+            expected_matrix_sha256=str(gate.get("matrix_sha256", "")),
+        )
+    except HoldoutGateError as exc:
+        raise ArtifactAuditError(f"holdout authorization verification failed: {exc}") from exc
+    if authorization_sha256 != gate.get("authorization_sha256"):
+        raise ArtifactAuditError("holdout authorization digest does not match artifact")
+    return {
+        "required": True,
+        "verified": True,
+        "attempt_id": gate["attempt_id"],
+        "authorization_sha256": gate["authorization_sha256"],
+        "matrix_sha256": gate["matrix_sha256"],
+        "frozen_git_commit": gate["frozen_git_commit"],
+    }
 
 
 def _verify_manifest(run_dir: Path, manifest: dict[str, Any]) -> None:
@@ -1815,9 +1892,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("run_dir", type=Path)
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
+    parser.add_argument("--holdout-authorization", type=Path)
+    parser.add_argument("--holdout-ledger", type=Path)
     args = parser.parse_args()
     try:
-        result = audit_artifact(args.run_dir, args.repo_root)
+        result = audit_artifact(
+            args.run_dir,
+            args.repo_root,
+            holdout_authorization=args.holdout_authorization,
+            holdout_ledger=args.holdout_ledger,
+        )
     except ArtifactAuditError as exc:
         raise SystemExit(f"artifact audit failed: {exc}") from exc
     print(json.dumps(result, indent=2, sort_keys=True))

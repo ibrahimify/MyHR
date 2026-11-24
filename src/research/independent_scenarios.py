@@ -7,13 +7,13 @@ truth ledger. A neutral adapter may translate those ledgers for evaluation.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import Enum
 from functools import lru_cache
 from hashlib import sha256
 from random import Random
-
 
 REFERENCE_DATE = date(2026, 12, 31)
 _MIN_GENERATED_HIRE_AGE = 18
@@ -94,6 +94,7 @@ class IndependentScenarioSpec:
         if self.run_purpose not in {
             "independent_development",
             "independent_validation",
+            "independent_holdout",
         }:
             raise ValueError("independent holdout scenarios are undefined and locked")
         if self.employee_count < 120:
@@ -243,6 +244,13 @@ def _population_can_host_policy_transition(population: str) -> bool:
     return _add_months(earliest_hire, _LEGACY_L7_SERVICE_MONTHS) <= _LEGACY_EPOCH_END
 
 
+def _require_holdout_capability(value: object | None) -> None:
+    validator = getattr(value, "assert_valid_holdout_capability", None)
+    if not callable(validator):
+        raise ValueError("validated holdout authorization capability is required")
+    validator()
+
+
 def independent_scenario_matrix(
     employee_count: int = 360,
 ) -> tuple[IndependentScenarioSpec, ...]:
@@ -284,19 +292,25 @@ def independent_scenario_matrix(
 def independent_covering_scenario_matrix(
     run_purpose: str,
     employee_count: int = 360,
+    *,
+    holdout_attempt: object | None = None,
 ) -> tuple[IndependentScenarioSpec, ...]:
     """Return a compact pairwise covering design over independent factors.
 
     The design includes every valid pair of policy, population, discrepancy
     mechanism, lawful rare pattern, error rate, and rare-case rate. It is a
-    development proposal and does not define or unlock a holdout.
+    Holdout conditions remain inaccessible unless a separately validated
+    authorization gate explicitly enables them.
     """
 
     if run_purpose not in {
         "independent_development",
         "independent_validation",
+        "independent_holdout",
     }:
         raise ValueError("holdout scenario generation remains undefined and locked")
+    if run_purpose == "independent_holdout":
+        _require_holdout_capability(holdout_attempt)
     candidates = tuple(
         values
         for values in (
@@ -348,8 +362,16 @@ def independent_covering_scenario_matrix(
         selected.append(best)
         remaining.remove(best)
 
-    base_seed = 121_000 if run_purpose == "independent_development" else 221_000
-    prefix = "ind-dev-cover" if run_purpose == "independent_development" else "ind-val-cover"
+    base_seed = {
+        "independent_development": 121_000,
+        "independent_validation": 221_000,
+        "independent_holdout": 321_000,
+    }[run_purpose]
+    prefix = {
+        "independent_development": "ind-dev-cover",
+        "independent_validation": "ind-val-cover",
+        "independent_holdout": "ind-holdout-cover",
+    }[run_purpose]
     specs = []
     for index, values in enumerate(selected):
         policy, population, mechanism, rare_pattern, error_rate, rare_rate = values
@@ -368,6 +390,30 @@ def independent_covering_scenario_matrix(
             rare_rate=float(rare_rate),
         ))
     return tuple(specs)
+
+
+def independent_condition_matrix_sha256(
+    specs: tuple[IndependentScenarioSpec, ...],
+) -> str:
+    """Return the stable digest of factor assignments, excluding all seeds."""
+    rows = [
+        {
+            "population": spec.population,
+            "mechanism": spec.mechanism,
+            "rare_pattern": spec.rare_pattern,
+            "policy_variant": spec.policy_variant,
+            "error_rate": spec.error_rate,
+            "rare_rate": spec.rare_rate,
+        }
+        for spec in specs
+    ]
+    payload = json.dumps(
+        rows,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    ).encode("utf-8")
+    return sha256(payload).hexdigest()
 
 
 def _factor_pairs(values: tuple[object, ...]) -> set[tuple[int, object, int, object]]:
@@ -395,7 +441,13 @@ def _marginal_balance_penalty(
     return penalty
 
 
-def generate_independent_world(spec: IndependentScenarioSpec) -> IndependentWorld:
+def generate_independent_world(
+    spec: IndependentScenarioSpec,
+    *,
+    holdout_attempt: object | None = None,
+) -> IndependentWorld:
+    if spec.run_purpose == "independent_holdout":
+        _require_holdout_capability(holdout_attempt)
     spec.validate()
     policies = _policy_cards(spec.policy_variant)
     split_by_index = _split_assignments(spec)

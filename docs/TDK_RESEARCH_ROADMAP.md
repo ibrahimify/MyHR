@@ -1,4 +1,23 @@
 # TDK Research Roadmap
+## Holdout Gate Preparation - 2026-11-23
+
+- The author reported supervisor and two-expert authorization to continue.
+- The exact 36-condition, 30-seed holdout candidate is now bound to a disjoint
+  seed family, condition checksum, fixed analysis choices, environment
+  declaration, and dependency lock in `config/tdk_holdout_matrix_v1.json`.
+- A fail-closed authorization gate requires a clean frozen revision, dated
+  supervisor evidence, two distinct named reviewers with qualifications,
+  completed blinded-review evidence checksums, and explicit one-time authority.
+- A canonical exclusive ledger outside the repository prevents accidental or
+  routine repeat execution within the supported workflow; it is not presented
+  as protection against deliberate source edits, another clone, or deletion by
+  an authorized operator. The auditor requires the external ledger and
+  revalidates the authorization evidence.
+- Two independent technical audits agreed that the repository was not yet
+  holdout-ready because reviewer identities and completed review evidence were
+  absent. Those facts were not invented. The protocol remains a freeze
+  candidate, and no holdout was generated, inspected, scored, or unlocked.
+
 ## Independent Validation - Issue 10
 
 - Authoritative artifact `c5b0723409c2394e` contains 36 independently
@@ -31,9 +50,9 @@
   identity omitted analysis sources. A fourth operational defect loaded all
   combined CSV records into memory. Regression tests now cover all four, and
   large record files are combined by streaming.
-- The final holdout remains undefined, locked, and untouched. Protocol freeze,
-  expert realism evidence, and a one-time holdout authorization remain open
-  scientific gates rather than completed work.
+- The final holdout candidate is now defined by the later 23 November freeze
+  preparation record, but it remains locked and untouched. Completed expert
+  realism evidence and the final frozen revision remain open scientific gates.
 
 ## Citation Workflow Verification - Issue 11
 
@@ -626,6 +645,8 @@ Completed evidence is summarized in `archive/research-audits/TDK_METHODOLOGY_REV
 - **Files/components involved:** frozen generator, analysis script, artifact archive, paper results, and supervisor record.
 - **Acceptance criteria:** One clean run, complete provenance and denominators, preserved negative results, independent replication, and no post-result tuning.
 - **Required validation:** Manifest audit, statistical reproduction, CI/security checks, and supervisor sign-off.
-- **Dependencies and blockers:** Explicit supervisor approval and completed freeze checklist. Holdout specification and seeds remain undefined until then.
-- **Status:** Blocked. Do not start.
+- **Dependencies and blockers:** Completed freeze checklist, including verified
+  external reviewer evidence and a clean frozen revision. The candidate matrix
+  and seed family were defined on 23 November 2026 but are not yet frozen.
+- **Status:** Blocked by the fail-closed gate. Do not start.
 - **Outcome:** Pending.
