@@ -1,4 +1,19 @@
 # TDK Research Roadmap
+## Holdout v1 Failure And v2 Repair - 2026-11-24
+
+- Protocol v1 was frozen at revision `dda874e` and authorized once. The attempt
+  failed at scenario 43 before artifact publication because the truth planner
+  assigned overlapping error candidates before reserving constrained
+  grandfathered-policy candidates in the validation split.
+- The canonical v1 ledger records a failed, consumed attempt. No artifact was
+  published and no partial model result was inspected or used for tuning.
+- Issue #30 isolates the repair. Protocol v2 retains the scientific design and
+  introduces an order-independent exact disjoint allocation plus a new seed
+  family and ledger. Deterministic pre-intervention rejection sampling records
+  its accepted generation attempt; all 1,080 validation scenarios constructed
+  successfully (1,077 at attempt 0 and three at attempt 1). It remains a freeze
+  candidate pending full tests, CI, and review.
+
 ## Protocol Freeze - 2026-11-24
 
 - The author reported dated supervisor approval and two independent qualitative

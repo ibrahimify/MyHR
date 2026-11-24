@@ -147,6 +147,7 @@ def test_authorized_holdout_design_is_factor_matched_and_seed_disjoint(tmp_path)
             spec.model_seed for spec in existing
         })
     assert all(spec.run_purpose == "independent_holdout" for spec in holdout)
+    assert min(spec.seed for spec in holdout) == 421_001
     assert independent_condition_matrix_sha256(holdout) == (
         "ca6bdc2a3977485e8e7d48deb4d64666b15a1f572663882c3d58bdb026ada139"
     )
@@ -314,9 +315,7 @@ def test_holdout_runner_requires_external_authorization_and_ledger(tmp_path) -> 
         _begin_holdout_if_authorized(args)
 
     args.authorization_file = tmp_path / "authorization.json"
-    with pytest.raises(
-        holdout_gate.InvalidAuthorizationError, match="cannot read authorization"
-    ):
+    with pytest.raises(ValueError, match="not frozen"):
         _begin_holdout_if_authorized(args)
 
     with pytest.raises(ValueError, match="capability"):

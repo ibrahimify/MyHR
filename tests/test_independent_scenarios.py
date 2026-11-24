@@ -6,6 +6,7 @@ import unittest
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
+from random import Random
 
 from src.research.independent_scenario_adapter import adapt_independent_world
 from src.research.independent_scenarios import (
@@ -18,9 +19,11 @@ from src.research.independent_scenarios import (
     anomaly_mechanisms,
     compatible_rare_patterns_by_population,
     generate_independent_world,
+    independent_covering_scenario_matrix,
     independent_scenario_matrix,
     population_families,
     _event as create_independent_event,
+    _select_disjoint_truth_indices,
 )
 from src.services.anomaly_detection.deterministic_checks import validate_record_with_policy
 from scripts.run_tdk_independent_development import (
@@ -35,6 +38,54 @@ from scripts.audit_tdk_protocol_artifact import _verify_truth_sidecars
 
 
 class IndependentScenarioTests(unittest.TestCase):
+    def test_infeasible_base_sample_is_resampled_deterministically(self):
+        condition = independent_covering_scenario_matrix(
+            "independent_validation",
+            120,
+        )[32]
+        spec = replace(
+            condition,
+            scenario_id="ind-val-cover-033-seed-06",
+            seed=5_221_560,
+            split_seed=5_221_562,
+            model_seed=5_221_566,
+        )
+
+        first = generate_independent_world(spec)
+        second = generate_independent_world(spec)
+
+        self.assertGreater(first.generation_attempt, 0)
+        self.assertEqual(first, second)
+
+    def test_truth_allocation_preserves_constrained_rare_candidates(self):
+        errors, rare = _select_disjoint_truth_indices(
+            error_candidates=[1, 2, 3, 4],
+            rare_candidates=[1, 2],
+            error_count=2,
+            rare_count=2,
+            rng=Random(7),
+            split=IndependentSplit.VALIDATION,
+            mechanism="approval_bypass",
+            rare_pattern="grandfathered_policy",
+        )
+
+        self.assertEqual(set(rare), {1, 2})
+        self.assertEqual(len(errors), 2)
+        self.assertTrue(set(errors).isdisjoint(rare))
+
+    def test_truth_allocation_rejects_infeasible_disjoint_union(self):
+        with self.assertRaisesRegex(ValueError, "disjoint truth candidates"):
+            _select_disjoint_truth_indices(
+                error_candidates=[1, 2],
+                rare_candidates=[1, 2],
+                error_count=2,
+                rare_count=1,
+                rng=Random(7),
+                split=IndependentSplit.VALIDATION,
+                mechanism="approval_bypass",
+                rare_pattern="grandfathered_policy",
+            )
+
     def test_event_preserves_exact_version_when_policy_id_is_reused(self):
         policies = (
             IndependentPolicyCard(

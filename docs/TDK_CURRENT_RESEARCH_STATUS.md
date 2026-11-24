@@ -1,15 +1,18 @@
 # Current Research Status
 
-## Protocol freeze - 24 November 2026
+## Holdout v1 failure and v2 repair - 24 November 2026
 
-The supervisor and two independent academic experts were reported by the author
-to have authorized the frozen protocol and one protected holdout attempt. A
-checksum-bound matrix and fail-closed one-time execution gate preserve anonymous
-reviewer IDs, qualifications, and external evidence checksums without publishing
-identities. The qualitative review has no case-level rating or agreement dataset.
-The holdout remains untouched until the clean frozen revision is bound in the
-external authorization. See
-`TDK_PROTOCOL_FREEZE_RECORD_2026-11-23.md`.
+Protocol v1 was frozen at revision `dda874e` and its one authorized attempt began
+on 24 November. It stopped at scenario 43 before artifact publication because
+truth-label allocation selected overlapping error candidates before reserving
+the constrained rare-case candidates. The external ledger records `failed`; no
+v1 result artifact exists and no model outcome was inspected.
+
+The v2 repair allocates exact disjoint candidate sets independent of category
+order and uses a new seed family and ledger. The factor matrix, features,
+endpoints, thresholds, review capacity, models, and analysis remain unchanged.
+V2 is a freeze candidate and has not been generated or scored. See
+`TDK_HOLDOUT_V1_FAILURE_2026-11-24.md`.
 
 Status date: 2026-11-23
 
@@ -59,9 +62,9 @@ wrong-policy controls limit a simple causal interpretation.
 - The data are synthetic. Two independent academic experts provided a
   qualitative realism review, but no case-level ratings or agreement analysis
   exists; external validity therefore remains unestablished.
-- The protocol and holdout matrix are frozen.
-- The final holdout remains locked and untouched pending exact clean-revision
-  authorization through the one-time gate.
+- Protocol v1 was consumed by a failed technical attempt without a result.
+- Protocol v2 remains locked pending repair verification, freeze, and a new
+  exact-revision one-time authorization.
 - No result authorizes automatic personnel action or post-validation model
   selection.
 

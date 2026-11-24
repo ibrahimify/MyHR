@@ -50,6 +50,10 @@ class TruthCategory(str, Enum):
     AMBIGUOUS_REVIEW_CASE = "ambiguous_review_case"
 
 
+class ScenarioFeasibilityError(ValueError):
+    """Raised when a sampled base population cannot host the frozen labels."""
+
+
 @dataclass(frozen=True)
 class IndependentPolicyCard:
     policy_id: str
@@ -165,6 +169,7 @@ class IndependentTruthEntry:
 @dataclass(frozen=True)
 class IndependentWorld:
     spec: IndependentScenarioSpec
+    generation_attempt: int
     policies: tuple[IndependentPolicyCard, ...]
     employees: tuple[IndependentEmployeeLedger, ...]
     truth: tuple[IndependentTruthEntry, ...]
@@ -365,7 +370,7 @@ def independent_covering_scenario_matrix(
     base_seed = {
         "independent_development": 121_000,
         "independent_validation": 221_000,
-        "independent_holdout": 321_000,
+        "independent_holdout": 421_000,
     }[run_purpose]
     prefix = {
         "independent_development": "ind-dev-cover",
@@ -451,17 +456,11 @@ def generate_independent_world(
     spec.validate()
     policies = _policy_cards(spec.policy_variant)
     split_by_index = _split_assignments(spec)
-    base_employees = tuple(
-        _base_employee(
-            index,
-            split_by_index[index],
-            spec,
-            policies,
-            Random(spec.seed * 100_003 + index * 97),
-        )
-        for index in range(spec.employee_count)
+    base_employees, truth_plan, generation_attempt = _feasible_base_population(
+        spec,
+        policies,
+        split_by_index,
     )
-    truth_plan = _truth_plan(spec, base_employees)
     employees = []
     truth = []
     entitlement_evidence = []
@@ -519,10 +518,45 @@ def generate_independent_world(
         ))
     return IndependentWorld(
         spec=spec,
+        generation_attempt=generation_attempt,
         policies=policies,
         employees=tuple(employees),
         truth=tuple(truth),
         entitlement_evidence=tuple(entitlement_evidence),
+    )
+
+
+def _feasible_base_population(
+    spec: IndependentScenarioSpec,
+    policies: tuple[IndependentPolicyCard, ...],
+    split_by_index: dict[int, IndependentSplit],
+    *,
+    max_attempts: int = 1_000,
+) -> tuple[
+    tuple[IndependentEmployeeLedger, ...],
+    dict[int, TruthCategory],
+    int,
+]:
+    """Sample a base population until the frozen label counts are feasible."""
+    for generation_attempt in range(max_attempts):
+        attempt_offset = generation_attempt * 1_000_003
+        employees = tuple(
+            _base_employee(
+                index,
+                split_by_index[index],
+                spec,
+                policies,
+                Random(spec.seed * 100_003 + index * 97 + attempt_offset),
+            )
+            for index in range(spec.employee_count)
+        )
+        try:
+            truth_plan = _truth_plan(spec, employees)
+        except ScenarioFeasibilityError:
+            continue
+        return employees, truth_plan, generation_attempt
+    raise ScenarioFeasibilityError(
+        f"no feasible base population after {max_attempts} deterministic attempts"
     )
 
 
@@ -593,23 +627,20 @@ def _truth_plan(
             index for index in indices
             if _eligible_for_error(employees[index], spec.mechanism)
         ]
-        rng.shuffle(error_candidates)
-        selected_errors = error_candidates[:error_count]
-        if len(selected_errors) != error_count:
-            raise ValueError(
-                f"insufficient {spec.mechanism} candidates in {split.value}"
-            )
         rare_candidates = [
             index for index in indices
-            if index not in selected_errors
-            and _eligible_for_rare_case(employees[index], spec.rare_pattern)
+            if _eligible_for_rare_case(employees[index], spec.rare_pattern)
         ]
-        rng.shuffle(rare_candidates)
-        selected_rare = rare_candidates[:rare_count]
-        if len(selected_rare) != rare_count:
-            raise ValueError(
-                f"insufficient {spec.rare_pattern} candidates in {split.value}"
-            )
+        selected_errors, selected_rare = _select_disjoint_truth_indices(
+            error_candidates,
+            rare_candidates,
+            error_count=error_count,
+            rare_count=rare_count,
+            rng=rng,
+            split=split,
+            mechanism=spec.mechanism,
+            rare_pattern=spec.rare_pattern,
+        )
         error_category = (
             TruthCategory.EXPLICIT_POLICY_VIOLATION
             if spec.mechanism == "approval_bypass"
@@ -622,6 +653,51 @@ def _truth_plan(
         for index in selected_rare:
             result[index] = TruthCategory.RARE_LEGITIMATE
     return result
+
+
+def _select_disjoint_truth_indices(
+    error_candidates: list[int],
+    rare_candidates: list[int],
+    *,
+    error_count: int,
+    rare_count: int,
+    rng: Random,
+    split: IndependentSplit,
+    mechanism: str,
+    rare_pattern: str,
+) -> tuple[list[int], list[int]]:
+    """Allocate exact disjoint labels without depending on category order."""
+    if len(error_candidates) < error_count:
+        raise ScenarioFeasibilityError(
+            f"insufficient {mechanism} candidates in {split.value}"
+        )
+    if len(rare_candidates) < rare_count:
+        raise ScenarioFeasibilityError(
+            f"insufficient {rare_pattern} candidates in {split.value}"
+        )
+    if len(set(error_candidates) | set(rare_candidates)) < error_count + rare_count:
+        raise ScenarioFeasibilityError(
+            f"insufficient disjoint truth candidates in {split.value}"
+        )
+
+    shuffled_errors = list(error_candidates)
+    shuffled_rare = list(rare_candidates)
+    rng.shuffle(shuffled_errors)
+    rng.shuffle(shuffled_rare)
+    error_pool = set(shuffled_errors)
+    rare_only = [index for index in shuffled_rare if index not in error_pool]
+    overlap = [index for index in shuffled_rare if index in error_pool]
+    selected_rare = (rare_only + overlap)[:rare_count]
+    selected_rare_set = set(selected_rare)
+    selected_errors = [
+        index for index in shuffled_errors if index not in selected_rare_set
+    ][:error_count]
+
+    if len(selected_errors) != error_count or len(selected_rare) != rare_count:
+        raise ScenarioFeasibilityError(
+            f"failed to allocate disjoint truth labels in {split.value}"
+        )
+    return selected_errors, selected_rare
 
 
 def _eligible_for_error(
