@@ -1,6 +1,6 @@
 # TDK Experiment Protocol
 
-Protocol status: **DRAFT - HOLDOUT LOCKED**
+Protocol status: **FROZEN - ONE AUTHORIZED HOLDOUT ATTEMPT**
 
 Research title:
 
@@ -8,10 +8,12 @@ Research title:
 
 Human methodology decisions were recorded on 29 October 2026, with an author
 decision addendum on 30 October 2026, in
-`TDK_SUPERVISOR_DECISIONS_2026-10-29.md`. They approve the design for
-implementation and protocol preparation, not protocol freeze. This protocol
-must be implemented, verified, independently reviewed, and marked `FROZEN` at a
-recorded source revision before any holdout scenario is generated or executed.
+`TDK_SUPERVISOR_DECISIONS_2026-10-29.md`. On 24 November 2026, the author
+reported supervisor approval and two independent academic realism reviews that
+authorized protocol freeze and one protected holdout attempt. Reviewer identities
+remain private. The external authorization binds their anonymous identifiers,
+qualifications, evidence checksums, the exact source revision, and the matrix
+checksum without placing personal data in the repository.
 
 ## Research Questions
 
@@ -203,29 +205,20 @@ Both views must be tested and stored distinctly. Later-recorded evidence must
 not be silently treated as known at the original decision. Prediction inputs
 must not contain causal truth, generated labels, or mechanism identifiers.
 
-## Blinded Expert Realism Review
+## Qualitative Expert Realism Review
 
-Before protocol freeze, two independent reviewers with complementary HR-policy
-and information-systems expertise review the same predeclared sample of 48
-synthetic histories. Reviewer identities and qualifications must be entered in
-the two empty nomination slots before execution. The sample is stratified as 12
-ordinary legitimate, 12 rare legitimate, 12 administrative-error, and 12
-ambiguous or evidence-insufficient histories, with coverage balanced across
-included populations, policy versions, and compatible mechanisms as far as the
-frozen candidate pool permits. Selection uses a recorded seed from development
-or validation candidates only and is independent of model scores.
+The original proposal specified a 48-case blinded rating study with agreement
+and adjudication analysis. That study was not executed and no such quantitative
+result is claimed. Before freeze, the author reported qualitative review by two
+independent academic experts with complementary qualifications and authorization
+to proceed. Identities remain private; anonymous review IDs, qualifications, and
+checksummed external attestations are bound to the one-time authorization.
 
-Reviewers are blinded to generated labels, model scores, model findings, and
-each other's first-pass ratings. Both receive the same cases in independently
-randomized order. Preserve initial judgments and reasons. Report raw agreement
-and unweighted Cohen's kappa with a 95% scenario-bootstrap interval for the
-four-category record-status item; report raw agreement for the remaining
-categorical items. After both first passes are locked, disagreements and any
-`Insufficient evidence` rating are reviewed jointly against cited policy and
-record evidence. Store the initial ratings, evidence citation, adjudicated
-outcome, and reason separately. If evidence does not resolve the case, retain it
-as ambiguous and exclude it from binary ground truth rather than forcing
-agreement.
+This review provides only a face-validity check on the scenario design. It does
+not estimate realism, label accuracy, inter-rater agreement, prevalence, or
+external validity. The change is recorded in
+`TDK_PROTOCOL_AMENDMENT_2026-11-24.md`; it does not alter the hypotheses,
+endpoints, model inputs, scenario matrix, seeds, or analysis.
 
 ## Duplicate-Detection Protocol
 
@@ -266,16 +259,16 @@ The holdout remains locked until all items are true:
 - invariant-rule boundary, fixed review capacity, zero-positive treatment, and secondary threshold objectives are frozen;
 - robustness scenario matrix is frozen;
 - bitemporal policy and administrative-evidence contract is implemented and tested;
-- the two reviewer identities and qualifications are nominated, and the
-  predeclared sampling, agreement, and adjudication protocol is signed before
-  distribution;
+- two independent reviewers with complementary qualifications complete a
+  qualitative realism review, with anonymous identifiers and checksummed
+  evidence retained outside the repository;
 - analysis code produces complete denominators and uncertainty estimates;
 - artifact provenance is write-once and verified;
 - supervisor approves the protocol.
 
 After unlocking, the holdout is run once. Any later change creates a new protocol version and a new holdout family; the original result remains archived.
 
-## Implemented Draft Protocol Boundary
+## Frozen Protocol Boundary
 
 The v2 implementation currently provides:
 
@@ -295,7 +288,9 @@ The v2 implementation currently provides:
 - Holm-adjusted exploratory p-values across the generated comparison family;
 - write-once artifacts containing per-record predictions, provenance, and SHA-256 checksums.
 
-Implementation does not change the protocol status. The holdout remains locked until the checklist above is reviewed and the protocol is explicitly frozen with supervisor approval.
+The implementation and matrix are frozen for the single authorized holdout
+attempt. The fail-closed runner still requires a clean exact revision and valid
+external authorization before it can construct any holdout scenario.
 
 The 29 October decisions supersede the earlier full-policy residual gate and
 AP-primary interpretation. The 30 October addendum approves lawful correction
@@ -304,9 +299,10 @@ decision-time and later-review views, 30 repeated seeds per selected condition,
 and the three-endpoint Holm family. As of 30 October 2026 the invariant-only
 residual boundary, recall-primary endpoint, equal additional ML budget,
 entitlement evidence structure, temporal-view primitives, and population-pattern
-compatibility guard exist in development code and tests. They remain unfrozen.
-The exact protocol-scale frequency allocation, concrete example review, two
-human reviewer nominations, reviewer execution, environment freeze, independent
-final verification, and holdout authorization are incomplete. Existing
-artifacts remain development diagnostics; the protocol is not frozen and the
-holdout is locked.
+compatibility guard exist in code and tests. The 36-condition balanced matrix,
+30 seeds per condition, environment declaration, dependency lock, endpoints,
+and analysis choices are frozen in `config/tdk_holdout_matrix_v1.json`.
+The expert review is qualitative: no case-level rating dataset or inter-rater
+agreement statistic is claimed. Existing artifacts remain development and
+validation evidence. The holdout remains inaccessible except through the
+one-time authorization gate.

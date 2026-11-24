@@ -1,4 +1,16 @@
 # TDK Research Roadmap
+## Protocol Freeze - 2026-11-24
+
+- The author reported dated supervisor approval and two independent qualitative
+  academic realism reviews. Reviewer identities remain private; the repository
+  uses anonymous IDs, qualifications, and external evidence checksums.
+- The 36-condition, 30-seed matrix, endpoints, model family, exploratory model
+  comparisons, analysis choices, environment declaration, and dependency lock
+  are frozen. The holdout remains untouched until the exact clean revision is
+  bound in the one-time authorization.
+- The qualitative realism review provides face-validity approval to proceed; no
+  case-level ratings, agreement statistic, or adjudication result is claimed.
+
 ## Holdout Gate Preparation - 2026-11-23
 
 - The author reported supervisor and two-expert authorization to continue.
@@ -6,7 +18,7 @@
   seed family, condition checksum, fixed analysis choices, environment
   declaration, and dependency lock in `config/tdk_holdout_matrix_v1.json`.
 - A fail-closed authorization gate requires a clean frozen revision, dated
-  supervisor evidence, two distinct named reviewers with qualifications,
+  supervisor evidence, two distinct anonymous reviewer IDs with qualifications,
   completed blinded-review evidence checksums, and explicit one-time authority.
 - A canonical exclusive ledger outside the repository prevents accidental or
   routine repeat execution within the supported workflow; it is not presented

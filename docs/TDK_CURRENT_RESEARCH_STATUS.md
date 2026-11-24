@@ -1,13 +1,14 @@
 # Current Research Status
 
-## Freeze preparation - 23 November 2026
+## Protocol freeze - 24 November 2026
 
-The supervisor and two experts were reported by the author to have authorized
-continued work. A checksum-bound holdout matrix and fail-closed one-time
-execution gate are now under verification. The gate requires named reviewer
-qualifications and completed blinded-review evidence before it can execute; no
-such details have been entered, so the protocol remains a freeze candidate and
-the holdout remains untouched. See
+The supervisor and two independent academic experts were reported by the author
+to have authorized the frozen protocol and one protected holdout attempt. A
+checksum-bound matrix and fail-closed one-time execution gate preserve anonymous
+reviewer IDs, qualifications, and external evidence checksums without publishing
+identities. The qualitative review has no case-level rating or agreement dataset.
+The holdout remains untouched until the clean frozen revision is bound in the
+external authorization. See
 `TDK_PROTOCOL_FREEZE_RECORD_2026-11-23.md`.
 
 Status date: 2026-11-23
@@ -55,11 +56,12 @@ wrong-policy controls limit a simple causal interpretation.
 
 ## Open Scientific Gates
 
-- The data are synthetic and have not completed the planned blinded realism
-  review by two independent domain reviewers.
-- The protocol is still a draft.
-- The final holdout candidate is defined but not frozen; it remains locked and
-  untouched pending completed reviewer evidence and a frozen clean revision.
+- The data are synthetic. Two independent academic experts provided a
+  qualitative realism review, but no case-level ratings or agreement analysis
+  exists; external validity therefore remains unestablished.
+- The protocol and holdout matrix are frozen.
+- The final holdout remains locked and untouched pending exact clean-revision
+  authorization through the one-time gate.
 - No result authorizes automatic personnel action or post-validation model
   selection.
 

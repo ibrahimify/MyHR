@@ -38,7 +38,7 @@ def _authorization(tmp_path) -> dict:
             {
                 "reviewer_id": "reviewer-a",
                 "qualification": "HR policy specialist",
-                "blinded_review": {
+                "expert_review": {
                     "status": "completed",
                     "evidence_path": first_path,
                     "checksum_sha256": first_hash,
@@ -47,7 +47,7 @@ def _authorization(tmp_path) -> dict:
             {
                 "reviewer_id": "reviewer-b",
                 "qualification": "Information systems specialist",
-                "blinded_review": {
+                "expert_review": {
                     "status": "completed",
                     "evidence_path": second_path,
                     "checksum_sha256": second_hash,
@@ -191,19 +191,19 @@ def test_artifact_publication_failure_finalizes_failed(tmp_path, monkeypatch):
             "qualification",
         ),
         (
-            lambda record: record["reviewers"][0]["blinded_review"].update(
+            lambda record: record["reviewers"][0]["expert_review"].update(
                 status="pending"
             ),
             "completed",
         ),
         (
-            lambda record: record["reviewers"][0]["blinded_review"].update(
+            lambda record: record["reviewers"][0]["expert_review"].update(
                 evidence_path=""
             ),
             "evidence_path",
         ),
         (
-            lambda record: record["reviewers"][0]["blinded_review"].update(
+            lambda record: record["reviewers"][0]["expert_review"].update(
                 checksum_sha256="bad"
             ),
             "SHA-256",
@@ -287,7 +287,7 @@ def test_authorization_and_evidence_must_be_external_and_checksum_valid(
 
     _clean_repository(monkeypatch)
     authorization = _write_authorization(tmp_path, record)
-    Path(record["reviewers"][0]["blinded_review"]["evidence_path"]).write_text(
+    Path(record["reviewers"][0]["expert_review"]["evidence_path"]).write_text(
         "tampered\n",
         encoding="utf-8",
     )

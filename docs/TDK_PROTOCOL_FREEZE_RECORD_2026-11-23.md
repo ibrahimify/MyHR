@@ -1,14 +1,14 @@
 # TDK Protocol Freeze Record
 
-Status: **FREEZE CANDIDATE - HOLDOUT NOT EXECUTABLE**
+Status: **FROZEN - ONE AUTHORIZED HOLDOUT ATTEMPT**
 
 ## Reported authorization
 
-On 23 November 2026, the author reported that the supervisor and two experts
-gave permission to continue the research through protocol finalization and the
-protected holdout stage. This record preserves that report without inventing
-names, qualifications, review responses, signatures, or evidence that was not
-provided to the repository.
+On 24 November 2026, the author reported that the supervisor approved protocol
+freeze and that two independent academic experts completed a qualitative realism
+review and authorized the protected holdout stage. Their identities remain
+private. The repository records no names, case-level ratings, agreement statistic,
+or adjudication outcome that was not supplied.
 
 ## Frozen candidate
 
@@ -35,7 +35,7 @@ The runner cannot consume the holdout unless an untracked authorization record:
 1. binds the exact clean Git revision and matrix checksum;
 2. records dated supervisor approval and its evidence locator;
 3. records two distinct anonymous reviewer IDs and their qualifications;
-4. links completed blinded-review evidence and SHA-256 checksums;
+4. links completed expert-review evidence and SHA-256 checksums;
 5. explicitly authorizes one execution.
 
 The runner derives one canonical ledger location outside the repository; callers
@@ -47,14 +47,12 @@ This is a fail-closed safeguard against accidental or routine replay within the
 supported workflow, not a claim that software can prevent an authorized operator
 from editing source, using another clone, or deliberately deleting external state.
 
-## Evidence still required
+## Private evidence boundary
 
-Before changing this record to `FROZEN`, the execution gate needs the two reviewers'
-completed blinded-review evidence. Their identities remain private and are not
-recorded in the repository. The private
-authorization and evidence files must remain outside the repository; their
-checksums bind them to the run. Until those fields are supplied and verified,
-no holdout history may be generated, inspected, or scored.
+The private authorization and evidence files remain outside the repository;
+their checksums bind them to the run. Anonymous reviewer IDs and qualifications
+are sufficient for the tracked provenance. The review establishes qualitative
+face validity only; it does not provide quantitative agreement evidence.
 
 No holdout was generated, inspected, scored, or unlocked while preparing this
 record.

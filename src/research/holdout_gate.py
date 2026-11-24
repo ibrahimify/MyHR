@@ -208,16 +208,16 @@ def validate_authorization(
         reviewer_ids.add(normalized_id)
 
         review = _required_mapping(
-            reviewer.get("blinded_review"), f"reviewers[{index}].blinded_review"
+            reviewer.get("expert_review"), f"reviewers[{index}].expert_review"
         )
         if review.get("status") != "completed":
             raise InvalidAuthorizationError(
-                f"reviewers[{index}].blinded_review.status must be 'completed'"
+                f"reviewers[{index}].expert_review.status must be 'completed'"
             )
         _verify_external_evidence(
             review.get("evidence_path"),
             review.get("checksum_sha256"),
-            field=f"reviewers[{index}].blinded_review",
+            field=f"reviewers[{index}].expert_review",
             repository_root=root,
         )
 
