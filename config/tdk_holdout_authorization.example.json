@@ -1,0 +1,31 @@
+{
+  "protocol_status": "frozen",
+  "frozen_git_commit": "REPLACE_WITH_FULL_40_CHARACTER_COMMIT",
+  "matrix_sha256": "ca6bdc2a3977485e8e7d48deb4d64666b15a1f572663882c3d58bdb026ada139",
+  "supervisor_approval": {
+    "date": "YYYY-MM-DD",
+    "evidence_path": "ABSOLUTE_PATH_OUTSIDE_REPOSITORY",
+    "checksum_sha256": "REPLACE_WITH_64_CHARACTER_SHA256"
+  },
+  "reviewers": [
+    {
+      "reviewer_id": "reviewer-a",
+      "qualification": "REPLACE_WITH_REVIEWER_QUALIFICATION",
+      "blinded_review": {
+        "status": "completed",
+        "evidence_path": "ABSOLUTE_PATH_OUTSIDE_REPOSITORY",
+        "checksum_sha256": "REPLACE_WITH_64_CHARACTER_SHA256"
+      }
+    },
+    {
+      "reviewer_id": "reviewer-b",
+      "qualification": "REPLACE_WITH_REVIEWER_QUALIFICATION",
+      "blinded_review": {
+        "status": "completed",
+        "evidence_path": "ABSOLUTE_PATH_OUTSIDE_REPOSITORY",
+        "checksum_sha256": "REPLACE_WITH_64_CHARACTER_SHA256"
+      }
+    }
+  ],
+  "one_time_authorization": true
+}

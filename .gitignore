@@ -67,6 +67,8 @@ tmp_*/
 # Private research notes
 docs/research/
 research_outputs/
+config/tdk_holdout_authorization.json
+config/tdk_holdout_execution_ledger.json
 
 # Dependencies
 pip-log.txt

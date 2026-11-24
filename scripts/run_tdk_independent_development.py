@@ -38,6 +38,11 @@ from scripts.run_tdk_protocol_experiment import (
 )
 from scripts.run_tdk_research_experiment import _provenance
 from src.research.independent_scenario_adapter import adapt_independent_world
+from src.research.holdout_gate import (
+    HoldoutAttempt,
+    begin_holdout_attempt,
+    finalize_holdout_attempt,
+)
 from src.research.independent_scenarios import (
     IndependentEvent,
     IndependentScenarioSpec,
@@ -45,6 +50,7 @@ from src.research.independent_scenarios import (
     REFERENCE_DATE,
     TruthCategory,
     generate_independent_world,
+    independent_condition_matrix_sha256,
     independent_covering_scenario_matrix,
     independent_scenario_matrix,
 )
@@ -62,6 +68,9 @@ from src.services.anomaly_detection.temporal_diagnostics import (
 
 
 PROTOCOL_VERSION = "independent-scenarios-v3-2026-11-19"
+HOLDOUT_PROTOCOL_VERSION = "myhr-tdk-holdout-v1"
+HOLDOUT_MATRIX_CONFIG = REPO_ROOT / "config" / "tdk_holdout_matrix_v1.json"
+HOLDOUT_LEDGER_ROOT = REPO_ROOT.parent / ".myhr-holdout-ledgers"
 ARTIFACT_SCHEMA_VERSION = 8
 
 
@@ -70,7 +79,10 @@ def _artifact_schema_metadata() -> dict[str, int]:
 
 
 @contextmanager
-def _staged_artifact_directory(final_dir: Path) -> Iterator[Path]:
+def _staged_artifact_directory(
+    final_dir: Path,
+    holdout_attempt: HoldoutAttempt | None = None,
+) -> Iterator[Path]:
     """Publish a completed artifact atomically without exposing partial output."""
     final_dir.parent.mkdir(parents=True, exist_ok=True)
     if os.path.lexists(final_dir):
@@ -87,6 +99,23 @@ def _staged_artifact_directory(final_dir: Path) -> Iterator[Path]:
             raise FileExistsError(f"Artifact already exists: {final_dir}")
         staging_dir.rename(final_dir)
         published = True
+        if holdout_attempt:
+            finalize_holdout_attempt(
+                holdout_attempt,
+                success=True,
+                detail=f"published artifact {final_dir.name}",
+            )
+    except BaseException as exc:
+        if holdout_attempt:
+            try:
+                finalize_holdout_attempt(
+                    holdout_attempt,
+                    success=False,
+                    detail=f"artifact publication failed: {type(exc).__name__}",
+                )
+            except Exception as ledger_error:
+                exc.add_note(f"holdout ledger finalization also failed: {ledger_error}")
+        raise
     finally:
         if not published and os.path.lexists(staging_dir):
             shutil.rmtree(staging_dir)
@@ -96,7 +125,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--run-purpose",
-        choices=("independent_development", "independent_validation"),
+        choices=(
+            "independent_development",
+            "independent_validation",
+            "independent_holdout",
+        ),
         default="independent_development",
     )
     parser.add_argument(
@@ -130,16 +163,24 @@ def main() -> None:
         type=Path,
         default=Path("research_outputs") / "independent_development",
     )
+    parser.add_argument(
+        "--authorization-file",
+        type=Path,
+        help="Untracked frozen-protocol authorization record required for holdout.",
+    )
     args = parser.parse_args()
     _validate_seed_replication(
         args.seeds_per_condition,
         args.seed_count_justification,
     )
+    holdout_attempt = _begin_holdout_if_authorized(args)
     condition_specs = _select_independent_conditions(
         args.run_purpose,
         args.design,
         args.employee_count,
+        holdout_attempt=holdout_attempt,
     )
+    _verify_holdout_condition_matrix(args.run_purpose, condition_specs)
     specs = _replicate_independent_specs(
         condition_specs,
         args.seeds_per_condition,
@@ -147,8 +188,14 @@ def main() -> None:
     )
     provenance = _provenance()
     protocol_status = _protocol_status(args.run_purpose)
+    protocol_version = (
+        HOLDOUT_PROTOCOL_VERSION
+        if args.run_purpose == "independent_holdout"
+        else PROTOCOL_VERSION
+    )
+    holdout_accessed = args.run_purpose == "independent_holdout"
     identity = {
-        "protocol_version": PROTOCOL_VERSION,
+        "protocol_version": protocol_version,
         "protocol_status": protocol_status,
         "analysis_plan_version": ANALYSIS_PLAN_VERSION,
         "specs": [asdict(spec) for spec in specs],
@@ -161,11 +208,14 @@ def main() -> None:
         "design": args.design,
         "include_model_comparison": args.include_model_comparison,
         "source_sha256": provenance["source_sha256"],
+        "holdout_authorization_sha256": (
+            holdout_attempt.authorization_sha256 if holdout_attempt else None
+        ),
     }
     artifact_id = sha256(json.dumps(identity, sort_keys=True).encode("utf-8")).hexdigest()[:16]
     final_dir = args.output_dir / f"{args.run_purpose}_{artifact_id}"
 
-    with _staged_artifact_directory(final_dir) as run_dir:
+    with _staged_artifact_directory(final_dir, holdout_attempt) as run_dir:
         metric_rows = []
         prediction_rows = []
         config_rows = []
@@ -181,7 +231,10 @@ def main() -> None:
                 f"[{spec_index}/{len(specs)}] evaluating {spec.scenario_id}",
                 flush=True,
             )
-            world = generate_independent_world(spec)
+            world = generate_independent_world(
+                spec,
+                holdout_attempt=holdout_attempt,
+            )
             scenario = adapt_independent_world(world)
             evaluation = evaluate_scenario(
                 scenario,
@@ -221,14 +274,14 @@ def main() -> None:
             "title": "MyHR independent scenario evaluation",
             "generated_at_utc": datetime.now(timezone.utc).isoformat(),
             "artifact_id": artifact_id,
-            "protocol_version": PROTOCOL_VERSION,
+            "protocol_version": protocol_version,
             "protocol_status": protocol_status,
-            "holdout_accessed": False,
-            "run_purpose": (
-                "development"
-                if args.run_purpose == "independent_development"
-                else "validation"
-            ),
+            "holdout_accessed": holdout_accessed,
+            "run_purpose": {
+                "independent_development": "development",
+                "independent_validation": "validation",
+                "independent_holdout": "holdout",
+            }[args.run_purpose],
             "generator_run_purpose": args.run_purpose,
             "design": args.design,
             **_artifact_schema_metadata(),
@@ -256,9 +309,16 @@ def main() -> None:
                 ),
             },
             "provenance": provenance,
-            "interpretation_warning": (
-                "Independent scenarios are development or validation evidence, not a final holdout."
+            "holdout_gate": (
+                {
+                    "attempt_id": holdout_attempt.attempt_id,
+                    "authorization_sha256": holdout_attempt.authorization_sha256,
+                    "matrix_sha256": holdout_attempt.matrix_sha256,
+                    "frozen_git_commit": holdout_attempt.frozen_git_commit,
+                }
+                if holdout_attempt else None
             ),
+            "interpretation_warning": _interpretation_warning(args.run_purpose),
         }
         _write_json(run_dir / "metadata.json", metadata)
         _write_csv(run_dir / "scenario_configs.csv", config_rows)
@@ -305,7 +365,7 @@ def main() -> None:
             f"Artifact ID: `{artifact_id}`\n\n"
             f"Purpose: `{args.run_purpose}`\n\n"
             f"Design: `{args.design}`\n\n"
-            "This artifact is not a final holdout. The holdout was not accessed.\n",
+            + _artifact_boundary_text(args.run_purpose),
             encoding="utf-8",
         )
         _write_manifest(run_dir)
@@ -317,7 +377,7 @@ def main() -> None:
         "metric_rows": len(metric_rows),
         "prediction_rows": len(prediction_rows),
         "model_comparison_metric_rows": len(model_comparison_metric_rows),
-        "holdout_accessed": False,
+        "holdout_accessed": holdout_accessed,
     }, indent=2, sort_keys=True))
 
 
@@ -325,13 +385,19 @@ def _select_independent_conditions(
     run_purpose: str,
     design: str,
     employee_count: int,
+    *,
+    holdout_attempt: HoldoutAttempt | None = None,
 ) -> tuple[IndependentScenarioSpec, ...]:
     if design == "legacy":
         if run_purpose != "independent_development":
             raise ValueError("the legacy diagnostic has no validation design")
         return independent_scenario_matrix(employee_count)
     if design == "covering":
-        return independent_covering_scenario_matrix(run_purpose, employee_count)
+        return independent_covering_scenario_matrix(
+            run_purpose,
+            employee_count,
+            holdout_attempt=holdout_attempt,
+        )
     raise ValueError(f"unknown independent design: {design}")
 
 
@@ -339,10 +405,85 @@ def _protocol_status(run_purpose: str) -> str:
     purpose = {
         "independent_development": "development",
         "independent_validation": "validation",
+        "independent_holdout": "holdout",
     }.get(run_purpose)
     if purpose is None:
         raise ValueError(f"unsupported run purpose: {run_purpose}")
+    if purpose == "holdout":
+        return "frozen_independent_holdout"
     return f"draft_independent_{purpose}_holdout_locked"
+
+
+def _begin_holdout_if_authorized(
+    args: argparse.Namespace,
+) -> HoldoutAttempt | None:
+    if args.run_purpose != "independent_holdout":
+        if args.authorization_file:
+            raise ValueError("holdout authorization options require holdout purpose")
+        return None
+    if args.design != "covering":
+        raise ValueError("the frozen holdout requires the covering design")
+    if args.employee_count != 120 or args.seeds_per_condition != 30:
+        raise ValueError("the frozen holdout requires 120 employees and 30 seeds per condition")
+    if args.seed_replicate_start != 1:
+        raise ValueError("the frozen holdout must begin at seed replicate 1")
+    if args.review_budget != 0.10 or args.target_validation_fpr != 0.05:
+        raise ValueError("the frozen holdout operating points do not match the protocol")
+    if args.authorization_file is None:
+        raise ValueError("holdout authorization file is required")
+
+    matrix_config = json.loads(HOLDOUT_MATRIX_CONFIG.read_text(encoding="utf-8"))
+    if matrix_config.get("status") != "frozen":
+        raise ValueError("tracked holdout configuration is not frozen")
+    if args.include_model_comparison is not matrix_config["include_model_comparison"]:
+        raise ValueError("the holdout model-comparison setting does not match the protocol")
+    environment_digest = sha256(
+        (REPO_ROOT / "research-environment.json").read_bytes()
+    ).hexdigest()
+    lock_digest = sha256(
+        (REPO_ROOT / "requirements-research-lock.txt").read_bytes()
+    ).hexdigest()
+    if environment_digest != matrix_config["research_environment_sha256"]:
+        raise ValueError("research environment declaration differs from the frozen protocol")
+    if lock_digest != matrix_config["dependency_lock_sha256"]:
+        raise ValueError("dependency lock differs from the frozen protocol")
+    expected_digest = str(matrix_config["condition_matrix_sha256"])
+    return begin_holdout_attempt(
+        args.authorization_file,
+        HOLDOUT_LEDGER_ROOT / f"{matrix_config['protocol_id']}.json",
+        repository=REPO_ROOT,
+        expected_matrix_sha256=expected_digest,
+    )
+
+
+def _verify_holdout_condition_matrix(
+    run_purpose: str,
+    condition_specs: tuple[IndependentScenarioSpec, ...],
+) -> None:
+    if run_purpose != "independent_holdout":
+        return
+    matrix_config = json.loads(HOLDOUT_MATRIX_CONFIG.read_text(encoding="utf-8"))
+    actual_digest = independent_condition_matrix_sha256(condition_specs)
+    if actual_digest != matrix_config["condition_matrix_sha256"]:
+        raise ValueError("implemented holdout matrix does not match the frozen checksum")
+
+
+def _interpretation_warning(run_purpose: str) -> str:
+    if run_purpose == "independent_holdout":
+        return (
+            "This is the single frozen holdout evaluation. Interpret only the "
+            "predeclared primary and secondary comparisons without post-hoc tuning."
+        )
+    return "Independent scenarios are development or validation evidence, not a final holdout."
+
+
+def _artifact_boundary_text(run_purpose: str) -> str:
+    if run_purpose == "independent_holdout":
+        return (
+            "This artifact is the one-time frozen holdout evaluation. Generated truth "
+            "is stored only in evaluation sidecars and was not used as model input.\n"
+        )
+    return "This artifact is not a final holdout. The holdout was not accessed.\n"
 
 
 def _replicate_independent_specs(

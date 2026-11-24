@@ -322,7 +322,10 @@ class IndependentScenarioTests(unittest.TestCase):
         self.assertTrue(any(count > 1 for count in ordinary_review_counts))
 
     def test_holdout_purpose_is_not_defined(self):
-        spec = replace(independent_scenario_matrix(employee_count=120)[0], run_purpose="holdout")
+        spec = replace(
+            independent_scenario_matrix(employee_count=120)[0],
+            run_purpose="holdout",
+        )
 
         with self.assertRaisesRegex(ValueError, "holdout.*undefined.*locked"):
             generate_independent_world(spec)

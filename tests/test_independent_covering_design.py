@@ -2,10 +2,13 @@ from dataclasses import replace
 from collections import Counter
 import csv
 from itertools import combinations, product
+from types import SimpleNamespace
 
 import pytest
 
+from src.research import holdout_gate
 from scripts.run_tdk_independent_development import _select_independent_conditions
+from scripts.run_tdk_independent_development import _begin_holdout_if_authorized
 from scripts.run_tdk_independent_development import _replicate_independent_specs
 from scripts.run_tdk_independent_development import _protocol_status
 from scripts.combine_tdk_independent_shards import (
@@ -16,6 +19,7 @@ from src.research.independent_scenarios import (
     anomaly_mechanisms,
     compatible_rare_patterns_by_population,
     generate_independent_world,
+    independent_condition_matrix_sha256,
     independent_covering_scenario_matrix,
     policy_variants,
     population_families,
@@ -31,6 +35,17 @@ def _factor_values(spec) -> tuple[object, ...]:
         spec.rare_pattern,
         spec.error_rate,
         spec.rare_rate,
+    )
+
+
+def _test_holdout_attempt(tmp_path) -> holdout_gate.HoldoutAttempt:
+    return holdout_gate.HoldoutAttempt(
+        attempt_id="test-attempt",
+        authorization_sha256="a" * 64,
+        frozen_git_commit="b" * 40,
+        matrix_sha256="c" * 64,
+        ledger_path=tmp_path / "ledger.json",
+        _capability_nonce=holdout_gate._CAPABILITY_NONCE,
     )
 
 
@@ -102,6 +117,33 @@ def test_development_and_validation_designs_use_disjoint_seeds() -> None:
     })
 
 
+def test_authorized_holdout_design_is_factor_matched_and_seed_disjoint(tmp_path) -> None:
+    development = independent_covering_scenario_matrix("independent_development")
+    validation = independent_covering_scenario_matrix("independent_validation")
+    holdout = independent_covering_scenario_matrix(
+        "independent_holdout",
+        holdout_attempt=_test_holdout_attempt(tmp_path),
+    )
+
+    assert {_factor_values(spec) for spec in holdout} == {
+        _factor_values(spec) for spec in development
+    }
+    for existing in (development, validation):
+        assert {spec.seed for spec in holdout}.isdisjoint({spec.seed for spec in existing})
+        assert {spec.split_seed for spec in holdout}.isdisjoint({
+            spec.split_seed for spec in existing
+        })
+        assert {spec.model_seed for spec in holdout}.isdisjoint({
+            spec.model_seed for spec in existing
+        })
+    assert all(spec.run_purpose == "independent_holdout" for spec in holdout)
+    assert independent_condition_matrix_sha256(holdout) == (
+        "ca6bdc2a3977485e8e7d48deb4d64666b15a1f572663882c3d58bdb026ada139"
+    )
+    with pytest.raises(ValueError, match="capability"):
+        generate_independent_world(holdout[0])
+
+
 def test_protocol_status_names_the_actual_partition() -> None:
     assert _protocol_status("independent_development") == (
         "draft_independent_development_holdout_locked"
@@ -109,8 +151,9 @@ def test_protocol_status_names_the_actual_partition() -> None:
     assert _protocol_status("independent_validation") == (
         "draft_independent_validation_holdout_locked"
     )
+    assert _protocol_status("independent_holdout") == "frozen_independent_holdout"
     with pytest.raises(ValueError, match="unsupported run purpose"):
-        _protocol_status("holdout")
+        _protocol_status("unknown")
 
 
 def test_seed_shards_equal_monolithic_replication() -> None:
@@ -218,8 +261,8 @@ def test_shard_combiner_rejects_mixed_source_revisions() -> None:
 
 
 def test_holdout_design_remains_unavailable() -> None:
-    with pytest.raises(ValueError, match="holdout"):
-        independent_covering_scenario_matrix("holdout")
+    with pytest.raises(ValueError, match="capability"):
+        independent_covering_scenario_matrix("independent_holdout")
 
 
 def test_runner_requires_covering_design_for_validation() -> None:
@@ -237,6 +280,39 @@ def test_runner_requires_covering_design_for_validation() -> None:
     )
     assert len(validation) == 36
     assert all(spec.run_purpose == "independent_validation" for spec in validation)
+
+
+def test_holdout_runner_requires_external_authorization_and_ledger(tmp_path) -> None:
+    conditions = independent_covering_scenario_matrix(
+        "independent_holdout",
+        employee_count=120,
+        holdout_attempt=_test_holdout_attempt(tmp_path),
+    )
+    args = SimpleNamespace(
+        run_purpose="independent_holdout",
+        design="covering",
+        employee_count=120,
+        seeds_per_condition=30,
+        seed_replicate_start=1,
+        review_budget=0.10,
+        target_validation_fpr=0.05,
+        include_model_comparison=True,
+        authorization_file=None,
+    )
+
+    with pytest.raises(ValueError, match="authorization file"):
+        _begin_holdout_if_authorized(args)
+
+    args.authorization_file = tmp_path / "authorization.json"
+    with pytest.raises(ValueError, match="not frozen"):
+        _begin_holdout_if_authorized(args)
+
+    with pytest.raises(ValueError, match="capability"):
+        _select_independent_conditions(
+            "independent_holdout",
+            "covering",
+            120,
+        )
 
 
 def test_combined_record_csvs_are_streamed_with_one_header(tmp_path) -> None:
