@@ -68,8 +68,8 @@ from src.services.anomaly_detection.temporal_diagnostics import (
 
 
 PROTOCOL_VERSION = "independent-scenarios-v3-2026-11-19"
-HOLDOUT_PROTOCOL_VERSION = "myhr-tdk-holdout-v1"
-HOLDOUT_MATRIX_CONFIG = REPO_ROOT / "config" / "tdk_holdout_matrix_v1.json"
+HOLDOUT_PROTOCOL_VERSION = "myhr-tdk-holdout-v2"
+HOLDOUT_MATRIX_CONFIG = REPO_ROOT / "config" / "tdk_holdout_matrix_v2.json"
 HOLDOUT_LEDGER_ROOT = REPO_ROOT.parent / ".myhr-holdout-ledgers"
 ARTIFACT_SCHEMA_VERSION = 8
 
@@ -264,6 +264,7 @@ def main() -> None:
             truth_counts = Counter(entry.category.value for entry in world.truth)
             config_rows.append({
                 **asdict(spec),
+                "generation_attempt": world.generation_attempt,
                 "condition_id": _condition_id(spec.scenario_id),
                 "seed_replicate": _seed_replicate(spec.scenario_id),
                 "truth_counts_json": json.dumps(dict(truth_counts), sort_keys=True),

@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "protocol_id": "myhr-tdk-holdout-v2",
+  "status": "freeze_candidate",
+  "design": "independent_pairwise_covering_v1",
+  "condition_count": 36,
+  "seeds_per_condition": 30,
+  "employee_count_per_scenario": 120,
+  "review_budget": 0.1,
+  "target_validation_fpr": 0.05,
+  "include_model_comparison": true,
+  "condition_matrix_sha256": "ca6bdc2a3977485e8e7d48deb4d64666b15a1f572663882c3d58bdb026ada139",
+  "seed_family": {
+    "base_seed": 421000,
+    "replicate_offset": 1000003,
+    "dataset_offset": 1,
+    "split_offset": 3,
+    "model_offset": 7
+  },
+  "primary_comparison": "policy_matched_vs_raw",
+  "primary_endpoint": "recall_at_fixed_review_capacity",
+  "secondary_family": [
+    "average_precision",
+    "rare_legitimate_flag_rate",
+    "ordinary_legitimate_flag_rate"
+  ],
+  "secondary_adjustment": "Holm",
+  "research_environment_sha256": "d9222bfe5c2f518874917e185958288279e9d0f74f61eb3a19301bfe7080256a",
+  "dependency_lock_sha256": "f4550b17ea344e64c07bddaaf4b8cc801013798f73799dbdb44df6a312ddca36",
+  "zero_positive_treatment": "retain; recall and AP undefined",
+  "notes": [
+    "Protocol v1 failed before artifact publication because truth-label allocation was order-dependent.",
+    "Protocol v2 uses a disjoint seed family and exact disjoint candidate allocation.",
+    "Infeasible pre-intervention base samples are deterministically resampled and the accepted attempt is recorded.",
+    "No v1 model outcome was published or used to alter features, endpoints, thresholds, or analysis.",
+    "The factor matrix and all scientific comparisons are unchanged from v1."
+  ]
+}

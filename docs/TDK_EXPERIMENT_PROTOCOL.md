@@ -1,6 +1,6 @@
 # TDK Experiment Protocol
 
-Protocol status: **FROZEN - ONE AUTHORIZED HOLDOUT ATTEMPT**
+Protocol status: **V1 ATTEMPT FAILED - V2 FREEZE CANDIDATE**
 
 Research title:
 
@@ -288,9 +288,12 @@ The v2 implementation currently provides:
 - Holm-adjusted exploratory p-values across the generated comparison family;
 - write-once artifacts containing per-record predictions, provenance, and SHA-256 checksums.
 
-The implementation and matrix are frozen for the single authorized holdout
-attempt. The fail-closed runner still requires a clean exact revision and valid
-external authorization before it can construct any holdout scenario.
+Protocol v1 was frozen and attempted once. It failed before artifact publication
+because order-dependent truth allocation consumed candidates needed for a lawful
+rare-case intervention. No result artifact or model comparison was produced.
+Protocol v2 changes only this allocation procedure and uses a new disjoint seed
+family and ledger. Its fail-closed runner requires a new clean frozen revision
+and external authorization before it can construct any v2 holdout scenario.
 
 The 29 October decisions supersede the earlier full-policy residual gate and
 AP-primary interpretation. The 30 October addendum approves lawful correction
@@ -301,7 +304,8 @@ residual boundary, recall-primary endpoint, equal additional ML budget,
 entitlement evidence structure, temporal-view primitives, and population-pattern
 compatibility guard exist in code and tests. The 36-condition balanced matrix,
 30 seeds per condition, environment declaration, dependency lock, endpoints,
-and analysis choices are frozen in `config/tdk_holdout_matrix_v1.json`.
+and analysis choices remain unchanged in the v2 candidate at
+`config/tdk_holdout_matrix_v2.json`.
 The expert review is qualitative: no case-level rating dataset or inter-rater
 agreement statistic is claimed. Existing artifacts remain development and
 validation evidence. The holdout remains inaccessible except through the
