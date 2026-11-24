@@ -25,8 +25,8 @@
     "ordinary_legitimate_flag_rate"
   ],
   "secondary_adjustment": "Holm",
-  "research_environment_sha256": "f022e9b7f6a5e619fdf14392b2f2c3a1e8e9f70edbdec93864e04966c7ebc636",
-  "dependency_lock_sha256": "745f24efa98511df17095d94c6ae82616f1724360f93bf788221e3f013dc8023",
+  "research_environment_sha256": "d9222bfe5c2f518874917e185958288279e9d0f74f61eb3a19301bfe7080256a",
+  "dependency_lock_sha256": "f4550b17ea344e64c07bddaaf4b8cc801013798f73799dbdb44df6a312ddca36",
   "zero_positive_treatment": "retain; recall and AP undefined",
   "notes": [
     "The factor assignments match the approved balanced validation design.",

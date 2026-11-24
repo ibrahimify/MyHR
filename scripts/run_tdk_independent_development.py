@@ -74,6 +74,12 @@ HOLDOUT_LEDGER_ROOT = REPO_ROOT.parent / ".myhr-holdout-ledgers"
 ARTIFACT_SCHEMA_VERSION = 8
 
 
+def _normalized_text_sha256(path: Path) -> str:
+    """Hash tracked text independently of checkout line-ending conversion."""
+    normalized = path.read_text(encoding="utf-8").replace("\r\n", "\n")
+    return sha256(normalized.encode("utf-8")).hexdigest()
+
+
 def _artifact_schema_metadata() -> dict[str, int]:
     return {"artifact_schema_version": ARTIFACT_SCHEMA_VERSION}
 
@@ -437,12 +443,12 @@ def _begin_holdout_if_authorized(
         raise ValueError("tracked holdout configuration is not frozen")
     if args.include_model_comparison is not matrix_config["include_model_comparison"]:
         raise ValueError("the holdout model-comparison setting does not match the protocol")
-    environment_digest = sha256(
-        (REPO_ROOT / "research-environment.json").read_bytes()
-    ).hexdigest()
-    lock_digest = sha256(
-        (REPO_ROOT / "requirements-research-lock.txt").read_bytes()
-    ).hexdigest()
+    environment_digest = _normalized_text_sha256(
+        REPO_ROOT / "research-environment.json"
+    )
+    lock_digest = _normalized_text_sha256(
+        REPO_ROOT / "requirements-research-lock.txt"
+    )
     if environment_digest != matrix_config["research_environment_sha256"]:
         raise ValueError("research environment declaration differs from the frozen protocol")
     if lock_digest != matrix_config["dependency_lock_sha256"]:

@@ -11,6 +11,7 @@ from scripts.run_tdk_independent_development import _select_independent_conditio
 from scripts.run_tdk_independent_development import _begin_holdout_if_authorized
 from scripts.run_tdk_independent_development import _replicate_independent_specs
 from scripts.run_tdk_independent_development import _protocol_status
+from scripts.run_tdk_independent_development import _normalized_text_sha256
 from scripts.combine_tdk_independent_shards import (
     _concatenate_csv_files,
     _validate_shard_set,
@@ -47,6 +48,15 @@ def _test_holdout_attempt(tmp_path) -> holdout_gate.HoldoutAttempt:
         ledger_path=tmp_path / "ledger.json",
         _capability_nonce=holdout_gate._CAPABILITY_NONCE,
     )
+
+
+def test_frozen_text_digest_is_independent_of_checkout_line_endings(tmp_path) -> None:
+    lf_path = tmp_path / "lf.txt"
+    crlf_path = tmp_path / "crlf.txt"
+    lf_path.write_bytes(b"first\nsecond\n")
+    crlf_path.write_bytes(b"first\r\nsecond\r\n")
+
+    assert _normalized_text_sha256(lf_path) == _normalized_text_sha256(crlf_path)
 
 
 def test_covering_matrix_has_no_duplicate_condition_signatures() -> None:
