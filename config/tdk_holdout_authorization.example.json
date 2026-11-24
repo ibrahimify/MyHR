@@ -11,7 +11,7 @@
     {
       "reviewer_id": "reviewer-a",
       "qualification": "REPLACE_WITH_REVIEWER_QUALIFICATION",
-      "blinded_review": {
+      "expert_review": {
         "status": "completed",
         "evidence_path": "ABSOLUTE_PATH_OUTSIDE_REPOSITORY",
         "checksum_sha256": "REPLACE_WITH_64_CHARACTER_SHA256"
@@ -20,7 +20,7 @@
     {
       "reviewer_id": "reviewer-b",
       "qualification": "REPLACE_WITH_REVIEWER_QUALIFICATION",
-      "blinded_review": {
+      "expert_review": {
         "status": "completed",
         "evidence_path": "ABSOLUTE_PATH_OUTSIDE_REPOSITORY",
         "checksum_sha256": "REPLACE_WITH_64_CHARACTER_SHA256"

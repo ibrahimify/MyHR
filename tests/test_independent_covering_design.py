@@ -304,7 +304,9 @@ def test_holdout_runner_requires_external_authorization_and_ledger(tmp_path) -> 
         _begin_holdout_if_authorized(args)
 
     args.authorization_file = tmp_path / "authorization.json"
-    with pytest.raises(ValueError, match="not frozen"):
+    with pytest.raises(
+        holdout_gate.InvalidAuthorizationError, match="cannot read authorization"
+    ):
         _begin_holdout_if_authorized(args)
 
     with pytest.raises(ValueError, match="capability"):
