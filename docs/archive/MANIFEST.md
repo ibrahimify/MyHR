@@ -12,7 +12,6 @@ inferred. Current authority and superseding documents are listed in
 
 | Archived path | Bytes | SHA-256 |
 | --- | ---: | --- |
-| `operational/TDK_RESEARCH_AGENT_WORKFLOW.md` | 3,417 | `7da0896a8a13b644702a83dabe1a3ca1cadb0204d4ad542e179d8c35ad9a852e` |
 | `product-planning/LAUNCH_AUDIT_ACTIONS.md` | 5,103 | `36c44dddb8b23f5a8837b2553bb7f9f3b22fa8af270ec67ad30b644a5637a1d0` |
 | `product-planning/THESIS_COMPLETION_PLAN.md` | 4,595 | `bf0f9db0849f3b8d4d8096bcdcf892c7a5557f6ccfbd6ca6ece81181557c3d0a` |
 | `project-lab/Analysis Module Reporting_13 Mar 2026.doc` | 1,253,376 | `15134bc086b65d411ab9d27f786e503edf8c26ede999e97112bc089b3c4e5876` |
@@ -31,7 +30,6 @@ inferred. Current authority and superseding documents are listed in
 | `submission/TDK_2026_SUBMISSION_REQUIREMENTS.md` | 2,860 | `fc194fdfd4e6902620dc5ae0850fd7e9610c8ed1c14d91bce1e5215c1f8fa245` |
 | `supervisor-packages/TDK_REPOSITORY_APPROVAL_GATE_2026-10-30.md` | 2,479 | `77d66850a928faa563b7d6fa98ccd0439afa913da2649532461d64346451517c` |
 | `supervisor-packages/TDK_SUPERVISOR_PACKAGE_VERIFICATION_2026-10-30.md` | 6,568 | `4d2664f884d66efbeb18b0decd09f9d653382189136812db075964a2b1d3b409` |
-| `teaching/RESEARCH_TUTOR_PROMPT_2026-11-01.md` | 10,928 | `70bff6c6646d407fb70014a674bcf6c207298a8cb25ee984c8fe2b2547b4a6d5` |
 | `ui-audits/TEMPORARY_ASSET_REVIEW.md` | 2,207 | `f1c2141dc0bce1d49dfce02d122928dba892f312dee2d95775e1a341c8da998c` |
 | `ui-audits/tmp_icon_quality_sheet.png` | 27,174 | `3d08877d767aafb6e6f33f559589d6d21cbdf6e3535e86eec34010fac86be9d1` |
 

@@ -7,8 +7,6 @@ from pathlib import Path
 from docx import Document
 
 from scripts.generate_tdk_supervisor_package import (
-    CURRENT_ARTIFACT_DIR,
-    CURRENT_ARTIFACT_ID,
     TITLE,
     add_inline_markdown,
     append_generated_verification_record,
@@ -21,9 +19,6 @@ from scripts.generate_tdk_supervisor_package import (
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PAPER_SOURCE = REPO_ROOT / "docs" / "TDK_PAPER_DRAFT.md"
-PACKAGE_SCRIPT = REPO_ROOT / "scripts" / "generate_tdk_supervisor_package.py"
-
-
 class TdkSupervisorPackageTests(unittest.TestCase):
     def test_manuscript_source_has_stable_title_and_complete_figures(self):
         text = PAPER_SOURCE.read_text(encoding="utf-8")
@@ -34,15 +29,14 @@ class TdkSupervisorPackageTests(unittest.TestCase):
         )
         self.assertTrue(text.startswith(f"# {TITLE}\n"))
         figures = re.findall(r"\[\[FIGURE:([^|]+)\|([^\]]+)\]\]", text)
-        self.assertEqual(15, len(figures))
+        self.assertEqual(12, len(figures))
         self.assertEqual(len(figures), len({name for name, _ in figures}))
         numbers = [int(re.match(r"Figure (\d+)\.", caption).group(1)) for _, caption in figures]
-        self.assertEqual(list(range(1, 16)), numbers)
+        self.assertEqual(list(range(1, 13)), numbers)
         captions = dict(figures)
-        self.assertIn("4feea4508de1bb05", captions["primary_recall.png"])
-        self.assertIn("The interval crosses zero.", captions["primary_recall.png"])
-        self.assertIn("confound_diagnostic.png", captions)
-        self.assertIn("82%", captions["confound_diagnostic.png"])
+        self.assertIn("equal review capacity", captions["holdout_primary_comparison.png"])
+        self.assertIn("no post-hoc model selection", captions["holdout_model_sensitivity.png"])
+        self.assertIn("19 predeclared condition slices", captions["holdout_robustness.png"])
         self.assertNotIn("independent_ap.png", text)
         self.assertNotIn("**Keywords:**", text)
         for marker in ("TODO", "TBD", "PLACEHOLDER"):
@@ -52,30 +46,21 @@ class TdkSupervisorPackageTests(unittest.TestCase):
         text = PAPER_SOURCE.read_text(encoding="utf-8")
 
         required_statements = (
-            "No policy-aware advantage was demonstrated",
-            CURRENT_ARTIFACT_ID,
-            "does not establish equivalence",
-            "The final holdout has not been generated or accessed.",
+            "frozen one-time synthetic holdout",
+            "6.81 percentage points",
+            "rare-legitimate false-alert difference was favorable but inconclusive",
+            "no post-hoc tuning or rerun was performed",
         )
         for statement in required_statements:
             self.assertIn(statement, text)
-        self.assertIn("0 of 72", text)
-        self.assertIn("Only that `8/72` false-positive interpretation is invalidated", text)
-        self.assertIn("designed specification counterexample", text)
-        self.assertIn("`deterministic_rules` result is `0/72`", text)
-        self.assertIn("does not preserve employee-specific entitlement evidence", text)
-        self.assertNotIn("Both interpretations are invalidated", text)
-        self.assertIn("explicit evaluation universe", text)
+        self.assertIn("229 of 2,160", text)
+        self.assertIn("248 of 2,160", text)
+        self.assertIn("does not prove that the entire gain is caused", text)
+        self.assertIn("not establish performance on real organizational data", text)
         self.assertIn("this is a design inference applied to the present experiment", text)
-        self.assertNotRegex(text, r"(?i)policy-aware (?:isolation forest )?(?:outperforms|is superior)")
+        self.assertNotRegex(text, r"(?i)policy-aware (?:isolation forest )?is superior")
         self.assertNotRegex(text, r"(?i)run[_ -]purpose\s*[=:]\s*holdout")
-        package_script = PACKAGE_SCRIPT.read_text(encoding="utf-8")
-        self.assertIn("39/72 is a constructed specification counterexample", package_script)
-        self.assertIn("8/72 was invalidated", package_script)
-        self.assertEqual(
-            "independent_development_4feea4508de1bb05",
-            CURRENT_ARTIFACT_DIR,
-        )
+        self.assertIn("The v2 holdout attempt has been consumed", (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8"))
 
     def test_decision_sheet_is_one_landscape_page_source_with_pending_decisions(self):
         with tempfile.TemporaryDirectory() as directory:

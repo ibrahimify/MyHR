@@ -1,85 +1,83 @@
 # Current Research Status
 
-## Holdout v1 failure and v2 repair - 24 November 2026
-
-Protocol v1 was frozen at revision `dda874e` and its one authorized attempt began
-on 24 November. It stopped at scenario 43 before artifact publication because
-truth-label allocation selected overlapping error candidates before reserving
-the constrained rare-case candidates. The external ledger records `failed`; no
-v1 result artifact exists and no model outcome was inspected.
-
-The v2 repair allocates exact disjoint candidate sets independent of category
-order and uses a new seed family and ledger. The factor matrix, features,
-endpoints, thresholds, review capacity, models, and analysis remain unchanged.
-V2 is frozen and has not been generated or scored. Its one-time authorization
-must bind the exact clean merge revision. See
-`TDK_HOLDOUT_V1_FAILURE_2026-11-24.md` and
-`TDK_PROTOCOL_V2_FREEZE_RECORD_2026-11-24.md`.
-
 Status date: 2026-11-25
 
-Research question: under equal human-review capacity, does adding explicit
-workforce-policy context improve the ranking of administrative errors over raw
-features without increasing unnecessary alerts for lawful unusual histories?
+The frozen v2 holdout was evaluated once at source revision
+`ac76c574c64e2a69205a7bc00babbfad5afaac51`. The published artifact passed the
+standalone manifest, authorization, provenance, bitemporal-evidence, metric,
+and prediction audit. No seed was selected and the holdout was not rerun.
 
-## Current Evidence
+## Research Question
 
-The current claim-bearing evidence is independent synthetic validation artifact
-`c5b0723409c2394e`. It contains 36 conditions, 30 seeds per condition, and 1,080
-scenarios. Raw and policy-aware Isolation Forest scored the same 77,760
-invariant-negative evaluation histories and each received 8,640 review slots.
-The artifact was generated from revision `dc055c3`, passed its 20-file manifest
-and standalone audit, and records `holdout_accessed: false`.
+Under equal human-review capacity, does adding explicit workforce-policy
+context improve the ranking of administrative errors over raw features without
+increasing unnecessary alerts for unusual but lawful histories?
 
-| Fixed-capacity result | Raw | Policy-aware |
+## Final Evaluation
+
+The artifact contains 36 conditions with 30 seeds each, for 1,080 scenarios and
+25,920 eligible evaluation histories.
+
+| Primary residual comparison | Raw | Policy-aware |
 | --- | ---: | ---: |
-| Injected errors found | 3,348/9,720 | 3,800/9,720 |
-| False alerts | 5,292/68,040 | 4,840/68,040 |
-| Rare-legitimate alerts | 607/5,400 | 513/5,400 |
-| Ordinary-clean alerts | 4,685/62,640 | 4,327/62,640 |
+| Records reviewed | 3,240 | 3,240 |
+| Injected errors found | 1,058/3,240 | 1,282/3,240 |
+| False alerts among non-anomalies | 2,182/22,680 | 1,958/22,680 |
+| Scenario-mean recall | 34.17% | 40.97% |
+| Scenario-mean precision | 32.65% | 39.57% |
+| Average precision | 46.08% | 52.72% |
+| Rare-legitimate alerts | 248/2,160 | 229/2,160 |
+| Ordinary-clean alerts | 1,934/20,520 | 1,729/20,520 |
 
-The condition-balanced mean recall difference is +0.0438, with a 95%
-hierarchical interval [+0.0177, +0.0698] and Monte Carlo sign-flip
-`p approximately 0.000010`. Average Precision differs by +0.0487, interval
-[+0.0206, +0.0774], with Holm-adjusted
-`p approximately 0.000030`.
+Policy-aware minus raw scenario-mean recall was **+6.81 percentage points**
+(95% CI +3.54 to +10.23, paired sign-flip `p approximately 0.000010`). This is the
+predeclared primary endpoint.
 
-The rare-legitimate rate difference is -0.0167, but its hierarchical interval
-[-0.0431, +0.0090] crosses zero while the adjusted sign-flip p-value is
-0.000490. These summaries respond differently to condition heterogeneity. Both
-are retained, and the conservative conclusion is that a stable reduction for
-rare but lawful cases is not established.
+The three predeclared secondary endpoints were:
 
-## Supported Conclusion
+| Endpoint | Difference | 95% CI | Holm-adjusted p | Interpretation |
+| --- | ---: | ---: | ---: | --- |
+| Average precision | +6.64 pp | +3.57 to +9.73 pp | 0.00003 | Supported improvement |
+| Rare-legitimate flagged rate | -0.88 pp | -3.33 to +1.53 pp | 0.199 | Benefit not established |
+| Ordinary-clean flagged rate | -1.02 pp | -1.57 to -0.48 pp | 0.00003 | Supported reduction |
 
-Within the independent synthetic matrix, policy-aware features improved the
-mean ranking recall of the predeclared Isolation Forest comparison over the
-tested raw representation at the same review capacity. This does not establish
-that the effect will transfer to real organisations, unseen policy systems, or
-private employee data. The five-scorer extension remains exploratory, and
-wrong-policy controls limit a simple causal interpretation.
+The complete rules-plus-ML workflow reviewed 6,010 records per method. The
+policy-aware workflow found 2,402 anomalies and the raw workflow found 2,334;
+rules alone found 2,023 while reviewing 4,899 records.
 
-## Open Scientific Gates
+## Research Questions Answered
 
-- The data are synthetic. Two independent academic experts provided a
-  qualitative realism review, but no case-level ratings or agreement analysis
-  exists; external validity therefore remains unestablished.
-- Protocol v1 was consumed by a failed technical attempt without a result.
-- Protocol v2 remains locked pending a new exact-revision one-time authorization.
-- No result authorizes automatic personnel action or post-validation model
-  selection.
+1. **Useful policy signal:** policy-aware Isolation Forest improved recall at
+   equal capacity in the frozen synthetic holdout. Correct-policy features also
+   outperformed wrong-policy and shuffled-policy controls, although synthetic
+   construction still limits causal interpretation.
+2. **Robustness:** the descriptive recall difference was positive in all 19
+   predeclared policy, population, anomaly-mechanism, rare-pattern, and rate
+   slices. These slice results do not replace the single confirmatory primary
+   test.
+3. **Rare lawful behavior:** pooled alerts were lower for policy-aware ML, but
+   the paired confidence interval crossed zero and the adjusted test was not
+   significant. The study therefore does not establish this proposed benefit.
+
+## Interpretation Boundary
+
+- Results apply to the frozen synthetic design, not real organizations or private employee data.
+- Qualitative expert feedback supported continuing the study, but no case-level ratings or agreement statistic were collected.
+- The five alternative scorers are exploratory sensitivity analyses; none was selected after holdout inspection.
+- Anomaly scores support human review and never authorize automatic personnel action.
+- The v1 attempt failed during scenario construction before artifact publication; its failed ledger remains preserved and v1 was never rerun.
 
 ## Evidence Map
 
 | Need | Source |
 | --- | --- |
-| Exact validation counts, intervals, and interpretation | [Development and validation report](TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md) |
-| Detailed implementation chronology and negative findings | [Research roadmap](TDK_RESEARCH_ROADMAP.md) |
-| Normative design and locked-holdout boundary | [Experiment protocol](TDK_EXPERIMENT_PROTOCOL.md) |
-| Independent scenario definitions | [Scenario specification](TDK_INDEPENDENT_SCENARIO_SPEC.md) |
-| Literature and claim provenance | [Literature review](TDK_LITERATURE_REVIEW.md), [bibliography](TDK_REFERENCES.bib), and [claim ledger](TDK_CLAIM_EVIDENCE_LEDGER.json) |
-| Submitted manuscript | [Submitted paper](paper/MyHR_Policy_Aware_Machine_Learning_for_Anomaly_Detection_in_Workforce_Progression.pdf) |
+| Final answers, counts, and limitations | [Frozen holdout results](results/TDK_HOLDOUT_RESULTS.md) |
+| Reproducible result tables | [tables](tables/README.md) |
+| Publication figures and checksums | [figures](figures/README.md), [result manifest](results/holdout_report_manifest.json) |
+| Frozen analysis design | [Experiment protocol](TDK_EXPERIMENT_PROTOCOL.md) |
+| Detailed chronology and preserved negative findings | [Research roadmap](TDK_RESEARCH_ROADMAP.md) |
+| Literature and claim provenance | [Literature review](TDK_LITERATURE_REVIEW.md), [bibliography](TDK_REFERENCES.bib), [claim ledger](TDK_CLAIM_EVIDENCE_LEDGER.json) |
+| Historical submitted manuscript | Tag `tdk-2026-submission` |
 
-The submitted manuscript and dated audits are preserved as historical evidence.
-They do not contain the later November 23 validation result unless explicitly
-stated.
+The submitted 2026 manuscript and dated audits are historical records. The
+revised manuscript reports the later frozen holdout result.

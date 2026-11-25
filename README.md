@@ -1,129 +1,59 @@
-﻿# MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression
+# MyHR: Policy-Aware Anomaly Detection
 
-BME VIK TDK 2026 research project by Muhammad Ibrahim Shoeb. Supervisor: Dr. Husam Al-Magsoosi.
-Budapest University of Technology and Economics, Faculty of Electrical Engineering and Informatics.
+MyHR is an offline employee-management application built with Python, PySide6,
+SQLite, and SQLAlchemy. This branch contains the BME VIK TDK research extension:
+policy-aware anomaly detection for workforce progression records.
 
-> **TDK submission branch.** The paper has been submitted, but the experiment
-> protocol remains a draft and the final holdout remains locked. This repository
-> preserves the submitted manuscript, development evidence, and unresolved
-> scientific limitations without presenting them as confirmatory results.
+The research asks whether adding the applicable promotion policy to an anomaly
+detector improves the ranking of administrative errors at a fixed HR review
+capacity, without unnecessarily flagging unusual but lawful histories.
 
-MyHR is an offline HR desktop application (Python, PySide6, SQLite). This branch (`research`) also contains
-the research pipeline that asks one question: **does explicit workforce-progression policy context help rank
-administrative errors for human review better than raw administrative features, without raising false alerts on
-unusual but lawful histories?**
+## Research Result
 
-## Working implementation
+The frozen synthetic holdout was evaluated once and independently audited. It
+contains 1,080 scenarios from 36 conditions and 30 seeds, with 25,920 eligible
+evaluation histories.
 
-The research pipeline runs inside the MyHR desktop application, not only as scripts. Open **Anomaly Review** in the
-sidebar and select **Run analysis**. Everything below is produced by the same shared code that the experiments use.
-
-![MyHR demo](docs/media/demo/myhr_demo.gif)
-
-*28-second recording of the real application with synthetic data ([MP4](docs/media/demo/myhr_demo.mp4)).*
-
-| What you can check | Where in the application |
+| Question | Result |
 | --- | --- |
-| Anomaly detection running in the app | **Anomaly Review**, then **Run analysis**; results appear in the **Review Queue** |
-| Why an item was flagged (drill-down) | **Employee Evidence**: the same employee's source events and the policy calculation (elapsed service, credit, delay, deficit) |
-| Does policy context help? | **Method Comparison**: raw, policy-aware, wrong-policy and shuffled-policy features at the same review capacity, as charts and an exact table |
-| Ground truth for the synthetic data | **Synthetic Evaluation**: injected errors, lawful rare cases, per-method outcomes |
-| Export | CSV and PDF report from the same result |
+| Does policy context improve recall? | **Yes in this synthetic holdout.** Scenario-mean recall increased from 34.2% to 41.0%. The paired difference was +6.81 percentage points (95% CI +3.54 to +10.23, sign-flip p approximately 0.000010). |
+| Does the result persist under changed conditions? | **Descriptively yes.** Policy-aware recall was higher in all 19 predeclared policy, population, anomaly-mechanism, rare-pattern, and rate slices. These slice results are robustness diagnostics, not separate confirmatory tests. |
+| Are rare lawful cases flagged less often? | **Not conclusively.** The difference was -0.88 percentage points (95% CI -3.33 to +1.53, Holm-adjusted p = 0.199). The pooled counts were 229/2,160 for policy-aware ML and 248/2,160 for raw ML. |
 
-Steps to run it are in [Run it](#run-it). The pipeline never changes employee records: every alert is a recommendation
-for a human reviewer.
+![Frozen holdout comparison](docs/figures/holdout_primary_comparison.png)
 
-## Result
+Average precision improved by 6.64 percentage points and the ordinary-clean
+flagged rate decreased by 1.02 percentage points; both secondary results remain
+significant after the predeclared Holm adjustment. Wrong-policy, shuffled-policy,
+ablation, and multi-model controls are reported alongside the primary result.
 
-The completed independent validation contains 1,080 synthetic scenarios across
-36 conditions and 30 seeds. At equal review capacity, the predeclared
-policy-aware Isolation Forest improved mean recall over the raw representation
-by 4.38 percentage points (95% interval 1.77 to 6.98). The result is synthetic,
-rare-legitimate false-alert reduction remains uncertain, and exploratory
-scorers do not provide a uniform causal explanation. The protocol is still a
-draft and the final holdout has not been generated or accessed.
+![Exploratory model sensitivity](docs/figures/holdout_model_sensitivity.png)
 
-See the [current research status](docs/TDK_CURRENT_RESEARCH_STATUS.md) and the
-[full validation report](docs/TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md)
-for exact counts, inference, controls, and limitations.
+The conclusion is deliberately narrow: policy-conditioned features helped on
+the frozen synthetic design. This does not establish transfer to real employee
+data, prove that every gain was caused by correct policy knowledge, or justify
+automatic personnel decisions.
 
-## TDK submission manuscript
+Full counts, intervals, tables, and evidence boundaries are in the
+[holdout result report](docs/results/TDK_HOLDOUT_RESULTS.md).
 
-**[Submitted paper (PDF)](docs/paper/MyHR_Policy_Aware_Machine_Learning_for_Anomaly_Detection_in_Workforce_Progression.pdf)**,
-39 pages, of which 31 are main text. The Markdown source is [docs/TDK_PAPER_DRAFT.md](docs/TDK_PAPER_DRAFT.md).
+## Working Demonstration
 
-## Main findings
+The research pipeline also runs inside the desktop application. Open
+**Anomaly Review**, choose a synthetic scenario, and select **Run analysis**.
+The application uses the same research services as the experiment.
 
-**Current validation experiment.** Artifact `c5b0723409c2394e` contains 36
-conditions with 30 seeds each. Raw and policy-aware Isolation Forest scored the
-same 77,760 residual records and each reviewed 8,640. Policy-aware features
-found 3,800 of 9,720 injected errors versus 3,348 for raw features. The
-condition-balanced recall difference was +4.38 percentage points (95% interval
-+1.77 to +6.98; paired sign-flip p approximately 0.000010). Policy-aware features flagged
-513 of 5,400 rare-legitimate histories versus 607 for raw features, but the
-interval for that rate difference crossed zero. This supports a synthetic
-ranking difference, not a deployment or causal-superiority claim.
+![MyHR research demonstration](docs/media/demo/myhr_demo.gif)
 
-**Recovery development experiment.** Artifact `951d516ebf6ba222` remains the
-pre-validation record. Its five exploratory scorers produced different effect
-sizes, and comparisons with wrong-policy and policy-free controls limited causal
-attribution. No scorer was selected from those inspected development results.
+| View | What it shows |
+| --- | --- |
+| Review Queue | Ranked deterministic findings and statistical suspicions for human review |
+| Employee Evidence | Source history, applicable policy version, elapsed service, credits, delays, and deficits |
+| Method Comparison | Raw, policy-aware, wrong-policy, and shuffled-policy methods at equal capacity |
+| Synthetic Evaluation | Injected errors and lawful rare cases, separated from model inputs |
 
-### Submitted-paper findings
-
-The diagnostics below are preserved from the submitted paper and predate the
-November 23 validation result. They remain useful research history, but they are
-not the current headline evidence.
-
-**1. Equal review capacity, 12 development scenarios** (artifact `4feea4508de1bb05`: 864 test histories,
-108 injected errors, 96 alerts reviewed per method).
-
-| Method | True positives | False positives | Recall |
-| --- | ---: | ---: | ---: |
-| Raw features | 36 | 60 | 33.3% |
-| Policy-aware features | 39 | 57 | 36.1% |
-| Wrong-policy control | 39 | 57 | 36.1% |
-| Shuffled-policy control | 33 | 63 | 30.6% |
-
-Policy-aware minus raw recall is **+0.0278** (95% interval −0.0278 to +0.1019, sign-flip p = 0.6875). The wrong-policy
-control selected exactly the same alerts as the policy-aware model.
-
-![Recall at equal review capacity](docs/figures/primary_recall.png)
-
-**2. Larger diagnostic, 900 scenarios** (artifact `8f1494e4abf2d268`). Wrong-policy features reproduced about 82% of
-the apparent policy gain, so the large raw-to-policy difference is mostly an effect of the added columns, not of correct
-policy knowledge. The audit of this artifact's 8,019,000 prediction rows is not finished, so this is a diagnostic only.
-
-| Comparison (mean recall difference) | Value |
-| --- | ---: |
-| Policy-aware minus raw | +0.348 (95% interval 0.342 to 0.355) |
-| Wrong-policy minus raw | +0.284 |
-| Shuffled-policy minus raw | −0.079 |
-| Policy-aware minus wrong-policy | +0.064 |
-
-![Confounded 900-scenario diagnostic](docs/figures/confound_diagnostic.png)
-
-**3. Failures that were found, kept and fixed.**
-
-- A first design filtered out every history with a policy finding, which set all three policy features to zero. That
-  comparison could not test the hypothesis.
-- A count of 39 of 72 rare-legitimate histories flagged by the rules was a constructed specification counterexample,
-  not a prevalence estimate. A later 8 of 72 reading was invalidated because the generator had created genuine
-  contradictions. The repaired artifact flags 0 of 72, but 24 of those labels have no stored employee-specific
-  entitlement evidence, so 0/72 is not a validated false-positive rate.
-
-![Rule alerts on rare legitimate labels across three artifacts](docs/figures/policy_alerts.png)
-
-**4. Deterministic rules** found 63 of 108 errors with no false positives (45 missed) on the 12-scenario artifact.
-
-## System overview
-
-![Rules-first architecture](docs/figures/architecture.png)
-
-Deterministic checks explain explicit contradictions, Isolation Forest ranks the remaining histories, and a human
-reviews every alert. Scores never change personnel records. The in-app **Anomaly Review** page runs this pipeline on
-synthetic histories: review queue, employee evidence with the policy arithmetic, a comparison of the four feature
-representations at equal capacity, and the generated truth on a separate tab.
+Anomaly scores never modify personnel records. Generated truth is used only for
+synthetic evaluation and is not supplied to the models.
 
 | Review queue | Employee evidence |
 | --- | --- |
@@ -131,85 +61,84 @@ representations at equal capacity, and the generated truth on a separate tab.
 | **Method comparison** | **Synthetic evaluation** |
 | ![Method comparison](docs/media/screenshots/anomaly_comparison_light.png) | ![Synthetic evaluation](docs/media/screenshots/anomaly_evaluation_light.png) |
 
+## Method
+
+1. Deterministic checks identify invariant contradictions and preserve their evidence.
+2. Raw and policy-aware methods receive the same remaining records.
+3. Models are fitted on training histories and threshold choices use validation histories.
+4. Both methods review the same number of evaluation records.
+5. Scenario seeds are the paired statistical units.
+6. Wrong-policy, shuffled-policy, ablation, and alternative-model controls test attribution and sensitivity.
+7. Every artifact records configuration, dependencies, seeds, source revision, and checksums.
+
+The primary model is Isolation Forest. IQR, Local Outlier Factor, One-Class SVM,
+and robust z-score results are exploratory sensitivity analyses. Duplicate-record
+detection is implemented and evaluated as a separate task.
+
 ## Limitations
 
-- Synthetic data only. Realism has not been reviewed by humans.
-- The validation advantage is limited to synthetic ranking under the tested
-  matrix; transfer to real organisations and unseen policy systems is unknown.
-- The rare-legitimate false-alert effect remains uncertain even though the
-  pooled validation count is lower for policy-aware features.
-- Not reported in the paper: numerical results for the IQR and z-score baselines, the duplicate-detection comparison
-  and runtime. These parts are implemented in the code.
-- The optional user study of explanations was not conducted.
-- The citation registry passes strict local-artifact verification for all 18
-  bibliography records and 15 claim records.
+- The final evaluation uses synthetic administrative histories, not private employee data.
+- Qualitative expert feedback supported continuing the study, but no case-level realism ratings or agreement statistic were collected.
+- The rare-legitimate false-alert reduction was not statistically established.
+- Robustness slices were descriptively consistent but were not individual confirmatory hypotheses.
+- The optional explanation usability study was not conducted.
+- Results support human review only, never automated promotion, sanction, salary, or record-merging decisions.
 
-## Future work
-
-1. Run the blinded realism review with two independent human reviewers.
-2. Freeze the protocol and analysis revision without selecting a scorer from
-   inspected exploratory results.
-3. Run the locked holdout once only after the remaining authorization gates.
-4. Extend the scenario matrix only through a documented protocol decision to
-   cover factors not varied in the 36-condition development design.
-5. Report the baselines, duplicate-detection benchmark and runtime.
-6. Study how explanations affect reviewers, then validate on a real organisation with its own policies.
-
-## For the reviewer: where to find things
-
-| Need | Location |
-| --- | --- |
-| Final paper | [PDF](docs/paper/MyHR_Policy_Aware_Machine_Learning_for_Anomaly_Detection_in_Workforce_Progression.pdf) |
-| All figures and the data behind them | [docs/figures/](docs/figures/README.md), [FIGURE_MANIFEST.json](docs/figures/FIGURE_MANIFEST.json) |
-| Result tables (LaTeX) | [docs/tables/](docs/tables/README.md) |
-| Experiment protocol (draft) | [docs/TDK_EXPERIMENT_PROTOCOL.md](docs/TDK_EXPERIMENT_PROTOCOL.md) |
-| Current research evidence | [status](docs/TDK_CURRENT_RESEARCH_STATUS.md), [validation report](docs/TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md) |
-| Decisions and chronology | [protocol](docs/TDK_EXPERIMENT_PROTOCOL.md), [roadmap](docs/TDK_RESEARCH_ROADMAP.md) |
-| Audits | [latest citation verification](docs/TDK_CITATION_INDEPENDENT_AUDIT_2026-11-22.md), [second external audit](docs/TDK_SECOND_EXTERNAL_AUDIT_2026-10-30.md) |
-| References | [docs/TDK_REFERENCES.bib](docs/TDK_REFERENCES.bib) |
-| Anomaly code | [src/services/anomaly_detection/](src/services/anomaly_detection/), [src/ui/pages/anomaly_review.py](src/ui/pages/anomaly_review.py) |
-| Tag of the submitted version | `tdk-2026-submission` |
-
-## Run it
+## Run It
 
 ```powershell
 pip install -r requirements.txt -r requirements-research.txt
-python scripts/seed_demo_company.py      # optional: synthetic demo company
+python scripts/seed_demo_company.py
 python main.py
 ```
 
-A small fictional spreadsheet for checking the import workflow is available at
-[`examples/import/demo_import_10_employees.xlsx`](examples/import/demo_import_10_employees.xlsx).
+For the local demonstration database, sign in with `admin` / `admin123`. Open
+**Employees** to inspect the fictional company, then open **Anomaly Review**.
 
-Sign in as `admin` / `admin123` (local demo database only). Then open **Employees**, search `Peter Ahmed`, and open
-the **Performance** tab. Then open **Anomaly Review**, choose a scenario and select **Run analysis**.
-
-Checks and reproduction, from the repository root:
+Verification:
 
 ```powershell
-python -m unittest discover -s tests
+python -m pytest tests
 python scripts/verify_anomaly_demo.py
 python scripts/verify_tdk_citations.py --require-local-artifact
-python scripts/build_tdk_figures.py
+python scripts/audit_tdk_protocol_artifact.py <artifact-directory> `
+  --repo-root <frozen-worktree> `
+  --holdout-authorization <external-authorization> `
+  --holdout-ledger <external-ledger>
+python scripts/build_tdk_holdout_report.py <artifact-directory>
 ```
 
-The research artifacts in `research_outputs/` are write-once and not stored in Git because of their size (up to 1.9 GB).
-Their identifiers, source revisions and checksums are listed in the paper and the figure manifest. There is no holdout
-command, and the protocol runner refuses a holdout run until a human-approved freeze.
+Authorization evidence, ledgers, and large research artifacts remain outside
+Git. Credentials and private employee data must never be committed.
 
-## The application
+## Documentation
 
-MyHR manages employee records and profiles, performance reviews, an organization hierarchy, promotion races (live from
-source records), annual salary increments, commendations and sanctions, an audit log, CSV and XLSX import, exports and
-yearly PDF reports. It has light and dark themes and English, Hungarian and Arabic interfaces. Settings, user
-management, export and backup are admin only. New dropdowns must use `AppSelect` (see `docs/UI_RULES.md`).
+| Need | Location |
+| --- | --- |
+| Final research answers | [Holdout results](docs/results/TDK_HOLDOUT_RESULTS.md) |
+| Current research status | [Current status](docs/TDK_CURRENT_RESEARCH_STATUS.md) |
+| Frozen protocol | [Experiment protocol](docs/TDK_EXPERIMENT_PROTOCOL.md) |
+| Result tables | [docs/tables](docs/tables/README.md) |
+| Figures and checksums | [docs/figures](docs/figures/README.md), [result manifest](docs/results/holdout_report_manifest.json) |
+| Revised manuscript | [PDF](docs/paper/MyHR_TDK_Paper_Revised_2026-11-25.pdf), [Word](docs/paper/MyHR_TDK_Paper_Revised_2026-11-25.docx) |
+| Submitted 2026 manuscript | Tag `tdk-2026-submission` |
+| Literature and references | [Literature review](docs/TDK_LITERATURE_REVIEW.md), [bibliography](docs/TDK_REFERENCES.bib) |
+| Research implementation | [src/services/anomaly_detection](src/services/anomaly_detection), [Anomaly Review UI](src/ui/pages/anomaly_review.py) |
+
+## Application Scope
+
+Outside the research module, MyHR manages employee profiles, performance
+reviews, organizational hierarchy, promotion races, salary increments,
+commendations, sanctions, imports, audit history, exports, and backups. It
+supports light and dark themes plus English, Hungarian, and Arabic interfaces.
 
 | Branch | Purpose |
 | --- | --- |
 | `master` | Project Laboratory submission |
-| `thesis` | Verified working application |
-| `research` | Research pipeline, application and Anomaly Review (this README) |
+| `thesis` | Verified standalone HR application |
+| `research` | Research pipeline, working application, and final experiment |
+| `web` | Paused web-port scaffold |
 
-Stack: Python 3.12+, PySide6 (Qt 6), SQLite with SQLAlchemy 2.0, scikit-learn, pandas, Matplotlib, Graphviz.
-Academic project 2025 to 2026. No open-source licence has been chosen yet ([docs/LICENSING_AND_IP.md](docs/LICENSING_AND_IP.md)).
-Citation metadata: [CITATION.cff](CITATION.cff).
+Academic project, 2025-2026. Licensing status is documented in
+[docs/LICENSING_AND_IP.md](docs/LICENSING_AND_IP.md). Citation metadata is in
+[CITATION.cff](CITATION.cff).

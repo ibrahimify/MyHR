@@ -1,0 +1,4 @@
+workflow,reviewed,true_positives,false_positives,false_negatives,rare_legitimate_flagged,rare_legitimate_total,scenario_mean_recall,scenario_mean_precision
+Rules only,4899,2023,2876,1217,347,2160,0.6298611111111111,0.5468025679648487
+Rules + raw ML,6010,2334,3676,906,449,2160,0.7240740740740741,0.4968025679648487
+Rules + policy-aware ML,6010,2402,3608,838,431,2160,0.7430555555555556,0.5177902222858363
