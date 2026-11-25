@@ -943,6 +943,29 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
 
         _verify_declared_matrix(metadata, configs, metrics)
 
+    def test_v2_matrix_requires_generation_attempt_provenance(self):
+        configs = [{
+            "scenario_id": "c1-seed-01",
+            "condition_id": "c1",
+            "seed_replicate": "1",
+            "seed": "1",
+            "split_seed": "2",
+            "model_seed": "3",
+            "generation_attempt": "1",
+        }]
+        metrics = [{"scenario_id": "c1-seed-01"}]
+        metadata = {
+            "protocol_version": "myhr-tdk-holdout-v2",
+            "scenario_count": 1,
+            "condition_count": 1,
+            "seeds_per_condition": 1,
+        }
+
+        _verify_declared_matrix(metadata, configs, metrics)
+        configs[0].pop("generation_attempt")
+        with self.assertRaisesRegex(ArtifactAuditError, "generation-attempt"):
+            _verify_declared_matrix(metadata, configs, metrics)
+
     def test_audit_rejects_duplicate_metric_keys_and_incomplete_pairs(self):
         prediction = {
             "scenario_id": "s1", "employee_id": "E1", "method": "m",

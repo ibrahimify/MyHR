@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "protocol_id": "myhr-tdk-holdout-v2",
-  "status": "freeze_candidate",
+  "status": "frozen",
   "design": "independent_pairwise_covering_v1",
   "condition_count": 36,
   "seeds_per_condition": 30,
