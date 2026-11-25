@@ -1401,7 +1401,10 @@ def _requires_bitemporal_contract(
 ) -> bool:
     return (
         artifact_schema_version >= 5
-        and protocol_version.startswith("independent-")
+        and (
+            protocol_version.startswith("independent-")
+            or protocol_version.startswith("myhr-tdk-holdout-")
+        )
     )
 
 
