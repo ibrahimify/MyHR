@@ -1,5 +1,22 @@
 # TDK paper figures
 
+## Final holdout figures
+
+```powershell
+python scripts/build_tdk_holdout_report.py <artifact-directory>
+```
+
+| Figure | Content |
+| --- | --- |
+| `holdout_primary_comparison` | Primary recall and pooled review outcomes at equal capacity |
+| `holdout_model_sensitivity` | Raw and policy-aware recall for five exploratory scorers |
+| `holdout_robustness` | Descriptive recall differences across 19 predeclared slices |
+
+Each is exported as 300 dpi PNG plus vector PDF and SVG. Input and output
+checksums are in `docs/results/holdout_report_manifest.json`.
+
+## Historical submission figures
+
 Regenerate every figure, Graphviz source, booktabs table and the manifest with:
 
 ```powershell

@@ -1,0 +1,32 @@
+{
+  "generator": "scripts/build_tdk_holdout_report.py",
+  "artifact_id": "f58cadc5570aa558",
+  "protocol_version": "myhr-tdk-holdout-v2",
+  "frozen_git_commit": "ac76c574c64e2a69205a7bc00babbfad5afaac51",
+  "sources": {
+    "metadata.json": "417115b285371c2f7d7a497eae05def7b7387410966f24c7403e043082a2426f",
+    "manifest.json": "0f0565672291f6b7cda4ff737393377d8ccfddbc36bac402b39dbb3c7a64aa2d",
+    "aggregate_metrics.csv": "aa8a441b67ea723dfa5972d9314fe7cc311b153ddd6e40595c35beb344b6a3a1",
+    "paired_comparisons.csv": "484d64e88c127b877041272ae1580a97fb76ee2bce64272b3342240967405c8f",
+    "model_comparison_aggregates.csv": "aeeba7899b061d86c58ba04f735344162208c07f04a26ad2c0850821ecbd4427",
+    "model_comparison_paired.csv": "6d64a2a94abd981b2859def3bc9b1026462b157c4bc691b6f351b2268cb7ff9d",
+    "robustness_slices.csv": "0186593fda5e7ce4f74935f379bc47d05470f22a88f1dc42ba2eb41f9b5ed181"
+  },
+  "outputs": {
+    "tables/holdout_primary_results.csv": "b1062bd5986a8146a5085d1e4b67a62dd5412150e7fd960d2893ac2b52f79236",
+    "tables/holdout_endpoint_contrasts.csv": "9a7814039c0f9c3536472e78ffdacb349a25d03f2925632b1499c13027de5c7e",
+    "tables/holdout_complete_workflow.csv": "165a8178f6a603be75ecc0c7791f3f5a0c1656d4fdfd9fbb6d703b9bb0c584ad",
+    "tables/holdout_model_sensitivity.csv": "3d66b745b232cca4994da5f61ce40fd99c4de2d333c0d0070dd619ad890a4ce7",
+    "tables/holdout_robustness.csv": "e8eac7007d1d549d5d5737704c8892c81b92237cd3481e7778c45c9bc1c172d5",
+    "figures/holdout_primary_comparison.png": "9620a240940c80206d84fe916d33d8fed5c4d18f3e45fbeb6e743083b771c4d0",
+    "figures/holdout_primary_comparison.pdf": "7db2f41b65577338ccc8b6dfdd6afc69350186f5098b7684d5e76913d89997ad",
+    "figures/holdout_primary_comparison.svg": "97b7c5c10f4b103b8539b797ec1e39940b3c523ffb214b7053753618b0c0c8ef",
+    "figures/holdout_model_sensitivity.png": "d285ecfc49647bcbde3961aa73f8be3280d1487bfa77b16a4906769f539f84d4",
+    "figures/holdout_model_sensitivity.pdf": "aaff40bf4a1548d4339f9be8b18404d8d3a9e8f025c7338536a55e706f4f4b16",
+    "figures/holdout_model_sensitivity.svg": "7fba9234a3efbcae295c0497723f3cab8e95be2af36ddbcea048d6d5c198bb03",
+    "figures/holdout_robustness.png": "26d1b065b6cda8bc625e9b0f34ccc851c70915f29b5db628e39ebf87a31455a0",
+    "figures/holdout_robustness.pdf": "78047c6c7cffe954d0961582b86a91366c8f3c34d15e5f7f61e3c894b0509b6c",
+    "figures/holdout_robustness.svg": "fc0ab2c9049908fd4d756cdd7f1fd1f184f4ae94a05d8d118658b487030701cb",
+    "results/TDK_HOLDOUT_RESULTS.md": "e0e4ea702e74365b3b8d6d889c82e578629bd360183c1f1525ff869abb53f94f"
+  }
+}

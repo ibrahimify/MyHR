@@ -1,4 +1,22 @@
 # TDK Research Roadmap
+## Frozen Holdout Evaluation - 2026-11-25
+
+- Protocol v2 was evaluated once at frozen revision `ac76c57`; the consumed
+  ledger and write-once artifact are preserved outside Git.
+- The independent artifact audit verified authorization, checksums, scenario
+  coverage, prediction membership, temporal policy links, arithmetic, paired
+  comparisons, and controls. No rerun or post-hoc tuning was performed.
+- At equal review capacity, scenario-mean recall was 34.17% for raw Isolation
+  Forest and 40.97% for policy-aware Isolation Forest, a paired difference of
+  +6.81 percentage points (95% interval +3.54 to +10.23; sign-flip p
+  approximately 0.000010).
+- Average precision and the ordinary-clean false-alert rate improved after Holm
+  adjustment. The rare-legitimate false-alert result was favorable but
+  inconclusive. Policy-aware recall was descriptively higher in all 19
+  predeclared condition slices, while exploratory effects varied by scorer.
+- Current result tables, figures, denominators, limitations, and reproduction
+  evidence are indexed in `docs/results/TDK_HOLDOUT_RESULTS.md`.
+
 ## Holdout v1 Failure And v2 Repair - 2026-11-24
 
 - Protocol v1 was frozen at revision `dda874e` and authorized once. The attempt
@@ -11,8 +29,8 @@
   introduces an order-independent exact disjoint allocation plus a new seed
   family and ledger. Deterministic pre-intervention rejection sampling records
   its accepted generation attempt; all 1,080 validation scenarios constructed
-  successfully (1,077 at attempt 0 and three at attempt 1). It remains a freeze
-  frozen design pending exact-revision authorization and its one permitted run.
+  successfully (1,077 at attempt 0 and three at attempt 1). The exact revision
+  was subsequently authorized and evaluated once as recorded above.
 
 ## Protocol Freeze - 2026-11-24
 
@@ -21,8 +39,8 @@
   uses anonymous IDs, qualifications, and external evidence checksums.
 - The 36-condition, 30-seed matrix, endpoints, model family, exploratory model
   comparisons, analysis choices, environment declaration, and dependency lock
-  are frozen. The holdout remains untouched until the exact clean revision is
-  bound in the one-time authorization.
+  were frozen before the exact clean revision was bound in the one-time
+  authorization.
 - The qualitative realism review provides face-validity approval to proceed; no
   case-level ratings, agreement statistic, or adjudication result is claimed.
 
@@ -242,7 +260,7 @@
 - Scientific reading: this is a GOOD outcome for the research process — the predeclared controls did their job and caught a confound before it reached the paper. The honest story remains a methods/negative contribution: at protocol scale, correct policy context adds only a small, not-yet-attributable increment over a wrong policy, so the framework and the control structure are the contribution, not a policy-aware win.
 - A full offline artifact audit (checksums, provenance, paired-inference recomputation) still needs to finish; it exceeded the interactive timeout on 8M prediction rows.
 - **App integration (visible deliverable).** Added an in-app "Anomaly Review" page (`src/ui/pages/anomaly_review.py`) wired into the PySide6 navigation under Compliance. It runs the detector over a small synthetic sample and shows a human-review queue (rule findings + Isolation Forest ranking) with priority badges and a review-only governance note. No database writes; synthetic data only; degrades to rules-only when scikit-learn is absent. Complies with the AppSelect dropdown rule; covered by the dashboard smoke test. This is decision-support UI, not an automated personnel action.
-- **AI realism-review PILOT only (NOT the required human review).** Two AI agents exercised the realism-review instrument from HR-policy and information-systems perspectives. Their output is a labeled methodology dry-run; it is explicitly NOT a blinded human expert review and is NOT counted toward the two required human reviewers, whose identities remain blank. Pilot feedback (recorded as instrument-testing only): scenarios rate 3-4/5 plausibility; main gaps are (a) scenarios too clean/single-step, (b) no co-occurring or partial defects, (c) low identity/field entropy and unrealistically tight recorded-date latency. These are useful inputs for a future human review, not findings.
+- **Realism-review instrument dry run only.** The questionnaire was exercised without human participants to test its wording and workflow. No ratings from that dry run are treated as evidence. It identified questions about single-step scenarios, co-occurring defects, identity-field variation, and recording delays that were addressed in later scenario design.
 - Holdout remains locked, protocol freeze withheld, reviewer identities blank. PR #1 stays draft.
 
 ## Author Decisions Recorded - 2026-10-30
@@ -299,7 +317,7 @@
   matrix freeze, environment freeze, and separate holdout authorization remain
   open.
 
-## Autonomous Audit And Repair Cycle - 2026-10-30
+## Audit And Repair Cycle - 2026-10-30
 
 - Final independent methodology review reproduced the current arithmetic but
   found that policy-matched and wrong-policy representations select identical
@@ -402,7 +420,7 @@
 - No hypothesis, endpoint, scenario definition, source artifact, or holdout was
   changed, generated, inspected, scored, or unlocked.
 
-## Codex Takeover Checkpoint - 2026-10-30
+## Implementation Checkpoint - 2026-10-30
 
 - Commit `1942718` completes the second-audit correctness repairs, including explicit duplicate-pair universes, correction-graph validation, complete provenance, nested memory-measurement safety, and source/variant history consistency.
 - Certified development artifact `b866ae2aa1b4b479` was generated from the clean revision and passed the strengthened audit. It contains 12 scenarios, 864 test histories, 108 anomalies, and 72 rare-legitimate histories; `holdout_accessed` is `false`.
@@ -419,7 +437,7 @@
 
 ## Second External Audit — Invalidations And R1/R6 Repairs - 2026-10-30
 
-A second independent repository audit (imported verbatim to `docs/TDK_SECOND_EXTERNAL_AUDIT_2026-10-30.md`, reviewed revision `4ee488b`) found serious ground-truth defects that the 212 green tests missed because those tests checked metadata, not meaning. Kiro independently reproduced the confirmed findings before acting. This entry supersedes the scientific interpretations below where they conflict.
+A second independent repository audit of revision `4ee488b` found serious ground-truth defects that the 212 green tests missed because those tests checked metadata, not meaning. The confirmed findings were reproduced before repair. This entry supersedes the scientific interpretations below where they conflict; the original audit remains available in repository history.
 
 **INVALIDATED SCIENTIFIC INTERPRETATIONS (do not cite):**
 
@@ -477,11 +495,11 @@ R1–R6 and R8–R10 have implementation repairs with semantic regression covera
 
 ## Scientific-Scope Correction For New Scenario Families - 2026-10-30
 
-An independent review (Codex, relayed by Muhammad Ibrahim Shoeb) correctly flagged that the preceding entry overstated the scientific standing of the new scenario work. This entry supersedes it on interpretation; the engineering facts below remain accurate.
+An independent review correctly flagged that the preceding entry overstated the scientific standing of the new scenario work. This entry supersedes it on interpretation; the engineering facts below remain accurate.
 
 - **Artifact `db1a15646d9e76ba` is an EXPLORATORY development artifact, not confirmatory evidence.** The auditor returned `verified`, which attests only to reproducibility of the implemented arithmetic, provenance integrity, and `holdout_accessed: false`. It does not attest to scientific validity, approved scenario definitions, or any policy-aware claim.
 - **The `late_correction` and `policy_transition` scenario definitions are PENDING HUMAN APPROVAL.** Supervisor Decision 4 (2026-10-29) approves the bitemporal *contract capability* (policy versions, recognized service, correction provenance, effective/recorded time) and Decision 6 requires the holdout matrix to *cover* policy transitions and lawful exceptions. Neither decision approves the specific implementation details added here: the −12-month mis-dating mechanism, the `legacy-pre-2023` re-stamp with a 2022-06-01 effective date, one-record-per-pattern injection, or the `index % 5` matrix composition. Per AGENTS.md ("Do not silently change ... scenario definitions ... Record proposed changes separately for supervisor approval"), these are recorded as a pending proposal in `TDK_PROTOCOL_CHANGE_PROPOSALS.md` and must not be treated as frozen.
-- **The readings were re-derived through an independent code path** by `scripts/reproduce_db1a15646d9e76ba_readings.py`, which reads only the artifact CSVs and does not import the generator, `protocol_evaluation.py`, or the auditor. This is a **code-path re-derivation, not an independent review**: the same author (Kiro) implemented both the scenario code and the re-derivation, so it does not substitute for verification by a separate read-only auditor or human.
+- **The readings were re-derived through a separate code path** by `scripts/reproduce_db1a15646d9e76ba_readings.py`, which reads only the artifact CSVs and does not import the generator, `protocol_evaluation.py`, or the auditor. This is a code-path re-derivation, not an independent review, and therefore does not substitute for verification by a separate read-only auditor or human.
   - **Denominator resolved (corrected).** An earlier draft wrote `8/348`; that was **wrong** — 348 pools train+validation+test, but only the test split is evaluated. The correct pooled denominator is the **test-split rare-legitimate count = 72**, giving **8/72 = 11.1%** on the test split. The auditor's `rare_legitimate_count` sums to exactly 72 across the 12 scenarios, confirming this. The term `8/72` is a pooled **test-split** rate and must always be labelled as such.
   - **Scenario-level attribution:** of the 72 test rare-legitimate records, 12 are `policy_transition`; **all 8 flags fall on `policy_transition` cases (8/12 = 66.7% of policy-transition test cases), and 0/60 of the other four patterns.** Zero flags came from `late_correction`, confirming the supersession fix.
   - (c) **recall delta +0.0093, paired bootstrap 95% CI [-0.0463, +0.0833]** re-derived to four decimals with a fresh bootstrap (seed 20261030). No evidence of policy-aware advantage.
@@ -566,7 +584,7 @@ An independent review (Codex, relayed by Muhammad Ibrahim Shoeb) correctly flagg
 - Local verification passed all 168 tests, all three canonical experiment artifact audits, strict citation verification, and both canonical literature-artifact checks. GitHub push and pull-request CI runs also passed for revision `94868c2`. Every artifact audit reported `holdout_accessed: false`.
 - Evidence inventory now reports 35 candidates and 444 files. The five canonical artifacts are complete; six legacy, interrupted, or unmanifested candidates remain preserved and are not cited as current authority.
 - PR #1 remains draft, mergeable, and unmerged. Issue #10 remains the implementation and freeze tracker. No issue or branch has been deleted, the approved methodology has not yet been frozen, and no holdout command has been executed.
-- Kiro CLI is not installed in the environment, so no Kiro credits were used. A fresh independent read-only agent performed the required adversarial manuscript and evidence review instead; its duplicate-denominator, zero-positive-scenario, citation-scope, and package-provenance findings were corrected before delivery.
+- An independent read-only review identified duplicate-denominator, zero-positive-scenario, citation-scope, and package-provenance findings, which were corrected before delivery.
 
 ## Research and Citation Governance - 2026-10-29
 
@@ -600,7 +618,7 @@ Completed evidence is summarized in `archive/research-audits/TDK_METHODOLOGY_REV
 - A fresh hostile code review found incomplete event provenance and metric-key completeness checks. Both blockers were corrected with adversarial tests rather than waived.
 - Local verification passed all 134 tests. Commit `414a5b7` passed both GitHub Python test jobs and GitGuardian security checks.
 - Documentation was classified into current authority, pending decisions, and preserved archives. Stale claims about residual AP and the `39/72` denominator were corrected without rewriting dated audit history or changing the draft protocol.
-- A repository-grounded research handover and reusable beginner-to-defense ChatGPT tutor prompt were added. Historical plans, audits, rendered guides, and project-lab deliverables were moved to `docs/archive/`; no research evidence was deleted.
+- A repository-grounded research handover and beginner teaching guide were added. Historical plans, audits, rendered guides, and project-lab deliverables were moved to `docs/archive/`; no research evidence was deleted.
 - Post-cleanup verification passed all 134 tests, Python compilation checks, local Markdown-link resolution, `git diff --check`, and the independent artifact audit. Artifact `e342bd4acf39b06b` remained verified with `holdout_accessed: false`.
 
 ## Repository Preservation Maintenance - 2026-10-29

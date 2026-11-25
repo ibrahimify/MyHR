@@ -1,6 +1,6 @@
 # TDK Experiment Protocol
 
-Protocol status: **V1 ATTEMPT FAILED - V2 FROZEN**
+Protocol status: **V1 ATTEMPT FAILED - V2 COMPLETED ONCE**
 
 Research title:
 
@@ -47,7 +47,7 @@ For the primary residual comparison, deterministic filtering is restricted to in
 - Seeds `2026-2030`: development-only and permanently ineligible for final claims.
 - Protocol-development scenarios: may be generated and inspected while implementing this document.
 - Validation scenarios: used for thresholds, hyperparameters, and feature-family decisions.
-- Locked holdout scenarios: not generated or inspected until the generator, invariant-rule boundary, feature definitions, review-capacity objective, zero-positive treatment, scenario matrix, and analysis script are frozen.
+- Frozen holdout scenarios: generated and evaluated once after the generator, invariant-rule boundary, feature definitions, review-capacity objective, zero-positive treatment, scenario matrix, and analysis script were frozen. This seed family may not be rerun.
 
 Dataset seed, split seed, and model seed must be recorded separately. Records from one latent person or organization must never cross partitions in duplicate-detection experiments.
 
@@ -93,7 +93,7 @@ Grandfathering requires employee-, policy-version-, and event-linked entitlement
 evidence. Recognized prior service requires decision-linked service evidence.
 Delayed bulk recording changes recorded time, not effective time. Incompatible
 or infeasible cells are reported and omitted rather than populated with forced
-records. The final frequency allocation remains part of the unfrozen matrix.
+records. The final frequency allocation is recorded in the frozen v2 matrix.
 
 ## Comparisons And Ablations
 
@@ -248,9 +248,9 @@ Every run must store:
 
 Artifact directories are write-once. A command must refuse to overwrite an existing run.
 
-## Holdout Unlock Checklist
+## Holdout Execution Checklist
 
-The holdout remains locked until all items are true:
+The v2 holdout was permitted only after all items were true:
 
 - all research tests pass;
 - synthetic clean and rare-legitimate histories satisfy the formal policy;
@@ -266,14 +266,14 @@ The holdout remains locked until all items are true:
 - artifact provenance is write-once and verified;
 - supervisor approves the protocol.
 
-After unlocking, the holdout is run once. Any later change creates a new protocol version and a new holdout family; the original result remains archived.
+The v2 holdout was run once on 25 November 2026. Any later change creates a new protocol version and a new holdout family; the original result remains archived and may not be rerun.
 
 ## Frozen Protocol Boundary
 
 The v2 implementation currently provides:
 
-- separate development and validation seed ranges with no holdout seed definition;
-- three policy profiles, three population profiles, three anomaly-mechanism families, and three rare-legitimate patterns;
+- separate development, validation, and frozen v2 holdout seed families;
+- three policy profiles, three population profiles, four anomaly-mechanism families, and five rare-legitimate patterns;
 - independent dataset, split, and model seeds;
 - a pure promotion-race calculation shared by the desktop business logic and research features;
 - golden-history parity tests between SQL-backed application behavior and research records;
@@ -285,15 +285,15 @@ The v2 implementation currently provides:
 - a policy-rules-plus-ML cascade that retains every explicit policy finding and uses ML only to fill the remaining nominal review capacity;
 - a rule-negative residual experiment that fits and evaluates ML only after deterministic policy findings are removed;
 - paired bootstrap intervals, paired sign-flip tests, operational workload measures, and cost sensitivity;
-- Holm-adjusted exploratory p-values across the generated comparison family;
+- Holm adjustment across the three predeclared secondary endpoints for the policy-aware versus raw comparison;
 - write-once artifacts containing per-record predictions, provenance, and SHA-256 checksums.
 
 Protocol v1 was frozen and attempted once. It failed before artifact publication
 because order-dependent truth allocation consumed candidates needed for a lawful
 rare-case intervention. No result artifact or model comparison was produced.
-Protocol v2 changes only this allocation procedure and uses a new disjoint seed
-family and ledger. Its fail-closed runner requires a new clean frozen revision
-and external authorization before it can construct any v2 holdout scenario.
+Protocol v2 changed only this allocation procedure and used a new disjoint seed
+family and ledger. Its fail-closed runner verified the clean frozen revision and
+external authorization before constructing any v2 holdout scenario.
 
 The 29 October decisions supersede the earlier full-policy residual gate and
 AP-primary interpretation. The 30 October addendum approves lawful correction
@@ -304,9 +304,10 @@ residual boundary, recall-primary endpoint, equal additional ML budget,
 entitlement evidence structure, temporal-view primitives, and population-pattern
 compatibility guard exist in code and tests. The 36-condition balanced matrix,
 30 seeds per condition, environment declaration, dependency lock, endpoints,
-and analysis choices remain unchanged in the v2 candidate at
+and analysis choices were frozen in the v2 design at
 `config/tdk_holdout_matrix_v2.json`.
 The expert review is qualitative: no case-level rating dataset or inter-rater
-agreement statistic is claimed. Existing artifacts remain development and
-validation evidence. The holdout remains inaccessible except through the
-one-time authorization gate.
+agreement statistic is claimed. Earlier artifacts remain development and
+validation evidence. The v2 holdout artifact is the final protected evaluation
+for this protocol. Its one-time gate is consumed, and no post-hoc rerun or
+tuning is permitted.

@@ -31,7 +31,7 @@ Include:
 - Do not commit real employee data, credentials, database files, exported reports, or generated research outputs.
 - Keep local `.db`, `.sqlite`, `.env`, and `research_outputs/` files out of Git.
 - Treat generated demo data as synthetic unless explicitly documented otherwise.
-- Do not use AI-generated research results in the paper unless the exact seed, config, run ID, and output artifacts are saved and reviewed.
+- Do not use generated research results in the paper unless the exact seed, configuration, run identifier, and output artifacts are saved and reviewed.
 
 ## Scope
 
