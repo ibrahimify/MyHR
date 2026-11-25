@@ -365,6 +365,10 @@ class ProtocolArtifactAuditTests(unittest.TestCase):
             "independent-development-v2-2026-10-29",
             5,
         ))
+        self.assertTrue(_requires_bitemporal_contract(
+            "myhr-tdk-holdout-v2",
+            8,
+        ))
         self.assertFalse(_requires_bitemporal_contract(
             "independent-scenarios-v3-2026-11-19",
             4,
