@@ -603,6 +603,18 @@ def _verify_declared_matrix(
         raise ArtifactAuditError("duplicate scenario configuration rows")
     if int(metadata["scenario_count"]) != len(config_scenarios):
         raise ArtifactAuditError("metadata scenario count does not match configurations")
+    if metadata.get("protocol_version") == "myhr-tdk-holdout-v2":
+        for row in config_rows:
+            try:
+                generation_attempt = int(row["generation_attempt"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ArtifactAuditError(
+                    "v2 generation-attempt provenance is incomplete"
+                ) from exc
+            if not 0 <= generation_attempt < 1_000:
+                raise ArtifactAuditError(
+                    "v2 generation-attempt provenance is outside the frozen range"
+                )
     if "seeds_per_condition" in metadata:
         seeds_per_condition = int(metadata["seeds_per_condition"])
         condition_count = int(metadata["condition_count"])

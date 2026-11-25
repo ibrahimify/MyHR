@@ -1,6 +1,6 @@
 # TDK Experiment Protocol
 
-Protocol status: **V1 ATTEMPT FAILED - V2 FREEZE CANDIDATE**
+Protocol status: **V1 ATTEMPT FAILED - V2 FROZEN**
 
 Research title:
 

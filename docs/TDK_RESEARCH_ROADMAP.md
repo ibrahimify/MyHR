@@ -12,7 +12,7 @@
   family and ledger. Deterministic pre-intervention rejection sampling records
   its accepted generation attempt; all 1,080 validation scenarios constructed
   successfully (1,077 at attempt 0 and three at attempt 1). It remains a freeze
-  candidate pending full tests, CI, and review.
+  frozen design pending exact-revision authorization and its one permitted run.
 
 ## Protocol Freeze - 2026-11-24
 

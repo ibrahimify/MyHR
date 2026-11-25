@@ -11,10 +11,12 @@ v1 result artifact exists and no model outcome was inspected.
 The v2 repair allocates exact disjoint candidate sets independent of category
 order and uses a new seed family and ledger. The factor matrix, features,
 endpoints, thresholds, review capacity, models, and analysis remain unchanged.
-V2 is a freeze candidate and has not been generated or scored. See
-`TDK_HOLDOUT_V1_FAILURE_2026-11-24.md`.
+V2 is frozen and has not been generated or scored. Its one-time authorization
+must bind the exact clean merge revision. See
+`TDK_HOLDOUT_V1_FAILURE_2026-11-24.md` and
+`TDK_PROTOCOL_V2_FREEZE_RECORD_2026-11-24.md`.
 
-Status date: 2026-11-23
+Status date: 2026-11-25
 
 Research question: under equal human-review capacity, does adding explicit
 workforce-policy context improve the ranking of administrative errors over raw
@@ -63,8 +65,7 @@ wrong-policy controls limit a simple causal interpretation.
   qualitative realism review, but no case-level ratings or agreement analysis
   exists; external validity therefore remains unestablished.
 - Protocol v1 was consumed by a failed technical attempt without a result.
-- Protocol v2 remains locked pending repair verification, freeze, and a new
-  exact-revision one-time authorization.
+- Protocol v2 remains locked pending a new exact-revision one-time authorization.
 - No result authorizes automatic personnel action or post-validation model
   selection.
 
