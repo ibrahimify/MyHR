@@ -19,6 +19,7 @@ from scripts.generate_tdk_supervisor_package import (
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PAPER_SOURCE = REPO_ROOT / "docs" / "TDK_PAPER_DRAFT.md"
+PROTOCOL_SOURCE = REPO_ROOT / "docs" / "TDK_EXPERIMENT_PROTOCOL.md"
 class TdkSupervisorPackageTests(unittest.TestCase):
     def test_manuscript_source_has_stable_title_and_complete_figures(self):
         text = PAPER_SOURCE.read_text(encoding="utf-8")
@@ -60,7 +61,9 @@ class TdkSupervisorPackageTests(unittest.TestCase):
         self.assertIn("this is a design inference applied to the present experiment", text)
         self.assertNotRegex(text, r"(?i)policy-aware (?:isolation forest )?is superior")
         self.assertNotRegex(text, r"(?i)run[_ -]purpose\s*[=:]\s*holdout")
-        self.assertIn("The v2 holdout attempt has been consumed", (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8"))
+        protocol = PROTOCOL_SOURCE.read_text(encoding="utf-8")
+        self.assertIn("Its one-time gate is consumed", protocol)
+        self.assertIn("may not be rerun", protocol)
 
     def test_decision_sheet_is_one_landscape_page_source_with_pending_decisions(self):
         with tempfile.TemporaryDirectory() as directory:
