@@ -154,10 +154,9 @@ Priority: high if a client/demo user must onboard real data.
 
 ## Suggested Order
 
-1. Keep the draft research PR unmerged until the approved methodology is implemented, verified, and separately frozen.
-2. Use `docs/QA_CHECKLIST.md` for thesis and packaging QA.
-3. Use `TDK_SUPERVISOR_DECISIONS_2026-10-29.md` as the authority for the six approved methodology choices.
-4. Implement only those approved protocol changes, with tests and development-only artifacts.
-5. Freeze the protocol and exact environment before any holdout generation.
-6. Package after thesis and research-critical logic stop moving.
+1. Use `docs/QA_CHECKLIST.md` for thesis and packaging QA.
+2. Preserve the tagged research result and its checksums without rerunning the consumed evaluation.
+3. Keep desktop, thesis, research, and web changes on their designated branches.
+4. Make schema or policy changes through migrations and regression tests.
+5. Package releases only after application tests and visual checks pass.
 

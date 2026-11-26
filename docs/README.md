@@ -10,7 +10,7 @@ records. Start with the result, then read the protocol and implementation.
 3. [Experiment protocol](TDK_EXPERIMENT_PROTOCOL.md)
 4. [Independent scenario specification](TDK_INDEPENDENT_SCENARIO_SPEC.md)
 5. [Literature review](TDK_LITERATURE_REVIEW.md)
-6. [Research roadmap](TDK_RESEARCH_ROADMAP.md), only when the implementation history is needed
+6. [Archived research roadmap](archive/research-history/TDK_RESEARCH_ROADMAP_2026-11-25.md), only when the implementation history is needed
 
 ## Current Research Authority
 
@@ -33,7 +33,7 @@ records. Start with the result, then read the protocol and implementation.
 | [figures/](figures/README.md) | Publication figures in PNG, PDF, and SVG formats |
 | [results/holdout_report_manifest.json](results/holdout_report_manifest.json) | Source and output checksums for the final report |
 | [TDK_RESEARCH_VERIFICATION.md](TDK_RESEARCH_VERIFICATION.md) | Verification commands and artifact-handling rules |
-| [TDK_RESEARCH_ROADMAP.md](TDK_RESEARCH_ROADMAP.md) | Detailed chronology, failures, repairs, and retained negative findings |
+| [Archived research roadmap](archive/research-history/TDK_RESEARCH_ROADMAP_2026-11-25.md) | Detailed chronology, failures, repairs, and retained negative findings |
 
 The large immutable artifact, one-time ledger, and authorization evidence remain
 outside Git. The repository contains the code, compact derived tables, figures,
@@ -65,7 +65,7 @@ holdout and should not be used as the current result summary.
 
 ## Historical Evidence
 
-`archive/` and dated audit documents preserve superseded findings and corrective
-history. They are not current scientific claims. The roadmap explains which
+`archive/` preserves superseded findings and corrective history. Its contents
+are not current scientific claims. The archived roadmap explains which
 defects were found, how they were repaired, and why invalid or inconclusive
 results remain visible rather than being silently removed.

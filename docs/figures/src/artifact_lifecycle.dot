@@ -10,7 +10,7 @@ digraph artifact_lifecycle {
   prov    [label="Record Git revision, dirty flag,\nsource and dependency versions"];
   sums    [label="Write SHA-256 manifest\nof every file"];
   publish [label="Atomic publish to a\nwrite-once artifact directory"];
-  audit   [label="Independent audit: checksums,\nconfusion counts, AP, paired statistics"];
+  verify  [label="Automated verification: checksums,\nconfusion counts, AP, paired statistics"];
   ok      [label="Verified: arithmetic is\nreproducible", shape=box];
   bad     [label="Failed: artifact preserved,\ndefect recorded", shape=box];
   run -> write;
@@ -18,9 +18,9 @@ digraph artifact_lifecycle {
   {rank=same; write; prov;}
   write -> sums;
   prov -> sums;
-  sums -> publish -> audit;
-  audit -> ok;
-  audit -> bad;
+  sums -> publish -> verify;
+  verify -> ok;
+  verify -> bad;
   {rank=same; ok; bad;}
   limit [shape=plaintext, label="Verification does not establish that the estimand,\nscenario population or policy assumptions are valid."];
   ok -> limit [style=invis];

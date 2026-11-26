@@ -1,6 +1,6 @@
 # TDK Synthetic Data Contract
 
-> **Status note, 2026-10-29:** This contract documents development generators and the approved invariant-negative redesign. It does not establish external validity or evidence for policy-aware model superiority. The earlier independent artifact remains preserved as a failed design in which deterministic policy filtering made all three policy-specific residual features constant zero. The corrected implementation must still pass clean-revision development and validation audits before protocol freeze.
+> **Status note, 2026-11-25:** This contract documents the generators and invariant-negative design used for the completed synthetic evaluation. It does not establish external validity or policy-aware superiority outside the tested synthetic domain. The earlier failed residual design remains preserved because deterministic policy filtering made its policy-specific features constant zero.
 
 Research title:
 

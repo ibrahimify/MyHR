@@ -294,10 +294,9 @@ def _events_of_type(
 def _effective_record_events(
     record: WorkforceHistoryRecord,
 ) -> tuple[AdministrativeEvent, ...]:
-    # Use the central effective-state resolver (finding R5): invariant checks
-    # evaluate the corrected state, so a superseded invalid record (e.g. a
-    # wrongly recorded promotion that was later corrected) is not flagged as a
-    # contradiction. Superseded records remain available as raw audit evidence
+    # Invariant checks evaluate the corrected state, so a superseded invalid
+    # record is not flagged as a contradiction. Superseded records remain as
+    # raw audit evidence
     # via effective_state.visible_events for correction-volume features.
     return effective_events(record)
 

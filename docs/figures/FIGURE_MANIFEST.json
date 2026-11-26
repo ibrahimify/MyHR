@@ -1,9 +1,9 @@
 {
   "generator": "scripts/build_tdk_figures.py",
-  "generator_sha256": "ba8d570783d5ba84a84a172172517a53df81595f2cca688548b199cf65d1bcd0",
+  "generator_sha256": "3db300bb602a22bec646e586384b561465ef81733961b627ae7d40124da2a938",
   "git": {
-    "revision": "d65cd9a93e96b7a0605a5c8050aad9ccc3d39d7e",
-    "branch": "research",
+    "revision": "f424dbab5bc4be8df7b3bd0c7fd58ec1ad6e2534",
+    "branch": "issue-37-publication-cleanup",
     "worktree_dirty": true
   },
   "font": {
@@ -40,7 +40,7 @@
       "sources": [
         {
           "path": "src/services/anomaly_detection/protocol_evaluation.py",
-          "sha256": "a14b5002ca2635c67a891dcb8b5f95ff9feb07cccfe2dd6448078b9bc50c5a15",
+          "sha256": "a5542ef1c3ac54dd6a14d3c729e2480c7c46e309f60198bdc5cfdb99b3e068e8",
           "columns": [
             "COMMON_CORE_FEATURES, RAW_MATCHED_FEATURES, POLICY_MATCHED_FEATURES, feature_representations(), _vectors(), _wrong_policy(), _frequency_preserving_policy_permutation()"
           ],
@@ -112,7 +112,7 @@
         },
         {
           "path": "src/services/anomaly_detection/protocol_evaluation.py",
-          "sha256": "a14b5002ca2635c67a891dcb8b5f95ff9feb07cccfe2dd6448078b9bc50c5a15",
+          "sha256": "a5542ef1c3ac54dd6a14d3c729e2480c7c46e309f60198bdc5cfdb99b3e068e8",
           "columns": [
             "residual filter on validate_invariant_record() scores; _top_budget_predictions()"
           ],
@@ -142,7 +142,7 @@
         },
         {
           "path": "docs/TDK_PAPER_DRAFT.md",
-          "sha256": "d2b6287c16324174f8cc7976375ff4035f437827f44c8a9e9b5d0bab7694423d",
+          "sha256": "ec933cfb83f5f57ce68e33eb870843cb148a1f1ad6b924bcf837532fc159ec71",
           "columns": [
             "Sections 4.6 and 6.5 (text)"
           ],
@@ -217,7 +217,7 @@
       "sources": [
         {
           "path": "docs/TDK_PAPER_DRAFT.md",
-          "sha256": "d2b6287c16324174f8cc7976375ff4035f437827f44c8a9e9b5d0bab7694423d",
+          "sha256": "ec933cfb83f5f57ce68e33eb870843cb148a1f1ad6b924bcf837532fc159ec71",
           "columns": [
             "Sections 4.6, 4.9, 4.16 (text)"
           ],
@@ -249,7 +249,7 @@
         "docs/figures/experiment_flow.svg",
         "docs/figures/experiment_flow.png"
       ],
-      "caption": "Evaluation lifecycle. Within each scenario, models are fitted on training histories, thresholds are selected on validation histories and metrics are computed on test histories (counts from artifact 4feea4508de1bb05). Development and validation scenario families remain inspectable; the final holdout is not generated and has never been accessed, and stays locked until a human-approved protocol freeze.",
+      "caption": "Evaluation lifecycle. Within each scenario, models are fitted on training histories, thresholds are selected on validation histories and metrics are computed on evaluation histories. Development and validation scenario families remain inspectable. The protected evaluation was generated only after the protocol and analysis were frozen, was run once, and may not be rerun or used for post-hoc tuning.",
       "sources": [
         {
           "path": "research_outputs/independent_development/independent_development_4feea4508de1bb05/record_truth.csv",
@@ -261,7 +261,7 @@
         },
         {
           "path": "docs/TDK_PAPER_DRAFT.md",
-          "sha256": "d2b6287c16324174f8cc7976375ff4035f437827f44c8a9e9b5d0bab7694423d",
+          "sha256": "ec933cfb83f5f57ce68e33eb870843cb148a1f1ad6b924bcf837532fc159ec71",
           "columns": [
             "Section 4.3 (text)"
           ],
@@ -269,20 +269,20 @@
         }
       ],
       "layout": {
-        "natural_width_in": 5.778,
-        "natural_height_in": 3.069,
+        "natural_width_in": 6.236,
+        "natural_height_in": 2.5,
         "design_font_pt": 11.0,
-        "font_pt_if_placed_at_6in_width": 11.42,
-        "recommended_placed_width_in": 5.78
+        "font_pt_if_placed_at_6in_width": 10.58,
+        "recommended_placed_width_in": 6.0
       },
       "pdf_embedded_fonts": [
         "TimesNewRomanPSMT"
       ],
       "output_sha256": {
-        "docs/figures/src/experiment_flow.dot": "60776dcf752b7eadf4f998b8ce5732f57a349473f79ccb97831c09af1574bc3d",
-        "docs/figures/experiment_flow.pdf": "387ee4403fd33dba2f88be5076624b63e0f88fe11cbf5470e3b50e5f140e3b08",
-        "docs/figures/experiment_flow.svg": "345462a625e5fa104dc0bd1d5c7ea7ff00615e926f0af8e5f83ce81636df8372",
-        "docs/figures/experiment_flow.png": "2245df99a8cd74d4b6eb4c48f81d51f0aa40f2744ac055719a8b508d26782966"
+        "docs/figures/src/experiment_flow.dot": "ac684eedae1c037e146245de9e3a688166a0b8fd657691be2cb47a694e1b78b2",
+        "docs/figures/experiment_flow.pdf": "6dbe23cb717fac4e2135e564b2a7fbea734e42f1be793606a0448a3f64535f32",
+        "docs/figures/experiment_flow.svg": "7abf5307df460108d68c71631bc9f61e1c5f84bc61fa94f5d6716e97ee41d9c5",
+        "docs/figures/experiment_flow.png": "69cb8d722b52357a07fd20da0f47d67388a7ab589601bc798573cb618f1bef23"
       }
     },
     "artifact_lifecycle": {
@@ -293,11 +293,11 @@
         "docs/figures/artifact_lifecycle.svg",
         "docs/figures/artifact_lifecycle.png"
       ],
-      "caption": "Write-once artifact lifecycle. Runs execute in a process-owned staging directory, record provenance and a SHA-256 manifest, and are atomically published. An independent audit recomputes checksums and statistics; failed artifacts are preserved with the defect recorded. Verification establishes reproducible arithmetic, not scientific validity.",
+      "caption": "Write-once artifact lifecycle. Runs execute in a process-owned staging directory, record provenance and a SHA-256 manifest, and are atomically published. Automated verification recomputes checksums and statistics; failed artifacts are preserved with the defect recorded. Verification establishes reproducible arithmetic, not scientific validity.",
       "sources": [
         {
           "path": "docs/TDK_PAPER_DRAFT.md",
-          "sha256": "d2b6287c16324174f8cc7976375ff4035f437827f44c8a9e9b5d0bab7694423d",
+          "sha256": "ec933cfb83f5f57ce68e33eb870843cb148a1f1ad6b924bcf837532fc159ec71",
           "columns": [
             "Section 4.14 (text)"
           ],
@@ -315,10 +315,10 @@
         "TimesNewRomanPSMT"
       ],
       "output_sha256": {
-        "docs/figures/src/artifact_lifecycle.dot": "6b9f5a835156c4a5e8139b74beb31ae7b71efd15959a6787ddb8fb4644533d8b",
-        "docs/figures/artifact_lifecycle.pdf": "081065fe60838d931544e7da6d25e1e9da22ebe8fc0f1685148bf3b32d7215de",
-        "docs/figures/artifact_lifecycle.svg": "9aba1219fe119521e5ea090a5681116659f30bdb2a336b86fdfa0b4ebb338cca",
-        "docs/figures/artifact_lifecycle.png": "a595890796901265c719af70c6308c3b4e70b8510b22dbb1f2012aea385c3b5c"
+        "docs/figures/src/artifact_lifecycle.dot": "27d60c5ad3e9d17bfbfe1369dbfeb25a3d8df2b7f8b97de5eca85191f601d1bc",
+        "docs/figures/artifact_lifecycle.pdf": "fd056ed00490ce3272966d2db6d47a9e8a46c5972c4bf79f1ded5eef457092a7",
+        "docs/figures/artifact_lifecycle.svg": "274c1b1cf641a9354c549e4d59c67db9575d86e5b83350e19126976a357d0871",
+        "docs/figures/artifact_lifecycle.png": "44d9d2a5f9c794a3bd4cdc6c0d7c996387884581d5bec790e7b27d62fe8f1652"
       }
     },
     "primary_recall": {
@@ -542,7 +542,7 @@
           "note": "Control paired means (wrong-policy, shuffled, policy minus wrong-policy) are computed by this script as the mean of per-scenario differences; the artifact stores no paired interval for them, so none is drawn."
         }
       ],
-      "evidence_status": "development diagnostic; artifact checksums stored, independent offline audit of record-level predictions incomplete (docs/TDK_RESEARCH_ROADMAP.md); values in this figure come from artifact CSVs, not from audit text",
+      "evidence_status": "development diagnostic; values in this figure come from preserved artifact CSVs, not from narrative audit text",
       "derived_values": {
         "policy_matched minus raw_matched": {
           "paired_mean": 0.348333,
@@ -582,15 +582,15 @@
         "docs/figures/policy_timeline.svg",
         "docs/figures/policy_timeline.png"
       ],
-      "caption": "Worked promotion-race example from docs/RESEARCH_HANDOVER.md section 5.1 (B = 48, M = 45, C = 6, S = 3). Elapsed service to the decision date is adjusted by commendation credit and sanction delay, A = M + C − S = 48, and compared with the base requirement B of the policy effective at the decision date, giving R = 0: service-eligible, which is evidence for review, not automatic approval. Calendar dates of the commendation and sanction events are not part of the documented example and are not shown.",
+      "caption": "Illustrative promotion-race calculation (B = 48, M = 45, C = 6, S = 3). Elapsed service to the decision date is adjusted by commendation credit and sanction delay, A = M + C − S = 48, and compared with the base requirement B of the policy effective at the decision date, giving R = 0: service-eligible, which is evidence for review, not automatic approval. Calendar dates of the commendation and sanction events are not part of the documented example and are not shown.",
       "sources": [
         {
-          "path": "docs/RESEARCH_HANDOVER.md",
-          "sha256": "de312be8a884160038802cd083836eed03e762c65af43db40e371d0beee0d95d",
+          "path": "docs/TDK_PAPER_DRAFT.md",
+          "sha256": "ec933cfb83f5f57ce68e33eb870843cb148a1f1ad6b924bcf837532fc159ec71",
           "columns": [
-            "section 5.1 worked example B, M, C, S, A, R"
+            "Section 3.2 promotion arithmetic"
           ],
-          "selector": "Example: if `B=48`, `M=45`, `C=6`, and `S=3`"
+          "note": "The numeric values are illustrative, not experimental evidence."
         },
         {
           "path": "src/services/promotion_policy.py",
@@ -602,7 +602,7 @@
         },
         {
           "path": "docs/TDK_PAPER_DRAFT.md",
-          "sha256": "d2b6287c16324174f8cc7976375ff4035f437827f44c8a9e9b5d0bab7694423d",
+          "sha256": "ec933cfb83f5f57ce68e33eb870843cb148a1f1ad6b924bcf837532fc159ec71",
           "columns": [
             "Section 3.2 (A = M + C - S, R = max(0, B - A))",
             "Section 3.7 (policy effective at the decision date)"
@@ -692,38 +692,6 @@
       "kind": "latex_booktabs",
       "output_sha256": {
         "docs/tables/rules_outcomes.tex": "b61f28afd41db4db0628f2338dc8898bf2622c9b98517e006ac217de4ba024ca"
-      }
-    },
-    "demo_outcomes": {
-      "outputs": [
-        "docs/tables/demo_outcomes.tex"
-      ],
-      "caption": "In-app demonstration outcomes (demonstration output, not experimental evidence).",
-      "sources": [
-        {
-          "path": "C:\\Users\\muham\\AppData\\Local\\Temp\\myhr_drive\\demo_counts.json",
-          "path_template": "%LOCALAPPDATA%/Temp/myhr_drive/demo_counts.json",
-          "sha256": "8885cea710bf51a74043f5a0c798de313f12c87196ee877df7f910edefa14f60",
-          "columns": [
-            "scenario",
-            "population",
-            "method",
-            "n",
-            "k",
-            "tp",
-            "fp",
-            "fn",
-            "recall",
-            "precision",
-            "rare"
-          ],
-          "note": "Exported by the in-app demonstration; outside the repository and not an audited research artifact."
-        }
-      ],
-      "evidence_status": "demonstration output only",
-      "kind": "latex_booktabs",
-      "output_sha256": {
-        "docs/tables/demo_outcomes.tex": "b905fb8e2cebe6aeaf4939171c30c438c481df481587450cd7bc900a37d27105"
       }
     }
   },
@@ -967,7 +935,7 @@
       "status": "match"
     },
     {
-      "description": "RESEARCH_HANDOVER 5.1 worked example: adjusted service A and remaining R",
+      "description": "Illustrative promotion calculation: adjusted service A and remaining R",
       "paper_value": [
         48,
         0

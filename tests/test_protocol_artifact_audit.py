@@ -46,8 +46,8 @@ from src.services.anomaly_detection.protocol_evaluation import (
 def _complete_source_hashes() -> dict:
     """Build the COMPLETE required source-hash map at HEAD.
 
-    The artifact auditor now enforces that provenance covers every required
-    source path (finding R10), so fixtures must supply the full set rather than
+    Provenance must cover every required source path, so fixtures supply the
+    full set rather than
     a single stand-in file.
     """
     import subprocess

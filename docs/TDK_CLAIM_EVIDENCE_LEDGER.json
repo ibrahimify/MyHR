@@ -4,8 +4,8 @@
   "audit_state": {
     "status": "independent_audit_passed",
     "audited_at": "2026-11-22",
-    "report": "docs/TDK_CITATION_INDEPENDENT_AUDIT_2026-11-22.md",
-    "fingerprint_sha256": "11c6cdd4200653e427027aaed7ad84233b3cf21e78374a8e2dcabf60cbcc3e4a"
+    "report": "docs/archive/review-records/TDK_CITATION_INDEPENDENT_AUDIT_2026-11-22.md",
+    "fingerprint_sha256": "37cc2a4b9674d8fde2c7023883b3ac36cbed567aa0277c70167e361c66b909b1"
   },
   "claims": [
     {"claim_id":"lit-iforest-mechanism","claim":"Isolation Forest ranks anomalies through random recursive partitioning and path-length-based scoring.","document":"docs/TDK_LITERATURE_REVIEW.md#1-isolation-forest-is-a-baseline-not-the-contribution","status":"verified","evidence":[{"citation_key":"liu2008isolation","evidence_type":"full_text","artifact_id":"liu2008_isolation_forest","locator":"PDF pages 2-6","supports":"The original algorithm and score construction.","support_type":"direct"},{"citation_key":"liu2012isolation","evidence_type":"full_text","artifact_id":"liu2012_isolation_based","locator":"PDF pages 3-13","supports":"The extended formal treatment of isolation-based scoring.","support_type":"direct"}]},

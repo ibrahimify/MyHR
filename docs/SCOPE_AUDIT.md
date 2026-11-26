@@ -78,16 +78,14 @@ python scripts/run_tdk_research_experiment.py --seed 2026 --employee-count 1000
 - Decide whether the packaged app ships empty, with seed data, or with a separate demo database.
 - Confirm licensing/IP direction from `docs/LICENSING_AND_IP.md`.
 
-## Before Final TDK Results
+## Final Research Record
 
-- Obtain human approval for the pending methodology decisions.
-- Freeze the protocol, exact dependencies, scenario contract, and analysis before generating a holdout.
-- Run the locked holdout only once with fixed seeds and documented configuration.
-- Save or archive selected `research_outputs/<run_id>/` folders.
-- Generate result tables only from CSV/JSON artifacts.
-- Document limitations clearly, especially synthetic data assumptions.
-- Keep user study as optional unless there is enough time for ethical and meaningful evaluation.
+- The protocol, dependencies, scenario contract, and analysis were frozen before evaluation.
+- The protected v2 holdout was evaluated once with fixed seeds and documented configuration.
+- Result tables and figures are generated from verified CSV and JSON artifacts.
+- The synthetic-data and external-validity limitations remain explicit.
+- No user study or evaluation on private employee data is claimed.
 
 ## Current Recommendation
 
-Keep the research PR as draft until the methodology is reviewed and approved. The final holdout remains locked. Do not merge research code into the thesis packaging branch until the thesis app package is stable.
+Preserve the completed research result on the `research` branch and its tagged revision. Keep thesis packaging and web-port work on their designated branches so later product changes cannot alter the reported experiment.

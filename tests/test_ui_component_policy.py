@@ -68,7 +68,6 @@ class UIComponentPolicyTests(unittest.TestCase):
         self.assertEqual(select.itemText(-1), "")
         self.assertEqual(select.itemText(1), "")
         select.close()
-        app.processEvents()
 
 
 if __name__ == "__main__":

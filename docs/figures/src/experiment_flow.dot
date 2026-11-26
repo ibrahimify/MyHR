@@ -10,14 +10,14 @@ digraph experiment_flow {
     color="#000000"; style=solid; penwidth=0.6; margin=6;
     dev    [label="Development\n(inspectable)"];
     valfam [label="Validation\n(inspectable)"];
-    freeze [label="Protocol freeze\n(human approval,\npending)", style=dashed];
-    hold   [label="Final holdout\n(locked; not\ngenerated or\naccessed)", color="#D55E00", fontcolor="#D55E00", penwidth=1.4, style="dashed"];
+    freeze [label="Design frozen\nbefore evaluation"];
+    hold   [label="Protected evaluation\none completed run", color="#009E73", fontcolor="#009E73", penwidth=1.4];
     {rank=same; dev; valfam; freeze; hold;}
     dev -> valfam -> freeze;
-    freeze -> hold [style=dashed, color="#D55E00"];
+    freeze -> hold [color="#009E73"];
   }
   subgraph cluster_within {
-    label="Within each development scenario\l(artifact 4feea4508de1bb05; totals over 12 scenarios)\l"; labeljust=l;
+    label="Within each generated scenario\l"; labeljust=l;
     color="#000000"; style=solid; penwidth=0.6; margin=6;
     fit  [label="Fit models\ntraining histories\n(n = 2592)"];
     val  [label="Select thresholds\nvalidation histories\n(n = 864)"];

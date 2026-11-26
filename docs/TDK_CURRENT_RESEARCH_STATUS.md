@@ -2,8 +2,8 @@
 
 Status date: 2026-11-25
 
-The frozen v2 holdout was evaluated once at source revision
-`ac76c574c64e2a69205a7bc00babbfad5afaac51`. The published artifact passed the
+The frozen v2 holdout was evaluated once at the revision identified by
+repository tag `tdk-2026-revised-results`. The published artifact passed the
 standalone manifest, authorization, provenance, bitemporal-evidence, metric,
 and prediction audit. No seed was selected and the holdout was not rerun.
 
@@ -75,7 +75,7 @@ rules alone found 2,023 while reviewing 4,899 records.
 | Reproducible result tables | [tables](tables/README.md) |
 | Publication figures and checksums | [figures](figures/README.md), [result manifest](results/holdout_report_manifest.json) |
 | Frozen analysis design | [Experiment protocol](TDK_EXPERIMENT_PROTOCOL.md) |
-| Detailed chronology and preserved negative findings | [Research roadmap](TDK_RESEARCH_ROADMAP.md) |
+| Detailed chronology and preserved negative findings | [Archived research roadmap](archive/research-history/TDK_RESEARCH_ROADMAP_2026-11-25.md) |
 | Literature and claim provenance | [Literature review](TDK_LITERATURE_REVIEW.md), [bibliography](TDK_REFERENCES.bib), [claim ledger](TDK_CLAIM_EVIDENCE_LEDGER.json) |
 | Historical submitted manuscript | Tag `tdk-2026-submission` |
 

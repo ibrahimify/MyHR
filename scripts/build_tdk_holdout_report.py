@@ -11,6 +11,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+from matplotlib.ticker import PercentFormatter  # noqa: E402
 import pandas as pd  # noqa: E402
 
 matplotlib.rcParams["svg.hashsalt"] = "myhr-tdk-holdout-v2"
@@ -198,32 +199,60 @@ def _save_figure(fig: plt.Figure, base: Path) -> list[Path]:
     return outputs
 
 
-def _plot_primary(primary: pd.DataFrame, output: Path) -> list[Path]:
-    colors = ["#4D4D4D", "#0072B2"]
-    fig, axes = plt.subplots(1, 2, figsize=(7.1, 3.2))
+def _plot_primary(primary: pd.DataFrame, contrasts: pd.DataFrame, output: Path) -> list[Path]:
+    colors = ["#6B7280", "#0B6B57"]
+    fig, axes = plt.subplots(1, 2, figsize=(7.1, 3.05), constrained_layout=True)
     labels = primary["method"].tolist()
     values = primary["scenario_mean_recall"].to_numpy()
     axes[0].bar(labels, values, color=colors, width=0.58)
     axes[0].set_ylabel("Scenario-mean recall")
     axes[0].set_ylim(0, 0.5)
-    axes[0].set_title("Equal-capacity residual comparison")
+    axes[0].yaxis.set_major_formatter(PercentFormatter(1.0, decimals=0))
+    axes[0].set_title("Recall at equal review capacity", fontsize=10, pad=8)
+    axes[0].grid(axis="y", color="#D9D9D9", linewidth=0.6)
+    axes[0].set_axisbelow(True)
+    axes[0].tick_params(labelsize=8)
     for index, value in enumerate(values):
-        axes[0].text(index, value + 0.012, f"{value:.1%}", ha="center", fontsize=9)
+        axes[0].text(index, value + 0.012, f"{value:.1%}", ha="center", fontsize=8.5)
+    delta = values[1] - values[0]
+    recall_contrast = _one(contrasts, endpoint="Recall at fixed review capacity")
+    axes[0].text(
+        0.5,
+        0.475,
+        (
+            f"Difference: {delta * 100:+.1f} percentage points\n"
+            f"95% CI {recall_contrast['ci95_low'] * 100:+.1f} to "
+            f"{recall_contrast['ci95_high'] * 100:+.1f}"
+        ),
+        ha="center",
+        va="top",
+        fontsize=7.5,
+        color="#333333",
+    )
     outcomes = primary.set_index("method")
     x = range(len(labels))
-    axes[1].bar(x, outcomes.loc[labels, "true_positives"], color="#009E73", label="True positives")
+    true_positives = outcomes.loc[labels, "true_positives"].to_numpy()
+    false_positives = outcomes.loc[labels, "false_positives"].to_numpy()
+    reviewed = true_positives + false_positives
+    axes[1].bar(x, true_positives, color="#0B6B57", width=0.58)
     axes[1].bar(
         x,
-        outcomes.loc[labels, "false_positives"],
-        bottom=outcomes.loc[labels, "true_positives"],
-        color="#E69F00",
-        label="False positives",
+        false_positives,
+        bottom=true_positives,
+        color="#E3A008",
+        width=0.58,
     )
     axes[1].set_xticks(list(x), labels)
     axes[1].set_ylabel("Reviewed records")
-    axes[1].set_title("Pooled review outcomes")
-    axes[1].legend(frameon=False, fontsize=7.5, loc="upper center", ncol=2)
-    fig.tight_layout()
+    axes[1].set_ylim(0, max(reviewed) * 1.13)
+    axes[1].set_title("Composition of each review queue", fontsize=10, pad=8)
+    axes[1].grid(axis="y", color="#D9D9D9", linewidth=0.6)
+    axes[1].set_axisbelow(True)
+    axes[1].tick_params(labelsize=8)
+    for index, (tp, fp, total) in enumerate(zip(true_positives, false_positives, reviewed)):
+        axes[1].text(index, tp / 2, f"TP {tp:,}", ha="center", va="center", fontsize=7.5, color="white")
+        axes[1].text(index, tp + fp / 2, f"FP {fp:,}", ha="center", va="center", fontsize=7.5)
+        axes[1].text(index, total + 65, f"{total:,} reviewed", ha="center", fontsize=7.3)
     return _save_figure(fig, output)
 
 
@@ -241,38 +270,60 @@ def _plot_models(models: pd.DataFrame, output: Path) -> list[Path]:
     positions = list(range(len(rows)))
     low = rows["policy_minus_raw"] - rows["delta_ci95_low"]
     high = rows["delta_ci95_high"] - rows["policy_minus_raw"]
-    fig, ax = plt.subplots(figsize=(7.1, 3.8))
+    fig, ax = plt.subplots(figsize=(7.1, 3.55), constrained_layout=True)
     ax.errorbar(
         rows["policy_minus_raw"],
         positions,
         xerr=[low, high],
         fmt="o",
-        color="#0072B2",
-        ecolor="#4D4D4D",
+        color="#0B6B57",
+        ecolor="#6B7280",
         capsize=4,
     )
-    ax.axvline(0, color="#333333", linewidth=0.9)
+    ax.axvline(0, color="#333333", linewidth=0.9, linestyle="--")
     ax.set_yticks(positions, rows["label"])
-    ax.set_xlabel("Policy-aware minus raw recall (95% paired interval)")
-    ax.set_title("Exploratory model sensitivity at equal capacity")
-    fig.tight_layout()
+    ax.xaxis.set_major_formatter(PercentFormatter(1.0, decimals=0))
+    ax.set_xlabel("Policy-aware minus raw recall (95% paired interval)", fontsize=8.5)
+    ax.set_title("Exploratory model sensitivity", fontsize=10, pad=8)
+    ax.grid(axis="x", color="#D9D9D9", linewidth=0.6)
+    ax.set_axisbelow(True)
+    ax.tick_params(labelsize=8)
+    for position, value in zip(positions, rows["policy_minus_raw"]):
+        ax.annotate(
+            f"{value * 100:+.1f} pp",
+            (value, position),
+            xytext=(5, 5),
+            textcoords="offset points",
+            fontsize=7,
+        )
     return _save_figure(fig, output)
 
 
 def _plot_robustness(robustness: pd.DataFrame, output: Path) -> list[Path]:
     dimensions = robustness["slice_dimension"].drop_duplicates().tolist()
-    fig, axes = plt.subplots(3, 2, figsize=(7.1, 7.2), sharex=True)
+    fig, axes = plt.subplots(3, 2, figsize=(7.1, 6.7), sharex=True, constrained_layout=True)
     for ax, dimension in zip(axes.flat, dimensions):
         rows = robustness[robustness["slice_dimension"] == dimension].sort_values("policy_minus_raw")
-        labels = [str(value).replace("_", " ").title() for value in rows["slice_value"]]
-        ax.barh(labels, rows["policy_minus_raw"], color="#009E73")
+        if dimension.startswith("configured_"):
+            labels = [f"{float(value):.0%}" for value in rows["slice_value"]]
+        else:
+            labels = [str(value).replace("_", " ").title() for value in rows["slice_value"]]
+        values = rows["policy_minus_raw"].to_numpy()
+        positions = list(range(len(rows)))
+        ax.barh(positions, values, color="#0B6B57", height=0.62)
+        ax.set_yticks(positions, labels)
         ax.axvline(0, color="#333333", linewidth=0.8)
-        ax.set_title(dimension.replace("_", " ").title(), fontsize=10)
-        ax.tick_params(axis="y", labelsize=8)
+        ax.set_xlim(0, 0.19)
+        ax.xaxis.set_major_formatter(PercentFormatter(1.0, decimals=0))
+        ax.grid(axis="x", color="#E0E0E0", linewidth=0.55)
+        ax.set_axisbelow(True)
+        ax.set_title(dimension.replace("_", " ").title(), fontsize=9, pad=5)
+        ax.tick_params(axis="both", labelsize=7)
+        for position, value in zip(positions, values):
+            ax.text(value + 0.004, position, f"{value * 100:.1f} pp", va="center", fontsize=6.5)
     for ax in axes[-1]:
-        ax.set_xlabel("Policy-aware minus raw recall")
-    fig.suptitle("Descriptive robustness across predeclared slices", fontsize=12)
-    fig.tight_layout()
+        ax.set_xlabel("Recall difference (percentage points)", fontsize=8)
+    fig.suptitle("Descriptive robustness across predeclared slices", fontsize=10.5)
     return _save_figure(fig, output)
 
 
@@ -309,7 +360,7 @@ def build_report(artifact: Path, docs: Path) -> dict:
         frame.to_csv(path, index=False, lineterminator="\n")
 
     figure_paths = []
-    figure_paths += _plot_primary(primary, figures / "holdout_primary_comparison")
+    figure_paths += _plot_primary(primary, contrasts, figures / "holdout_primary_comparison")
     figure_paths += _plot_models(models, figures / "holdout_model_sensitivity")
     figure_paths += _plot_robustness(slices, figures / "holdout_robustness")
 

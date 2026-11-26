@@ -149,9 +149,8 @@ def _sorted_events(
     record: WorkforceHistoryRecord,
     temporal_view: TemporalView | None = None,
 ) -> tuple[AdministrativeEvent, ...]:
-    # Both raw and policy-aware features compute over the effective (corrected)
-    # state via the central resolver (finding R5), so the two representations
-    # differ only in policy-awareness, not in correction handling. A superseded
+    # Both raw and policy-aware features compute over the corrected state. The
+    # representations differ in policy awareness, not correction handling. A superseded
     # invalid fact does not silently feed one representation and not the other.
     # Correction *volume* (how often a history was amended) is a distinct signal
     # that can be added as an explicit feature rather than leaking through here.
