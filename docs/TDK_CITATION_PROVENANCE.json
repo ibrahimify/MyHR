@@ -464,11 +464,123 @@
             "metadata_rechecked_at": "2026-11-22",
             "metadata_recheck_report": "docs/archive/review-records/TDK_CITATION_INDEPENDENT_AUDIT_2026-11-22.md",
             "metadata_recheck_note": "The DOI metadata and University of Pennsylvania repository copy were matched by title and identifier. The preserved PDF contains the cited recommendations on independent coding, common instructions, and agreement assessment."
+        },
+        {
+            "citation_key": "dragoi2022anoshift",
+            "doi": "10.52202/068431-2381",
+            "verification_status": "full_text_reviewed",
+            "sources": [
+                {"service": "crossref", "identifier": "10.52202/068431-2381", "retrieved_at": "2026-11-26"},
+                {"service": "openalex", "identifier": "10.52202/068431-2381", "retrieved_at": "2026-11-26"},
+                {"service": "publisher_fulltext", "identifier": "https://proceedings.neurips.cc/paper_files/paper/2022/file/d3bcbcb2a7b0b4716bf24ce4b2ea8d60-Paper-Datasets_and_Benchmarks.pdf", "retrieved_at": "2026-11-26"}
+            ],
+            "metadata_rechecked_at": "2026-11-26",
+            "metadata_recheck_note": "Crossref and OpenAlex agree on title, authors, year, venue, and DOI; the 14-page NeurIPS paper was inspected."
+        },
+        {
+            "citation_key": "vanbreugel2023synthetic",
+            "verification_status": "full_text_reviewed",
+            "stable_url": "https://proceedings.mlr.press/v202/van-breugel23a.html",
+            "sources": [
+                {"service": "publisher", "identifier": "https://proceedings.mlr.press/v202/van-breugel23a.html", "retrieved_at": "2026-11-26"},
+                {"service": "publisher_fulltext", "identifier": "https://proceedings.mlr.press/v202/van-breugel23a/van-breugel23a.pdf", "retrieved_at": "2026-11-26"}
+            ],
+            "metadata_rechecked_at": "2026-11-26",
+            "metadata_recheck_note": "The PMLR record supplies the authoritative title, author list, proceedings volume, pages, year, and open full text; no Crossref DOI is asserted."
+        },
+        {
+            "citation_key": "bujold2024responsible",
+            "doi": "10.1007/s43681-023-00325-1",
+            "verification_status": "full_text_reviewed",
+            "publication_date_note": "Published online in 2023 and assigned to volume 4 in 2024; the bibliography uses the issue year.",
+            "sources": [
+                {"service": "crossref", "identifier": "10.1007/s43681-023-00325-1", "retrieved_at": "2026-11-26"},
+                {"service": "openalex", "identifier": "10.1007/s43681-023-00325-1", "retrieved_at": "2026-11-26"},
+                {"service": "publisher_fulltext", "identifier": "https://link.springer.com/content/pdf/10.1007/s43681-023-00325-1.pdf", "retrieved_at": "2026-11-26"}
+            ],
+            "metadata_rechecked_at": "2026-11-26",
+            "metadata_recheck_note": "Crossref and OpenAlex metadata were matched to the Springer open-access full text."
+        },
+        {
+            "citation_key": "bouman2024algorithms",
+            "arxiv_id": "2305.00735",
+            "verification_status": "full_text_reviewed",
+            "stable_url": "https://www.jmlr.org/papers/v25/23-0570.html",
+            "sources": [
+                {"service": "publisher", "identifier": "https://www.jmlr.org/papers/v25/23-0570.html", "retrieved_at": "2026-11-26"},
+                {"service": "publisher_fulltext", "identifier": "https://www.jmlr.org/papers/volume25/23-0570/23-0570.pdf", "retrieved_at": "2026-11-26"},
+                {"service": "arxiv", "identifier": "2305.00735", "retrieved_at": "2026-11-26"}
+            ],
+            "metadata_rechecked_at": "2026-11-26",
+            "metadata_recheck_note": "The JMLR landing page and 34-page open full text verify the 2024 journal version; JMLR assigns no DOI to this article."
+        },
+        {
+            "citation_key": "tschalzev2024datacentric",
+            "doi": "10.52202/079017-3039",
+            "verification_status": "full_text_reviewed",
+            "sources": [
+                {"service": "crossref", "identifier": "10.52202/079017-3039", "retrieved_at": "2026-11-26"},
+                {"service": "openalex", "identifier": "10.52202/079017-3039", "retrieved_at": "2026-11-26"},
+                {"service": "publisher_fulltext", "identifier": "https://proceedings.neurips.cc/paper_files/paper/2024/file/ae00e5ce7142d02e30a8235ede1ec6fc-Paper-Datasets_and_Benchmarks_Track.pdf", "retrieved_at": "2026-11-26"}
+            ],
+            "metadata_rechecked_at": "2026-11-26",
+            "metadata_recheck_note": "Crossref and OpenAlex agree on the bibliographic identity; the 35-page NeurIPS paper was inspected."
+        },
+        {
+            "citation_key": "liu2024elephant",
+            "doi": "10.52202/079017-3437",
+            "verification_status": "full_text_reviewed",
+            "sources": [
+                {"service": "crossref", "identifier": "10.52202/079017-3437", "retrieved_at": "2026-11-26"},
+                {"service": "openalex", "identifier": "10.52202/079017-3437", "retrieved_at": "2026-11-26"},
+                {"service": "publisher_fulltext", "identifier": "https://proceedings.neurips.cc/paper_files/paper/2024/file/c3f3c690b7a99fba16d0efd35cb83b2c-Paper-Datasets_and_Benchmarks_Track.pdf", "retrieved_at": "2026-11-26"}
+            ],
+            "metadata_rechecked_at": "2026-11-26",
+            "metadata_recheck_note": "Crossref and OpenAlex agree on title, authors, year, venue, and DOI; the 31-page NeurIPS paper was inspected."
+        },
+        {
+            "citation_key": "binette2024evaluate",
+            "doi": "10.48550/arXiv.2404.05622",
+            "arxiv_id": "2404.05622",
+            "verification_status": "full_text_reviewed",
+            "sources": [
+                {"service": "arxiv", "identifier": "2404.05622", "retrieved_at": "2026-11-26"},
+                {"service": "datacite", "identifier": "10.48550/arXiv.2404.05622", "retrieved_at": "2026-11-26"},
+                {"service": "publisher_fulltext", "identifier": "https://arxiv.org/pdf/2404.05622", "retrieved_at": "2026-11-26"}
+            ],
+            "metadata_rechecked_at": "2026-11-26",
+            "metadata_recheck_note": "The arXiv API and DataCite identity were matched to the 33-page author manuscript. No peer-reviewed version was found in the searched sources."
+        },
+        {
+            "citation_key": "binette2022entity",
+            "doi": "10.1126/sciadv.abi8021",
+            "arxiv_id": "2008.04443",
+            "verification_status": "full_text_reviewed",
+            "sources": [
+                {"service": "crossref", "identifier": "10.1126/sciadv.abi8021", "retrieved_at": "2026-11-26"},
+                {"service": "openalex", "identifier": "10.1126/sciadv.abi8021", "retrieved_at": "2026-11-26"},
+                {"service": "arxiv", "identifier": "2008.04443", "retrieved_at": "2026-11-26"},
+                {"service": "publisher_fulltext", "identifier": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11636688/", "retrieved_at": "2026-11-26"}
+            ],
+            "metadata_rechecked_at": "2026-11-26",
+            "metadata_recheck_note": "Crossref and OpenAlex metadata were matched to the open Science Advances article and its arXiv manuscript."
+        },
+        {
+            "citation_key": "nanayakkara2025unsupervised",
+            "doi": "10.1145/3721985",
+            "verification_status": "full_text_reviewed",
+            "sources": [
+                {"service": "crossref", "identifier": "10.1145/3721985", "retrieved_at": "2026-11-26"},
+                {"service": "openalex", "identifier": "10.1145/3721985", "retrieved_at": "2026-11-26"},
+                {"service": "publisher_fulltext", "identifier": "https://dl.acm.org/doi/pdf/10.1145/3721985", "retrieved_at": "2026-11-26"}
+            ],
+            "metadata_rechecked_at": "2026-11-26",
+            "metadata_recheck_note": "Crossref and OpenAlex agree on the 2025 JDIQ article; the publisher full text was inspected through the ACM article endpoint."
         }
     ],
     "metadata_recheck": {
-        "date": "2026-11-01",
-        "report": "docs/archive/review-records/TDK_CITATION_AUDIT_2026-11-01.md",
-        "scope": "All 18 entries rechecked against Crossref (DOIs), DataCite (arXiv DOIs), arXiv API and publisher pages. Corrections are listed per record in metadata_recheck_note."
+        "date": "2026-11-26",
+        "report": "docs/TDK_LITERATURE_REVIEW.md#2026-11-26-recency-and-coverage-update",
+        "scope": "Nine directly relevant 2022-2025 sources were added after identity checks through Crossref, OpenAlex, arXiv, and official open full text. The original 18 records retain their prior audit history."
     }
 }

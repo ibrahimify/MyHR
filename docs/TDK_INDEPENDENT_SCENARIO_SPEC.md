@@ -49,7 +49,7 @@ The matrix contains all 12 population-by-error combinations. Every split contain
 
 ## Development Findings
 
-The first run is artifact `independent_development_e342bd4acf39b06b`.
+The first development run is preserved in the research evidence archive.
 
 - The stored residual AP values are `0.3621` for policy-aware features and `0.3616` for raw features, but this comparison is not evidence of a tie or a policy-aware effect.
 - After deterministic filtering, all three policy-specific residual features are constant zero. The experiment therefore contains no varying policy signal with which to test the central hypothesis.

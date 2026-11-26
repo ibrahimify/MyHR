@@ -29,8 +29,8 @@ The result supports the value of policy-conditioned features within the frozen s
 
 ## Evidence
 
-- Artifact: `f58cadc5570aa558`
-- Frozen source revision: `ac76c574c64e2a69205a7bc00babbfad5afaac51`
+- Artifact: verified v2 protected evaluation; exact identifier is recorded in `holdout_report_manifest.json`
+- Frozen source revision: repository tag `tdk-2026-revised-results`
 - Scenarios: 1,080 (36 conditions x 30 seeds)
 - Evaluation histories: 25,920
 - Manifest and authorization were independently verified before interpretation.

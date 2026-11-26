@@ -168,24 +168,6 @@ def generate_figures(repo: Path, assets: Path) -> None:
     ax.grid(axis="y", alpha=0.25)
     _save_figure(assets / "validation_counts.png")
 
-    paired_path = repo / "research_outputs" / "independent_development" / CURRENT_ARTIFACT_DIR / "paired_comparisons.csv"
-    paired = pd.read_csv(paired_path)
-    result = paired[(paired["method"] == "rule_negative_isolation_forest") & (paired["operating_point"] == "fixed_review_budget")].iloc[0]
-    fig, ax = plt.subplots(figsize=(9, 4.8))
-    mean = float(result["recall_delta_mean"])
-    low = float(result["recall_delta_ci95_low"])
-    high = float(result["recall_delta_ci95_high"])
-    ax.errorbar([0], [mean], yerr=[[mean - low], [high - mean]], fmt="o", color="#16834F", capsize=8, markersize=9)
-    ax.axhline(0, color="#333333", linewidth=1.2)
-    ax.set_xlim(-0.8, 0.8)
-    ax.set_ylim(-0.06, 0.13)
-    ax.set_xticks([0], ["Policy-aware minus raw IF"])
-    ax.set_ylabel("Scenario-level recall difference")
-    ax.set_title("Primary exploratory comparison at equal review capacity", fontweight="bold")
-    ax.text(0, -0.047, "Mean +0.0278; 95% CI [-0.0278, +0.1019]; p=0.6875", ha="center", fontsize=10)
-    ax.grid(axis="y", alpha=0.25)
-    _save_figure(assets / "primary_recall.png")
-
     fig, ax = plt.subplots(figsize=(10, 4.6))
     ax.axis("off")
     stages = [
@@ -630,9 +612,20 @@ def add_inline_markdown(paragraph, text: str) -> None:
         paragraph.add_run(text[cursor:])
 
 
-def add_table(document: Document, rows: list[list[str]]) -> None:
+def add_table(document: Document, rows: list[list[str]], caption: str | None = None) -> None:
     if not rows:
         return
+    if caption:
+        caption_paragraph = document.add_paragraph(style="Caption")
+        caption_paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        caption_paragraph.paragraph_format.keep_with_next = True
+        caption_paragraph.paragraph_format.space_before = Pt(6)
+        caption_paragraph.paragraph_format.space_after = Pt(3)
+        add_inline_markdown(caption_paragraph, caption)
+        for run in caption_paragraph.runs:
+            run.font.name = "Times New Roman"
+            run.font.size = Pt(10)
+            run.font.color.rgb = RGBColor(0, 0, 0)
     width = max(len(row) for row in rows)
     table = document.add_table(rows=len(rows), cols=width)
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -713,6 +706,8 @@ def build_docx(source: Path, assets: Path, output: Path) -> None:
     code_lines: list[str] = []
     paragraph_lines: list[str] = []
     table_lines: list[str] = []
+    pending_table_caption: str | None = None
+    expected_table_number = 1
     seen_intro = False
     seen_references = False
     after_heading = False
@@ -747,10 +742,20 @@ def build_docx(source: Path, assets: Path, output: Path) -> None:
             paragraph_lines = []
 
     def flush_table() -> None:
-        nonlocal table_lines
+        nonlocal table_lines, pending_table_caption, expected_table_number
         if table_lines:
-            add_table(document, _parse_table(table_lines))
+            if pending_table_caption is None:
+                raise ValueError(f"Table {expected_table_number} is missing a caption")
+            match = re.fullmatch(rf"Table {expected_table_number}\.\s+.+", pending_table_caption)
+            if match is None:
+                raise ValueError(
+                    f"Expected caption for Table {expected_table_number}, got: "
+                    f"{pending_table_caption!r}"
+                )
+            add_table(document, _parse_table(table_lines), pending_table_caption)
             table_lines = []
+            pending_table_caption = None
+            expected_table_number += 1
 
     for line in lines:
         if line.startswith("# "):
@@ -778,6 +783,13 @@ def build_docx(source: Path, assets: Path, output: Path) -> None:
             table_lines.append(line)
             continue
         flush_table()
+        table_caption = re.fullmatch(r"\[\[TABLE:(.+)\]\]", line.strip())
+        if table_caption:
+            flush_paragraph()
+            if pending_table_caption is not None:
+                raise ValueError(f"Unused table caption: {pending_table_caption!r}")
+            pending_table_caption = table_caption.group(1).strip()
+            continue
         figure = re.fullmatch(r"\[\[FIGURE:([^|]+)\|(.+)\]\]", line.strip())
         if figure:
             flush_paragraph()
@@ -831,6 +843,8 @@ def build_docx(source: Path, assets: Path, output: Path) -> None:
 
     flush_paragraph()
     flush_table()
+    if pending_table_caption is not None:
+        raise ValueError(f"Unused table caption: {pending_table_caption!r}")
     output.parent.mkdir(parents=True, exist_ok=True)
     document.core_properties.title = TITLE
     document.core_properties.author = AUTHOR

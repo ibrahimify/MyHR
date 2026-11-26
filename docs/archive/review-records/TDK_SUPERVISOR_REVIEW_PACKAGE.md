@@ -21,7 +21,7 @@ freeze the final balanced matrix.
 
 ## Methodological Correction - 2026-10-18
 
-The independent hostile review supersedes the earlier interpretation of the residual experiment. After deterministic policy findings are removed, all three policy-specific residual features are constant zero. The reported residual comparison therefore cannot test whether policy context improves anomaly ranking. It is a design failure, not evidence that policy-aware and raw models perform similarly.
+The independent methodology review supersedes the earlier interpretation of the residual experiment. After deterministic policy findings are removed, all three policy-specific residual features are constant zero. The reported residual comparison therefore cannot test whether policy context improves anomaly ranking. It is a design failure, not evidence that policy-aware and raw models perform similarly.
 
 ## Proposed Research Claim
 

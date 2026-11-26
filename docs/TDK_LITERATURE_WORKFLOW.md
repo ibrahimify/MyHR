@@ -117,8 +117,8 @@ Every run directory is timestamped and write-once. It stores configuration hashe
 - arXiv live search: passed across the same query set, producing 110 source records.
 - arXiv exact-ID resolution: passed for every arXiv-only paper in the curated corpus.
 - Curated full-text run: 16 papers, 428 pages, PDF validation, text extraction, DOI/arXiv resolution, and checksums passed.
-- Literature metadata artifact `20261017T215024Z_f79f81f2c2b1`: 240 source records, 231 merged records, manifest and credential scan passed.
-- Full-text artifact `20261017T215119Z_4b354b03c1af`: 16 papers, manifest and credential scan passed.
+- The preserved metadata run contains 240 source records and 231 merged records; manifest and credential checks passed.
+- The preserved full-text run contains 16 papers; manifest and file checks passed.
 - OpenAlex citation-network run: passed for all six DOI-bearing core papers, including outgoing reference IDs and bounded incoming citing works.
 - Semantic Scholar DOI resolution previously succeeded, but the anonymous shared pool returned HTTP `429` during the 2026-10-17 refresh. The client and key handling pass automated tests; reliable live discovery remains an optional setup item requiring a free key.
 
@@ -140,6 +140,15 @@ Official service documentation was rechecked before the integration update: Open
 - The 18-entry bibliography and 15-claim evidence ledger pass strict local-artifact verification with no unverified records or claims.
 - The reliability claim is deliberately limited to what the inspected paper supports: independent coders, common instructions, and agreement assessment. Disagreement retention and adjudication remain MyHR study-design choices.
 - OpenAlex, arXiv, and Crossref remain operational. Semantic Scholar's anonymous endpoint returned HTTP `429` after bounded retries; the integration is implemented and tested, but a reliable live check still requires the optional free API key.
+
+## Recency Recheck On 2026-11-26
+
+- A bounded OpenAlex, Crossref, and arXiv refresh returned 298 source records and 282 deduplicated records. Discovery stopped after selecting nine directly relevant additions; this was not an exhaustive review.
+- The centralized bibliography now contains 27 verified entries: 19 published from 2022 through 2026 and eight retained foundational sources. The claim-evidence ledger contains 22 scoped claims.
+- The additions strengthen evidence for temporal distribution shift, synthetic-data limitations, responsible HR use, anomaly-detector diversity, benchmark reliability, and entity-resolution evaluation. Adjacent time-series evidence and the one arXiv preprint are labelled as such rather than presented as direct workforce-progression validation.
+- Official publisher or repository pages and legally accessible full text were inspected for the selected additions. OpenAlex and Crossref were also used to cross-check identifiers and metadata; no paid service or credential was used.
+- Portable citation verification passes with no unverified bibliography entry or claim. Strict local-artifact verification is currently unavailable because the previously recorded full-text artifact directory is not present in this checkout; the provenance registry retains that historical location instead of claiming a new local archive.
+- An independent recheck verified the nine additions and required narrower manuscript wording where evidence came from adjacent domains.
 
 ## Refresh Rules
 

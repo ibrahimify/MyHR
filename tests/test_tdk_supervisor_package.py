@@ -10,8 +10,10 @@ from scripts.generate_tdk_supervisor_package import (
     TITLE,
     add_inline_markdown,
     append_generated_verification_record,
+    build_docx,
     build_decision_sheet,
     finalize_visual_inspection,
+    generate_figures,
     write_figure_data,
     write_package_manifest,
 )
@@ -42,6 +44,42 @@ class TdkSupervisorPackageTests(unittest.TestCase):
         self.assertNotIn("**Keywords:**", text)
         for marker in ("TODO", "TBD", "PLACEHOLDER"):
             self.assertNotIn(marker, text)
+
+    def test_manuscript_tables_have_sequential_descriptive_captions(self):
+        text = PAPER_SOURCE.read_text(encoding="utf-8")
+        captions = re.findall(r"\[\[TABLE:(Table (\d+)\. [^\]]+)\]\]", text)
+        self.assertEqual(10, len(captions))
+        self.assertEqual(list(range(1, 11)), [int(number) for _, number in captions])
+
+        with tempfile.TemporaryDirectory() as directory:
+            assets = Path(directory) / "assets"
+            assets.mkdir()
+            generate_figures(REPO_ROOT, assets)
+            for source in (REPO_ROOT / "docs" / "figures").glob("holdout_*"):
+                (assets / source.name).write_bytes(source.read_bytes())
+            output = Path(directory) / "paper.docx"
+            build_docx(PAPER_SOURCE, assets, output)
+            document = Document(output)
+
+        self.assertEqual(10, len(document.tables))
+        body = list(document.element.body.iterchildren())
+        table_elements = [element for element in body if element.tag.endswith("}tbl")]
+        for number, table_element in enumerate(table_elements, start=1):
+            index = body.index(table_element)
+            preceding = body[index - 1]
+            self.assertTrue(preceding.tag.endswith("}p"))
+            paragraph = next(p for p in document.paragraphs if p._p is preceding)
+            self.assertEqual("Caption", paragraph.style.name)
+            self.assertTrue(paragraph.text.startswith(f"Table {number}. "))
+
+    def test_manuscript_has_substantial_current_literature(self):
+        text = PAPER_SOURCE.read_text(encoding="utf-8")
+        references = re.findall(r"^\[(\d+)\] (.+)$", text, flags=re.MULTILINE)
+        self.assertEqual(list(range(1, 27)), [int(number) for number, _ in references])
+        recent = [entry for _, entry in references if re.search(r"\b202[2-6]\b", entry)]
+        self.assertGreaterEqual(len(recent), 18)
+        for citation in ("[10,18,22,23]", "[19]", "[20]", "[21]", "[15,24-26]"):
+            self.assertIn(citation, text)
 
     def test_manuscript_preserves_scientific_and_holdout_boundaries(self):
         text = PAPER_SOURCE.read_text(encoding="utf-8")
