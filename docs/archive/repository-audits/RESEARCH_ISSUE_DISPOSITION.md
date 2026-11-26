@@ -103,7 +103,7 @@ An implementation can satisfy its engineering acceptance criteria without valida
 
 **Scientific boundary retained under #10**
 
-- [TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md](../../TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md) records that the original generator is coupled to the detector and that the independent residual design has no varying policy-specific signal after filtering.
+- [TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md](../protocol-records/TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md) records that the original generator is coupled to the detector and that the independent residual design has no varying policy-specific signal after filtering.
 - Six of twelve independent scenarios have no residual positives. The current residual AP comparison is arithmetically reproducible but scientifically vacuous for the stated policy-aware hypothesis.
 - The issue should retain the implemented methods as development baselines while transferring any claim-bearing comparison, threshold selection, scenario eligibility, and final evaluation to #10.
 

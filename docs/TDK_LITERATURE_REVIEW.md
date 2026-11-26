@@ -4,15 +4,15 @@ Research title:
 
 **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**
 
-Review date: 2026-10-17
+Review date: 2026-11-26
 
-Status: development literature synthesis for supervisor review. No holdout data was generated or inspected, and no experiment protocol was silently changed.
+Status: literature synthesis supporting the completed v2 evaluation. This update changed no experiment protocol and did not generate, inspect, or rerun any experimental data.
 
-**Current evidence boundary:** The independent residual experiment cannot test whether policy-aware features add value. All three policy-specific residual features are constant zero after deterministic filtering. Its AP values are retained as history, not interpreted as a tie, benefit, or harm. The literature below motivates a redesigned experiment but does not repair this structural limitation.
+**Historical evidence boundary:** An early residual experiment could not test whether policy-aware features added value because its three policy-specific features became constant after deterministic filtering. That failed design is retained as research history. The later v2 protocol and one-time protected evaluation are described in the current research-status and results documents; literature cannot substitute for their empirical evidence.
 
 ## Review Method
 
-Thirteen predeclared searches covered recent work from 2022-2026 plus foundational papers. The 2026-10-17 OpenAlex and arXiv refresh returned 240 source records and 231 merged discovery records. The full-text synthesis now contains 17 legally accessible papers. PDF headers, extracted text, identifiers, titles, and SHA-256 checksums were verified. DOI papers were resolved through OpenAlex; arXiv-only papers were resolved through the arXiv API. Semantic Scholar remains part of the free workflow, but its anonymous shared pool returned HTTP 429 during the latest live check; no credential or paid service was introduced.
+Thirteen predefined searches cover recent work from 2022-2026 plus essential foundations. A 2026-11-26 refresh through the repository clients queried OpenAlex, Crossref, and arXiv and returned 298 source records and 282 deduplicated discovery records. Nine papers were added only after title, author, year, venue, identifier, full-text availability, and claim relevance were checked. The bibliography now contains 27 sources: 19 published from 2022 through 2026 and eight retained foundations or pre-2022 methodological sources. Semantic Scholar is optional because its anonymous quota is not reliable; no paid service or credential was introduced.
 
 Discovery was intentionally broad, while inclusion required direct methodological relevance to at least one MyHR research component. Citation counts supported discovery only and were not treated as evidence of correctness.
 
@@ -22,22 +22,38 @@ Discovery was intentionally broad, while inclusion required direct methodologica
 | --- | --- | --- |
 | Isolation Forest | Liu et al. (2008, 2012) | Supports efficient unsupervised scoring, but not policy interpretation or automatic HR decisions |
 | Broad anomaly benchmarks | Han et al. (2022), ADBench | No unsupervised method is universally dominant; method comparisons must span anomaly types, corruptions, and independent trials |
+| Recent tabular detector comparisons | Bouman et al. (2024) | Local and global anomaly structures favor different algorithms; a structurally different baseline is more informative than additional Isolation Forest variants alone |
+| Temporal shift | Dragoi et al. (2022); Tschalzev et al. (2024) | Time and data preparation can change model rankings, supporting explicit policy-period and population-shift checks |
 | Context-dependent anomalies | Vaska et al. (2022) | An observation can be abnormal only relative to context, supporting policy-conditioned residuals rather than raw intervals alone |
 | Explainable anomaly detection | Li et al. (2024); Carletti et al. (2023) | Explanations need explicit evaluation; DIFFI is a possible model-level explanation for Isolation Forest, not a substitute for policy evidence |
-| Synthetic validation | Steinbuss and Boehm (2021); Hansen et al. (2023) | Synthetic realism needs explicit anomaly characteristics, data profiles, and downstream utility; statistical resemblance alone is insufficient |
+| Synthetic validation | Steinbuss and Boehm (2021); Hansen et al. (2023); Van Breugel et al. (2023) | Synthetic realism needs explicit anomaly characteristics and downstream checks; synthetic-only performance can misstate real-world utility, particularly in sparse regions |
 | Evaluation bias | Fourure et al. (2021); Saito and Rehmsmeier (2015) | F1 and average precision depend on prevalence and threshold choices; PR analysis remains useful under imbalance when prevalence and denominators are explicit |
+| Benchmark reliability | Liu and Paparrizos (2024) | Dataset integrity, measure choice, and consistent tuning are distinct requirements for reliable comparisons |
 | Statistical comparison | Demsar (2006) | Compare methods on independent units with paired nonparametric procedures; control multiplicity when making many comparisons |
-| Duplicate detection | Wang et al. (2024) | Blocking and pair scoring are separate stages and need separate workload, recall, and ranking metrics |
+| Duplicate detection | Binette and Steorts (2022); Wang et al. (2024); Binette et al. (2024); Nanayakkara et al. (2025) | Blocking, pair scoring, cluster evaluation, and the candidate universe are separate concerns; representative error analysis needs explicit denominators |
+| Responsible AI in HR | Bujold et al. (2024) | AI used in HR is socio-technical and risk-bearing, supporting human review and explicit limits on automated personnel action |
 
 Full citations and persistent identifiers are in `docs/TDK_REFERENCES.bib`.
 
-## Citation Governance Audit - 2026-10-29
+## Citation Governance Audit
 
-The Research & Citation Specialist audited all 18 bibliography entries against the preserved literature artifacts and free scholarly registries. No duplicate paper identities were found. Seventeen legally accessible full texts are preserved locally with valid checksums. Bibliographic corrections were applied to the Rochner et al. author list, four papers now use their formal publication DOI while retaining arXiv identifiers, and Holm's non-resolving DOI-like identifier was replaced with its stable JSTOR URL. The online-first versus issue-year distinction for Li et al. is recorded in `TDK_CITATION_PROVENANCE.json`.
+The 2026-10-29 audit covered the original 18 entries and remains preserved in the archive. The 2026-11-26 update adds nine directly relevant sources. Crossref and OpenAlex verified DOI metadata, arXiv or publisher records covered papers without Crossref DOIs, and legally accessible full text was inspected before any scientific claim was recorded. No duplicate identities were found. The centralized provenance registry records online-first versus issue years and distinguishes peer-reviewed articles from preprints.
 
 The Holm multiple-testing claim is supported through Demsar's preserved secondary account of the procedure. The Krippendorff paper is now preserved and supports independent coding under common instructions and agreement assessment. It does not directly establish MyHR's disagreement-retention or adjudication procedure; those remain explicit study-design choices. The ledger also labels the application of contextual-anomaly research to MyHR policy residuals and the protected-evaluation recommendation as inferences rather than direct findings of the cited papers.
 
-From this audit onward, author-year prose alone is insufficient provenance. New literature-supported claims must update the bibliography, provenance registry, and claim ledger and pass `scripts/verify_tdk_citations.py`.
+Author-year prose alone is insufficient provenance. New literature-supported claims must update the bibliography, provenance registry, and claim ledger and pass `scripts/verify_tdk_citations.py`. An independent recheck on 2026-11-26 verified the nine additions and narrowed claims drawn from adjacent domains before manuscript integration.
+
+## 2026-11-26 Recency And Coverage Update
+
+The expanded evidence changes the emphasis of the review in five useful ways:
+
+1. **Model choice:** Bouman et al. (2024) found different leading methods for local and global anomalies across 52 real-world tabular datasets. MyHR should therefore retain Isolation Forest as a transparent baseline and compare it with at least one structurally different method; the literature does not identify a universally best detector.
+2. **Temporal robustness:** AnoShift shows degradation between contemporaneous and later test periods, while Tschalzev et al. show that preprocessing and temporal adaptation can change tabular-model rankings. MyHR's policy versions and population periods should therefore be analyzed explicitly rather than pooled into one timeless distribution.
+3. **Benchmark discipline:** Liu and Paparrizos separate dataset integrity, metric reliability, and consistent model comparison. Their time-series benchmark is adjacent rather than directly equivalent to workforce histories, but its evaluation warnings apply to MyHR's experimental design.
+4. **Synthetic evidence:** Van Breugel et al. show that treating synthetic data as observed real data can overstate downstream performance, especially for minority classes and low-density regions. This supports explicit limits on external-validity claims from MyHR's synthetic evaluation.
+5. **Duplicate detection and HR responsibility:** Recent entity-resolution work makes the all-pairs universe, blocking losses, cluster-level errors, and representative labeling explicit. Bujold et al. place AI in HR within a responsible socio-technical setting. Together these sources support separate duplicate evaluation and human review, not automatic personnel action.
+
+These sources strengthen methodological justification but do not retroactively change results, establish generalization to real organizations, or prove that policy-aware features caused any observed difference.
 
 ## Findings
 
@@ -83,7 +99,7 @@ Precision, total false alerts, and rare-legitimate false-alert rates accompany t
 
 Synthetic data provides known labels for errors that are rare and sensitive in real HR systems. The reviewed synthetic-data work also shows the central weakness: matching marginal statistics does not establish realistic relationships or downstream validity.
 
-The original scenario matrix is a useful development instrument but arises from one conceptual design. A separately implemented independent stress-test family now exists, yet its residual policy features collapse to constants and its historical-policy counterexamples are partly guaranteed by construction. Source-code independence therefore did not establish a valid central comparison. Before holdout execution, the supervisor should review:
+The original scenario matrix was a useful development instrument but arose from one conceptual design. A separately implemented stress-test family exposed constant residual policy features and partly constructed historical-policy counterexamples. Source-code independence alone therefore did not establish a valid central comparison. For any future protected evaluation, reviewers should examine:
 
 - the causal story behind each anomaly mechanism;
 - whether clean, rare-legitimate, and anomalous cases overlap realistically;
@@ -129,7 +145,7 @@ The existing protocol is correct to require entity-disjoint splits, hard nondupl
 | Synthetic realism/external calibration | Limited | Seek supervisor or HR-domain review and aggregate real-world ranges |
 | Explanation evaluation | Not implemented | Optional after core validity; policy evidence first |
 | Duplicate entity-resolution experiment | Protocol specified, not part of v2 result | Secondary, time permitting |
-| Locked final holdout | Correctly untouched | Do not unlock |
+| Protected v2 evaluation | Completed once under the frozen v2 protocol | Preserve the result; never rerun or tune against it |
 
 ## Evidence-Based Recommendations
 

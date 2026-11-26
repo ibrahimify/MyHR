@@ -29,7 +29,7 @@ No issue should be closed merely to produce a zero-open-issue appearance.
 
 - Keep `master`, `thesis`, `thesis-final-polish`, and `research/policy-aware-anomaly` until the approved merge path is complete.
 - Delete `maintenance/research-repository-hygiene` only after confirming its merge commit is reachable from the research branch and remote.
-- Inspect `claude/charming-jemison-f93721` for unique commits before any deletion.
+- Inspect every retired experimental branch for unique commits before deletion.
 - Never delete a branch with unique or unreviewed work.
 
 ## Human Checklist

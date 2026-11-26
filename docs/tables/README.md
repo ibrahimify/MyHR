@@ -34,7 +34,7 @@ Include a table with `\input{docs/tables/residual_equal_budget.tex}`.
 
 | File | Content | Source |
 | --- | --- | --- |
-| `residual_equal_budget.tex` | Section 6.7 equal-budget residual table | `research_outputs/independent_development/independent_development_4feea4508de1bb05/aggregate_metrics.csv` |
+| `residual_equal_budget.tex` | Archived equal-budget residual table | preserved development `aggregate_metrics.csv` |
 | `rules_outcomes.tex` | Deterministic check outcomes | same artifact, `operating_point == rules_fixed` |
 | `demo_outcomes.tex` | Optional in-app demonstration output. This is not experimental evidence and is generated only when `--demo-counts` is supplied. | User-supplied `demo_counts.json` |
 | `abstract_commitments.tex` | Mirrors the Section 1.6 table of `docs/TDK_PAPER_DRAFT.md` | parsed from the paper draft at build time |

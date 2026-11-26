@@ -43,13 +43,13 @@ Each figure is written as `.pdf` (vector, with embedded TrueType fonts),
 | Figure | Type | Data |
 | --- | --- | --- |
 | `architecture` | Graphviz (`src/architecture.dot`) | conceptual |
-| `experiment_flow` | Graphviz (`src/experiment_flow.dot`) | split counts from `record_truth.csv` (4feea4508de1bb05) |
+| `experiment_flow` | Graphviz (`src/experiment_flow.dot`) | split counts from the verified development artifact |
 | `artifact_lifecycle` | Graphviz (`src/artifact_lifecycle.dot`) | conceptual |
-| `primary_recall` | Matplotlib | 4feea4508de1bb05 `aggregate_metrics.csv`, `paired_comparisons.csv` |
-| `residual_outcomes` | Matplotlib | 4feea4508de1bb05 `aggregate_metrics.csv` |
-| `validation_counts` | Matplotlib | validation_c5878ca7b927ccd2 `aggregate_metrics.csv` |
-| `policy_alerts` | Matplotlib | e342bd4acf39b06b, db1a15646d9e76ba, 4feea4508de1bb05 `aggregate_metrics.csv` |
-| `confound_diagnostic` | Matplotlib | 8f1494e4abf2d268 `aggregate_metrics.csv`, `paired_comparisons.csv`, `scenario_metrics.csv` |
+| `primary_recall` | Matplotlib | verified development `aggregate_metrics.csv` and `paired_comparisons.csv` |
+| `residual_outcomes` | Matplotlib | verified development `aggregate_metrics.csv` |
+| `validation_counts` | Matplotlib | preserved validation `aggregate_metrics.csv` |
+| `policy_alerts` | Matplotlib | preserved development artifacts listed in `FIGURE_MANIFEST.json` |
+| `confound_diagnostic` | Matplotlib | preserved confound diagnostic listed in `FIGURE_MANIFEST.json` |
 
 ## Typography and placement
 

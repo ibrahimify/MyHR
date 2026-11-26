@@ -13,14 +13,12 @@ currently preserved here.
 | [`review-records/`](review-records/) | Dated citation, methodology, and supervisor review records | Findings were incorporated or superseded; the original records remain intact | [Current research status](../TDK_CURRENT_RESEARCH_STATUS.md) |
 | [`protocol-records/`](protocol-records/) | Amendments, freeze records, and change proposals | The completed protocol is the current authority | [Experiment protocol](../TDK_EXPERIMENT_PROTOCOL.md) |
 | [`product-planning/`](product-planning/) | Launch audit and thesis completion plan | Milestone plans are substantially completed or superseded | [Scope audit](../SCOPE_AUDIT.md) and [architecture roadmap](../ARCHITECTURE_ROADMAP.md) |
-| [`operational/`](operational/) | Historical research coordination workflow | Preserved process history; repository rules and current status now define active work | [Current research status](../TDK_CURRENT_RESEARCH_STATUS.md) |
 | [`project-lab/`](project-lab/) | Early report, presentations, rendered PDF guides, and progress page | Historical project-lab deliverables; editable current guides remain under `docs/guides/` | [Documentation guide](../README.md#product-guides-and-media) |
 | [`repository-audits/`](repository-audits/) | Dated issue-disposition review | GitHub state and scientific evidence changed after the review | [Current research status](../TDK_CURRENT_RESEARCH_STATUS.md) |
 | [`research-audits/`](research-audits/) | Dated early research and methodology audits | Findings are preserved, but later evidence supersedes their status summaries | [Current research status](../TDK_CURRENT_RESEARCH_STATUS.md) |
 | [`research-plans/`](research-plans/) | Initial research implementation plan | Implementation progressed beyond this plan | [Archived roadmap](research-history/TDK_RESEARCH_ROADMAP_2026-11-25.md) |
 | [`submission/`](submission/) | 2026 conference dates, format, and upload checklist | The submission period has ended; retained as submission history | [Submitted paper](../paper/MyHR_Policy_Aware_Machine_Learning_for_Anomaly_Detection_in_Workforce_Progression.pdf) |
 | [`supervisor-packages/`](supervisor-packages/) | Superseded approval gate and package-verification records | Later results and current documentation supersede these snapshots | [Current research status](../TDK_CURRENT_RESEARCH_STATUS.md) |
-| [`teaching/`](teaching/) | Dated repository-learning prompt | It contains obsolete branch and status instructions and is not research authority | [Documentation guide](../README.md) |
 | [`ui-audits/`](ui-audits/) | Temporary asset review and retained pre-research UI sheet | Preserved for provenance after scratch captures left the active tree | [Documentation guide](../README.md#product-guides-and-media) |
 
 ## Interpretation Rules

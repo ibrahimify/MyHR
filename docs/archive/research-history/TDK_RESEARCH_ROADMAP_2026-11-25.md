@@ -239,7 +239,7 @@
   - `master` (7d9ed70) — preserved Project Lab submission, unchanged.
   - `thesis` (a9dac4b) — verified working thesis application (advanced from 8fd7434 by clean fast-forward to the former `thesis-final-polish` checkpoint; business-logic suite passes 17/17; app launches offscreen).
   - `research` (tip `b7f9d42`, built on `84d0368`) — research implementation plus the working application and the in-app Anomaly Review screen (renamed from `research/policy-aware-anomaly`; `84d0368` is the archived pre-consolidation tip, and `b7f9d42` adds only the consolidation CI/doc commit).
-- Retired branches, all preserved as pushed archival tags and in an external verified git bundle: `research/policy-aware-anomaly` -> `archive/research-policy-aware-anomaly-2026-10-31`; `thesis-final-polish` -> `archive/thesis-final-polish-2026-10-31`; `maintenance/research-repository-hygiene` -> `archive/maintenance-research-repository-hygiene-2026-10-31`; `claude/charming-jemison-f93721` -> `archive/claude-charming-jemison-2026-10-31`; former `thesis` tip -> `archive/thesis-pre-consolidation-2026-10-31`.
+- Retired branches were preserved as archival tags and in an external verified Git bundle before consolidation.
 - Preservation: full `--all` git bundle (verified "records a complete history") plus external backup of `myhr.db` and cited research artifacts, both outside the repository. No force-push, no destructive reset, no `git clean` was used.
 - PR #1 (draft) was auto-closed by GitHub when its head branch was renamed; its discussion is preserved at its URL. Replacement draft PR #14 (`research` -> `thesis`) links back to it and stays draft; it must not be merged into `thesis` or `master`.
 - CI branch filters updated from `thesis-final-polish` / `research/**` to `thesis` / `research`.
@@ -596,7 +596,7 @@ An independent review correctly flagged that the preceding entry overstated the 
 
 Research title: **MyHR: Policy-Aware Machine Learning for Anomaly Detection in Workforce Progression**
 
-Current boundary: the authorized audit, corrections, independent scenario prototype, adversarial development run, independent hostile review, and targeted literature check are complete. The hostile review found that the current residual comparison does not isolate policy context because its three policy-specific features are constant after rule filtering. The protocol remains draft, the final holdout remains undefined and locked, and the research PR remains unmerged.
+Current boundary at that historical checkpoint: the audit, corrections, independent scenario prototype, adversarial development run, independent methodology review, and targeted literature check were complete. The methodology review found that the residual comparison did not isolate policy context because its three policy-specific features were constant after rule filtering. The protocol was still draft, the final holdout remained undefined and locked, and the research PR remained unmerged.
 
 Completed evidence is summarized in `archive/research-audits/TDK_METHODOLOGY_REVIEW_2026-10-16.md`, `TDK_PROTOCOL_V2_DEVELOPMENT_VALIDATION_REPORT.md`, `TDK_INDEPENDENT_SCENARIO_SPEC.md`, and `TDK_INDEPENDENT_REVIEW_2026-10-17.md`. The six human methodology decisions are recorded in `TDK_SUPERVISOR_DECISIONS_2026-10-29.md`; implementation and protocol freeze remain pending. `README.md` and `RESEARCH_HANDOVER.md` provide the current documentation entry point and full handover.
 
