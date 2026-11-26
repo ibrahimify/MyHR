@@ -13,7 +13,7 @@ This page is for supervisors, reviewers, and future maintainers who want to veri
 
 ## Research Status
 
-Seeds `2026-2030` are development-only because their outputs influenced feature design. Existing artifacts from those seeds must not be used as untouched holdout evidence. The latest independent stress-test artifact is also development-only. Its policy-specific residual features are constant zero after deterministic filtering, so its raw-versus-policy-aware AP comparison cannot test the central hypothesis. See `archive/research-audits/TDK_RESEARCH_AUDIT_2026-10-15.md`, `TDK_INDEPENDENT_REVIEW_2026-10-17.md`, and `TDK_EXPERIMENT_PROTOCOL.md` for the evidence and holdout rules.
+Seeds `2026-2030` are development-only because their outputs influenced feature design. Existing artifacts from those seeds must not be used as untouched holdout evidence. The latest independent stress-test artifact is also development-only. Its policy-specific residual features are constant zero after deterministic filtering, so its raw-versus-policy-aware AP comparison cannot test the central hypothesis. See `archive/research-audits/TDK_RESEARCH_AUDIT_2026-10-15.md`, `archive/review-records/TDK_INDEPENDENT_REVIEW_2026-10-17.md`, and `TDK_EXPERIMENT_PROTOCOL.md` for the evidence and holdout rules.
 
 ## Environments
 

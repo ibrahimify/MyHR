@@ -1,10 +1,8 @@
 """Central effective-state resolver for administrative histories.
 
-Second-audit finding R5: supersession (corrections) was handled ad hoc — only
-promotions were filtered in the policy engine, while commendation/sanction credit
-calculations, raw features, and invariant checks all saw superseded (invalid)
-facts. Different components therefore disagreed about what the "current" facts
-were.
+Corrections must be resolved consistently across the policy engine, credit and
+delay calculations, feature extraction, and invariant checks. This module keeps
+those components on one definition of the current administrative state.
 
 This module centralizes the resolution shared by deterministic checks, policy
 history, and feature extraction:
@@ -81,11 +79,10 @@ def _event_is_visible(event: AdministrativeEvent, view: TemporalView) -> bool:
     - it has been recorded by ``recorded_through``; and
     - it has taken effect by ``effective_through``.
 
-    The second condition (finding R7.3) excludes a promotion that is already
-    recorded but whose effective date is still in the future — such an event is
-    a planned/advance-recorded fact, not a completed one, and must not be counted
-    as a completed promotion in a current-history snapshot. A ``None``
-    A ``None`` cutoff leaves that temporal dimension unbounded.
+    The second condition excludes an event that is already recorded but whose
+    effective date is still in the future. Such an event is planned rather than
+    completed and must not enter a current-history snapshot. A ``None`` cutoff
+    leaves that temporal dimension unbounded.
     """
     if (
         view.recorded_through is not None

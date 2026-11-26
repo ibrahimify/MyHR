@@ -449,8 +449,8 @@ def generate_synthetic_dataset(config: ExperimentConfig) -> SyntheticDataset:
 
     # --- Hard nonduplicate injection ---
     # Add one explicit hard nonduplicate record for each HardNonduplicateKind.
-    # Each (anchor, target) pair must be CO-PARTITIONED so the intended difficult
-    # negative is jointly present in the evaluated split (finding R8). We prefer
+    # Each anchor and target pair must share a partition so the intended difficult
+    # negative is present in the evaluated split. We prefer
     # the TEST split (the evaluated partition) and fall back to whichever split
     # has enough clean records. Cluster members (duplicate sources, tagged with
     # latent_person_id) are excluded so a hard-nonduplicate mutation can never

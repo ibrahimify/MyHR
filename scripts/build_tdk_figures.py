@@ -56,7 +56,6 @@ INTER_DIR = REPO / "research_outputs" / "independent_development" / "independent
 VAL_DIR = REPO / "research_outputs" / "protocol_v2_verified" / "validation_c5878ca7b927ccd2"
 DIAG_DIR = REPO / "research_outputs" / "protocol_dev_30seed" / "development_8f1494e4abf2d268"
 PAPER = REPO / "docs" / "TDK_PAPER_DRAFT.md"
-ROADMAP = REPO / "docs" / "TDK_RESEARCH_ROADMAP.md"
 
 # Physical design size. Figures are placed at 6.0 in in an A4 page with 3.5 cm margins.
 FIG_WIDTH_IN = 6.0
@@ -327,14 +326,14 @@ def dot_experiment_flow(split_counts: dict) -> str:
     color="#000000"; style=solid; penwidth=0.6; margin=6;
     dev    [label="Development\\n(inspectable)"];
     valfam [label="Validation\\n(inspectable)"];
-    freeze [label="Protocol freeze\\n(human approval,\\npending)", style=dashed];
-    hold   [label="Final holdout\\n(locked; not\\ngenerated or\\naccessed)", color="{OI_VERMILLION}", fontcolor="{OI_VERMILLION}", penwidth=1.4, style="dashed"];
+    freeze [label="Design frozen\\nbefore evaluation"];
+    hold   [label="Protected evaluation\\none completed run", color="{OI_GREEN}", fontcolor="{OI_GREEN}", penwidth=1.4];
     {{rank=same; dev; valfam; freeze; hold;}}
     dev -> valfam -> freeze;
-    freeze -> hold [style=dashed, color="{OI_VERMILLION}"];
+    freeze -> hold [color="{OI_GREEN}"];
   }}
   subgraph cluster_within {{
-    label="Within each development scenario\\l(artifact 4feea4508de1bb05; totals over 12 scenarios)\\l"; labeljust=l;
+    label="Within each generated scenario\\l"; labeljust=l;
     color="#000000"; style=solid; penwidth=0.6; margin=6;
     fit  [label="Fit models\\ntraining histories\\n(n = {tr})"];
     val  [label="Select thresholds\\nvalidation histories\\n(n = {va})"];
@@ -356,7 +355,7 @@ def dot_artifact_lifecycle() -> str:
   prov    [label="Record Git revision, dirty flag,\\nsource and dependency versions"];
   sums    [label="Write SHA-256 manifest\\nof every file"];
   publish [label="Atomic publish to a\\nwrite-once artifact directory"];
-  audit   [label="Independent audit: checksums,\\nconfusion counts, AP, paired statistics"];
+  verify  [label="Automated verification: checksums,\\nconfusion counts, AP, paired statistics"];
   ok      [label="Verified: arithmetic is\\nreproducible", shape=box];
   bad     [label="Failed: artifact preserved,\\ndefect recorded", shape=box];
   run -> write;
@@ -364,9 +363,9 @@ def dot_artifact_lifecycle() -> str:
   {{rank=same; write; prov;}}
   write -> sums;
   prov -> sums;
-  sums -> publish -> audit;
-  audit -> ok;
-  audit -> bad;
+  sums -> publish -> verify;
+  verify -> ok;
+  verify -> bad;
   {{rank=same; ok; bad;}}
   limit [shape=plaintext, label="Verification does not establish that the estimand,\\nscenario population or policy assumptions are valid."];
   ok -> limit [style=invis];
@@ -736,7 +735,7 @@ def fig_confound_diagnostic() -> dict:
             source(DIAG_DIR / "scenario_metrics.csv", ["scenario_id", "representation", "recall"], f"method == '{PRIMARY_METHOD}' and operating_point == '{PRIMARY_OP}'",
                    "Control paired means (wrong-policy, shuffled, policy minus wrong-policy) are computed by this script as the mean of per-scenario differences; the artifact stores no paired interval for them, so none is drawn."),
         ],
-        "evidence_status": "development diagnostic; artifact checksums stored, independent offline audit of record-level predictions incomplete (docs/TDK_RESEARCH_ROADMAP.md); values in this figure come from artifact CSVs, not from audit text",
+        "evidence_status": "development diagnostic; values in this figure come from preserved artifact CSVs, not from narrative audit text",
         "derived_values": {f"{a} minus {b}": {"paired_mean": round(m, 6), "paired_scenarios": k} for (a, b), (m, k) in deltas.items()},
     }
 
@@ -936,16 +935,14 @@ def _load_promotion_policy():
 
 
 def worked_example() -> dict:
-    """B, M, C, S from docs/RESEARCH_HANDOVER.md section 5.1, evaluated by the application's pure function."""
-    text = HANDOVER.read_text(encoding="utf-8")
-    m = re.search(r"Example: if `B=(\d+)`, `M=(\d+)`, `C=(\d+)`, and `S=(\d+)`, then `A=(\d+)`, `R=(\d+)`", text)
-    assert m, "worked example not found in docs/RESEARCH_HANDOVER.md section 5.1"
-    b, mm, c, s, a_doc, r_doc = map(int, m.groups())
+    """Evaluate the manuscript's illustrative promotion calculation."""
+    b, mm, c, s = 48, 45, 6, 3
     mod = _load_promotion_policy()
     out = mod.calculate_promotion_race(mod.PromotionRaceInput(has_next_level=True, base_months=b, months_elapsed=mm,
                                                               commendation_credit_months=c, active_sanction_delay_months=s))
-    check("RESEARCH_HANDOVER 5.1 worked example: adjusted service A and remaining R", [a_doc, r_doc],
-          [out.adjusted_service_months, out.months_remaining], None, rel(PROMOTION_PY), "calculate_promotion_race(B=48, M=45, C=6, S=3)")
+    check("Illustrative promotion calculation: adjusted service A and remaining R", [48, 0],
+          [out.adjusted_service_months, out.months_remaining], None, rel(PROMOTION_PY),
+          "calculate_promotion_race(B=48, M=45, C=6, S=3)")
     return {"B": b, "M": mm, "C": c, "S": s, "A": out.adjusted_service_months, "R": out.months_remaining, "eligible": out.eligible, "progress_pct": out.progress_pct}
 
 
@@ -990,14 +987,14 @@ def fig_policy_timeline() -> dict:
     return {
         "outputs": outputs,
         "caption": (
-            f"Worked promotion-race example from docs/RESEARCH_HANDOVER.md section 5.1 (B = {b}, M = {mm}, C = {c}, S = {s}). "
+            f"Illustrative promotion-race calculation (B = {b}, M = {mm}, C = {c}, S = {s}). "
             f"Elapsed service to the decision date is adjusted by commendation credit and sanction delay, A = M + C \u2212 S = {a}, "
             f"and compared with the base requirement B of the policy effective at the decision date, giving R = {r}: "
             "service-eligible, which is evidence for review, not automatic approval. Calendar dates of the commendation and "
             "sanction events are not part of the documented example and are not shown."
         ),
         "sources": [
-            source(HANDOVER, ["section 5.1 worked example B, M, C, S, A, R"], "Example: if `B=48`, `M=45`, `C=6`, and `S=3`"),
+            source(PAPER, ["Section 3.2 promotion arithmetic"], note="The numeric values are illustrative, not experimental evidence."),
             source(PROMOTION_PY, ["calculate_promotion_race()"], note="A and R recomputed by the application's pure function at build time."),
             source(PAPER, ["Section 3.2 (A = M + C - S, R = max(0, B - A))", "Section 3.7 (policy effective at the decision date)"], note="Equations and temporal requirement; no numeric data."),
         ],
@@ -1141,12 +1138,17 @@ def table_abstract_commitments() -> dict:
 # --------------------------------------------------------------------------- main
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--demo-counts", type=Path, default=DEFAULT_DEMO_COUNTS, help="Path to the in-app demo_counts.json export")
+    parser.add_argument(
+        "--demo-counts",
+        type=Path,
+        default=None,
+        help="Optional path to an in-app demo_counts.json export",
+    )
     args = parser.parse_args()
     for d in (FIG_DIR, SRC_DIR, TAB_DIR):
         d.mkdir(parents=True, exist_ok=True)
-    if not args.demo_counts.exists():
-        raise FileNotFoundError(f"Demonstration export not found: {args.demo_counts} (pass --demo-counts)")
+    if args.demo_counts is not None and not args.demo_counts.exists():
+        raise FileNotFoundError(f"Demonstration export not found: {args.demo_counts}")
 
     font = configure_matplotlib()
     git = git_info()
@@ -1172,11 +1174,17 @@ def main() -> int:
     consts, reps = parse_representations(PROTOCOL_PY)
     consts_dev, reps_dev = parse_representations(PROTOCOL_PY, DEV_COMMIT)
     consts_hist, _ = parse_representations(PROTOCOL_PY, HIST_COMMIT)
-    assert (consts, reps) == (consts_dev, reps_dev), "feature representations changed since artifact 4feea4508de1bb05; update Figure 5"
-    assert consts == consts_hist, "feature constants differ from the historical commit; update Figure 11"
+    artifact_feature_sets = ("COMMON_CORE_FEATURES", "RAW_MATCHED_FEATURES", "POLICY_MATCHED_FEATURES")
+    assert all(consts[name] == consts_dev[name] for name in artifact_feature_sets) and reps == reps_dev, (
+        "feature representations used by the development artifact changed; update Figure 5"
+    )
+    assert all(consts[name] == consts_hist[name] for name in artifact_feature_sets), (
+        "feature sets used by the historical comparison changed; update Figure 11"
+    )
     assert [r[0] for r in reps] and {r[0] for r in reps} == {r[0] for r in REPRESENTATIONS}
     features_text = FEATURES_PY.read_text(encoding="utf-8")
-    for names in consts.values():
+    for name in artifact_feature_sets:
+        names = consts[name]
         for f in names:
             assert f'"{f}"' in features_text, f"{f} is not a feature key in features.py"
     core_n = len(consts_hist["COMMON_CORE_FEATURES"])
@@ -1222,13 +1230,13 @@ def main() -> int:
          [source(PAPER, ["Sections 4.6, 4.9, 4.16 (text)"], note="Conceptual diagram; no numeric data.")]),
         ("experiment_flow", dot_experiment_flow(split_counts),
          "Evaluation lifecycle. Within each scenario, models are fitted on training histories, thresholds are selected on "
-         "validation histories and metrics are computed on test histories (counts from artifact 4feea4508de1bb05). "
-         "Development and validation scenario families remain inspectable; the final holdout is not generated and has never "
-         "been accessed, and stays locked until a human-approved protocol freeze.",
+         "validation histories and metrics are computed on evaluation histories. Development and validation scenario families "
+         "remain inspectable. The protected evaluation was generated only after the protocol and analysis were frozen, was run "
+         "once, and may not be rerun or used for post-hoc tuning.",
          [source(DEV_DIR / "record_truth.csv", ["split"], note="Counts of train/validation/test histories."), source(PAPER, ["Section 4.3 (text)"], note="Boundary definitions.")]),
         ("artifact_lifecycle", dot_artifact_lifecycle(),
          "Write-once artifact lifecycle. Runs execute in a process-owned staging directory, record provenance and a SHA-256 "
-         "manifest, and are atomically published. An independent audit recomputes checksums and statistics; failed artifacts "
+         "manifest, and are atomically published. Automated verification recomputes checksums and statistics; failed artifacts "
          "are preserved with the defect recorded. Verification establishes reproducible arithmetic, not scientific validity.",
          [source(PAPER, ["Section 4.14 (text)"], note="Conceptual diagram; no numeric data.")]),
     ):
@@ -1255,8 +1263,9 @@ def main() -> int:
     tables = {
         "residual_equal_budget": table_residual(rows),
         "rules_outcomes": table_rules(),
-        "demo_outcomes": table_demo(args.demo_counts),
     }
+    if args.demo_counts is not None:
+        tables["demo_outcomes"] = table_demo(args.demo_counts)
     for t in tables.values():
         t["kind"] = "latex_booktabs"
 

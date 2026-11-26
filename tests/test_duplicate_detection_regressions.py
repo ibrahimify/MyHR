@@ -1,17 +1,4 @@
-"""Regression tests for confirmed second-audit findings (2026-10-30).
-
-These tests encode the SEMANTIC contracts that the earlier metadata-only tests
-failed to check. See docs/TDK_SECOND_EXTERNAL_AUDIT_2026-10-30.md.
-
-They are written to FAIL against revision 4ee488b and pass only after the
-corresponding fix:
-
-  R1 — duplicate ground truth: a duplicate and its linked source must both be
-       derived from the SAME latent person (shared identity facts), not merely
-       share a latent_person_id tag.
-  R6 — candidate-set confusion counts must conserve the candidate universe:
-       TP + FP + TN + FN must equal the candidate-pair count exactly.
-"""
+"""Regression tests for research data and evaluation contracts."""
 
 import unittest
 from datetime import date
@@ -25,8 +12,8 @@ from src.services.anomaly_detection.duplicate_detection import (
 )
 
 
-class R1DuplicateIdentityDerivationTests(unittest.TestCase):
-    """R1: the source of each duplicate must share the latent person's identity."""
+class DuplicateIdentityDerivationTests(unittest.TestCase):
+    """A duplicate and its source must derive from the same latent person."""
 
     def _generate_with_latent_capture(self, seed: int = 2026, n: int = 1000):
         latent: dict[str, syn.LatentPerson] = {}
@@ -155,8 +142,8 @@ class R1DuplicateIdentityDerivationTests(unittest.TestCase):
             self.assertGreaterEqual(age_at_hire, 18.0)
 
 
-class R6CandidateCountConservationTests(unittest.TestCase):
-    """R6: candidate-set confusion counts must not exceed the candidate universe."""
+class CandidateCountConservationTests(unittest.TestCase):
+    """Confusion counts must conserve the declared candidate universe."""
 
     def test_one_missed_pair_in_one_candidate_universe_conserves_counts(self):
         universe = {("A", "B")}
@@ -351,15 +338,12 @@ class R6CandidateCountConservationTests(unittest.TestCase):
         self.assertTrue(all("candidate_pair_count" in row for row in metric_rows))
 
 
-class R2R3R4GeneratorIntegrityTests(unittest.TestCase):
-    """R2/R3/R4: rare-legitimate histories must be internally consistent.
+class GeneratorIntegrityTests(unittest.TestCase):
+    """Rare-legitimate histories must be internally consistent.
 
-    R2 — policy_transition rare cases must NOT contain invariant contradictions
-         (no promotion before hire, no same-day double promotion, service met).
-    R3 — every rare-legitimate case must have a realized causal intervention
-         (non-empty causal_events) that matches its claimed mechanism.
-    R4 — current_level must equal the last effective (non-superseded) promotion's
-         resulting level, not a hardcoded 'L6'.
+    Transition cases contain no invariant contradictions, each rare case has a
+    realized causal intervention, and current level follows the last effective
+    promotion rather than a fixed default.
     """
 
     @classmethod
@@ -373,7 +357,7 @@ class R2R3R4GeneratorIntegrityTests(unittest.TestCase):
             for spec in independent_scenario_matrix(360)
         ]
 
-    # --- R3: every rare case has a realized intervention ---
+    # Every rare case has a realized intervention.
     def test_every_rare_legitimate_case_has_causal_events(self):
         from src.research.independent_scenarios import TruthCategory
         empty = []
@@ -383,7 +367,7 @@ class R2R3R4GeneratorIntegrityTests(unittest.TestCase):
                     empty.append((world.spec.scenario_id, truth.employee_id, truth.realized_mechanism))
         self.assertEqual(empty, [], f"{len(empty)} rare-legitimate cases have no causal event: {empty[:5]}")
 
-    # --- R2: transition rare cases have no invariant contradictions ---
+    # Transition cases have no invariant contradictions.
     def test_policy_transition_rare_cases_have_no_invariant_contradictions(self):
         from src.research.independent_scenarios import TruthCategory
         from src.research.independent_scenario_adapter import adapt_independent_world
@@ -441,7 +425,7 @@ class R2R3R4GeneratorIntegrityTests(unittest.TestCase):
                     offenders.append((world.spec.scenario_id, emp.employee_id, [str(d) for d in promo_dates]))
         self.assertEqual(offenders, [], f"{len(offenders)} rare cases with same-day double promotion: {offenders[:5]}")
 
-    # --- R4: current_level consistent with last effective promotion ---
+    # Current level follows the last effective promotion.
     def test_current_level_matches_last_effective_promotion(self):
         from src.research.independent_scenarios import IndependentEventKind
         offenders = []
@@ -464,8 +448,8 @@ class R2R3R4GeneratorIntegrityTests(unittest.TestCase):
         self.assertEqual(offenders, [], f"{len(offenders)} histories with current_level != last promotion level: {offenders[:5]}")
 
 
-class R5CorrectionSemanticsTests(unittest.TestCase):
-    """R5: corrections must have consistent meaning across rules and features.
+class CorrectionSemanticsTests(unittest.TestCase):
+    """Corrections must have consistent meaning across rules and features.
 
     Supersession must apply to ALL fact types (not just promotions), and invalid
     correction graphs (self-links, cycles, dangling targets) must be rejected
@@ -483,7 +467,7 @@ class R5CorrectionSemanticsTests(unittest.TestCase):
         )
 
     def test_corrected_commendation_supersedes_old_credit(self):
-        """R5.1: correcting a +6mo commendation to +1mo must yield 1 month, not 7."""
+        """Correcting a +6-month commendation to +1 month must yield 1 month."""
         from src.services.anomaly_detection.policy_history import assess_promotion_history
         from src.services.anomaly_detection.policy_model import PromotionPolicy
         old = syn.AdministrativeEvent(
@@ -509,7 +493,7 @@ class R5CorrectionSemanticsTests(unittest.TestCase):
         self.assertEqual(assessments[0].commendation_credit_months, expected)
 
     def test_superseded_invalid_promotion_does_not_remove_corrected_history(self):
-        """R5.2: invariant filtering must not flag a superseded invalid promotion."""
+        """Invariant filtering must not flag a superseded invalid promotion."""
         from src.services.anomaly_detection.deterministic_checks import validate_invariant_record
         h = syn.AdministrativeEvent(syn.AdministrativeEventType.HIRE, date(2020, 1, 1), "H")
         old = syn.AdministrativeEvent(
@@ -527,7 +511,7 @@ class R5CorrectionSemanticsTests(unittest.TestCase):
         self.assertEqual(findings, ())
 
     def test_self_correction_does_not_silently_hide_promotion(self):
-        """R5.3: a self-referencing correction must not vanish the event silently."""
+        """A self-referencing correction must not silently remove the event."""
         from src.services.anomaly_detection.policy_history import assess_promotion_history
         from src.services.anomaly_detection.policy_model import PromotionPolicy
         promo = syn.AdministrativeEvent(
@@ -546,7 +530,7 @@ class R5CorrectionSemanticsTests(unittest.TestCase):
         )
 
     def test_invisible_correction_does_not_supersede_or_raise(self):
-        """R5 edge: a correction not yet visible (recorded after the observation
+        """A correction recorded after observation is not yet visible.
         date) must not supersede its target and must not raise — partial
         visibility is a legitimate bitemporal state, not a malformed graph."""
         from src.services.anomaly_detection.effective_state import effective_events
@@ -566,7 +550,7 @@ class R5CorrectionSemanticsTests(unittest.TestCase):
         self.assertNotIn("COR", ids, "invisible correction should not be present")
 
     def test_correction_graph_rejects_self_and_cycle(self):
-        """R5: self-links and cycles are always malformed and must raise."""
+        """Self-links and cycles are malformed and must raise."""
         from src.services.anomaly_detection.effective_state import (
             superseded_source_ids,
             CorrectionGraphError,
@@ -654,7 +638,7 @@ class R5CorrectionSemanticsTests(unittest.TestCase):
             superseded_source_ids((sanction, commendation))
 
     def test_superseded_sanction_delay_not_double_counted(self):
-        """R5 generalization: correcting a sanction must not keep the old delay."""
+        """Correcting a sanction must not keep the old delay."""
         from src.services.anomaly_detection.policy_history import assess_promotion_history
         from src.services.anomaly_detection.policy_model import PromotionPolicy
         hire = syn.AdministrativeEvent(syn.AdministrativeEventType.HIRE, date(2019, 1, 1), "H")
@@ -685,8 +669,8 @@ class R5CorrectionSemanticsTests(unittest.TestCase):
         )
 
 
-class R8HardNonduplicateCoPartitionTests(unittest.TestCase):
-    """R8: a hard-nonduplicate pair must be jointly present in one partition
+class HardNonduplicateCoPartitionTests(unittest.TestCase):
+    """A hard-nonduplicate pair must be jointly present in one partition
     (preferably TEST) and the anchor relationship must be recorded, so the
     intended difficult pair is actually evaluated together."""
 
@@ -772,8 +756,8 @@ class R8HardNonduplicateCoPartitionTests(unittest.TestCase):
             )
 
 
-class R10ProvenanceCompletenessTests(unittest.TestCase):
-    """R10: source-provenance verification must require the COMPLETE required
+class ProvenanceCompletenessTests(unittest.TestCase):
+    """Source verification must require the complete required
     source-path set, not accept an arbitrary non-empty subset."""
 
     def _metadata(self, revision: str, source_hashes: dict) -> dict:
@@ -824,8 +808,8 @@ class R10ProvenanceCompletenessTests(unittest.TestCase):
         _verify_source_revision(self._metadata(revision, complete), repo_root)
 
 
-class R9MemoryAndExportTests(unittest.TestCase):
-    """R9: peak memory must be true high-water allocation; caller tracing must be
+class MemoryAndExportTests(unittest.TestCase):
+    """Peak memory must be a high-water allocation; caller tracing must be
     preserved; blocking must not run twice; exports must carry timing+memory."""
 
     def _dataset(self, seed: int = 2026, n: int = 400):
@@ -890,8 +874,8 @@ class R9MemoryAndExportTests(unittest.TestCase):
                 self.assertIn(col, row, f"export missing {col}")
 
 
-class R7BitemporalEnforcementTests(unittest.TestCase):
-    """R7: version identity and effective-time semantics must be enforced."""
+class BitemporalEnforcementTests(unittest.TestCase):
+    """Version identity and effective-time semantics must be enforced."""
 
     def _record(self, events, observation_date=None):
         return syn.WorkforceHistoryRecord(
@@ -904,7 +888,7 @@ class R7BitemporalEnforcementTests(unittest.TestCase):
         )
 
     def test_unknown_policy_version_is_rejected(self):
-        """R7.1: a promotion naming a real policy ID but a nonexistent version
+        """A promotion naming a nonexistent policy version
         must be rejected, not silently accepted."""
         from src.services.anomaly_detection.policy_history import (
             assess_promotion_history, PolicyEpoch,
@@ -924,7 +908,7 @@ class R7BitemporalEnforcementTests(unittest.TestCase):
             assess_promotion_history(self._record([hire, promo]), PromotionPolicy(), (epoch,))
 
     def test_matching_policy_version_is_accepted(self):
-        """R7.1 complement: the correct version must still be accepted."""
+        """A valid policy version remains accepted."""
         from src.services.anomaly_detection.policy_history import (
             assess_promotion_history, PolicyEpoch,
         )
@@ -943,7 +927,7 @@ class R7BitemporalEnforcementTests(unittest.TestCase):
         self.assertTrue(assessments)
 
     def test_future_effective_promotion_not_counted_as_completed(self):
-        """R7.3: a promotion whose effective date is after the observation date
+        """A promotion after the observation date
         must not be counted as a completed promotion, even if already recorded."""
         from src.services.anomaly_detection.features import extract_raw_features
         hire = syn.AdministrativeEvent(syn.AdministrativeEventType.HIRE, date(2019, 1, 1), "H")
@@ -958,7 +942,7 @@ class R7BitemporalEnforcementTests(unittest.TestCase):
         )
 
     def test_future_effective_promotion_not_assessed(self):
-        """R7.3 complement: policy assessment must also exclude future-effective."""
+        """Policy assessment excludes future-effective events."""
         from src.services.anomaly_detection.policy_history import assess_promotion_history
         from src.services.anomaly_detection.policy_model import PromotionPolicy
         hire = syn.AdministrativeEvent(syn.AdministrativeEventType.HIRE, date(2019, 1, 1), "H")

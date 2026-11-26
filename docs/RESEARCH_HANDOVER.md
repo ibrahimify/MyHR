@@ -87,7 +87,7 @@ checksums.
 3. `TDK_PAPER_DRAFT.md`, especially Sections 4, 6, and 7
 4. `TDK_EXPERIMENT_PROTOCOL.md`
 5. `TDK_LITERATURE_REVIEW.md`
-6. `TDK_RESEARCH_ROADMAP.md` only for detailed development history
+6. `archive/research-history/TDK_RESEARCH_ROADMAP_2026-11-25.md` only for detailed development history
 
 Historical diagnostics and failed designs remain in Git history and the
 roadmap. They are not current findings.

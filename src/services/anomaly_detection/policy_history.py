@@ -95,7 +95,7 @@ def assess_promotion_history(
     # Use the central effective-state resolver so promotions, commendations, and
     # sanctions all see the SAME corrected state. Superseded facts (of any type)
     # are excluded; correction events carry the effective fact. A malformed
-    # correction graph raises rather than silently hiding events (finding R5).
+    # correction graph raises rather than silently hiding events.
     events = effective_events(record, temporal_view)
     promotions = tuple(
         event for event in events
@@ -169,8 +169,8 @@ def _policy_for_promotion(
         if epoch.applies(promotion.event_date, known_at, promotion.jurisdiction)
     ]
     if promotion.policy_id:
-        # A declared policy must match by ID AND, when a version is named, by
-        # version (finding R7.1). A promotion that names a real policy ID with a
+        # A declared policy must match by ID and, when a version is named, by
+        # version. A promotion that names a real policy ID with a
         # nonexistent version must be rejected, not silently accepted.
         id_matches = [
             epoch for epoch in policy_epochs

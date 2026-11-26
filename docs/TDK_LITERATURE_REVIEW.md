@@ -133,7 +133,7 @@ The existing protocol is correct to require entity-disjoint splits, hard nondupl
 
 ## Evidence-Based Recommendations
 
-### Required Before Protocol Freeze
+### Historical Pre-Freeze Recommendations
 
 1. Implement the approved recall-at-fixed-capacity estimand and independent holdout-generation specification without opening the holdout.
 2. Add a documented multiple-comparison rule for secondary inferential tests.
@@ -141,7 +141,10 @@ The existing protocol is correct to require entity-disjoint splits, hard nondupl
 4. Freeze prevalence levels, review budgets, anomaly mechanisms, rare-legitimate mechanisms, and utility-cost sensitivity ranges.
 5. Preserve all current negative findings, including raw ablations that outperform the complete raw representation.
 
-The primary estimand and holdout design were approved for implementation on 29 October 2026. The multiplicity rule, exact scenario matrix, implementation, and protocol freeze remain pending.
+These recommendations were recorded before protocol v2 was frozen. The frozen
+design subsequently specified the primary endpoint, multiplicity rule, scenario
+matrix, and one-time protected evaluation. Current results are summarized in
+`TDK_CURRENT_RESEARCH_STATUS.md`.
 
 ### Keep For The Main Paper
 
@@ -179,13 +182,18 @@ This update addresses only the open supervisor decisions. It does not approve or
 | Synthetic validation and circularity | Synthetic evaluation should test downstream utility, multiple data profiles, and detector behavior across scenarios. Recent anomaly-benchmarking work directly warns about single-pipeline overfitting and supports scenario-specific objectives. Repeated random factors, intervals, and protected evaluation data are MyHR design inferences, not direct prescriptions from that paper. | Source-code separation alone does not establish conceptual independence. Domain experts must assess scenario realism, and the generator must not encode the detector's decisive residual by construction. No literature result can certify the current generator as realistic. |
 | Policy versions over time | Bitemporal research distinguishes valid time, when a fact or rule applies in the modeled world, from transaction time, when it is stored. Preserving both supports historical reconstruction, corrections, and auditability. | The exact MyHR schema, policy epochs, jurisdictions, recognized-service rules, and migration behavior require human domain approval. The literature supports the temporal distinction, not a particular HR policy. |
 | Expert review of anomaly ground truth | Human-in-the-loop anomaly work treats expert validation as a separate workflow rather than automatic truth. The preserved reliability paper supports independently working coders applying common instructions and measuring agreement. | Disagreement retention and adjudication are MyHR protocol choices rather than direct findings from that paper. No universal reviewer count or agreement threshold applies to workforce progression. Reviewer qualifications, sample size, acceptable agreement, and adjudication rules must be chosen before cases are reviewed. |
-| Holdout generation | The reviewed benchmark critique supports concern about overfitting to a single evaluation pipeline. Protected data, frozen choices, repeated random realizations, and scenario diversity are conservative MyHR design inferences that still require human approval. | The holdout scenario matrix, feature representation, and residual definition are not ready to freeze. The independent review found zero-positive scenarios and constant policy features, so generating a holdout now would lock in an invalid estimand. |
+| Holdout generation | The reviewed benchmark critique supports concern about overfitting to a single evaluation pipeline. Protected data, frozen choices, repeated random realizations, and scenario diversity informed the MyHR design. | This row records the pre-freeze concern. Protocol v2 later replaced the defective residual design and was evaluated once; external validity remains unresolved. |
 
 ### Supervisor Decision Outcome - 2026-10-29
 
 The supervisor selected recall at identical fixed additional review capacity as the primary endpoint for raw versus policy-aware residual ML after invariant-only filtering. Pair methods within the same independently generated scenario seed and report scenario-level and pooled denominators separately. Average Precision is secondary. Zero-positive scenarios remain reported, are marked undefined for recall and AP, and do not enter paired inference for those metrics under the predeclared rule.
 
-For historical policy, the approved implementation contract stores effective and recorded times, policy versions, recognized service, and correction provenance. The approved review method uses two independent complementary reviewers, blinded histories without model scores or generated labels, preserved initial judgments, agreement reporting, evidence-based adjudication, and retained ambiguity. Exact schemas, reviewers, sample parameters, and the protocol freeze remain pending.
+For historical policy, the implementation contract stores effective and
+recorded times, policy versions, recognized service, and correction provenance.
+The proposed case-level review uses two complementary reviewers and blinded
+histories. That review was not completed; the final study therefore reports
+qualitative expert feedback without agreement statistics or external realism
+estimates.
 
 ## Recorded Supervisor Answers
 

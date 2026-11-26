@@ -149,6 +149,6 @@ Official service documentation was rechecked before the integration update: Open
 4. Read the methods, evaluation, limitations, and conclusion of included full papers.
 5. Verify DOI and arXiv identifiers before adding a bibliography entry.
 6. Document protocol proposals separately; literature refreshes must not silently change the frozen experiment.
-7. Never query, generate, or inspect the locked experimental holdout from this workflow.
+7. Never regenerate, rerun, or inspect unpublished contents of the completed protected evaluation from this workflow.
 8. Every literature-supported claim must be recorded in `TDK_CLAIM_EVIDENCE_LEDGER.json`; every paper must have one deduplicated bibliography entry and a provenance record.
-9. Run `python scripts/verify_tdk_citations.py --require-local-artifact` before research review. CI runs the portable registry checks; the Independent Auditor additionally verifies local artifact checksums, exact page locators, citation accuracy, and scientific scope before recommending the change for human approval.
+9. Run `python scripts/verify_tdk_citations.py --require-local-artifact` before research review. CI runs portable registry checks; publication review also verifies local checksums, page locators, citation accuracy, and claim scope.

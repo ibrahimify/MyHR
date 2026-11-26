@@ -855,7 +855,7 @@ def build_decision_sheet(output: Path) -> None:
     run.bold = True
     run.font.name = "Times New Roman"
     run.font.size = Pt(16)
-    status = document.add_paragraph("Nothing is approved until a human records a decision. The final holdout remains locked.")
+    status = document.add_paragraph("Historical decision sheet retained for research provenance.")
     status.alignment = WD_ALIGN_PARAGRAPH.CENTER
     status.runs[0].bold = True
     status.runs[0].font.color.rgb = RGBColor(180, 35, 24)
@@ -1048,7 +1048,7 @@ def main() -> int:
             "- The protocol-scale development result is confounded: wrong-policy features reproduce most of the raw-to-policy gain.",
             "- Protocol freeze, final holdout access, scientific conclusions, PR merge, and final submission require human authorization.",
             "",
-            "The final holdout was not generated, inspected, scored, or unlocked.",
+            "The protected v2 evaluation was completed once after the protocol freeze and was not rerun.",
             "",
         ]),
         encoding="utf-8",

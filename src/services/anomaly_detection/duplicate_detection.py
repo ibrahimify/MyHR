@@ -153,8 +153,7 @@ def find_similarity_duplicate_candidates(
     """Find likely duplicates with weighted similarity across identity fields.
 
     If ``blocked_pairs`` is provided, it is reused instead of recomputing the
-    blocking step (finding R9: blocking previously ran twice — once in the timed
-    blocking phase and again here).
+    blocking step.
     """
 
     if not 0 <= threshold <= 1:
@@ -206,9 +205,7 @@ def evaluate_duplicate_detection(
     tracemalloc allocation across the full evaluation.  Both are stored on
     the returned DuplicateEvaluation for protocol reporting.
     """
-    # Memory accounting (finding R9): measure the true high-water mark of
-    # Python allocations during this evaluation via tracemalloc.get_traced_memory,
-    # NOT a retained snapshot diff (which under-reports transient buffers).
+    # Measure the high-water mark of Python allocations during evaluation.
     # Preserve the caller's tracing state: if the caller was already tracing we
     # do not stop it, and we reset the peak so our reading is scoped to this call.
     caller_was_tracing = tracemalloc.is_tracing()
@@ -231,8 +228,7 @@ def evaluate_duplicate_detection(
         }
 
         # --- Scoring / candidate selection phase (timed) ---
-        # Pass the already-computed blocked pairs so blocking is not recomputed
-        # inside scoring (finding R9: blocking previously ran twice).
+        # Pass the already-computed blocked pairs so scoring does not repeat blocking.
         score_start = time.perf_counter()
         if method == "exact":
             candidates = find_exact_duplicate_candidates(records)

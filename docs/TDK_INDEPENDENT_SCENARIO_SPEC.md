@@ -23,7 +23,7 @@ Rare legitimate patterns: grandfathering, recognized prior service, delayed
 bulk recording with unchanged effective dates, late correction, and historical
 policy transition.
 
-## Approved Compatibility Contract - 30 October 2026
+## Compatibility Contract
 
 | Population | Grandfathering | Recognized service | Delayed recording | Late correction | Policy transition |
 | --- | --- | --- | --- | --- | --- |
@@ -42,10 +42,8 @@ the original effective date. Any anomaly mechanism may be paired only when its
 own source-event preconditions also hold. Impossible combinations are reported
 and omitted, never forced.
 
-This compatibility boundary is author-approved for protocol preparation. The
-current 12-scenario development allocation is not the final balanced matrix.
-Each selected protocol-scale condition requires 30 independent seeds unless a
-written pre-run justification approves another count.
+This compatibility boundary governed the development generator. The frozen v2
+evaluation matrix used 30 independent seeds per condition.
 
 The matrix contains all 12 population-by-error combinations. Every split contains ordinary, erroneous, and rare-legitimate histories. Event IDs are neutral hashes and labels remain separate until adaptation.
 
@@ -59,20 +57,18 @@ The first run is artifact `independent_development_e342bd4acf39b06b`.
 - Approval bypass and batch retry are removed by deterministic checks, as intended.
 - Deterministic rules raised false alerts for 39 of 72 broadly labelled rare-legitimate histories. Source regeneration found 39 realised policy-transition histories and all 39 were flagged, but the original stored artifact does not preserve mechanism attribution per record. The artifact-supported claim is therefore `39/72`, while `39/39` remains a qualified regeneration finding.
 
-These findings are retained as development evidence. No detector feature will be tuned against this artifact. See `TDK_INDEPENDENT_REVIEW_2026-10-17.md` for the adversarial re-analysis.
+These findings are retained as development evidence. No detector feature will be tuned against this artifact. See `archive/review-records/TDK_INDEPENDENT_REVIEW_2026-10-17.md` for the adversarial re-analysis.
 
-## Approved Expert-Review Method
+## Expert-Review Method
 
-Before protocol freeze, use the predeclared sample of 48 blinded history
+The proposed review uses a predeclared sample of 48 blinded history
 summaries without model scores or intended labels: 12 ordinary legitimate, 12
 rare legitimate, 12 administrative error, and 12 ambiguous or evidence-
 insufficient cases. Two independent reviewers with complementary HR-policy and
-information-systems expertise classify each history and rate realism. Preserve
-their initial reasons, report raw agreement and unweighted Cohen's kappa for
-record status, adjudicate from documented policy evidence, and retain genuinely
-ambiguous cases. Do not change cases to improve model metrics. The two human
-reviewers, qualification records, sampling output and seed, order seeds, and
-packet checksum remain pending.
+information-systems expertise classify each history and rate realism. Initial
+reasons and disagreements would be retained and adjudicated from documented
+policy evidence. No case-level rating study was completed, so no agreement
+statistic or external realism estimate is reported.
 
 Only fictional histories and aggregate organizational assumptions may be used unless lawful access and safeguards for real data are approved.
 
@@ -86,7 +82,6 @@ Only fictional histories and aggregate organizational assumptions may be used un
 - recognized prior service and service interruptions;
 - explicit ambiguous/adjudication status.
 
-The author has approved these assumptions for protocol preparation. They still
-require implementation verification, concrete-example review, independent
-audit, and a separate dated human freeze decision before any holdout
-specification or run is authorized.
+These assumptions informed protocol preparation. They still require
+organization-specific verification and concrete-example review before use in a
+real workforce setting.
