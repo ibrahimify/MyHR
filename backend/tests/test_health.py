@@ -27,6 +27,12 @@ def test_default_database_is_isolated_from_desktop(monkeypatch):
     assert not normalized.endswith("/myhr.db")
 
 
+def test_authentication_fails_closed_by_default(monkeypatch):
+    monkeypatch.delenv("MYHR_AUTH_MODE", raising=False)
+    settings = Settings(_env_file=None)
+    assert settings.auth_mode == "supabase"
+
+
 def test_local_frontend_origin_is_allowed():
     response = client.options(
         "/health",

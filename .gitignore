@@ -73,6 +73,8 @@ tmp_*/
 .kiro/settings/mcp.json
 .env
 .env.*
+!backend/.env.example
+!frontend/.env.example
 
 # Private research notes
 docs/research/

@@ -14,9 +14,10 @@ Key design decisions:
 from datetime import datetime
 from sqlalchemy import (
     Column, Integer, String, Float, Boolean,
-    DateTime, ForeignKey, Text, Enum, UniqueConstraint
+    DateTime, ForeignKey, Text, Enum, UniqueConstraint, Uuid
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
+from sqlalchemy.sql import quoted_name
 import enum
 
 from src.core.time import utc_now
@@ -454,13 +455,14 @@ class SystemUser(Base):
     Employees do not have system accounts; they are data subjects only.
     language preference is per-session, not stored here.
     """
-    __tablename__ = "system_user"
+    __tablename__ = quoted_name("system_user", True)
     __table_args__ = (
         UniqueConstraint("organization_id", "username", name="uq_system_user_org_username"),
     )
 
     id            = Column(Integer, primary_key=True, autoincrement=True)
     organization_id = Column(Integer, ForeignKey("organization.id"), nullable=False, default=1, server_default="1", index=True)
+    auth_user_id  = Column(Uuid(as_uuid=False), nullable=True, unique=True, index=True)
     username      = Column(String(100), nullable=False)
     password_hash = Column(String(255), nullable=False)
     role          = Column(

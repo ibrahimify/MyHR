@@ -52,7 +52,7 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['organization_id'], ['organization.id'], ),
     sa.PrimaryKeyConstraint('organization_id', 'namespace')
     )
-    op.create_table('system_user',
+    op.create_table(sa.sql.quoted_name('system_user', True),
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('organization_id', sa.Integer(), server_default='1', nullable=False),
     sa.Column('username', sa.String(length=100), nullable=False),
@@ -66,7 +66,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('organization_id', 'username', name='uq_system_user_org_username')
     )
-    op.create_index(op.f('ix_system_user_organization_id'), 'system_user', ['organization_id'], unique=False)
+    op.create_index(op.f('ix_system_user_organization_id'), sa.sql.quoted_name('system_user', True), ['organization_id'], unique=False)
     op.create_table('title',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('organization_id', sa.Integer(), server_default='1', nullable=False),
@@ -100,7 +100,6 @@ def upgrade() -> None:
     sa.Column('after_value', sa.Text(), nullable=True),
     sa.Column('performed_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['organization_id'], ['organization.id'], ),
-    sa.ForeignKeyConstraint(['performed_by_id'], ['system_user.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_audit_log_organization_id'), 'audit_log', ['organization_id'], unique=False)
@@ -115,7 +114,6 @@ def upgrade() -> None:
     sa.Column('is_team_award', sa.Boolean(), nullable=True),
     sa.Column('issued_by_id', sa.Integer(), nullable=False),
     sa.Column('issued_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['issued_by_id'], ['system_user.id'], ),
     sa.ForeignKeyConstraint(['organization_id'], ['organization.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('organization_id', 'commendation_ref', name='uq_commendation_org_ref')
@@ -195,7 +193,6 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['employee_id'], ['employee.id'], ),
-    sa.ForeignKeyConstraint(['evaluator_id'], ['system_user.id'], ),
     sa.ForeignKeyConstraint(['organization_id'], ['organization.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -211,7 +208,6 @@ def upgrade() -> None:
     sa.Column('months_taken', sa.Integer(), nullable=True),
     sa.Column('notes', sa.Text(), nullable=True),
     sa.Column('promoted_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['approved_by_id'], ['system_user.id'], ),
     sa.ForeignKeyConstraint(['employee_id'], ['employee.id'], ),
     sa.ForeignKeyConstraint(['from_title_id'], ['title.id'], ),
     sa.ForeignKeyConstraint(['organization_id'], ['organization.id'], ),
@@ -230,7 +226,6 @@ def upgrade() -> None:
     sa.Column('increment_value', sa.Float(), nullable=False),
     sa.Column('applied_at', sa.DateTime(), nullable=True),
     sa.Column('notes', sa.Text(), nullable=True),
-    sa.ForeignKeyConstraint(['approved_by_id'], ['system_user.id'], ),
     sa.ForeignKeyConstraint(['employee_id'], ['employee.id'], ),
     sa.ForeignKeyConstraint(['organization_id'], ['organization.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -249,7 +244,6 @@ def upgrade() -> None:
     sa.Column('resolved_at', sa.DateTime(), nullable=True),
     sa.Column('is_resolved', sa.Boolean(), nullable=True),
     sa.ForeignKeyConstraint(['employee_id'], ['employee.id'], ),
-    sa.ForeignKeyConstraint(['issued_by_id'], ['system_user.id'], ),
     sa.ForeignKeyConstraint(['organization_id'], ['organization.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('organization_id', 'sanction_ref', name='uq_sanction_org_ref')
@@ -264,6 +258,21 @@ def upgrade() -> None:
             ["head_employee_id"],
             ["id"],
         )
+        for name, source_table, source_column in (
+            ("fk_audit_log_performed_by", "audit_log", "performed_by_id"),
+            ("fk_commendation_issued_by", "commendation", "issued_by_id"),
+            ("fk_performance_score_evaluator", "performance_score", "evaluator_id"),
+            ("fk_promotion_history_approved_by", "promotion_history", "approved_by_id"),
+            ("fk_salary_increment_history_approved_by", "salary_increment_history", "approved_by_id"),
+            ("fk_sanction_issued_by", "sanction", "issued_by_id"),
+        ):
+            op.create_foreign_key(
+                name,
+                source_table,
+                sa.sql.quoted_name("system_user", True),
+                [source_column],
+                ["id"],
+            )
 
     organization = sa.table(
         "organization",
@@ -311,8 +320,8 @@ def downgrade() -> None:
     op.drop_table('audit_log')
     op.drop_index(op.f('ix_title_organization_id'), table_name='title')
     op.drop_table('title')
-    op.drop_index(op.f('ix_system_user_organization_id'), table_name='system_user')
-    op.drop_table('system_user')
+    op.drop_index(op.f('ix_system_user_organization_id'), table_name=sa.sql.quoted_name('system_user', True))
+    op.drop_table(sa.sql.quoted_name('system_user', True))
     op.drop_table('reference_counter')
     op.drop_index(op.f('ix_org_unit_organization_id'), table_name='org_unit')
     op.drop_table('org_unit')
