@@ -5,8 +5,11 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.context import OrganizationContext, get_organization_context
-from app.db import get_session
+from app.context import (
+    OrganizationContext,
+    get_authorized_session,
+    get_organization_context,
+)
 from app.schemas.employees import (
     EmployeeAdminDetail,
     EmployeeCreate,
@@ -69,7 +72,7 @@ def employee_list(
     ),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=25, ge=1, le=100),
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_authorized_session),
     context: OrganizationContext = Depends(get_organization_context),
 ):
     rows, total = list_employees(
@@ -90,7 +93,7 @@ def employee_list(
 
 @router.get("/options", response_model=EmployeeOptions)
 def employee_options(
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_authorized_session),
     context: OrganizationContext = Depends(get_organization_context),
 ):
     return get_employee_options(session, context.organization_id)
@@ -99,7 +102,7 @@ def employee_options(
 @router.get("/{employee_id}", response_model=EmployeeAdminDetail | EmployeeWorkDetail)
 def employee_detail(
     employee_id: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_authorized_session),
     context: OrganizationContext = Depends(get_organization_context),
 ):
     try:
@@ -116,7 +119,7 @@ def employee_detail(
 @router.post("", response_model=EmployeeAdminDetail | EmployeeWorkDetail, status_code=status.HTTP_201_CREATED)
 def employee_create(
     payload: EmployeeCreate,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_authorized_session),
     context: OrganizationContext = Depends(get_organization_context),
 ):
     try:
@@ -139,7 +142,7 @@ def employee_create(
 def employee_update(
     employee_id: int,
     payload: EmployeeUpdate,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_authorized_session),
     context: OrganizationContext = Depends(get_organization_context),
 ):
     try:

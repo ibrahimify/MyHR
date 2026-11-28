@@ -1,8 +1,8 @@
 # MyHR Backend
 
 FastAPI backend for the MyHR web platform. The health endpoint, configurable
-database engine, tenant-ready SQLAlchemy schema and initial Alembic migration
-are implemented. Business endpoints and web authentication are not yet built.
+database engine, tenant-ready schema, employee endpoints, Supabase JWT
+verification and transaction-scoped RLS context are implemented.
 
 The backend reuses the existing desktop Python packages (`src/database`,
 `src/services`) from the repository root rather than duplicating them.
@@ -26,15 +26,15 @@ backend/
 ## Database engine
 
 The engine is selected through `MYHR_DATABASE_URL`. When unset, application
-configuration points to the existing desktop SQLite database at the repository
-root. That fallback supports shared-model inspection, but it is not a safe
-migration target.
+configuration points to an isolated SQLite database under `.scratch`. It never
+selects the desktop database implicitly.
 
 For local migration work, use a separate ignored database:
 
 ```powershell
 cd backend
 $env:MYHR_DATABASE_URL = "sqlite:///../.scratch/web-local.db"
+$env:MYHR_AUTH_MODE = "local"
 alembic upgrade head
 ```
 
@@ -43,9 +43,24 @@ set the variable in an untracked `backend/.env` file using a Postgres URL:
 
 ```dotenv
 MYHR_DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:5432/postgres
+MYHR_AUTH_MODE=supabase
+MYHR_SUPABASE_URL=https://your-project.supabase.co
 ```
 
 Do not commit `.env` files, passwords, access tokens or service-role keys.
+
+After creating a user in Supabase Auth, link it to the default organization:
+
+```powershell
+python -m scripts.link_supabase_user `
+  --auth-user-id USER_UUID `
+  --email user@example.com `
+  --full-name "Organization Administrator"
+```
+
+The command validates the Auth user in Supabase and stores only its UUID,
+email, display name, organization and application role. It never handles the
+user's Supabase password.
 
 ## Local development
 

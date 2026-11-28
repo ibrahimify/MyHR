@@ -1,3 +1,5 @@
+import { getAccessToken } from "@/lib/supabase";
+
 const API_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000"
 )
@@ -88,9 +90,14 @@ function normalize(employee: EmployeeWire): Employee {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const accessToken = await getAccessToken();
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: {
+      "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...init?.headers,
+    },
   });
   if (!response.ok) {
     let message = `Request failed with status ${response.status}.`;

@@ -26,7 +26,7 @@ PySide6 desktop stays as-is on local SQLite.
 - Backend: FastAPI + SQLAlchemy, engine switched by env var
   `MYHR_DATABASE_URL` (defaults to an isolated `.scratch/web-local.db`; the
   desktop database is never selected implicitly).
-- Database: Supabase Postgres. Project ref `cqyrkbpuaclhrphpezka`.
+- Database: Supabase Postgres. Project ref `wqtrnxljvpvudhdblsrf`.
 - Multi-tenancy: option C, "tenant-ready". Add one `organization` table and an
   `organization_id` FK on 11 business tables, seed one default org, enforce with
   a tenant-scoping dependency and Supabase RLS. Single-org behavior for now.
@@ -67,12 +67,12 @@ PySide6 desktop stays as-is on local SQLite.
   Tailwind + Framer Motion placeholder; `.github/workflows/web-ci.yml` runs
   backend pytest + frontend build. Desktop suite now has 332 tests plus 17
   subtests passing.
-- Phase 2 (local implementation complete): the shared models now include the default organization,
+- Phase 2 (hosted schema complete): the shared models now include the default organization,
   tenant FKs and scoped uniqueness; Alembic owns the web schema; reference IDs
   use atomic tenant-scoped counters. Migration and compatibility tests run on
   SQLite, and the migration compiles as PostgreSQL SQL. Applying it to a
-  Supabase database branch and adding auth-backed RLS remain pending because no
-  Supabase token or database URL is configured locally.
+  The migrations are applied to Supabase and 14 RLS policies passed a
+  rollback-only cross-tenant probe. The hosted database is at Alembic head.
 - Local employee milestone (implemented and verified): `EmployeeService`
   provides tenant-scoped list, detail, create and update operations with
   relationship validation, manager-cycle prevention, atomic reference IDs and
@@ -84,6 +84,12 @@ PySide6 desktop stays as-is on local SQLite.
   database plus failure states, request races and mobile layout. Production
   identity is not implemented; the UI labels its current server-owned context
   as local development.
+- Authentication milestone (implementation complete, onboarding pending): the
+  Next.js client provides sign-in, session tracking and sign-out. FastAPI
+  verifies ES256 Supabase JWTs, maps the subject to an active `SystemUser`, and
+  reapplies a restricted `myhr_api` role plus tenant claims after every
+  transaction. The first Auth user still needs to be created and linked before
+  the hosted end-to-end workflow can be run.
 
 ## Key facts from the API contract (summary)
 
@@ -121,7 +127,7 @@ and the ref/ID generators scope their counters per org.
 
 ## Supabase access
 
-- Preferred: use the Supabase MCP server (project ref `cqyrkbpuaclhrphpezka`),
+- Preferred: use the Supabase MCP server (project ref `wqtrnxljvpvudhdblsrf`),
   so no password is in code. The hosted/npx server needs a
   `SUPABASE_ACCESS_TOKEN` env var; create a token in Supabase under
   Account -> Access Tokens with Database = Read-write, Migrations = Read-write,
@@ -137,13 +143,12 @@ and the ref/ID generators scope their counters per org.
 
 ## Next up
 
-1. Apply the tested Alembic migration to a Supabase database branch.
-2. Add auth-backed RLS policies after the Supabase user-to-organization profile
-   mapping is available; do not trust client-supplied organization IDs.
-3. Point the backend at Supabase via `MYHR_DATABASE_URL` / MCP; confirm models
-   create and services run on Postgres. Prefer a DB branch first.
-4. Run the PostgreSQL integration checks, keep the desktop suite green, and tag
-   `web-v0.2` only after the live branch verification succeeds.
+1. Create the first Supabase Auth administrator and link its UUID to an active
+   `SystemUser` in the default organization.
+2. Configure untracked backend and frontend environment files, then run the
+   authenticated employee workflow against hosted Postgres.
+3. Run the full regression suite and CI, then tag `web-v0.2` after the live
+   authenticated workflow succeeds.
 
 Then extend the shared-service pattern to organization units, titles,
 commendations and sanctions before expanding the remaining feature pages.

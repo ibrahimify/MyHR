@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     app_name: str = "MyHR API"
     database_url: str = _DEFAULT_DATABASE_URL
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    auth_mode: str = "supabase"
+    supabase_url: str = ""
 
     @property
     def allowed_origins(self) -> list[str]:
@@ -34,6 +36,13 @@ class Settings(BaseSettings):
     def select_psycopg_driver(cls, value: str) -> str:
         if value.startswith("postgresql://"):
             return value.replace("postgresql://", "postgresql+psycopg://", 1)
+        return value
+
+    @field_validator("auth_mode")
+    @classmethod
+    def validate_auth_mode(cls, value: str) -> str:
+        if value not in {"local", "supabase"}:
+            raise ValueError("auth_mode must be 'local' or 'supabase'")
         return value
 
 

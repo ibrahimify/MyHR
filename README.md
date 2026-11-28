@@ -13,10 +13,10 @@ The web platform uses a Next.js frontend, a FastAPI backend, shared SQLAlchemy
 models and business services, and Supabase Postgres. The desktop application
 continues to use local SQLite and remains independently runnable.
 
-> **Current checkpoint:** the tenant-ready schema and the first complete local
-> web workflow are implemented. Employees can be searched, filtered, inspected,
-> created and edited through the Next.js client and FastAPI API. Supabase Auth,
-> row-level security and deployment remain deliberately deferred. Resume from
+> **Current checkpoint:** the employee workflow and Supabase security boundary
+> are implemented. The hosted schema is migrated, 14 tenant policies are active,
+> FastAPI verifies Supabase access tokens, and the Next.js client has a sign-in
+> flow. First-user onboarding and an authenticated end-to-end run remain. Resume from
 > [Web Port Handover](docs/WEB_PORT_HANDOVER.md).
 
 ## Project status
@@ -26,10 +26,10 @@ continues to use local SQLite and remains independently runnable.
 | Desktop application | Working baseline | `python main.py` and the desktop test suite |
 | FastAPI backend | Local employee workflow complete | Tenant-scoped employee API, validation, audit logging and tests |
 | Next.js frontend | Local employee workflow complete | Responsive employee directory, details and create/edit forms |
-| Tenant-ready schema | Implemented locally | Organization scope on 11 business tables with per-tenant uniqueness |
-| Database migrations | Implemented locally | Alembic upgrade and downgrade tested on SQLite; PostgreSQL SQL compilation verified |
-| Supabase deployment | Pending | Requires a rotated token or local `MYHR_DATABASE_URL` |
-| Web authentication and RLS | Pending | Planned with Supabase Auth and organization-scoped policies |
+| Tenant-ready schema | Deployed | Organization scope, tenant uniqueness and hosted PostgreSQL migration head verified |
+| Database migrations | Verified | SQLite migration tests, PostgreSQL rendering and hosted migration completed |
+| Supabase deployment | Database connected | Hosted schema and rollback-only isolation probe verified |
+| Web authentication and RLS | Implemented, onboarding pending | JWT verification, profile mapping, login UI and 14 RLS policies |
 | Production deployment | Not started | Vercel and backend hosting are deliberately deferred |
 
 No hosted web application or production authentication is claimed at this stage.
@@ -93,6 +93,7 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 $env:MYHR_DATABASE_URL = "sqlite:///../.scratch/web-local.db"
+$env:MYHR_AUTH_MODE = "local"
 alembic upgrade head
 python -m scripts.seed_local_demo --database-url sqlite:///../.scratch/web-local.db
 uvicorn app.main:app --reload
@@ -106,6 +107,8 @@ For Postgres, create an untracked `backend/.env` file:
 
 ```dotenv
 MYHR_DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:5432/postgres
+MYHR_AUTH_MODE=supabase
+MYHR_SUPABASE_URL=https://your-project.supabase.co
 ```
 
 Never commit that file or paste credentials into issues or pull requests.
@@ -115,12 +118,13 @@ Never commit that file or paste credentials into issues or pull requests.
 ```powershell
 cd frontend
 npm ci
+$env:NEXT_PUBLIC_AUTH_MODE = "local"
 npm run dev
 ```
 
-Open `http://localhost:3000`. The local employee workflow uses a server-owned
-development organization context. It is not a substitute for production
-authentication.
+Copy `frontend/.env.example` to an untracked `.env.local` and set the project
+URL and publishable key. Local mode remains available for disposable browser
+tests; hosted mode requires an Auth user linked to an active MyHR profile.
 
 ## Verification
 
@@ -143,7 +147,7 @@ npm run test:e2e
 Verified on the local employee workflow branch:
 
 - Desktop and shared suite: 332 tests passed, plus 17 subtests.
-- Backend suite: 24 tests passed.
+- Backend suite: 34 tests passed.
 - Frontend lint and production build: passed.
 - Browser suite: 4 tests passed, covering list, detail, search, filtering,
   create/update, loading, empty and failure states, request races and mobile
@@ -157,10 +161,12 @@ Verified on the local employee workflow branch:
   organization-scoped counters.
 - Usernames and configurable titles are unique within an organization.
 - `superadmin` is reserved for the future platform administration surface.
-- Supabase Auth will own web identity; desktop SHA-256 seed credentials are not
+- Supabase Auth owns web identity; desktop SHA-256 seed credentials are not
   valid web authentication.
-- Row-level security will be added only after the authenticated user-to-
-  organization mapping is defined and tested.
+- FastAPI resolves organization and role from a server-owned profile after JWT
+  verification. Client-supplied tenant identifiers are ignored.
+- Tenant transactions assume a restricted PostgreSQL role. Fourteen RLS
+  policies were verified with a rollback-only cross-tenant probe.
 - Anomaly results remain advisory and cannot trigger personnel changes.
 - The research holdout remains locked and is outside the web-port workflow.
 
@@ -169,8 +175,8 @@ has been selected; see [Licensing and IP](docs/LICENSING_AND_IP.md).
 
 ## Roadmap
 
-1. Connect Supabase Auth profiles and organization-scoped RLS on a database
-   branch, then verify PostgreSQL integration.
+1. Create and link the first Supabase Auth administrator, then run the hosted
+   employee workflow end to end.
 2. Extend shared services and API endpoints to organization units, titles,
    commendations and sanctions.
 3. Add the remaining authenticated feature pages.
@@ -181,7 +187,8 @@ has been selected; see [Licensing and IP](docs/LICENSING_AND_IP.md).
 Milestones:
 
 - `web-v0.1`: monorepo and CI scaffold, complete.
-- `web-v0.2`: verified Supabase schema and security boundary, pending.
+- `web-v0.2`: verified Supabase schema and security boundary, pending the first
+  authenticated end-to-end run.
 - `web-v1.0`: feature parity, public entry point and deployable releases.
 
 ## Branches

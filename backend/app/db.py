@@ -5,11 +5,12 @@ Postgres by setting ``MYHR_DATABASE_URL``. The ORM models are reused from the
 existing desktop package ``src.database.models``; they are not duplicated.
 """
 
+import json
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import make_url
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import get_settings
 
@@ -25,7 +26,30 @@ if _settings.database_url.startswith("sqlite"):
         )
 
 engine = create_engine(_settings.database_url, echo=False, connect_args=_connect_args)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+
+
+class BackendSession(Session):
+    """Backend session with optional transaction-scoped RLS identity."""
+
+
+SessionLocal = sessionmaker(
+    bind=engine,
+    class_=BackendSession,
+    autoflush=False,
+    autocommit=False,
+)
+
+
+@event.listens_for(BackendSession, "after_begin")
+def _apply_rls_context(session, transaction, connection) -> None:
+    claims = session.info.get("rls_claims")
+    if not claims or connection.dialect.name != "postgresql":
+        return
+    connection.exec_driver_sql("SET LOCAL ROLE myhr_api")
+    connection.execute(
+        text("SELECT set_config('request.jwt.claims', :claims, true)"),
+        {"claims": json.dumps(claims, separators=(",", ":"))},
+    )
 
 
 def get_session():
@@ -35,3 +59,8 @@ def get_session():
         yield session
     finally:
         session.close()
+
+
+def get_identity_session():
+    """Yield a privileged session used only to map verified auth identities."""
+    yield from get_session()

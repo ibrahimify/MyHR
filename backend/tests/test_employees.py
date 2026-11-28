@@ -9,8 +9,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.context import OrganizationContext, get_organization_context
-from app.db import get_session
+from app.context import (
+    OrganizationContext,
+    get_authorized_session,
+    get_organization_context,
+)
 from app.main import create_app
 from src.database.models import (
     AuditLog, Base, Employee, Organization, OrgUnit, ReferenceCounter, SystemUser, Title
@@ -92,7 +95,7 @@ def api() -> Iterator[tuple[TestClient, sessionmaker]]:
         finally:
             session.close()
 
-    app.dependency_overrides[get_session] = session_override
+    app.dependency_overrides[get_authorized_session] = session_override
     app.dependency_overrides[get_organization_context] = lambda: OrganizationContext(1, 1, "admin")
     with TestClient(app) as client:
         yield client, session_factory
