@@ -1,7 +1,6 @@
-# MyHR Web Port — Handover
+# MyHR Web Port Handover
 
-Working notes for continuing the web port. Read this, then continue from "Next up".
-This file is safe to commit (no secrets). Delete it when the web port is done.
+Engineering checkpoint for continuing the web port. It contains no credentials.
 
 ## Goal
 
@@ -25,7 +24,8 @@ PySide6 desktop stays as-is on local SQLite.
 - Frontend: Next.js (App Router) + TypeScript + Tailwind CSS + Framer Motion.
   Follow the Google style guide for frontend source.
 - Backend: FastAPI + SQLAlchemy, engine switched by env var
-  `MYHR_DATABASE_URL` (defaults to the existing SQLite for desktop/local).
+  `MYHR_DATABASE_URL` (defaults to an isolated `.scratch/web-local.db`; the
+  desktop database is never selected implicitly).
 - Database: Supabase Postgres. Project ref `cqyrkbpuaclhrphpezka`.
 - Multi-tenancy: option C, "tenant-ready". Add one `organization` table and an
   `organization_id` FK on 11 business tables, seed one default org, enforce with
@@ -42,7 +42,7 @@ PySide6 desktop stays as-is on local SQLite.
 
 ## Branch / commit / safety rules
 
-- All web work on branch `web` (already created off `research`).
+- Integrate web work through short feature branches targeting `web`.
 - Never touch `master`, `thesis`, `research`, or the tag `tdk-2026-submission`.
 - Never force-push, reset --hard, or `git clean`.
 - Commit messages are plain, imperative and specific to the change.
@@ -73,6 +73,17 @@ PySide6 desktop stays as-is on local SQLite.
   SQLite, and the migration compiles as PostgreSQL SQL. Applying it to a
   Supabase database branch and adding auth-backed RLS remain pending because no
   Supabase token or database URL is configured locally.
+- Local employee milestone (implemented and verified): `EmployeeService`
+  provides tenant-scoped list, detail, create and update operations with
+  relationship validation, manager-cycle prevention, atomic reference IDs and
+  audit entries. FastAPI exposes the service under `/api/employees`. The
+  responsive Next.js directory supports search, status filters, details and
+  create/edit forms. A guarded seed command creates isolated SQLite demo data.
+  Backend tests, frontend lint/build and four reproducible browser tests pass.
+  The browser suite covers the real create/edit workflow on a disposable
+  database plus failure states, request races and mobile layout. Production
+  identity is not implemented; the UI labels its current server-owned context
+  as local development.
 
 ## Key facts from the API contract (summary)
 
@@ -91,15 +102,15 @@ PySide6 desktop stays as-is on local SQLite.
 - SQLite coupling to replace for Postgres: engine URL, PRAGMA-based migrations
   (use Alembic instead), and the settings file-copy backup + integrity check
   (drop/replace; Supabase handles backups).
-- Concurrency bug to fix: ID generators (EMP-XXXX, COM-, SAN-) use max(id)+1 and
-  per-day row counts — racy under a multi-worker web server. Use DB sequences or
-  transactional retries.
+- Remaining concurrency work: employee references now use atomic tenant
+  counters. Apply the same service pattern to commendation and sanction
+  references before exposing their write endpoints.
 - Background jobs needed: anomaly-detection demo (sklearn, already out-of-process
   on desktop) and bulk import. Return a job id and poll; never run synchronously.
 - Anomaly scores are human-review-only. The API must never wire them into any
   write/personnel path. (Project rule.)
 
-## Tenancy C — add organization_id FK to these 11 tables
+## Tenancy C
 
 employee, org_unit, title, promotion_rule, commendation, sanction,
 promotion_history, salary_increment_history, performance_score, audit_log,
@@ -124,7 +135,7 @@ and the ref/ID generators scope their counters per org.
   first, review, then merge to production. Do not run untested DDL against the
   production database.
 
-## Next up (Phase 2 — database to Supabase)
+## Next up
 
 1. Apply the tested Alembic migration to a Supabase database branch.
 2. Add auth-backed RLS policies after the Supabase user-to-organization profile
@@ -134,14 +145,13 @@ and the ref/ID generators scope their counters per org.
 4. Run the PostgreSQL integration checks, keep the desktop suite green, and tag
    `web-v0.2` only after the live branch verification succeeds.
 
-Then: Phase 3 backend endpoints (+ extract CRUD into services), Phase 4 frontend
-core, Phase 5 the 10 feature pages, Phase 6 landing page, Phase 7 Windows
-installer (PyInstaller), Phase 8 deploy (backend to Render free, frontend to
-Vercel), Phase 8.5 MASTER admin panel, Phase 9 parity check + polish, tag
-`web-v1.0`.
+Then extend the shared-service pattern to organization units, titles,
+commendations and sanctions before expanding the remaining feature pages.
+Landing, desktop packaging, deployment, platform administration and final
+parity verification follow after the authenticated boundary is proven.
 
 ## Security note
 
-A Supabase access token was shared in an earlier chat and must be regenerated
-after Phase 2. Do not paste tokens into chat or commit them. Secrets live only
-in env vars or git-ignored `.env` files.
+Keep credentials in environment variables or git-ignored `.env` files. Rotate
+any credential that may have been exposed; never place secrets in source,
+issues, pull requests or documentation.

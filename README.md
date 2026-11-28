@@ -13,26 +13,26 @@ The web platform uses a Next.js frontend, a FastAPI backend, shared SQLAlchemy
 models and business services, and Supabase Postgres. The desktop application
 continues to use local SQLite and remains independently runnable.
 
-> **Current checkpoint:** Phase 2 is locally implemented and verified. The
-> tenant-ready schema, Alembic migration, scoped reference counters, backend
-> tests and frontend build are complete. Work is paused before applying the
-> migration to Supabase because no access token or database URL is configured.
-> Resume from [Web Port Handover](docs/WEB_PORT_HANDOVER.md).
+> **Current checkpoint:** the tenant-ready schema and the first complete local
+> web workflow are implemented. Employees can be searched, filtered, inspected,
+> created and edited through the Next.js client and FastAPI API. Supabase Auth,
+> row-level security and deployment remain deliberately deferred. Resume from
+> [Web Port Handover](docs/WEB_PORT_HANDOVER.md).
 
 ## Project status
 
 | Area | Status | Evidence |
 | --- | --- | --- |
 | Desktop application | Working baseline | `python main.py` and the desktop test suite |
-| FastAPI backend | Scaffolded | `/health`, environment-based database engine, migration tests |
-| Next.js frontend | Scaffolded | Production build succeeds; product interface is not implemented yet |
+| FastAPI backend | Local employee workflow complete | Tenant-scoped employee API, validation, audit logging and tests |
+| Next.js frontend | Local employee workflow complete | Responsive employee directory, details and create/edit forms |
 | Tenant-ready schema | Implemented locally | Organization scope on 11 business tables with per-tenant uniqueness |
 | Database migrations | Implemented locally | Alembic upgrade and downgrade tested on SQLite; PostgreSQL SQL compilation verified |
 | Supabase deployment | Pending | Requires a rotated token or local `MYHR_DATABASE_URL` |
 | Web authentication and RLS | Pending | Planned with Supabase Auth and organization-scoped policies |
 | Production deployment | Not started | Vercel and backend hosting are deliberately deferred |
 
-No live web application is claimed at this stage.
+No hosted web application or production authentication is claimed at this stage.
 
 ## Architecture
 
@@ -94,6 +94,7 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 $env:MYHR_DATABASE_URL = "sqlite:///../.scratch/web-local.db"
 alembic upgrade head
+python -m scripts.seed_local_demo --database-url sqlite:///../.scratch/web-local.db
 uvicorn app.main:app --reload
 ```
 
@@ -117,8 +118,9 @@ npm ci
 npm run dev
 ```
 
-Open `http://localhost:3000`. The current page is a scaffold; application
-screens will be implemented after the authenticated API contract is available.
+Open `http://localhost:3000`. The local employee workflow uses a server-owned
+development organization context. It is not a substitute for production
+authentication.
 
 ## Verification
 
@@ -135,14 +137,18 @@ python -m pytest -q
 # Frontend
 cd ..\frontend
 npm run build
+npm run test:e2e
 ```
 
-Verified at commit `01ad1d6`:
+Verified on the local employee workflow branch:
 
 - Desktop and shared suite: 332 tests passed, plus 17 subtests.
-- Backend suite: 3 tests passed.
-- Frontend production build: passed.
-- GitHub Web CI: passed.
+- Backend suite: 24 tests passed.
+- Frontend lint and production build: passed.
+- Browser suite: 4 tests passed, covering list, detail, search, filtering,
+  create/update, loading, empty and failure states, request races and mobile
+  layout against a disposable migrated database.
+- GitHub Web CI: pending the feature-branch push.
 
 ## Tenancy and security
 
@@ -163,13 +169,14 @@ has been selected; see [Licensing and IP](docs/LICENSING_AND_IP.md).
 
 ## Roadmap
 
-1. Apply the tested migration to a Supabase database branch.
-2. Add Supabase Auth profiles and organization-scoped RLS.
-3. Extract reusable CRUD services and implement FastAPI endpoints.
-4. Build the authenticated frontend shell and feature pages.
-5. Add the public product page and deployment configuration.
-6. Package the desktop application as a Windows installer.
-7. Complete parity, security and accessibility verification.
+1. Connect Supabase Auth profiles and organization-scoped RLS on a database
+   branch, then verify PostgreSQL integration.
+2. Extend shared services and API endpoints to organization units, titles,
+   commendations and sanctions.
+3. Add the remaining authenticated feature pages.
+4. Add the public product page and deployment configuration.
+5. Package the desktop application as a Windows installer.
+6. Complete parity, security and accessibility verification.
 
 Milestones:
 
