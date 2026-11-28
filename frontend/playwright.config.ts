@@ -13,7 +13,7 @@ export default defineConfig({
   use: {
     baseURL: `http://127.0.0.1:${frontendPort}`,
     trace: "retain-on-failure",
-    screenshot: "only-on-failure",
+    screenshot: process.env.CAPTURE_UI ? "on" : "only-on-failure",
   },
   webServer: [
     {

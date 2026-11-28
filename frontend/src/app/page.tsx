@@ -3,23 +3,34 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
+  Award,
   Building2,
   ChevronLeft,
   ChevronRight,
   CircleCheck,
+  ClipboardList,
+  CloudUpload,
+  LayoutDashboard,
   Mail,
+  Menu,
   LogOut,
+  Network,
   Pencil,
   Phone,
   Plus,
   RefreshCw,
   Search,
+  Settings,
   ShieldCheck,
+  TrendingUp,
+  TriangleAlert,
   UserRound,
   UsersRound,
+  X,
 } from "lucide-react";
 import { EmployeeForm } from "@/components/employee-form";
 import { RequireAuth, useAuth } from "@/components/auth-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   ApiError,
   Employee,
@@ -37,6 +48,43 @@ const emptyPage: EmployeePage = {
   pages: 1,
 };
 
+const navigationGroups = [
+  {
+    label: "Overview",
+    items: [{ label: "Dashboard", icon: LayoutDashboard }],
+  },
+  {
+    label: "People",
+    items: [
+      { label: "Employees", icon: UsersRound, active: true },
+      { label: "Org hierarchy", icon: Network },
+    ],
+  },
+  {
+    label: "Growth",
+    items: [
+      { label: "Promotions", icon: TrendingUp },
+      { label: "Commendations", icon: Award },
+    ],
+  },
+  {
+    label: "Compliance",
+    items: [
+      { label: "Sanctions", icon: TriangleAlert },
+      { label: "Audit log", icon: ClipboardList },
+      { label: "Anomaly review", icon: Search },
+    ],
+  },
+  {
+    label: "Data",
+    items: [{ label: "Import data", icon: CloudUpload }],
+  },
+  {
+    label: "System",
+    items: [{ label: "Settings", icon: Settings }],
+  },
+];
+
 export default function Home() {
   return (
     <RequireAuth>
@@ -47,6 +95,7 @@ export default function Home() {
 
 function EmployeeDirectory() {
   const { user, signOut } = useAuth();
+  const [navigationOpen, setNavigationOpen] = useState(false);
   const [employees, setEmployees] = useState(emptyPage);
   const [searchDraft, setSearchDraft] = useState("");
   const [search, setSearch] = useState("");
@@ -165,55 +214,101 @@ function EmployeeDirectory() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <a className="brand" href="#main" aria-label="MyHR employees">
-          <span className="brand-mark">
-            <Building2 size={21} />
-          </span>
-          <span>
-            <b>MyHR.</b>
-            <small>Employee Management</small>
-          </span>
-        </a>
-        <nav aria-label="Main navigation">
-          <p>People</p>
-          <a className="nav-item active" href="#employees">
-            <UsersRound size={18} />
-            Employees
+        <div className="sidebar-heading">
+          <a className="brand" href="#main" aria-label="MyHR employees">
+            <span className="brand-mark">
+              <Building2 size={21} />
+            </span>
+            <span>
+              <b>MyHR.</b>
+              <small>Employee Management</small>
+            </span>
           </a>
-        </nav>
-        <div className="identity-card">
-          <span className="avatar">SA</span>
-          <span>
-            <b>{user?.email ?? "Local operator"}</b>
-            <small>{user ? "Authenticated account" : "Local development"}</small>
-          </span>
-          {user && (
-            <button
-              className="icon-button"
-              onClick={() => void signOut()}
-              aria-label="Sign out"
-              title="Sign out"
-              type="button"
-            >
-              <LogOut size={16} />
-            </button>
-          )}
+          <button
+            className="mobile-menu-button"
+            onClick={() => setNavigationOpen((open) => !open)}
+            aria-expanded={navigationOpen}
+            aria-label={navigationOpen ? "Close navigation" : "Open navigation"}
+            type="button"
+          >
+            {navigationOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+        <div className={`sidebar-body ${navigationOpen ? "open" : ""}`}>
+          <nav aria-label="Main navigation">
+            {navigationGroups.map((group) => (
+              <div className="nav-group" key={group.label}>
+                <div className="nav-section-heading">
+                  <span>{group.label}</span>
+                  <i />
+                </div>
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  return item.active ? (
+                    <a
+                      className="nav-item active"
+                      href="#employees"
+                      key={item.label}
+                      onClick={() => setNavigationOpen(false)}
+                    >
+                      <Icon size={18} />
+                      <span>{item.label}</span>
+                    </a>
+                  ) : (
+                    <button
+                      className="nav-item"
+                      key={item.label}
+                      onClick={() => {
+                        setNotice(`${item.label} will be added in a later milestone.`);
+                        setNavigationOpen(false);
+                      }}
+                      title={`${item.label} is not yet available on the web`}
+                      type="button"
+                    >
+                      <Icon size={18} />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </nav>
+          <div className="sidebar-footer">
+            <div className="identity-card">
+              <span className="avatar">{initials(user?.email ?? "Local operator")}</span>
+              <span>
+                <b>{user?.email?.split("@")[0] ?? "Local operator"}</b>
+                <small>{user ? "Administrator" : "Local development"}</small>
+              </span>
+            </div>
+            <ThemeToggle />
+            {user && (
+              <button
+                className="logout-button"
+                onClick={() => void signOut()}
+                type="button"
+              >
+                <LogOut size={17} />
+                Sign out
+              </button>
+            )}
+          </div>
         </div>
       </aside>
       <main className="workspace" id="main">
         <header className="page-header">
           <div>
-            <p className="eyebrow">People directory</p>
+            <p className="breadcrumb">People <ChevronRight size={13} /> Employees</p>
             <h1 id="employees">Employees</h1>
-            <p>Review work records and maintain employment details.</p>
+            <p>Manage employee records, assignments, and work details.</p>
           </div>
           <div className="header-actions">
             <div
               className="environment-badge"
-              title="Temporary local identity until Supabase Auth is connected"
+              title="Your organization is resolved from the signed-in account"
             >
               <ShieldCheck size={16} />
-              {user ? "Authenticated workspace" : "Local development context"}
+              {user ? "Secure workspace" : "Local development"}
             </div>
             <button
               className="button button-primary"
@@ -226,6 +321,18 @@ function EmployeeDirectory() {
           </div>
         </header>
         <section className="directory-panel" aria-label="Employee directory">
+          <div className="panel-heading">
+            <div>
+              <span className="panel-icon"><UsersRound size={18} /></span>
+              <div>
+                <h2>Employee directory</h2>
+                <p>Search the organization and inspect one record at a time.</p>
+              </div>
+            </div>
+            <span className="record-count">
+              {loading ? "Loading" : `${employees.total} records`}
+            </span>
+          </div>
           <div className="toolbar">
             <form
               className="search-control"
@@ -270,7 +377,7 @@ function EmployeeDirectory() {
             >
               <div className="section-heading">
                 <div>
-                  <h2>Directory</h2>
+                  <h3>Directory</h3>
                   <p>
                     {loading
                       ? "Loading records"
@@ -406,9 +513,8 @@ function EmployeeDirectory() {
           </div>
         </section>
         <footer className="page-footer">
-          {user
-            ? "Organization access is resolved from your verified account."
-            : "Local development mode. No production identity is active."}
+          <ShieldCheck size={13} />
+          Organization access is resolved from your verified account.
         </footer>
       </main>
       {formEmployee !== undefined && (
