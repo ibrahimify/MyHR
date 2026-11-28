@@ -4,15 +4,16 @@ Next.js App Router frontend for the MyHR web platform.
 
 ## Current status
 
-The frontend is an intentionally small Phase 1 scaffold. It builds successfully
-with TypeScript, Tailwind CSS and Framer Motion. Authenticated application
-screens are deferred until the FastAPI authentication and endpoint contracts
-are implemented. The current page is not a production deployment.
+The responsive employee directory supports list, detail, search, filtering,
+create and update workflows. Supabase email/password sign-in, session tracking,
+sign-out and bearer-token API requests are implemented. Hosted use requires a
+linked MyHR profile; local browser tests use the isolated development mode.
 
 ## Development
 
 ```powershell
 npm ci
+Copy-Item .env.example .env.local
 npm run dev
 ```
 
