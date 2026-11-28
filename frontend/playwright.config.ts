@@ -28,7 +28,10 @@ export default defineConfig({
       url: `http://127.0.0.1:${frontendPort}`,
       timeout: 120_000,
       reuseExistingServer: false,
-      env: { NEXT_PUBLIC_API_URL: `http://127.0.0.1:${apiPort}` },
+      env: {
+        NEXT_PUBLIC_API_URL: `http://127.0.0.1:${apiPort}`,
+        NEXT_PUBLIC_AUTH_MODE: "local",
+      },
     },
   ],
 });

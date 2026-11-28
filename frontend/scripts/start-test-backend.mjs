@@ -19,6 +19,7 @@ const environment = {
   ...process.env,
   MYHR_CORS_ORIGINS: "http://127.0.0.1:3100",
   MYHR_DATABASE_URL: databaseUrl,
+  MYHR_AUTH_MODE: "local",
   PYTHONPATH: [repositoryRoot, process.env.PYTHONPATH]
     .filter(Boolean)
     .join(path.delimiter),

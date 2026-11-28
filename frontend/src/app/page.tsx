@@ -8,6 +8,7 @@ import {
   ChevronRight,
   CircleCheck,
   Mail,
+  LogOut,
   Pencil,
   Phone,
   Plus,
@@ -18,6 +19,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { EmployeeForm } from "@/components/employee-form";
+import { RequireAuth, useAuth } from "@/components/auth-provider";
 import {
   ApiError,
   Employee,
@@ -36,6 +38,15 @@ const emptyPage: EmployeePage = {
 };
 
 export default function Home() {
+  return (
+    <RequireAuth>
+      <EmployeeDirectory />
+    </RequireAuth>
+  );
+}
+
+function EmployeeDirectory() {
+  const { user, signOut } = useAuth();
   const [employees, setEmployees] = useState(emptyPage);
   const [searchDraft, setSearchDraft] = useState("");
   const [search, setSearch] = useState("");
@@ -173,9 +184,20 @@ export default function Home() {
         <div className="identity-card">
           <span className="avatar">SA</span>
           <span>
-            <b>Local operator</b>
-            <small>Local development</small>
+            <b>{user?.email ?? "Local operator"}</b>
+            <small>{user ? "Authenticated account" : "Local development"}</small>
           </span>
+          {user && (
+            <button
+              className="icon-button"
+              onClick={() => void signOut()}
+              aria-label="Sign out"
+              title="Sign out"
+              type="button"
+            >
+              <LogOut size={16} />
+            </button>
+          )}
         </div>
       </aside>
       <main className="workspace" id="main">
@@ -191,7 +213,7 @@ export default function Home() {
               title="Temporary local identity until Supabase Auth is connected"
             >
               <ShieldCheck size={16} />
-              Local development context
+              {user ? "Authenticated workspace" : "Local development context"}
             </div>
             <button
               className="button button-primary"
@@ -384,8 +406,9 @@ export default function Home() {
           </div>
         </section>
         <footer className="page-footer">
-          Local development mode. Authentication and organization identity will
-          be connected through Supabase before deployment.
+          {user
+            ? "Organization access is resolved from your verified account."
+            : "Local development mode. No production identity is active."}
         </footer>
       </main>
       {formEmployee !== undefined && (
